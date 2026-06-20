@@ -66,8 +66,8 @@ export function buildGexProfile(
   for (let i = 1; i <= steps; i++) {
     const S = minS + ((maxS - minS) * i) / steps;
     const g = totalGexAtSpot(S, chain, tauYears);
-    if (!found && prevG !== 0 && Math.sign(g) !== Math.sign(prevG)) {
-      gammaFlip = prevS + (-prevG / (g - prevG)) * (S - prevS);
+    if (!found && (g === 0 || (prevG !== 0 && Math.sign(g) !== Math.sign(prevG)))) {
+      gammaFlip = g === 0 ? S : prevS + (-prevG / (g - prevG)) * (S - prevS);
       found = true;
     }
     prevS = S; prevG = g;

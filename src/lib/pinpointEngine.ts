@@ -37,6 +37,12 @@ export function calculateBSMGreeks(
   sigma: number, // Implied Volatility
   isCall: boolean
 ): BSMGreeks {
+  // Guard degenerate/non-finite inputs: Math.max(NaN, x) === NaN, so the floors
+  // below would NOT catch a NaN spot/strike/σ/τ — and a single NaN Greek poisons
+  // the whole dealer-exposure profile (and the UI). Abstain to flat/zero instead.
+  if (!(S > 0) || !(K > 0) || !isFinite(tau) || !isFinite(sigma)) {
+    return { price: 0.01, delta: 0, vega: 0, gamma: 0, vanna: 0, charm: 0, speed: 0, color: 0 };
+  }
   const tBounded = Math.max(tau, 1e-5);
   const sigBounded = Math.max(sigma, 1e-5);
   const sqrtTau = Math.sqrt(tBounded);
@@ -242,8 +248,11 @@ export class DupireLocalVolSolver {
     const wBounded = Math.max(w, 1e-4);
     const tauBounded = Math.max(tau, 1e-4);
 
-    // 1. Time derivative: dW / dT
-    const dw_dtau = Math.max(0, (wPlus - w) / dT);
+    // 1. Time derivative: dW / dT. Floor at a small fraction of the variance
+    // level rather than a hard 0 — a flat/slightly-decreasing slice (a normal
+    // numerical artifact at the wings) then degrades smoothly instead of snapping
+    // to the implied-vol fallback.
+    const dw_dtau = Math.max(1e-6 * wBounded, (wPlus - w) / dT);
 
     // 2. Spatial derivatives of SVI model analytically
     const { a, b, rho, m, sigma } = paramsAtTau;
@@ -315,7 +324,10 @@ export class DealerExposureEngine {
     // VEX: Changes in dealer delta hedging per 1% absolute IV shift (vanna * OI * 100 * S * 0.01) * sign
     const vexStrike = greeks.vanna * openInterest * 100 * S * 0.01 * typeSign;
 
-    // CEX: Overnight decay delta decay per 24 hour windows (charm * OI * 100 * S) * sign
+    // CEX: 24h dealer delta-decay (charm * OI * 100 * S) * sign. greeks.charm is
+    // ALREADY in per-day units (÷365 inside calculateBSMGreeks), so do NOT divide
+    // by 365 again. (GEX uses S²·0.01, VEX uses S·0.01, CEX uses raw S — three
+    // intentionally different scalings, not a bug.)
     const cexStrike = greeks.charm * openInterest * 100 * S * typeSign;
 
     return {
@@ -480,8 +492,13 @@ export class PhysicsCascadeEngine {
           1.5
         );
 
-        // Incorporate coupling coefficient into drift mechanics
-        const drift = (r - q + kappa * F) * St * dt;
+        // Incorporate coupling coefficient into drift mechanics.
+        // F (hedging force) is in PRICE units, so convert it to a *fractional*
+        // drift (÷ St) before it enters the rate term, and bound it. Adding the
+        // raw kappa·F to a rate and re-multiplying by St produced an enormous
+        // per-step drift that pinned every simulated path at the $1 floor.
+        const forceReturn = Math.max(-0.5, Math.min(0.5, (kappa * F) / Math.max(St, 1e-9)));
+        const drift = (r - q + forceReturn) * St * dt;
 
         // Diffusion (Standard Brownian increment scaled by continuous local vol)
         const dW = lcg.nextNormal(0, 1);

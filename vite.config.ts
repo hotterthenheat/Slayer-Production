@@ -18,5 +18,21 @@ export default defineConfig(() => {
       // Disable file watching when DISABLE_HMR is true to save CPU during agent edits.
       watch: process.env.DISABLE_HMR === 'true' ? null : {},
     },
+    build: {
+      // Split heavy, independent vendors out of the main bundle for a faster
+      // first paint. The bundler still resolves load order via the module graph.
+      chunkSizeWarningLimit: 900,
+      rollupOptions: {
+        output: {
+          manualChunks(id: string) {
+            if (!id.includes('node_modules')) return;
+            if (id.includes('lightweight-charts')) return 'charts-vendor';
+            if (id.includes('react-dom') || id.includes('scheduler') || /node_modules[\\/]react[\\/]/.test(id)) return 'react-vendor';
+            if (id.includes('motion')) return 'motion-vendor';
+            return 'vendor';
+          },
+        },
+      },
+    },
   };
 });

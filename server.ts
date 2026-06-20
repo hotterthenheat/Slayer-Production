@@ -10,13 +10,14 @@ import Stripe from 'stripe';
 import { GoogleGenAI } from '@google/genai';
 import path from 'path';
 import { createServer as createViteServer } from 'vite';
-import { ASSET_LIST, generateInitialCandles, TIMEFRAMES, INITIAL_DISCOVERY_CONTRACTS, INITIAL_DISCOVERY_FEED_LOGS, calculateFVGs, calculateLiquidityEvents } from './src/data';
+import { ASSET_LIST, generateInitialCandles, TIMEFRAMES, INITIAL_DISCOVERY_CONTRACTS, buildInitialDiscoveryFeedLogs, calculateFVGs, calculateLiquidityEvents } from './src/data';
 import { 
   calculateSystemScoreFromCandles, 
   calculateV11Metrics, 
   calculateV10Metrics,
   computeDealerInventory,
   generateMockOptionsChain,
+  calculateAnalyticGreeks,
   ChainContract
 } from './src/lib/v11Math';
 import { Candle, V8TradeRecord, AssetInfo, TimeframeVal } from './src/types';
@@ -290,7 +291,7 @@ const db: ServerDb = {
   dataSource: 'SANDBOX_SYNTHETIC',
   apiStatusMessage: 'Offline Sandbox Simulation Running',
   discoveryContracts: JSON.parse(JSON.stringify(INITIAL_DISCOVERY_CONTRACTS)),
-  discoveryFeedLogs: JSON.parse(JSON.stringify(INITIAL_DISCOVERY_FEED_LOGS)),
+  discoveryFeedLogs: buildInitialDiscoveryFeedLogs(),
   discoveryBrierScore: 0.042,
   discoveryGlobalGex: 485.4,
   discoveryScanRate: 14.8,
@@ -417,6 +418,7 @@ seedHistoricalCandles();
 const bootstrappedAssets: Record<string, boolean> = {};
 
 let sandboxTimeShift = 0; // Accelerates time in sandbox mode
+const sandboxMomentum: Record<string, number> = {}; // per-asset AR(1) momentum for the synthetic walk
 
 // Simulation ticks run continuously server-side
 const TICK_INTERVAL = 1000; // 1s for fast real-time telemetry but stable chart
@@ -466,12 +468,21 @@ async function runTickerCycle() {
             db.liveOptionChains[asset.ticker] = [];
           });
       } else {
-        // High fidelity sandbox random walk
+        // High-fidelity sandbox walk: persistent momentum (AR(1)) + light
+        // mean-reversion to the anchor + occasional volatility bursts. This gives
+        // the tape real trends, pullbacks and displacement candles instead of
+        // i.i.d. white noise — and keeps price in a believable band over time.
         const prev5m = db.candles[`${asset.ticker}-5m`];
         const lastPrice = (prev5m && prev5m.length > 0) ? prev5m[prev5m.length - 1].close : asset.defaultPrice;
-        const range = asset.defaultPrice * asset.volatility * 0.0012;
-        const change = (Math.random() - 0.49) * (range); // Increased volatility for fast movement
-        spotPrice = Number((lastPrice + change).toFixed(asset.decimals));
+        const anchor = asset.defaultPrice;
+        const baseRange = anchor * asset.volatility * 0.0012;
+        const burst = Math.random() > 0.96 ? 2.5 + Math.random() * 2 : 1; // ~4% of ticks: displacement
+        const prevMom = sandboxMomentum[asset.ticker] || 0;
+        const reversion = (-(lastPrice - anchor) / anchor) * 0.04 * anchor; // pull back toward anchor
+        const shock = (Math.random() - 0.5) * 2 * baseRange * burst;
+        const mom = prevMom * 0.82 + shock + reversion;
+        sandboxMomentum[asset.ticker] = mom * 0.6; // decay carried momentum
+        spotPrice = Number((lastPrice + mom).toFixed(asset.decimals));
         db.liveSpotPrices[asset.ticker] = spotPrice;
 
         // Generate synthetic flow trades
@@ -481,12 +492,24 @@ async function runTickerCycle() {
           const step = asset.defaultPrice > 1000 ? 100 : asset.defaultPrice > 150 ? 5 : 1;
           const strk = Math.round(spotPrice / step) * step + (isCall ? step * Math.floor(Math.random() * 4) : -step * Math.floor(Math.random() * 4));
 
+          // Keep premium internally consistent: premium ≈ contracts × per-contract
+          // price × 100, where the per-contract price falls off as the strike goes
+          // further OTM. (Previously contract count and premium were independent
+          // randoms, so a 5,000-lot could show less premium than a 600-lot.)
+          const contracts = Math.floor(300 + Math.random() * 4700);
+          const otm = Math.abs(strk - spotPrice) / spotPrice;
+          const perContract = Math.max(0.15, 1.8 - otm * 18 + (Math.random() - 0.5));
+          const premiumM = (contracts * perContract * 100) / 1_000_000;
+          const aggressive = Math.random();
+          const sideDesc = aggressive > 0.7 ? 'Swept above ask'
+            : aggressive > 0.4 ? (isCall ? 'Bought at ask' : 'Sold at bid')
+              : 'Mid-market print';
           const newFlow = {
             id: `flow-${Date.now()}-${Math.random()}`,
             asset: asset.ticker,
             type: typeStr,
-            contract: `${Math.floor(500 + Math.random() * 4500)} ${asset.ticker} ${strk}${isCall ? 'C' : 'P'}`,
-            desc: `${isCall ? 'Bought at ask' : 'Sold at bid'} • $${(0.5 + Math.random() * 2).toFixed(1)}M Premium`,
+            contract: `${contracts.toLocaleString()} ${asset.ticker} ${strk}${isCall ? 'C' : 'P'}`,
+            desc: `${sideDesc} • $${premiumM.toFixed(2)}M Premium`,
             side: isCall ? 'C' : 'P'
           };
           db.globalFlowFeed.unshift(newFlow);
@@ -523,14 +546,21 @@ async function runTickerCycle() {
         const lastCandleBucket = Math.floor(last.timestamp / (M * 60000));
 
         if (currentBucket > lastCandleBucket) {
-          // Timeframe boundary crossed! Push a new candle and shift window
+          // Timeframe boundary crossed! Push a new candle and shift window.
+          // Seed an opening wick proportional to asset vol & timeframe so fresh
+          // bars aren't wickless dojis, and scale volume by timeframe so a 1D bar
+          // isn't the same size as a 1m bar. The triple max/min provably keeps the
+          // OHLC invariant (high ≥ max(open,close), low ≤ min(open,close)).
+          const wick = asset.defaultPrice * asset.volatility * 0.0006 * Math.sqrt(M);
+          const seedHigh = Math.max(last.close, spotPrice) + Math.random() * wick;
+          const seedLow = Math.min(last.close, spotPrice) - Math.random() * wick;
           const newCandle: Candle = {
             timestamp: currentBucket * M * 60000,
             open: last.close,
-            high: Number(Math.max(last.close, spotPrice).toFixed(asset.decimals)),
-            low: Number(Math.min(last.close, spotPrice).toFixed(asset.decimals)),
+            high: Number(Math.max(seedHigh, last.close, spotPrice).toFixed(asset.decimals)),
+            low: Number(Math.min(seedLow, last.close, spotPrice).toFixed(asset.decimals)),
             close: spotPrice,
-            volume: Math.round(50 + Math.random() * 450),
+            volume: Math.round((50 + Math.random() * 450) * Math.sqrt(M)),
           };
           prev.push(newCandle);
           if (prev.length > 200) {
@@ -711,11 +741,30 @@ const tickDiscoveryData = () => {
   const randomIndex = Math.floor(Math.random() * db.discoveryContracts.length);
   const target = { ...db.discoveryContracts[randomIndex] };
 
-  // Jitter price
-  const priceChange = Number((Math.random() * 0.06 - 0.026).toFixed(2));
+  // Proportional price jitter (a $42 contract and a $0.35 contract shouldn't both
+  // move by a few cents), with a mild drift biased by the tile's recommended action.
+  const driftBias = target.action === 'ENTER' ? 0.0008
+    : (target.action === 'SELL' || target.action === 'REDUCE') ? -0.0010 : 0;
+  const pct = (Math.random() - 0.5) * 0.018 + driftBias;
+  const priceChange = target.price * pct;
   target.price = Number(Math.max(0.10, target.price + priceChange).toFixed(2));
   target.bid = Number(Math.max(0.08, target.price * 0.985).toFixed(2));
   target.ask = Number(Math.max(0.11, target.price * 1.015).toFixed(2));
+
+  // Keep the "% to first target" headline coherent with the live price.
+  if (target.t1 && target.price > 0) {
+    target.p1 = Math.round(((target.t1 - target.price) / target.price) * 100);
+  }
+
+  // Refresh greeks against the live spot so a ticking tile's delta/gamma move too.
+  const tileSpot = db.liveSpotPrices[target.ticker];
+  if (tileSpot && target.strike) {
+    const g = calculateAnalyticGreeks(tileSpot, target.strike, target.isCall ? 2 : 5, 0.18, target.isCall);
+    target.delta = Number(g.delta.toFixed(3));
+    target.gamma = Number(g.gamma.toFixed(4));
+    target.vega = Number(g.vega.toFixed(3));
+    target.theta = Number(g.theta.toFixed(3));
+  }
 
   // Jitter health score slightly [30, 99]
   const scoreChange = Math.random() > 0.5 ? 1 : -1;
@@ -754,7 +803,11 @@ const tickDiscoveryData = () => {
 
   // 3. Slowly tick general cockpit statistics
   db.discoveryBrierScore = Number(Math.max(0.015, Math.min(0.080, db.discoveryBrierScore + (Math.random() * 0.002 - 0.001))).toFixed(4));
-  db.discoveryGlobalGex = Number(Math.max(100, db.discoveryGlobalGex + (Math.random() * 4.2 - 1.8)).toFixed(1));
+  // Mean-revert Global GEX within a believable band instead of trending upward
+  // forever (the old +bias drift only had a lower bound).
+  db.discoveryGlobalGex = Number(
+    Math.max(120, Math.min(900, db.discoveryGlobalGex + (485 - db.discoveryGlobalGex) * 0.02 + (Math.random() - 0.5) * 6)).toFixed(1)
+  );
   db.discoveryScanRate = Number(Math.max(5, Math.min(30, db.discoveryScanRate + (Math.random() * 1.2 - 0.6))).toFixed(1));
 };
 

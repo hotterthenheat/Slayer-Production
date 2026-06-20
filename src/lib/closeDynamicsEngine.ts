@@ -508,7 +508,10 @@ export function calculateCloseDynamics(inputs: CloseDynamicsInputs, assetOptions
 
   // Trend extensions (same sign as trend) vs reversals (opposite sign)
   const extensionCount = neighbors.filter(n => Math.sign(n.moveIntoClose) === Math.sign(inputs.trendBounded)).length;
-  const trendExReversalRatio = extensionCount / (actualK - extensionCount || 1);
+  const reversalCount = actualK - extensionCount;
+  // Cap so an all-extension neighborhood reads as a bounded "strong extension"
+  // rather than a misleading raw 50:1 (denominator would otherwise be 1).
+  const trendExReversalRatio = Math.min(20, extensionCount / (reversalCount || 1));
 
   // 11. CLOSE MAGNET PRICE (GRAVITY MODEL)
   // If an options chain is provided, we compute strike gravity, otherwise we generate a clean deterministic standard option GEX list centered on spot

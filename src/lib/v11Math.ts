@@ -16,6 +16,7 @@ import { stdNormalCDF, stdNormalPDF } from './normalDist';
 // ==========================================
 export class SeededRandom {
   private seed: number;
+  private spare: number | null = null;
   constructor(seed: number) {
     this.seed = seed;
   }
@@ -28,12 +29,20 @@ export class SeededRandom {
   nextRange(min: number, max: number): number {
     return min + this.next() * (max - min);
   }
-  // Normal distribution Box-Muller
+  // Normal distribution via Box-Muller. Caches the second (cosine) variate
+  // instead of discarding it — no wasted draws — and floors u1 symmetrically in
+  // (0,1) to avoid the slight magnitude bias of the old one-sided floor.
   nextNormal(mean = 0, stdDev = 1): number {
-    const u1 = Math.max(0.0001, this.next());
-    const u2 = Math.max(0.0001, this.next());
-    const randStdNormal = Math.sqrt(-2.0 * Math.log(u1)) * Math.sin(2.0 * Math.PI * u2);
-    return mean + stdDev * randStdNormal;
+    if (this.spare !== null) {
+      const z = this.spare;
+      this.spare = null;
+      return mean + stdDev * z;
+    }
+    const u1 = Math.min(1 - 1e-12, Math.max(1e-12, this.next()));
+    const u2 = this.next();
+    const radius = Math.sqrt(-2.0 * Math.log(u1));
+    this.spare = radius * Math.cos(2.0 * Math.PI * u2);
+    return mean + stdDev * (radius * Math.sin(2.0 * Math.PI * u2));
   }
 }
 
@@ -617,7 +626,15 @@ export function computeDealerInventory(
   for (let i = 0; i < gridPoints.length - 1; i++) {
     const ptA = gridPoints[i];
     const ptB = gridPoints[i + 1];
-    if (Math.sign(ptA.gex) !== Math.sign(ptB.gex) && ptA.gex !== 0) {
+    // Treat an exact zero node as the flip itself; otherwise interpolate the
+    // sign change. (The old `ptA.gex !== 0` guard skipped a true crossing that
+    // landed exactly on zero — possible with symmetric synthetic chains.)
+    if (ptA.gex === 0) {
+      gammaFlip = ptA.S;
+      gammaFlipConfident = true;
+      break;
+    }
+    if (Math.sign(ptA.gex) !== Math.sign(ptB.gex)) {
       const t = -ptA.gex / (ptB.gex - ptA.gex);
       gammaFlip = ptA.S + t * (ptB.S - ptA.S);
       gammaFlipConfident = true;
@@ -693,10 +710,17 @@ export function generateMockOptionsChain(spot: number, ivBase: number): ChainCon
   for (let offset = -10; offset <= 10; offset++) {
     const strike = centerStrike + offset * step;
     const strikeDistance = Math.abs(spot - strike) / spot;
-    
+
     // Parabolic IV Smiles
     const skewVolCall = ivBase * (1.1 - offset * 0.015 + 1.5 * strikeDistance * strikeDistance);
     const skewVolPut = ivBase * (1.1 + offset * 0.02 + 1.5 * strikeDistance * strikeDistance);
+
+    // Open interest concentrates at round strikes (where dealer gamma walls form):
+    // 5×step strikes are the heaviest, 2×step next. This makes the GEX call/put
+    // walls snap to psychological levels and only jump when spot crosses far
+    // enough, instead of sliding tick-by-tick off a smooth bell curve.
+    const roundFactor = strike % (step * 5) === 0 ? 2.2 : strike % (step * 2) === 0 ? 1.35 : 1.0;
+    const moneyness = Math.exp(-(offset * offset) / 18);
 
     // Call Contract
     const greeksC = calculateAnalyticGreeks(spot, strike, 1, skewVolCall, true);
@@ -707,7 +731,7 @@ export function generateMockOptionsChain(spot: number, ivBase: number): ChainCon
     chain.push({
       strike,
       type: 'call',
-      openInterest: Math.round(1500 * Math.exp(-(offset * offset)/18) + 120),
+      openInterest: Math.round((1500 * moneyness + 120) * roundFactor),
       iv: skewVolCall,
       bid: Number(bidC.toFixed(2)),
       ask: Number(askC.toFixed(2)),
@@ -728,7 +752,7 @@ export function generateMockOptionsChain(spot: number, ivBase: number): ChainCon
     chain.push({
       strike,
       type: 'put',
-      openInterest: Math.round(1800 * Math.exp(-(offset * offset)/18) + 140),
+      openInterest: Math.round((1800 * moneyness + 140) * roundFactor),
       iv: skewVolPut,
       bid: Number(bidP.toFixed(2)),
       ask: Number(askP.toFixed(2)),

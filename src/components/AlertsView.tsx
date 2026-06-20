@@ -26,13 +26,17 @@ interface AlertItem {
   source: string;
 }
 
+// Stable empty-array reference shared across renders (see usage below).
+const EMPTY_LIST: any[] = [];
+
 export function AlertsView() {
   const selectedAsset = useContractStore((s) => s.selectedAsset);
   const serverState = useContractStore((s) => s.serverState);
 
-  // Parse the live options discovery structures
-  const mispricedCalls = serverState?.discovery?.mispricedCalls || [];
-  const mispricedPuts = serverState?.discovery?.mispricedPuts || [];
+  // Parse the live options discovery structures. Fall back to a STABLE empty array
+  // (not a fresh `|| []` each render) so the memos below don't recompute every tick.
+  const mispricedCalls = serverState?.discovery?.mispricedCalls || EMPTY_LIST;
+  const mispricedPuts = serverState?.discovery?.mispricedPuts || EMPTY_LIST;
 
   // Create unified trade signal candidates
   const candidates = useMemo(() => {

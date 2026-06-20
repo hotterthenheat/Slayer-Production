@@ -162,8 +162,11 @@ function testProbabilityEngine() {
   const iv = 0.20;
   const riskFree = 0.05;
   
-  const prob = touchProbability(spot, targetPrice, dte, iv, riskFree);
+  // Signature is touchProbability(S, B, sigma, tauYears, mu) — pass IV as sigma and
+  // dte/365 as the year-fraction (not dte as sigma).
+  const prob = touchProbability(spot, targetPrice, iv, dte / 365, riskFree);
   assert.ok(prob >= 0 && prob <= 1, 'Touch probability must be between 0 and 1');
+  assert.ok(prob > 0.1, 'A 5% upside barrier should be reachable within 30 DTE');
   
   const medianTime = medianTimeToTouch(spot, targetPrice, iv, riskFree);
   assert.ok(medianTime > 0, 'Median time to touch should be positive');

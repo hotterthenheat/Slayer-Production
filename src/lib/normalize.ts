@@ -13,7 +13,7 @@ export function clamp(v: number, a: number, b: number): number {
 
 /** 1. Bounded positive, linear. For metrics with a natural [0, cap]. */
 export function normSaturate(x: number, cap: number): number {
-  if (!isFinite(x) || cap <= 0) return 0;
+  if (!isFinite(x) || !(cap > 0)) return 0; // !(cap > 0) also rejects NaN (NaN <= 0 is false)
   return 100 * clamp(x / cap, 0, 1);
 }
 
@@ -49,6 +49,7 @@ export function percentile(values: number[], p: number): number {
  */
 export function normCrossSection(x: number, setValues: number[]): number {
   if (!setValues || setValues.length === 0) return 50;
+  if (!isFinite(x)) return 50; // NaN/Inf metric → neutral 50, never NaN
   const lo = percentile(setValues, 10);
   const hi = percentile(setValues, 90);
   if (hi === lo) return 50;

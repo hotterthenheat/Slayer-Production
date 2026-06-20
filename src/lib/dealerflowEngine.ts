@@ -66,6 +66,11 @@ export class DealerFlowPhysics {
     q = 0.01,
     optionType: 'call' | 'put' = 'call'
   ): OptionGreeks {
+    // Guard non-finite/degenerate inputs so no NaN Greek can flow into the
+    // hedging cascade (the t<=0 / sigma<=0 ternaries below do NOT catch NaN).
+    if (!(S > 0) || !(K > 0) || !isFinite(t) || !isFinite(sigma)) {
+      return { delta: 0, gamma: 0, vanna: 0, charm: 0, speed: 0, color: 0 };
+    }
     const tBounded = t <= 0 ? 1e-5 : t;
     const sigBounded = sigma <= 0 ? 1e-4 : sigma;
 

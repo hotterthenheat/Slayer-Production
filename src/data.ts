@@ -103,6 +103,14 @@ export function generateInitialCandles(asset: AssetInfo, timeframe: TimeframeVal
     minMultiplier = tfObj.minMultiplier;
   }
 
+  // Deterministic per-asset seed so each ticker's displacement structure differs
+  // but is reproducible across reloads.
+  const assetSeed = asset.ticker.split('').reduce((a, c) => a + c.charCodeAt(0), 0);
+  const dispBar1 = 10 + (assetSeed % 7);
+  const dispBar2 = dispBar1 + 9 + (assetSeed % 5);
+  const dispBar3 = dispBar2 + 7 + (assetSeed % 4);
+  const dispBar2Bearish = assetSeed % 2 === 0;
+
   let currentPrice = basePrice * (1 - vol * 0.015); // Start slightly lower to build a trend pattern
   let accumulatedVolPrice = 0;
   let accumulatedVol = 0;
@@ -117,16 +125,19 @@ export function generateInitialCandles(asset: AssetInfo, timeframe: TimeframeVal
     let displacementDir: 'bullish' | 'bearish' | null = null;
     let biasFactor = 0.05; // general bullish bias for neat look
     
-    // Inject institutional displacement on specific historic candles (e.g., at i=12, i=24, i=35)
-    if (i === 15 || i === 28 || i === 38) {
+    // Inject institutional displacement on per-asset bars. Derived deterministically
+    // from the ticker so each chart's structure (FVGs, sweeps) differs but stays
+    // reproducible — otherwise every asset is a structural clone (same bars 15/28/38).
+    if (i === dispBar1 || i === dispBar2 || i === dispBar3) {
       isHeavyDisplacement = true;
-      displacementDir = i === 28 ? 'bearish' : 'bullish';
-      biasFactor = i === 28 ? -2.2 * vol : 2.5 * vol;
-    } else if (i > 15 && i < 22) {
-      // gentle pullbacks
+      const isDown = i === dispBar2 ? dispBar2Bearish : (i === dispBar3 && !dispBar2Bearish);
+      displacementDir = isDown ? 'bearish' : 'bullish';
+      biasFactor = isDown ? -2.2 * vol : 2.5 * vol;
+    } else if (i > dispBar1 && i < dispBar1 + 6) {
+      // gentle pullbacks after the first displacement
       biasFactor = -0.3 * vol;
-    } else if (i > 28 && i < 33) {
-      // bearish momentum continuation
+    } else if (i > dispBar2 && i < dispBar2 + 4) {
+      // momentum continuation after the second displacement
       biasFactor = -0.6 * vol;
     } else {
       biasFactor = (Math.random() - 0.44) * 0.4 * vol;
@@ -1044,14 +1055,34 @@ export const INITIAL_DISCOVERY_CONTRACTS = [
   }
 ];
 
-export const INITIAL_DISCOVERY_FEED_LOGS = [
-  { timestamp: '01:34:25', ticker: 'SPX', strike: 7620, type: 'C', side: 'Sweep', size: '280 cons', premium: '$151,200', tag: 'BULLISH', action: 'SWEPT @ ASK' },
-  { timestamp: '01:34:10', ticker: 'QQQ', strike: 448, type: 'C', side: 'Block', size: '1,200 cons', premium: '$504,000', tag: 'BULLISH', action: 'AT ASK' },
-  { timestamp: '01:33:48', ticker: 'NDX', strike: 18350, type: 'C', side: 'Block', size: '150 cons', premium: '$232,500', tag: 'BULLISH', action: 'ABOVE ASK' },
-  { timestamp: '01:33:02', ticker: 'SPY', strike: 508, type: 'P', side: 'Sweep', size: '2,500 cons', premium: '$337,500', tag: 'BEARISH', action: 'SWEPT @ ASK' },
-  { timestamp: '01:31:55', ticker: 'SPX', strike: 7700, type: 'C', side: 'Block', size: '3,000 cons', premium: '$735,000', tag: 'BULLISH', action: 'OFF-EXCHANGE' },
-  { timestamp: '01:30:22', ticker: 'NDX', strike: 17800, type: 'P', side: 'Sweep', size: '400 cons', premium: '$496,000', tag: 'HEDGE', action: 'SWEPT @ ASK' },
-  { timestamp: '01:29:15', ticker: 'SPY', strike: 515, type: 'C', side: 'Sweep', size: '1,800 cons', premium: '$576,000', tag: 'BULLISH', action: 'SWEPT @ ASK' },
-  { timestamp: '01:28:40', ticker: 'QQQ', strike: 455, type: 'C', side: 'Sweep', size: '2,400 cons', premium: '$348,000', tag: 'BULLISH', action: 'ABOVE ASK' }
-];
+/**
+ * Builds the seeded options-flow feed with timestamps relative to *now*, so the
+ * first paint looks like prints that just happened (the old hard-coded 01:34:25
+ * times clashed with the live ticks that stamp the current UTC time).
+ */
+export function buildInitialDiscoveryFeedLogs() {
+  const now = Date.now();
+  const rows = [
+    { ticker: 'SPX', strike: 7620, type: 'C', side: 'Sweep', size: 280, prem: 151200, tag: 'BULLISH', action: 'SWEPT @ ASK' },
+    { ticker: 'QQQ', strike: 448, type: 'C', side: 'Block', size: 1200, prem: 504000, tag: 'BULLISH', action: 'AT ASK' },
+    { ticker: 'NDX', strike: 18350, type: 'C', side: 'Block', size: 150, prem: 232500, tag: 'BULLISH', action: 'ABOVE ASK' },
+    { ticker: 'SPY', strike: 508, type: 'P', side: 'Sweep', size: 2500, prem: 337500, tag: 'BEARISH', action: 'SWEPT @ ASK' },
+    { ticker: 'SPX', strike: 7700, type: 'C', side: 'Block', size: 3000, prem: 735000, tag: 'BULLISH', action: 'OFF-EXCHANGE' },
+    { ticker: 'NDX', strike: 17800, type: 'P', side: 'Sweep', size: 400, prem: 496000, tag: 'HEDGE', action: 'SWEPT @ ASK' },
+    { ticker: 'SPY', strike: 515, type: 'C', side: 'Sweep', size: 1800, prem: 576000, tag: 'BULLISH', action: 'SWEPT @ ASK' },
+    { ticker: 'QQQ', strike: 455, type: 'C', side: 'Sweep', size: 2400, prem: 348000, tag: 'BULLISH', action: 'ABOVE ASK' },
+  ];
+  return rows.map((r, i) => {
+    const d = new Date(now - (i * 14000 + Math.floor(Math.random() * 9000))); // ~14s apart, jittered
+    const ts = `${String(d.getUTCHours()).padStart(2, '0')}:${String(d.getUTCMinutes()).padStart(2, '0')}:${String(d.getUTCSeconds()).padStart(2, '0')}`;
+    return {
+      timestamp: ts, ticker: r.ticker, strike: r.strike, type: r.type, side: r.side,
+      size: `${r.size.toLocaleString()} cons`,
+      premium: `$${r.prem >= 1000000 ? (r.prem / 1000000).toFixed(2) + 'M' : r.prem.toLocaleString()}`,
+      tag: r.tag, action: r.action,
+    };
+  });
+}
+
+export const INITIAL_DISCOVERY_FEED_LOGS = buildInitialDiscoveryFeedLogs();
 
