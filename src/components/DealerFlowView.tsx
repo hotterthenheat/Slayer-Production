@@ -16,7 +16,6 @@ import { InteractiveChart } from './InteractiveChart';
 import { InstitutionalPhysicsDashboard } from './InstitutionalPhysicsDashboard';
 import { IntradayTargetsView } from './IntradayTargetsView';
 import { InstitutionalDashboard } from './InstitutionalDashboard';
-import { AiIntelligenceLayer } from './AiIntelligenceLayer';
 import { QuantEdgePanel } from './QuantEdgePanel';
 import { RegimeMatrixPanel } from './RegimeMatrixPanel';
 import { DealerDynamicsPanel } from './DealerDynamicsPanel';
@@ -252,8 +251,8 @@ function ExposureProfileChart({ profile, decimals, type }: { profile: any; decim
                         ? type === 'gex' ? 'text-rose-600' : type === 'dex' ? 'text-amber-600' : 'text-fuchsia-600'
                         : type === 'gex' ? 'text-[#F87171]' : type === 'dex' ? 'text-amber-300' : 'text-fuchsia-300'
                     }`}>{fmtGreek(r.putValue)}</span></div>
-                    <div>Open Interest: <span className={`font-bold ${isLight ? 'text-zinc-800' : 'text-zinc-100'}`}>{r.putOi.toLocaleString()}</span></div>
-                    <div>Volume: <span className={`font-bold ${isLight ? 'text-zinc-800' : 'text-zinc-100'}`}>{r.putVolume.toLocaleString()}</span></div>
+                    <div>Open Interest: <span className={`font-bold ${isLight ? 'text-zinc-800' : 'text-zinc-100'}`}>{(r.putOi ?? 0).toLocaleString()}</span></div>
+                    <div>Volume: <span className={`font-bold ${isLight ? 'text-zinc-800' : 'text-zinc-100'}`}>{(r.putVolume ?? 0).toLocaleString()}</span></div>
                   </div>
                 </div>
               </div>
@@ -295,8 +294,8 @@ function ExposureProfileChart({ profile, decimals, type }: { profile: any; decim
                         ? type === 'gex' ? 'text-[#4ADE80]' : type === 'dex' ? 'text-sky-600' : 'text-indigo-600'
                         : type === 'gex' ? 'text-[#4ADE80]' : type === 'dex' ? 'text-sky-300' : 'text-indigo-300'
                     }`}>{fmtGreek(r.callValue)}</span></div>
-                    <div>Open Interest: <span className={`font-bold ${isLight ? 'text-zinc-800' : 'text-zinc-100'}`}>{r.callOi.toLocaleString()}</span></div>
-                    <div>Volume: <span className={`font-bold ${isLight ? 'text-zinc-800' : 'text-zinc-100'}`}>{r.callVolume.toLocaleString()}</span></div>
+                    <div>Open Interest: <span className={`font-bold ${isLight ? 'text-zinc-800' : 'text-zinc-100'}`}>{(r.callOi ?? 0).toLocaleString()}</span></div>
+                    <div>Volume: <span className={`font-bold ${isLight ? 'text-zinc-800' : 'text-zinc-100'}`}>{(r.callVolume ?? 0).toLocaleString()}</span></div>
                   </div>
                 </div>
               </div>
@@ -767,23 +766,6 @@ export function DealerFlowView() {
         </div>
       </div>
 
-      {/* AI INTELLIGENCE LAYER */}
-      <AiIntelligenceLayer />
-
-      {/* QUANT EDGE — RND / VRP / skew / scenario / Kelly / dealer clock */}
-      <QuantEdgePanel />
-
-      {/* REGIME MATRIX — HMM / Hurst / OU / vol regimes / VPIN / Kyle / PCA */}
-      <RegimeMatrixPanel />
-
-      {/* DEALER DYNAMICS — vanna/charm flow, strike migration, gamma velocity,
-          liquidity vacuums, wall strength */}
-      <DealerDynamicsPanel />
-
-      {/* 0DTE PROBABILITIES — expected-move bands, pin probability, EOD magnet,
-          probability-of-touch to walls, settlement risk */}
-      <ZeroDtePanel />
-
       {/* ============== SUB-TABS SELECTOR SEAMLESS GRIDS ============== */}
       <div className="flex flex-nowrap overflow-x-auto scrollbar-none gap-2.5 justify-start items-center pb-0.5" id="dealerflow-subtabs-bar">
         <button
@@ -1002,6 +984,21 @@ export function DealerFlowView() {
           />
         </div>
       )}
+
+      {/* ============== DEEPER ANALYTICS (supplementary, below the core views) ============== */}
+      {/* QUANT EDGE — RND / VRP / skew / scenario / Kelly / dealer clock */}
+      <QuantEdgePanel />
+
+      {/* REGIME MATRIX — HMM / Hurst / OU / vol regimes / VPIN / Kyle / PCA */}
+      <RegimeMatrixPanel />
+
+      {/* DEALER DYNAMICS — vanna/charm flow, strike migration, gamma velocity,
+          liquidity vacuums, wall strength */}
+      <DealerDynamicsPanel />
+
+      {/* 0DTE PROBABILITIES — expected-move bands, pin probability, EOD magnet,
+          probability-of-touch to walls, settlement risk */}
+      <ZeroDtePanel />
     </div>
   );
 }
