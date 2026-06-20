@@ -22,6 +22,8 @@ import {
 } from './regimeEngine';
 import { computeVPIN, computeKylesLambda, VpinResult, KyleLambdaResult } from './microstructure';
 import { PcaResidual } from './crossAsset';
+import { hawkesIntensity, netDeltaAggression, HawkesResult, NetDeltaResult } from './pointProcess';
+import { fisherDivergence, FisherResult, LeadLagResult } from './infoTheory';
 
 export interface EdgeHistory { rr: number[]; bf: number[]; }
 
@@ -40,7 +42,11 @@ export interface AssetEdge {
   forwardVol: VolRegime;
   vpin: VpinResult;
   kyle: KyleLambdaResult;
+  hawkes: HawkesResult;
+  netDelta: NetDeltaResult;
+  fisher: FisherResult;
   pca: PcaResidual | null; // set by the engine (cross-asset)
+  leadLag: LeadLagResult | null; // set by the engine (cross-asset)
 }
 
 export interface ContractEdge {
@@ -63,8 +69,10 @@ export function computeAssetEdge(params: {
   netCharm: number;
   netVanna: number;
   history: EdgeHistory;
+  ticker: string;
+  flow: any[];
 }): AssetEdge {
-  const { chain, candles, spot, rndDteDays, netCharm, netVanna, history } = params;
+  const { chain, candles, spot, rndDteDays, netCharm, netVanna, history, ticker, flow } = params;
   const skewRaw = computeSkew(chain, spot);
   const atmIv = skewRaw?.atmIv ?? 0.2;
   const realizedVol = computeRealizedVol(candles, 20);
@@ -91,8 +99,11 @@ export function computeAssetEdge(params: {
   const forwardVol = forwardVolMatrix(candles);
   const vpin = computeVPIN(candles);
   const kyle = computeKylesLambda(candles);
+  const hawkes = hawkesIntensity(candles);
+  const netDelta = netDeltaAggression(flow, ticker);
+  const fisher = fisherDivergence(candles);
 
-  return { realizedVol, vrp, skew, rnd, dealerClock, rndDteDays, regime, ou, compression, expansion, forwardVol, vpin, kyle, pca: null };
+  return { realizedVol, vrp, skew, rnd, dealerClock, rndDteDays, regime, ou, compression, expansion, forwardVol, vpin, kyle, hawkes, netDelta, fisher, pca: null, leadLag: null };
 }
 
 export function computeContractEdge(params: {

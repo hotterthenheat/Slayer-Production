@@ -89,6 +89,13 @@ export function RegimeMatrixPanel() {
         )}
       </Section>
 
+      <Section title="Self-Exciting Flow & Information Geometry" icon={<AlertTriangle className="w-3 h-3 text-[#FB923C]" />}>
+        {edge.hawkes && <Flag label="Hawkes Cascade Probability" value={num(edge.hawkes.cascadeProbability, 2)} active={!!edge.hawkes.ignition} tone="#FB923C" />}
+        {edge.netDelta && <Flag label={`Aggressive Net Delta (${edge.netDelta.direction})`} value={`${edge.netDelta.netDelta >= 0 ? '+' : ''}${num(edge.netDelta.netDelta, 0)}`} active={!!edge.netDelta.anomaly} tone={edge.netDelta.netDelta >= 0 ? '#4ADE80' : '#F87171'} />}
+        {edge.fisher && <Flag label="Fisher Metric Divergence" value={num(edge.fisher.divergence, 2)} active={!!edge.fisher.structuralShift} tone="#F472B6" />}
+        {edge.leadLag && <Flag label="Lead→Lag (Transfer Entropy)" value={`${edge.leadLag.leader}→${edge.leadLag.follower}`} active={!!edge.leadLag.active} tone="#60A5FA" />}
+      </Section>
+
       {reg.state === 'TAIL_RISK' && (
         <div className="flex items-center gap-2 text-[10px] font-bold text-[#F87171] bg-[#F87171]/10 border border-[#F87171]/40 rounded px-3 py-2">
           <AlertTriangle className="w-3.5 h-3.5" /> TAIL-RISK REGIME — elevated kurtosis / vol; size down per Kelly.

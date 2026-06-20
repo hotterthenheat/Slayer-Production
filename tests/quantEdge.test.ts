@@ -17,6 +17,8 @@ import { computeDealerClock, charmVannaWeight } from '../src/lib/dealerClock';
 import { hurstExponent, ornsteinUhlenbeck, classifyRegime, volCompression, volExpansion, forwardVolMatrix, ema } from '../src/lib/regimeEngine';
 import { computeVPIN, computeKylesLambda } from '../src/lib/microstructure';
 import { pcaResidualZScores } from '../src/lib/crossAsset';
+import { hawkesIntensity, netDeltaAggression } from '../src/lib/pointProcess';
+import { transferEntropy, marketLeader, fisherDivergence } from '../src/lib/infoTheory';
 
 console.log('--- RUNNING QUANT EDGE TEST SUITE ---');
 
@@ -213,6 +215,48 @@ function testMicrostructure() {
   console.log(`✔ Microstructure + PCA passed (VPIN=${vpin.vpin}, Kyle impact=${kyle.impactPct}%, PCA assets=${Object.keys(pca).length}).`);
 }
 
+function testPointProcessAndInfo() {
+  console.log('Testing Hawkes / Net-Delta / Transfer Entropy / Fisher...');
+  // Hawkes: a burst of volume spikes near the end should raise cascade probability.
+  const burst = trendCandles(100);
+  for (let i = 90; i < 100; i++) burst[i].volume = 800000;
+  const hk = hawkesIntensity(burst);
+  assert.ok(hk.cascadeProbability >= 0 && hk.cascadeProbability <= 1, 'Hawkes cascade prob in [0,1]');
+  assert.ok(hk.intensity > 0, 'Hawkes intensity positive');
+
+  // Net Delta from a synthetic sweep tape.
+  const flow = [
+    { asset: 'SPX', type: 'SWEEP', contract: '2,000 SPX 7700C', side: 'C' },
+    { asset: 'SPX', type: 'SWEEP', contract: '500 SPX 7500P', side: 'P' },
+    { asset: 'SPX', type: 'BLOCK', contract: '9,000 SPX 7600C', side: 'C' }, // not a sweep → ignored
+    { asset: 'QQQ', type: 'SWEEP', contract: '1,000 QQQ 450C', side: 'C' }, // other asset → ignored
+  ];
+  const nd = netDeltaAggression(flow, 'SPX');
+  assert.strictEqual(nd.sweepCount, 2, 'only SPX sweeps counted');
+  // 2000*0.45 - 500*0.45 = 675
+  assert.ok(Math.abs(nd.netDelta - 675) < 1, `net delta delta-weighted (${nd.netDelta})`);
+  assert.strictEqual(nd.direction, 'BULLISH', 'net call sweeps ⇒ bullish');
+
+  // Transfer entropy: if Y is a lagged copy of X, TE(X→Y) should exceed TE(Y→X).
+  const x = trendCandles(160).map((c) => c.close);
+  const xr: number[] = []; for (let i = 1; i < x.length; i++) xr.push(Math.log(x[i] / x[i - 1]));
+  const yr = [0, ...xr.slice(0, -1)]; // y is x lagged by 1
+  const teXY = transferEntropy(xr, yr);
+  const teYX = transferEntropy(yr, xr);
+  assert.ok(teXY >= 0 && teYX >= 0, 'transfer entropy non-negative');
+  assert.ok(teXY >= teYX, `lagged copy: TE(X→Y) ${teXY} >= TE(Y→X) ${teYX}`);
+
+  const lead = marketLeader({ A: trendCandles(120, 100), B: meanRevCandles(120, 100), C: trendCandles(120, 200) });
+  assert.ok(lead && typeof lead.leader === 'string' && lead.te >= 0, 'market leader resolved');
+
+  // Fisher: a distribution shift (vol regime change) raises divergence.
+  const shift = meanRevCandles(80, 100);
+  for (let i = 40; i < 80; i++) shift[i].close = 100 * (1 + Math.sin(i * 0.8) * 0.05); // 5× larger swings
+  const fd = fisherDivergence(shift, 20);
+  assert.ok(fd.divergence >= 0 && isFinite(fd.divergence), 'Fisher divergence finite & non-negative');
+  console.log(`✔ Point-process + info-theory passed (Hawkes=${hk.cascadeProbability}, netΔ=${nd.netDelta}, TE=${teXY}, leader=${lead?.leader}, Fisher=${fd.divergence}).`);
+}
+
 try {
   testRealizedVol();
   testRiskNeutral();
@@ -222,6 +266,7 @@ try {
   testDealerClock();
   testRegime();
   testMicrostructure();
+  testPointProcessAndInfo();
   console.log('\n=============================================');
   console.log('🎉 ALL QUANT EDGE TESTS PASSED! 🎉');
   console.log('=============================================\n');

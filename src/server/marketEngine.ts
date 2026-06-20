@@ -28,6 +28,7 @@ import {
 import { buildGexProfile, computeDealerFlowGauge } from '../lib/gexEngine';
 import { computeAssetEdge, computeContractEdge, type AssetEdge, type EdgeHistory } from '../lib/quantEdge';
 import { pcaResidualZScores } from '../lib/crossAsset';
+import { marketLeader } from '../lib/infoTheory';
 import { computeDisplacementIntelligence } from '../lib/displacementEngine';
 import { getLastTradierError } from '../lib/tradierProvider';
 import { db, sse } from './state';
@@ -108,19 +109,26 @@ function refreshEdgeCache() {
         chain, candles, spot, rndDteDays: RND_DTE_DAYS,
         netCharm: dealerInv.netCharm, netVanna: dealerInv.netVex,
         history: edgeHistory[asset.ticker],
+        ticker: asset.ticker, flow: db.globalFlowFeed,
       });
     } catch (e) {
       // Never let an edge-calc error break the tick.
     }
   }
-  // Cross-asset PCA stat-arb residuals (one pass over the whole index complex).
+  // Cross-asset passes (one over the whole index complex): PCA stat-arb residuals
+  // and the transfer-entropy lead→lag market leader.
   try {
     const series: Record<string, any[]> = {};
     for (const asset of ASSET_LIST) series[asset.ticker] = db.candles[`${asset.ticker}-5m`] || [];
     const pca = pcaResidualZScores(series);
-    for (const asset of ASSET_LIST) if (edgeCache[asset.ticker]) edgeCache[asset.ticker].pca = pca[asset.ticker] || null;
+    const lead = marketLeader(series);
+    for (const asset of ASSET_LIST) {
+      if (!edgeCache[asset.ticker]) continue;
+      edgeCache[asset.ticker].pca = pca[asset.ticker] || null;
+      edgeCache[asset.ticker].leadLag = lead;
+    }
   } catch (e) {
-    // PCA failure must not break the tick.
+    // Cross-asset failure must not break the tick.
   }
 }
 
