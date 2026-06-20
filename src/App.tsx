@@ -739,12 +739,12 @@ export default function App() {
       contract: serverState.contract,
       direction: direction,
       entryPrice: entry,
-      underlyingPrice: serverState.pinpoint_map.spot_price,
-      iv: serverState.expected_move.ivPercentile,
-      target1: serverState.targets[0]?.optionValue || (entry * 1.3),
-      target2: serverState.targets[1]?.optionValue || (entry * 1.7),
-      target3: serverState.targets[2]?.optionValue || (entry * 2.2),
-      stretchTarget: serverState.targets[3]?.optionValue || (entry * 3.0),
+      underlyingPrice: serverState.pinpoint_map?.spot_price ?? 0,
+      iv: serverState.expected_move?.ivPercentile ?? 0,
+      target1: serverState.targets?.[0]?.optionValue || (entry * 1.3),
+      target2: serverState.targets?.[1]?.optionValue || (entry * 1.7),
+      target3: serverState.targets?.[2]?.optionValue || (entry * 2.2),
+      stretchTarget: serverState.targets?.[3]?.optionValue || (entry * 3.0),
       stopLoss: stop
     };
 

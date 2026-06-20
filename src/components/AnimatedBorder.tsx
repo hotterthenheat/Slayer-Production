@@ -7,8 +7,7 @@ export function AnimatedBorder({ radius = 16, color = '#ffffff', duration = 5 })
       <rect
         x="0.75"
         y="0.75"
-        width="calc(100% - 1.5px)"
-        height="calc(100% - 1.5px)"
+        style={{ width: 'calc(100% - 1.5px)', height: 'calc(100% - 1.5px)' }}
         rx={radius}
         fill="none"
         stroke="rgba(255, 255, 255, 0.05)"
@@ -17,8 +16,7 @@ export function AnimatedBorder({ radius = 16, color = '#ffffff', duration = 5 })
       <motion.rect
         x="0.75"
         y="0.75"
-        width="calc(100% - 1.5px)"
-        height="calc(100% - 1.5px)"
+        style={{ width: 'calc(100% - 1.5px)', height: 'calc(100% - 1.5px)' }}
         rx={radius}
         fill="none"
         stroke={color}

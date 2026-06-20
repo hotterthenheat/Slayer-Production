@@ -162,10 +162,14 @@ export function calculateAnalyticGreeks(
   // Cross-sensitivities (Vanna and Charm), dividend-aware.
   // Vanna = ∂Δ/∂σ = -e^{-qT}·φ(d1)·d2/σ  (≡ √T·φ(d1)(1 - d1/(σ√T)) when q = 0).
   const vanna = -eqT * nd1 * (d2 / sigma);
-  // Charm = -∂Δ/∂τ (per year). With dividends, call and put differ by the ±q·N(±d1) term.
-  const charm = isCall
+  // Charm = -∂Δ/∂τ. The closed form is per-YEAR; divide by 365 so it is expressed
+  // in the SAME daily units as theta above (and to match quantSuite/dealerflow,
+  // and the "$/day" dealer-charm readout downstream). Mixing per-year charm with
+  // per-day theta previously overstated displayed dealer charm by ~365×.
+  const charmAnnual = isCall
     ? q * eqT * Nd1 - eqT * nd1 * ((r - q) / (sigma * sqrtT) - d2 / (2 * Math.max(0.0001, T)))
     : -q * eqT * stdNormalCDF(-d1) - eqT * nd1 * ((r - q) / (sigma * sqrtT) - d2 / (2 * Math.max(0.0001, T)));
+  const charm = charmAnnual / 365;
   // Speed (∂³V/∂S³) — third derivative of value wrt spot.
   const speed = -(gamma / Math.max(spot, 1e-9)) * (d1 / (sigma * sqrtT) + 1);
 

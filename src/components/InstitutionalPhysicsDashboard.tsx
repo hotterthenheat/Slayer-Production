@@ -239,12 +239,11 @@ export function InstitutionalPhysicsDashboard({ profile: externalProfile, ticker
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, []);
 
-  // Monitor resize transitions
-  useEffect(() => {
-    const handleResize = () => setResizeKey(prev => prev + 1);
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
-  }, []);
+  // NOTE: window-resize is handled in-place inside the Three.js effect below via
+  // renderer.setSize() (cheap). We deliberately do NOT bump resizeKey on every
+  // resize — that re-keys the WebGL effect and tears down/rebuilds the entire
+  // renderer/scene/geometry on each resize event (jank + GPU churn). resizeKey is
+  // now only nudged on expand/collapse, where a full re-measure is actually needed.
 
   // 3D Matrix states - Ref based for 60 FPS non-blocking rotation dragging
   const targetRotRef = useRef<number>(35);

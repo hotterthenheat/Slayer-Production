@@ -404,7 +404,7 @@ export const getSessionFromCookies = async (cookieHeader?: string) => {
         // ephemeral id for this request only — do NOT persist it (it is never
         // written back to the cookie, so storing each would grow the registry
         // without bound and flood the user's session list with phantoms).
-        parsed.session_id = `sess-auto-${Math.random().toString(36).substring(2, 12)}`;
+        parsed.session_id = `sess-auto-${crypto.randomBytes(12).toString('hex')}`;
       } else {
         const dbSess = activeSessionsDb.get(parsed.session_id);
         if (dbSess) {
@@ -439,7 +439,10 @@ export async function setSessionCookie(res: any, userSession: any, req: any) {
     const userId = dbUser ? dbUser.id : `usr-${Math.random().toString(36).substring(2, 10)}`;
 
     if (!userSession.session_id) {
-      userSession.session_id = `sess-${Math.random().toString(36).substring(2, 12)}`;
+      // CSPRNG session id (the revocation key in activeSessionsDb). The cookie is
+      // HMAC-signed regardless, but a strong id avoids collisions/guessing of the
+      // session-list/revoke registry key.
+      userSession.session_id = `sess-${crypto.randomBytes(16).toString('hex')}`;
     }
     userSession.user_id = userId;
 

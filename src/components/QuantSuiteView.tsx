@@ -443,9 +443,17 @@ export default function QuantSuiteView() {
     ]);
   };
 
+  // Keep the latest inputs in a ref so the 12s evaluation interval is created ONCE
+  // and reads fresh values, instead of being torn down/recreated on every SSE frame
+  // (serverState/spotPrice change ~7×/sec, which previously meant the timer reset
+  // every ~150ms and effectively never fired).
+  const alertCtxRef = useRef({ alertsRules, spotPrice, serverState, volSuite, skewMetrics });
+  alertCtxRef.current = { alertsRules, spotPrice, serverState, volSuite, skewMetrics };
+
   // Run periodic rule evaluation simulation (ticker ticking effect)
   useEffect(() => {
     const interval = setInterval(() => {
+      const { alertsRules, spotPrice, serverState, volSuite, skewMetrics } = alertCtxRef.current;
       // Simulate slight underlying spot tick fluctuation
       const noisePrice = spotPrice * (1.0 + (Math.random() - 0.5) * 0.001);
       const prevNoise = spotPrice;
@@ -453,21 +461,21 @@ export default function QuantSuiteView() {
       const calculatedFlip = spotPrice * 0.992;
 
       const triggered = evaluateAlertRules(
-        alertsRules, 
-        noisePrice, 
-        prevNoise, 
-        netGexVal, 
-        calculatedFlip, 
-        volSuite.vrpPercentile, 
+        alertsRules,
+        noisePrice,
+        prevNoise,
+        netGexVal,
+        calculatedFlip,
+        volSuite.vrpPercentile,
         skewMetrics.riskReversalPercentile
       );
 
       if (triggered.length > 0) {
         setAlertsLog(prev => [...triggered, ...prev].slice(0, 30));
       }
-    }, 12000); // Evaluates every 12s on live mock flow updates
+    }, 12000); // Evaluates every 12s on live flow updates
     return () => clearInterval(interval);
-  }, [alertsRules, spotPrice, serverState, volSuite, skewMetrics]);
+  }, []);
 
   // ===================================
   // 9. JOURNAL CALIBRATION COGNITION

@@ -106,7 +106,12 @@ export function computeRndProfile(
   const ds = (maxStrike - minStrike) / numSteps;
 
   const nodes: RndNode[] = [];
-  const dK = 0.5; // step for second derivative central finite difference limit
+  // Finite-difference step for the Breeden-Litzenberger second derivative. A fixed
+  // $0.50 bump is far smaller than the grid spacing (~0.5% of spot, e.g. ~$25 for
+  // SPX), so on a high-priced underlying callUp−2·callMid+callDn collapses into
+  // floating-point cancellation noise. Scale the step to spot for a well-resolved
+  // density while keeping a sane floor for low-priced names.
+  const dK = Math.max(0.5, spot * 0.0025);
 
   let sumImplied = 0;
   let sumHistoric = 0;

@@ -736,20 +736,23 @@ export function buildStrategySuite(
 
   const pop = totalAreaSum > 0 ? (profitAreaSum / totalAreaSum) : 0.55;
 
-  // Sizing via fractional Edge-focused Kelly Criterion
-  // f* = p - (1-p) / R where R is winRatio = mean_win / mean_loss
-  let sumWinPnl = 0, sumLossPnl = 0;
-  let countWin = 0, countLoss = 0;
-  for (let i = 0; i < 50; i++) {
-    const testSpot = spot * (0.8 + 0.4 * (i / 50));
-    const pnl = calculatePayoffAtSpot(testSpot);
-    if (pnl > 0) { sumWinPnl += pnl; countWin++; }
-    else { sumLossPnl += Math.abs(pnl); countLoss++; }
+  // Sizing via fractional Edge-focused Kelly Criterion: f* = p − (1−p)/R, where
+  // R = E[win] / E[loss]. CRITICAL: weight the win/loss magnitudes by the SAME
+  // risk-neutral density used to compute `pop`, so both Kelly inputs come from one
+  // consistent measure. The previous version mixed an RND-based `pop` with an
+  // UNWEIGHTED uniform-grid win/loss ratio — two different measures — which made
+  // the resulting fraction not a valid edge estimate.
+  let sumWinPnl = 0, sumWinProb = 0, sumLossPnl = 0, sumLossProb = 0;
+  for (const node of rndDensity) {
+    const pnl = calculatePayoffAtSpot(node.strike);
+    const p = node.probability;
+    if (pnl > 0) { sumWinPnl += pnl * p; sumWinProb += p; }
+    else { sumLossPnl += Math.abs(pnl) * p; sumLossProb += p; }
   }
-  const meanWin = countWin > 0 ? sumWinPnl / countWin : 100;
-  const meanLoss = countLoss > 0 ? sumLossPnl / countLoss : 100;
+  const meanWin = sumWinProb > 0 ? sumWinPnl / sumWinProb : 100;
+  const meanLoss = sumLossProb > 0 ? sumLossPnl / sumLossProb : 100;
   const rRatio = meanLoss > 0 ? (meanWin / meanLoss) : 1.0;
-  
+
   const kellyUnbounded = pop - (1 - pop) / rRatio;
   const kellySizing = Math.min(0.20, Math.max(0, 0.5 * kellyUnbounded)); // Limit allocation to 20% max (Half-Kelly)
 

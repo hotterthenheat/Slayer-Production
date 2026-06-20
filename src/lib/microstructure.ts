@@ -64,7 +64,9 @@ export function computeKylesLambda(candles: Candle[], lookback = 50): KyleLambda
   for (let i = 1; i < c.length; i++) {
     const d = c[i].close - c[i - 1].close;
     dP.push(d);
-    signedVol.push((c[i].volume || 0) * Math.sign(d || 1e-9));
+    // A flat bar (d===0) carries no directional information — contribute zero
+    // signed volume rather than defaulting to +1 (a buy), which biased λ upward.
+    signedVol.push((c[i].volume || 0) * (d > 0 ? 1 : d < 0 ? -1 : 0));
   }
   const mX = signedVol.reduce((a, b) => a + b, 0) / signedVol.length;
   const mY = dP.reduce((a, b) => a + b, 0) / dP.length;

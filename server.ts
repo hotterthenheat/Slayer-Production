@@ -8,6 +8,7 @@ import dotenv from 'dotenv';
 dotenv.config();
 import Stripe from 'stripe';
 import path from 'path';
+import crypto from 'node:crypto';
 import { createServer as createViteServer } from 'vite';
 import { ASSET_LIST } from './src/data';
 import {
@@ -210,8 +211,13 @@ let clientIndex = 0;
 const cdnStorage = new Map<string, { data: string; mime: string }>();
 
 
-// Sandbox Session Activator setting httpOnly cookies
+// Sandbox Session Activator setting httpOnly cookies.
+// SECURITY: dev-only. In production this (and /api/auth/callback) would let anyone
+// mint an authenticated session for ANY email with no credential, so it is disabled.
 app.get('/api/auth/sandbox', async (req, res) => {
+  if (process.env.NODE_ENV === 'production') {
+    return res.status(404).json({ error: 'Not found.' });
+  }
   res.redirect('/api/auth/callback?provider=sandbox&name=Sandbox%20Quant%20User&email=sandbox@slayer.io');
 });
 
@@ -382,7 +388,13 @@ app.post('/api/auth/clerk-login', express.json(), async (req, res) => {
   }
 
   if (!user) {
-    // Register auto-provisioning client for immediate testing if not present
+    // SECURITY: never auto-create accounts from the login endpoint in production —
+    // it enables silent account enumeration/pollution and first-password capture.
+    // Real registration goes through /api/auth/clerk-signup.
+    if (process.env.NODE_ENV === 'production') {
+      return res.status(400).json({ error: 'No account found for this email. Please sign up first.' });
+    }
+    // Dev-only auto-provisioning for fast local testing.
     const customReferralCode = `SLAYER${Math.random().toString(36).substring(2, 6).toUpperCase()}`;
     user = {
       id: `usr-${Math.random().toString(36).substring(2, 10)}`,
@@ -415,8 +427,10 @@ app.post('/api/auth/clerk-login', express.json(), async (req, res) => {
       console.error('clerk-login reconstruct persist failed for', userEmail, dbErr);
       return res.status(500).json({ error: 'Could not establish account. Please retry.' });
     }
-  } else if (password && !user.passwordHash) {
-    // Auto-setup password if the account has no password yet but one was typed
+  } else if (password && !user.passwordHash && process.env.NODE_ENV !== 'production') {
+    // Dev-only: auto-set a first password when none exists. Disabled in production
+    // (a first password must be set via the authenticated change-password flow, so
+    // an attacker who knows a password-less account's email can't claim it).
     const passwordErr = validatePasswordStrength(password);
     if (!passwordErr) {
       user.passwordHash = bcrypt.hashSync(password, 12);
@@ -445,9 +459,17 @@ app.post('/api/auth/clerk-login', express.json(), async (req, res) => {
 });
 
 app.get('/api/auth/callback', async (req, res) => {
+  // SECURITY: this endpoint derives identity from an unauthenticated query param
+  // and issues a fully-signed session — a complete auth bypass if exposed. It is a
+  // dev/sandbox convenience only and is disabled in production. A real OAuth
+  // integration must exchange an authorization code with the provider before
+  // issuing a session.
+  if (process.env.NODE_ENV === 'production') {
+    return res.status(404).json({ error: 'Not found.' });
+  }
   const { provider, name, email } = req.query;
   const userEmail = String(email || 'sandbox@slayer.io').toLowerCase().trim();
-  
+
   // Look up or establish database record
   let user = await dbGetUser(userEmail);
   if (!user) {
@@ -710,10 +732,12 @@ app.post('/api/auth/generate-2fa', express.json(), async (req, res) => {
     return res.status(404).json({ error: 'User record not found.' });
   }
 
+  // CSPRNG-backed TOTP secret. 26 base-32 chars ≈ 130 bits (RFC 4226 recommends
+  // ≥128). crypto.randomInt is unbiased over [0,32); Math.random() is predictable.
   const base32Chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
   let secret = '';
-  for (let i = 0; i < 16; i++) {
-    secret += base32Chars[Math.floor(Math.random() * 32)];
+  for (let i = 0; i < 26; i++) {
+    secret += base32Chars[crypto.randomInt(0, 32)];
   }
 
   const otpauth_url = `otpauth://totp/Skyseye:${user.email}?secret=${secret}&issuer=Skyseye`;
@@ -765,10 +789,10 @@ app.post('/api/auth/verify-totp', express.json(), async (req, res) => {
   user.two_factor_enabled = true;
   user.temp_2fa_secret = undefined;
 
+  // CSPRNG-backed one-time recovery codes (hex, 4-4 grouped).
   const backupCodes = Array.from({ length: 10 }, () => {
-    const part1 = Math.random().toString(36).substring(2, 6).toUpperCase();
-    const part2 = Math.random().toString(36).substring(2, 6).toUpperCase();
-    return `${part1}-${part2}`;
+    const raw = crypto.randomBytes(4).toString('hex').toUpperCase(); // 8 hex chars
+    return `${raw.slice(0, 4)}-${raw.slice(4, 8)}`;
   });
   user.backup_codes = backupCodes;
 
@@ -857,10 +881,12 @@ app.post('/api/auth/request-email-update', express.json(), async (req, res) => {
     return res.status(404).json({ error: 'User record not found.' });
   }
 
-  const otp = String(Math.floor(100000 + Math.random() * 900000));
+  // CSPRNG 6-digit OTP (crypto.randomInt is unbiased over the range).
+  const otp = String(crypto.randomInt(100000, 1000000));
   user.temp_new_email = cleanEmail;
   user.email_otp = otp;
   user.email_otp_expiry = Date.now() + 15 * 60 * 1000;
+  user.email_otp_attempts = 0; // reset brute-force counter for the new code
   await persistUser(requestEmailUpdateEmail, user);
 
   console.log(`\n--- [EMAIL SECURITY VERIFICATION TRIGGERS] ---`);
@@ -893,13 +919,33 @@ app.post('/api/auth/verify-email-update', express.json(), async (req, res) => {
     return res.status(404).json({ error: 'User record not found.' });
   }
 
-  if (!user.email_otp || user.email_otp !== otp) {
-    return res.status(400).json({ error: 'Invalid verification digits. Security handshake failed.' });
-  }
-
   const now = Date.now();
   if (user.email_otp_expiry && now > user.email_otp_expiry) {
     return res.status(400).json({ error: 'Verification code expired. Request a new code.' });
+  }
+
+  // Constant-time comparison + brute-force lockout. A 6-digit OTP (10^6 space) is
+  // otherwise brute-forceable within the validity window; invalidate after 5 misses.
+  const providedOtp = String(otp || '');
+  const expectedOtp = String(user.email_otp || '');
+  const otpMatches = expectedOtp.length > 0
+    && providedOtp.length === expectedOtp.length
+    && crypto.timingSafeEqual(Buffer.from(providedOtp), Buffer.from(expectedOtp));
+
+  if (!otpMatches) {
+    user.email_otp_attempts = (user.email_otp_attempts || 0) + 1;
+    const tooMany = user.email_otp_attempts >= 5;
+    if (tooMany) {
+      user.email_otp = undefined;
+      user.email_otp_expiry = undefined;
+      user.email_otp_attempts = 0;
+    }
+    try { await persistUser(oldEmail, user); } catch (e) { /* best effort */ }
+    return res.status(tooMany ? 429 : 400).json({
+      error: tooMany
+        ? 'Too many incorrect attempts. Please request a new verification code.'
+        : 'Invalid verification digits. Security handshake failed.',
+    });
   }
 
   const newEmail = user.temp_new_email;
@@ -918,6 +964,7 @@ app.post('/api/auth/verify-email-update', express.json(), async (req, res) => {
   user.temp_new_email = undefined;
   user.email_otp = undefined;
   user.email_otp_expiry = undefined;
+  user.email_otp_attempts = undefined;
   try {
     await dbSetUser(newEmail, user);
     await dbDeleteUser(oldEmail);
@@ -969,6 +1016,19 @@ app.delete('/api/users/delete-account', async (req, res) => {
   }
 
   user.deleted_at = new Date();
+
+  // Persist the soft-delete. Without this the mutation lives only in memory: the
+  // DB row keeps deleted_at = null, the user logs straight back in with the same
+  // cookie, and the GDPR purge job never finds them.
+  try {
+    const saved = await persistUser(emailLower, user);
+    if (!saved) {
+      return res.status(409).json({ error: 'Account update conflict — please retry.' });
+    }
+  } catch (err) {
+    console.error('delete-account persist failed for', emailLower, err);
+    return res.status(500).json({ error: 'Could not process account deletion. Please retry.' });
+  }
 
   // Terminate active sessions
   for (const [sessId, s] of activeSessionsDb.entries()) {
@@ -1058,7 +1118,9 @@ app.post('/api/users/export-data', async (req, res) => {
     return res.status(404).json({ error: 'User record not found.' });
   }
 
-  const token = Math.random().toString(36).substring(2, 18) + Math.random().toString(36).substring(2, 18);
+  // CSPRNG — this token grants access to a full PII export; Math.random() is not
+  // cryptographically secure and its state is partially predictable.
+  const token = crypto.randomBytes(32).toString('hex');
   const expiresAt = Date.now() + 24 * 60 * 60 * 1000;
 
   const aggregatedSessions: any[] = [];
@@ -1142,6 +1204,13 @@ STATUS: DELIVERED VIA ENCRYPTED TLS SMTP HANDSHAKE
 });
 
 app.get('/api/users/download-export/:token', async (req, res) => {
+  // SECURITY: the export is a full PII dump. Require the OWNER's authenticated
+  // session — possession of the token alone must not be sufficient.
+  const session = await getSessionFromCookies(req.headers.cookie);
+  if (!session || !session.email) {
+    return res.status(401).send('<h1>401 Unauthorized</h1>');
+  }
+
   const token = String(req.params.token || '').trim();
   const archive = s3ComplianceStorage.get(token);
 
@@ -1149,13 +1218,20 @@ app.get('/api/users/download-export/:token', async (req, res) => {
     return res.status(404).send('<h1>404 Archive Not Found</h1><p>GDPR Data Export Archive not located on S3 secure boundaries.</p>');
   }
 
+  if (session.email.toLowerCase().trim() !== archive.email.toLowerCase().trim()) {
+    return res.status(403).send('<h1>403 Forbidden</h1>');
+  }
+
   if (Date.now() > archive.expiresAt) {
     s3ComplianceStorage.delete(token);
     return res.status(410).send('<h1>410 Export Link Expired</h1><p>Under GDPR rules, security export archives expire permanently after 24 hours.</p>');
   }
 
+  // Quote + sanitize the filename to prevent Content-Disposition header injection.
+  const safeName = String(archive.fileName || 'export.json').replace(/[^a-zA-Z0-9._-]/g, '_');
   res.setHeader('Content-Type', 'application/json');
-  res.setHeader('Content-Disposition', `attachment; filename=${archive.fileName}`);
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('Content-Disposition', `attachment; filename="${safeName}"`);
   res.send(archive.payload);
 });
 
@@ -1449,7 +1525,11 @@ app.post('/api/billing/process', express.json(), async (req, res) => {
   // wired up, the ONLY way to grant paid access is the signed Stripe webhook —
   // otherwise any logged-in user could self-upgrade for free. The simulated path
   // stays available only for the keyless/sandbox demo (no live Stripe).
-  if (process.env.NODE_ENV === 'production' && stripeClient) {
+  // SECURITY: fail CLOSED in production — gate on NODE_ENV alone, independent of
+  // whether stripeClient is currently truthy. Previously, if Stripe was unset/
+  // misconfigured in prod, this path granted any tier (incl. lifetime) for free.
+  // An explicit ALLOW_SIMULATED_BILLING=true opt-in is required for staging demos.
+  if (process.env.NODE_ENV === 'production' && process.env.ALLOW_SIMULATED_BILLING !== 'true') {
     return res.status(403).json({ error: 'Please complete payment via secure Stripe checkout to upgrade.' });
   }
 
@@ -2096,6 +2176,11 @@ app.post('/api/trades/add', async (req, res) => {
 app.post('/api/trades/clear', async (req, res) => {
   const session = await getSessionFromCookies(req.headers.cookie);
   if (!session || !session.email) return res.status(401).json({ error: 'Unauthorized' });
+  // db.v8Trades is GLOBAL/shared across all sessions — restrict the wipe to admins
+  // so a single guest can't clear every user's live trade feed.
+  if (roleForEmail(session.email) === 'user') {
+    return res.status(403).json({ error: 'Admin privileges required.' });
+  }
 
   db.v8Trades = [];
   broadcastSSE();
@@ -2123,7 +2208,8 @@ app.get('/api/history', async (req, res) => {
     const candles = db.candles[cacheKey] || [];
     return res.json({ success: true, source: 'SANDBOX_SYNTHETIC', candles });
   } catch (err: any) {
-    res.status(500).json({ success: false, error: err?.message || String(err) });
+    console.error('[api] market-data request failed:', err);
+    res.status(500).json({ success: false, error: 'Internal error fetching market data. Please retry.' });
   }
 });
 
@@ -2181,7 +2267,8 @@ app.get('/api/dealer-flow', async (req, res) => {
       audit_id: `aud-flow-${ticker}-${Date.now()}`
     });
   } catch (err: any) {
-    res.status(500).json({ success: false, error: err?.message || String(err) });
+    console.error('[api] market-data request failed:', err);
+    res.status(500).json({ success: false, error: 'Internal error fetching market data. Please retry.' });
   }
 });
 
@@ -2323,7 +2410,14 @@ app.patch('/api/admin/users/:email/tier', requireAdmin(['owner', 'admin', 'moder
   const email = String(req.params.email).toLowerCase().trim();
   const user = await dbGetUser(email);
   if (!user) return res.status(404).json({ error: 'User not found' });
-  user.access_tier = req.body.access_tier;
+  // Whitelist the tier against the known enum — never write an arbitrary string
+  // (which would corrupt access_tier and confuse client gating).
+  const VALID_TIERS = ['guest', 'discord', 'intraday', 'quant', 'enterprise', 'lifetime'];
+  const requestedTier = String(req.body.access_tier || '');
+  if (!VALID_TIERS.includes(requestedTier)) {
+    return res.status(400).json({ error: 'Invalid access tier.' });
+  }
+  user.access_tier = requestedTier;
   await persistUser(email, user);
 
   // instant invalidate
@@ -2428,6 +2522,19 @@ async function startServer() {
 // ==========================================
 app.post('/api/ai/analyze', async (req, res) => {
   try {
+    // SECURITY: require an authenticated session AND a paid tier. This is the
+    // premium Quant Co-Pilot (client-gated at Tier 3). The tier is read from the
+    // DB — never trusted from the cookie/localStorage.
+    const session = await getSessionFromCookies(req.headers.cookie);
+    if (!session || !session.email) {
+      return res.status(401).json({ error: 'Authentication required.' });
+    }
+    const aiDbUser = await dbGetUser(session.email.toLowerCase().trim());
+    const AI_TIER_RANK: Record<string, number> = { guest: 0, discord: 1, intraday: 2, quant: 3, enterprise: 4, lifetime: 5 };
+    if ((AI_TIER_RANK[aiDbUser?.access_tier as string] ?? 0) < 3) {
+      return res.status(403).json({ error: 'This feature requires the Pinpoint (Tier 3) plan or higher.' });
+    }
+
     const ticker = String(req.body?.ticker || 'SPX').toUpperCase();
     const query = String(req.body?.query || '').trim().slice(0, 280);
     const asset = ASSET_LIST.find(a => a.ticker === ticker) || ASSET_LIST[0];
