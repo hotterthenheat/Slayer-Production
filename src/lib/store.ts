@@ -234,6 +234,20 @@ export function isLocalDevEnv(): boolean {
   return h === 'localhost' || h === '127.0.0.1' || h === '0.0.0.0' || h.endsWith('.local');
 }
 
+/** Single source of truth: map a server access_tier string to its numeric level. */
+export function accessTierToNumber(accessTier?: string | null): number {
+  switch (accessTier) {
+    case 'discord': return 1;
+    case 'skyvision':
+    case 'intraday': return 2;
+    case 'pinpoint':
+    case 'quant': return 3;
+    case 'enterprise': return 4;
+    case 'lifetime': return 5;
+    default: return 0;
+  }
+}
+
 export function useTierValidation() {
   const setPurchasedTier = useContractStore(s => s.setPurchasedTier);
   const setIsAuthenticated = useContractStore(s => s.setIsAuthenticated);
@@ -265,13 +279,7 @@ export function useTierValidation() {
         if (data.authenticated && data.access_tier) {
           setIsAuthenticated(true);
           localStorage.setItem('slayer_auth', 'true');
-          const tierNum = data.access_tier === 'discord' ? 1
-            : (data.access_tier === 'skyvision' || data.access_tier === 'intraday') ? 2
-            : (data.access_tier === 'pinpoint' || data.access_tier === 'quant') ? 3
-            : (data.access_tier === 'enterprise') ? 4
-            : data.access_tier === 'lifetime' ? 5
-            : 0;
-          setPurchasedTier(tierNum);
+          setPurchasedTier(accessTierToNumber(data.access_tier));
         } else {
           setIsAuthenticated(false);
           localStorage.setItem('slayer_auth', 'false');

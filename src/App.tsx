@@ -1,6 +1,6 @@
 import React, { useState, useEffect, memo, useRef, useMemo, Suspense, lazy } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { useContractStore } from './lib/store';
+import { useContractStore, isLocalDevEnv, accessTierToNumber } from './lib/store';
 import { applyAllPreferences } from './lib/displayPrefs';
 import { ASSET_LIST } from './data';
 import { AssetInfo } from './types';
@@ -598,21 +598,20 @@ export default function App() {
         
         setSession(data);
         
-        // Sync the Zustand store tier from session tier
-        if (data.authenticated && data.access_tier) {
-          useContractStore.getState().setIsAuthenticated(true);
-          const tierNum = data.access_tier === 'discord' ? 1
-            : (data.access_tier === 'skyvision' || data.access_tier === 'intraday') ? 2
-            : (data.access_tier === 'pinpoint' || data.access_tier === 'quant') ? 3
-            : (data.access_tier === 'enterprise') ? 4
-            : data.access_tier === 'lifetime' ? 5
-            : 1;
-          useContractStore.getState().setPurchasedTier(tierNum);
-        } else {
-          useContractStore.getState().setIsAuthenticated(false);
-          useContractStore.getState().setPurchasedTier(0);
-          localStorage.removeItem('slayer_tier');
-          localStorage.removeItem('slayer_auth');
+        // Sync the Zustand store tier from the session — but NEVER on localhost/dev,
+        // where the terminal is intentionally fully unlocked (otherwise an
+        // unauthenticated local session would re-lock it). Uses the shared
+        // accessTierToNumber mapping so client and store can't diverge.
+        if (!isLocalDevEnv()) {
+          if (data.authenticated && data.access_tier) {
+            useContractStore.getState().setIsAuthenticated(true);
+            useContractStore.getState().setPurchasedTier(accessTierToNumber(data.access_tier));
+          } else {
+            useContractStore.getState().setIsAuthenticated(false);
+            useContractStore.getState().setPurchasedTier(0);
+            localStorage.removeItem('slayer_tier');
+            localStorage.removeItem('slayer_auth');
+          }
         }
       }
     } catch (e: any) {
