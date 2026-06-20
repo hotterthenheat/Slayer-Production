@@ -241,11 +241,11 @@ export function useTierValidation() {
   // Strictly validate condition on mount and hydration
   useEffect(() => {
     // 0. Local/dev: unlock the entire terminal (no paywall screens) so it's fully
-    //    usable on localhost before payments are connected. Set an explicit
-    //    localStorage 'slayer_tier' to a lower number to simulate a gated tier.
+    //    usable on localhost before payments are connected. Unconditional — a stale
+    //    `slayer_tier` (the old code persisted '0' here) must NOT keep it locked.
+    //    Production (a real domain) still runs the paywall validation below.
     if (isLocalDevEnv()) {
-      const override = localStorage.getItem('slayer_tier');
-      setPurchasedTier(override != null && override !== '' ? Number(override) : 5);
+      setPurchasedTier(5);
       setIsAuthenticated(true);
       return;
     }
@@ -347,7 +347,7 @@ export const useContractStore = create<ContractStore>((set, get) => ({
   isAuthenticated: false,
   setIsAuthenticated: (auth) => set({ isAuthenticated: auth }),
 
-  purchasedTier: typeof window !== 'undefined' ? Number(localStorage.getItem('slayer_tier') || '0') : 0,
+  purchasedTier: typeof window !== 'undefined' ? (isLocalDevEnv() ? 5 : Number(localStorage.getItem('slayer_tier') || '0')) : 0,
   setPurchasedTier: (tier) => {
     if (typeof window !== 'undefined') {
       localStorage.setItem('slayer_tier', String(tier));
