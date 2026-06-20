@@ -140,7 +140,7 @@ export function IntradayTargetsView({ profile, ticker, decimals }: IntradayTarge
                        <span>Put Vol</span>
                     </div>
                     <div className="h-1.5 w-full bg-black rounded-full overflow-hidden flex shadow-inner">
-                       <div style={{width: `${callPct}%`}} className="h-full bg-black/40 shadow-[0_0_8px_rgba(16,185,129,0.4)]" />
+                       <div style={{width: `${callPct}%`}} className="h-full bg-[#4ADE80] shadow-[0_0_8px_rgba(16,185,129,0.4)]" />
                        <div style={{width: `${putPct}%`}} className="h-full bg-rose-500 shadow-[0_0_8px_rgba(244,63,94,0.4)]" />
                     </div>
                     <div className="flex justify-between text-[8.5px] font-mono font-black">
