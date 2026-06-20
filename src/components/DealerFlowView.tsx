@@ -18,6 +18,7 @@ import { IntradayTargetsView } from './IntradayTargetsView';
 import { InstitutionalDashboard } from './InstitutionalDashboard';
 import { AiIntelligenceLayer } from './AiIntelligenceLayer';
 import { QuantEdgePanel } from './QuantEdgePanel';
+import { RegimeMatrixPanel } from './RegimeMatrixPanel';
 import { DealerFlowMap } from './DealerFlowMap';
 import {
   Waves,
@@ -760,6 +761,9 @@ export function DealerFlowView() {
 
       {/* QUANT EDGE — RND / VRP / skew / scenario / Kelly / dealer clock */}
       <QuantEdgePanel />
+
+      {/* REGIME MATRIX — HMM / Hurst / OU / vol regimes / VPIN / Kyle / PCA */}
+      <RegimeMatrixPanel />
 
       {/* ============== SUB-TABS SELECTOR SEAMLESS GRIDS ============== */}
       <div className="flex flex-wrap gap-2.5 justify-start items-center" id="dealerflow-subtabs-bar">

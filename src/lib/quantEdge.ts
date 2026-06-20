@@ -16,6 +16,12 @@ import { computeSkew, percentileRank, SkewResult } from './skewAnalytics';
 import { computeDealerClock, DealerClock } from './dealerClock';
 import { computeScenarioMatrix, ScenarioMatrix } from './scenarioMatrix';
 import { kellySize, KellyResult } from './sizing';
+import {
+  classifyRegime, ornsteinUhlenbeck, volCompression, volExpansion, forwardVolMatrix,
+  RegimeResult, OUResult, VolRegime,
+} from './regimeEngine';
+import { computeVPIN, computeKylesLambda, VpinResult, KyleLambdaResult } from './microstructure';
+import { PcaResidual } from './crossAsset';
 
 export interface EdgeHistory { rr: number[]; bf: number[]; }
 
@@ -26,6 +32,15 @@ export interface AssetEdge {
   rnd: RiskNeutralResult | null;
   dealerClock: DealerClock;
   rndDteDays: number;
+  // Regime matrix (ACTIVE/INACTIVE flags + values)
+  regime: RegimeResult;
+  ou: OUResult;
+  compression: VolRegime;
+  expansion: VolRegime;
+  forwardVol: VolRegime;
+  vpin: VpinResult;
+  kyle: KyleLambdaResult;
+  pca: PcaResidual | null; // set by the engine (cross-asset)
 }
 
 export interface ContractEdge {
@@ -67,7 +82,17 @@ export function computeAssetEdge(params: {
       bfPercentile: percentileRank(history.bf, skewRaw.butterfly25),
     };
   }
-  return { realizedVol, vrp, skew, rnd, dealerClock, rndDteDays };
+
+  // Statistical regime matrix + microstructure toxicity (keyless, from candles).
+  const regime = classifyRegime(candles);
+  const ou = ornsteinUhlenbeck(candles.map((c) => c.close));
+  const compression = volCompression(candles);
+  const expansion = volExpansion(candles);
+  const forwardVol = forwardVolMatrix(candles);
+  const vpin = computeVPIN(candles);
+  const kyle = computeKylesLambda(candles);
+
+  return { realizedVol, vrp, skew, rnd, dealerClock, rndDteDays, regime, ou, compression, expansion, forwardVol, vpin, kyle, pca: null };
 }
 
 export function computeContractEdge(params: {

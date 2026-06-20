@@ -14,6 +14,9 @@ import { computeSkew, percentileRank } from '../src/lib/skewAnalytics';
 import { computeScenarioMatrix } from '../src/lib/scenarioMatrix';
 import { kellySize, aggregatePortfolioGreeks } from '../src/lib/sizing';
 import { computeDealerClock, charmVannaWeight } from '../src/lib/dealerClock';
+import { hurstExponent, ornsteinUhlenbeck, classifyRegime, volCompression, volExpansion, forwardVolMatrix, ema } from '../src/lib/regimeEngine';
+import { computeVPIN, computeKylesLambda } from '../src/lib/microstructure';
+import { pcaResidualZScores } from '../src/lib/crossAsset';
 
 console.log('--- RUNNING QUANT EDGE TEST SUITE ---');
 
@@ -151,6 +154,65 @@ function testDealerClock() {
   console.log(`✔ Dealer clock passed (session=${clock.session}, weight=${clock.weight}).`);
 }
 
+// Strong trending vs oscillating series for regime tests.
+function trendCandles(n = 160, base = 100): Candle[] {
+  const out: Candle[] = []; let p = base; const start = Date.now() - n * 300000;
+  for (let i = 0; i < n; i++) { const o = p; const c = p * (1 + 0.004 + (Math.random() - 0.5) * 0.001); out.push({ timestamp: start + i * 300000, open: o, high: Math.max(o, c) * 1.001, low: Math.min(o, c) * 0.999, close: c, volume: 100000 + (i % 5) * 8000 }); p = c; }
+  return out;
+}
+function meanRevCandles(n = 160, base = 100): Candle[] {
+  const out: Candle[] = []; const start = Date.now() - n * 300000;
+  for (let i = 0; i < n; i++) { const c = base * (1 + Math.sin(i * 0.8) * 0.01); const o = base * (1 + Math.sin((i - 1) * 0.8) * 0.01); out.push({ timestamp: start + i * 300000, open: o, high: Math.max(o, c) * 1.001, low: Math.min(o, c) * 0.999, close: c, volume: 80000 + (i % 3) * 12000 }); }
+  return out;
+}
+
+function testRegime() {
+  console.log('Testing statistical regime engine (Hurst / OU / HMM / vol regimes)...');
+  const trend = trendCandles();
+  const revert = meanRevCandles();
+  const hT = hurstExponent(trend.map((c) => c.close));
+  const hR = hurstExponent(revert.map((c) => c.close));
+  assert.ok(hT > 0 && hT < 1 && hR > 0 && hR < 1, 'Hurst in (0,1)');
+  assert.ok(hT > hR, `trending Hurst (${hT.toFixed(2)}) > mean-reverting (${hR.toFixed(2)})`);
+
+  const ou = ornsteinUhlenbeck(revert.map((c) => c.close));
+  assert.ok(ou.meanReverting, 'oscillating series is mean-reverting');
+  assert.ok(ou.halfLifeBars > 0 && isFinite(ou.halfLifeBars), 'finite positive half-life');
+  assert.strictEqual(ema([1, 1, 1, 1], 3)[3], 1, 'EMA of constant is constant');
+
+  const reg = classifyRegime(trend);
+  const sum = reg.posteriors.TREND_EXPANSION + reg.posteriors.MEAN_REVERSION + reg.posteriors.TAIL_RISK;
+  assert.ok(Math.abs(sum - 1) < 1e-6, 'regime posteriors sum to 1');
+  assert.ok(['TREND_EXPANSION', 'MEAN_REVERSION', 'TAIL_RISK'].includes(reg.state), 'regime state labelled');
+  assert.ok(reg.transitionProb >= 0 && reg.transitionProb <= 100, 'transition prob in [0,100]');
+
+  for (const vr of [volCompression(revert), volExpansion(trend), forwardVolMatrix(trend)]) {
+    assert.ok(typeof vr.active === 'boolean', 'vol regime active flag is boolean');
+    assert.ok(vr.score >= 0 && vr.score <= 1, 'vol regime score in [0,1]');
+  }
+  console.log(`✔ Regime engine passed (H_trend=${hT.toFixed(2)}, halfLife=${ou.halfLifeBars}, state=${reg.state}@${reg.transitionProb}%).`);
+}
+
+function testMicrostructure() {
+  console.log('Testing microstructure (VPIN / Kyle) + cross-asset PCA...');
+  const c = trendCandles();
+  const vpin = computeVPIN(c);
+  assert.ok(vpin.vpin >= 0 && vpin.vpin <= 1, 'VPIN in [0,1]');
+  assert.ok(typeof vpin.toxic === 'boolean', 'toxic flag boolean');
+  const kyle = computeKylesLambda(c);
+  assert.ok(isFinite(kyle.impactPct), 'Kyle impact finite');
+  assert.ok(typeof kyle.slippageRisk === 'boolean', 'slippage flag boolean');
+
+  const series = { SPX: trendCandles(120, 5000), QQQ: meanRevCandles(120, 450), NDX: trendCandles(120, 18000) };
+  const pca = pcaResidualZScores(series);
+  assert.ok(Object.keys(pca).length === 3, 'PCA returns all assets');
+  for (const t of Object.keys(pca)) {
+    assert.ok(isFinite(pca[t].z) && isFinite(pca[t].beta), `${t} PCA residual finite`);
+    assert.ok(['RICH', 'CHEAP', 'FAIR'].includes(pca[t].direction), 'PCA direction labelled');
+  }
+  console.log(`✔ Microstructure + PCA passed (VPIN=${vpin.vpin}, Kyle impact=${kyle.impactPct}%, PCA assets=${Object.keys(pca).length}).`);
+}
+
 try {
   testRealizedVol();
   testRiskNeutral();
@@ -158,6 +220,8 @@ try {
   testScenario();
   testSizing();
   testDealerClock();
+  testRegime();
+  testMicrostructure();
   console.log('\n=============================================');
   console.log('🎉 ALL QUANT EDGE TESTS PASSED! 🎉');
   console.log('=============================================\n');

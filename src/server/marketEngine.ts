@@ -27,6 +27,7 @@ import {
 } from '../lib/providerAbstraction';
 import { buildGexProfile, computeDealerFlowGauge } from '../lib/gexEngine';
 import { computeAssetEdge, computeContractEdge, type AssetEdge, type EdgeHistory } from '../lib/quantEdge';
+import { pcaResidualZScores } from '../lib/crossAsset';
 import { computeDisplacementIntelligence } from '../lib/displacementEngine';
 import { getLastTradierError } from '../lib/tradierProvider';
 import { db, sse } from './state';
@@ -111,6 +112,15 @@ function refreshEdgeCache() {
     } catch (e) {
       // Never let an edge-calc error break the tick.
     }
+  }
+  // Cross-asset PCA stat-arb residuals (one pass over the whole index complex).
+  try {
+    const series: Record<string, any[]> = {};
+    for (const asset of ASSET_LIST) series[asset.ticker] = db.candles[`${asset.ticker}-5m`] || [];
+    const pca = pcaResidualZScores(series);
+    for (const asset of ASSET_LIST) if (edgeCache[asset.ticker]) edgeCache[asset.ticker].pca = pca[asset.ticker] || null;
+  } catch (e) {
+    // PCA failure must not break the tick.
   }
 }
 
