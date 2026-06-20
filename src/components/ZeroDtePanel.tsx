@@ -3,6 +3,7 @@ import { useContractStore } from '../lib/store';
 import { Timer, Crosshair, Magnet, AlertTriangle } from 'lucide-react';
 import type { ZeroDteResult } from '../lib/zeroDte';
 import { probExpireITM, probabilityOfTouch } from '../lib/zeroDte';
+import { PanelSkeleton } from './PanelSkeleton';
 
 /**
  * 0DTE Probabilities — expected-move bands, strike-pinning probability, end-of-day
@@ -20,11 +21,7 @@ export function ZeroDtePanel() {
   const pct = (v: number) => `${Math.round(v * 100)}%`;
 
   if (!z || !gex || !(gex.spot > 0)) {
-    return (
-      <div className="rounded-lg border border-black/60 bg-black/40 p-4 text-center">
-        <p className="text-[10px] uppercase tracking-widest text-zinc-500 animate-pulse">Loading 0DTE probabilities…</p>
-      </div>
-    );
+    return <PanelSkeleton label="0DTE Probabilities" />;
   }
 
   const spot = gex.spot;

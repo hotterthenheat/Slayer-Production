@@ -1102,23 +1102,14 @@ export default function App() {
 
       {/* Terminal Footer Status Bar */}
       {activeTab !== 'workspace' && (
-        <footer className="mt-auto border-t border-black bg-black px-6 py-3.5 flex flex-col sm:flex-row items-center justify-between text-[9px] text-zinc-550 font-mono tracking-widest uppercase gap-2">
-        <div className="flex flex-wrap gap-4 sm:gap-6 justify-center sm:justify-start items-center">
-          <span>SYSTEM STATUS: OPTIMAL</span>
-          <span className="text-zinc-850">|</span>
-          <span>LATENCY: ACTIVE (SSE SYNC)</span>
-          <span className="text-zinc-850">|</span>
-          <span>FEED: CME GROUP DIRECT FEED</span>
-          <span className="text-zinc-850">|</span>
-          <span className="flex items-center gap-1"><span className="text-zinc-600">CLOCK (NY):</span> <FooterClock /></span>
-          <span className="text-zinc-850">|</span>
-          <span>PROVENANCE TRAIL ACTIVE</span>
-          <span className="text-zinc-850">|</span>
-          <span className="text-[#E5E5E5]">AUDIT: {serverState?.provenance?.audit_id || 'AUD-991A'}</span>
+        <footer className="mt-auto border-t border-white/5 bg-black px-6 py-3.5 flex flex-col sm:flex-row items-center justify-between text-[9px] text-zinc-500 font-mono tracking-widest uppercase gap-2">
+        <div className="flex items-center gap-2">
+          <span className="text-zinc-500">NY</span>
+          <FooterClock />
         </div>
         <div className="flex items-center gap-2 mt-2 sm:mt-0">
-          <div className="w-1.5 h-1.5 bg-black/40 rounded-full animate-pulse"></div>
-          <span className="text-zinc-400 font-bold">SERVER LIVE FEED STREAMING</span>
+          <div className="w-1.5 h-1.5 bg-[#4ADE80] rounded-full animate-pulse"></div>
+          <span className="text-zinc-400 font-bold">{serverState?.data_source === 'SANDBOX_SYNTHETIC' ? 'Sandbox Feed' : 'Live Feed'}</span>
         </div>
       </footer>
       )}
@@ -1190,7 +1181,7 @@ export default function App() {
               </div>
 
               <div className="p-3 max-h-[320px] overflow-y-auto hide-scrollbar">
-                <div className="text-[7.5px] text-[#000000] font-extrabold uppercase px-3 py-1 tracking-wider mb-1">
+                <div className="text-[7.5px] text-zinc-500 font-extrabold uppercase px-3 py-1 tracking-wider mb-1">
                   {prismFilter === 'All' ? 'GLOBAL REGISTRY' : prismFilter.toUpperCase()}
                 </div>
 

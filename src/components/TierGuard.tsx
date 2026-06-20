@@ -99,7 +99,7 @@ export default function TierGuard({
         initial={{ opacity: 0, y: 12 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.4, ease: "easeOut" }}
-        className="w-full max-w-3xl mx-auto my-12 border border-[#5865F2]/40 bg-black rounded-3xl relative overflow-hidden shadow-[0_25px_60px_-15px_rgba(88,101,242,0.15)] p-6 md:p-10"
+        className="w-full max-w-3xl mx-auto my-12 border border-[#5865F2]/40 bg-black rounded-2xl relative overflow-hidden shadow-[0_25px_60px_-15px_rgba(88,101,242,0.15)] p-6 md:p-10"
       >
         {/* Decorative mechanical and glow accents */}
         <div className="absolute top-0 right-0 w-80 h-80 bg-[#5865F2]/10 rounded-full blur-[125px] pointer-events-none -mr-40 -mt-40" />
@@ -126,7 +126,7 @@ export default function TierGuard({
         </div>
 
         {/* Big Nice UI Style Discord Invitation Button Link */}
-        <div className="relative z-10 py-8 px-6 my-6 bg-gradient-to-br from-[#0c0c14] via-[#080910] to-[#040407] border border-[#5865F2]/20 rounded-2xl flex flex-col md:flex-row items-center justify-between gap-6 shadow-[inset_0_1px_3px_rgba(255,255,255,0.02)]">
+        <div className="relative z-10 py-8 px-6 my-6 bg-black border border-[#5865F2]/20 rounded-2xl flex flex-col md:flex-row items-center justify-between gap-6 shadow-[inset_0_1px_3px_rgba(255,255,255,0.02)]">
           <div className="space-y-1.5 text-center md:text-left flex-1">
             <span className="text-[9px] text-[#5865F2] font-mono font-black uppercase tracking-widest block">
               JOIN THE SERVER
@@ -173,7 +173,7 @@ export default function TierGuard({
                 useContractStore.getState().setActiveTab('subscription');
                 window.scrollTo({ top: 0, behavior: 'auto' });
               }}
-              className="w-full sm:w-auto px-5 py-2 rounded-lg bg-black hover:bg-white hover:text-black text-[#4ADE80] border border-black font-bold text-[10px] uppercase tracking-widest transition-all cursor-pointer flex items-center justify-center gap-1.5"
+              className="w-full sm:w-auto px-5 py-2 rounded-lg bg-white text-black hover:bg-zinc-100 font-black text-[10px] uppercase tracking-widest transition-all cursor-pointer flex items-center justify-center gap-1.5"
             >
               <span>Upgrade Workspace</span>
               <ArrowRight className="w-3.5 h-3.5" />
@@ -240,7 +240,7 @@ export default function TierGuard({
       initial={{ opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.4, ease: "easeOut" }}
-      className="w-full max-w-3xl mx-auto my-12 border border-black/80 bg-gradient-to-b from-[#09090b] via-[#070709] to-[#040405] rounded-3xl relative overflow-hidden shadow-[0_25px_60px_-15px_rgba(0,0,0,0.8)] p-6 md:p-10"
+      className="w-full max-w-3xl mx-auto my-12 border border-black/80 bg-gradient-to-b from-[#09090b] via-[#070709] to-[#040405] rounded-2xl relative overflow-hidden shadow-[0_25px_60px_-15px_rgba(0,0,0,0.8)] p-6 md:p-10"
     >
       {/* Decorative mechanical accents */}
       <div className="absolute inset-x-0 top-0 h-[1px] bg-gradient-to-r from-transparent via-zinc-850 to-transparent" />
@@ -268,7 +268,7 @@ export default function TierGuard({
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-stretch relative z-10 py-6 my-2 border-y border-black/85">
         {/* Left Grid Section: Interactive features checklist of what they will unlock */}
-        <div className="bg-[#050556]/5 border border-black rounded-2xl p-5 flex flex-col justify-between space-y-4">
+        <div className="bg-black/40 border border-black rounded-2xl p-5 flex flex-col justify-between space-y-4">
           <div>
             <span className="text-[10px] text-zinc-500 font-bold uppercase tracking-widest font-mono block mb-3">
               WHAT YOU GET
@@ -325,7 +325,7 @@ export default function TierGuard({
         <button
           onClick={handleLiveCheckout}
           disabled={isProcessing}
-          className="w-full py-3.5 px-6 rounded-xl bg-indigo-505 hover:bg-white hover:text-black border border-black bg-black text-zinc-200 font-black text-[11px] uppercase tracking-widest shadow-lg flex items-center justify-center gap-2 transform hover:scale-[1.01] active:scale-95 transition-all cursor-pointer disabled:opacity-50"
+          className="w-full py-3.5 px-6 rounded-lg bg-white text-black hover:bg-zinc-100 font-black text-[11px] uppercase tracking-widest shadow-lg flex items-center justify-center gap-2 transform hover:scale-[1.01] active:scale-95 transition-all cursor-pointer disabled:opacity-50"
         >
           <span>{isProcessing ? 'REDIRECTING TO CHECKOUT...' : (userHasAccount ? 'UPGRADE NOW' : 'SEE PLANS AND PRICING')}</span>
           {!isProcessing && <ArrowRight className="w-4 h-4" />}

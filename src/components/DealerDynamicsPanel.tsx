@@ -2,6 +2,7 @@ import React from 'react';
 import { useContractStore } from '../lib/store';
 import { Activity, Waves, Hourglass, Move, Wind, BrickWall } from 'lucide-react';
 import type { DealerDynamics } from '../lib/dealerDynamics';
+import { PanelSkeleton } from './PanelSkeleton';
 
 const num = (v: any, d = 0) => (typeof v === 'number' && isFinite(v) ? v.toLocaleString(undefined, { maximumFractionDigits: d }) : '—');
 
@@ -27,11 +28,7 @@ export function DealerDynamicsPanel() {
   const dd = serverState?.dealer_dynamics as DealerDynamics | null | undefined;
 
   if (!dd) {
-    return (
-      <div className="rounded-lg border border-black/60 bg-black/40 p-4 text-center">
-        <p className="text-[10px] uppercase tracking-widest text-zinc-500 animate-pulse">Loading dealer dynamics…</p>
-      </div>
-    );
+    return <PanelSkeleton label="Dealer Dynamics" />;
   }
 
   const fmtK = (v: number) => {

@@ -316,7 +316,7 @@ export function SkyseyeAlertHub() {
   return (
     <div 
       id="skyseye-alert-container" 
-      className="fixed bottom-6 right-6 z-[120] flex flex-col gap-3 max-w-sm w-[350px] pointer-events-auto font-mono selection:bg-[#4ADE80] text-black/30"
+      className="fixed bottom-6 right-6 z-[120] flex flex-col gap-3 w-[350px] max-w-[calc(100vw-32px)] pointer-events-auto font-mono selection:bg-[#4ADE80] text-black/30"
     >
       <AnimatePresence mode="popLayout">
         {toasts.map((toast) => {

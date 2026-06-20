@@ -195,7 +195,7 @@ export default function SlayerIntro({
               initial={{ scale: 0.1, opacity: 0.8 }}
               animate={{ scale: 4.5, opacity: 0 }}
               transition={{ duration: 0.74, ease: 'easeOut' }}
-              className="absolute w-[300px] h-[300px] rounded-full border border-black -translate-x-1/2 -translate-y-1/2"
+              className="absolute w-[300px] h-[300px] max-w-full max-h-full rounded-full border border-black -translate-x-1/2 -translate-y-1/2 hidden sm:block"
               style={{
                 left: mousePos.x || '50%',
                 top: mousePos.y || '40%',
@@ -278,19 +278,19 @@ export default function SlayerIntro({
               <span className="text-[11px] font-black tracking-widest text-[#a1a1aa] mb-4 inline-block uppercase animate-rise opacity-0" style={{ animationDelay: '0.05s', animationFillMode: 'forwards' }}>
                 &gt; LIVE DEALER POSITIONING ACTIVE
               </span>
-              <h1 className="text-[clamp(48px,7.5vw,90px)] font-[900] tracking-tighter text-[#E5E5E5] leading-[0.95] mb-8 animate-rise opacity-0 uppercase" style={{ animationDelay: '0.13s', animationFillMode: 'forwards' }}>
+              <h1 className="text-[clamp(48px,7.5vw,90px)] font-black tracking-tighter text-[#E5E5E5] leading-[0.95] mb-8 animate-rise opacity-0 uppercase" style={{ animationDelay: '0.13s', animationFillMode: 'forwards' }}>
                 ABSOLUTE<br/>SIGNAL.<br/>ZERO<br/>NOISE.
               </h1>
               <p className="text-[clamp(12px,1.4vw,14px)] font-bold text-[#a1a1aa] max-w-[50ch] leading-[1.8] mb-8 font-mono animate-rise opacity-0 tracking-wide" style={{ animationDelay: '0.3s', animationFillMode: 'forwards' }}>
                 Slayer reads dealer gamma positioning and order flow in real time. Stop guessing. Trade with the same data a market maker uses.
               </p>
               <div className="flex gap-4 pt-4 animate-rise opacity-0" style={{ animationDelay: '0.4s', animationFillMode: 'forwards' }}>
-                <button onClick={() => onEnterApp('workspace')} className="bg-[#E5E5E5] text-[#050505] px-8 py-3.5 font-[900] uppercase text-xs tracking-widest rounded-sm hover:bg-white hover:scale-[1.02] transition-all duration-200">
+                <button onClick={() => onEnterApp('workspace')} className="bg-white text-black px-8 py-3.5 font-black uppercase text-xs tracking-widest rounded-lg hover:bg-zinc-100 hover:scale-[1.02] transition-all duration-200">
                   OPEN TERMINAL
                 </button>
                 <button onClick={() => {
                     document.getElementById('feature-matrix')?.scrollIntoView({ behavior: 'smooth' })
-                }} className="border border-[#333333] text-[#a1a1aa] bg-[#0A0A0A] px-8 py-3.5 font-[800] uppercase text-xs tracking-widest rounded-sm hover:bg-[#111] hover:text-[#E5E5E5] hover:border-[#555] transition-all duration-200">
+                }} className="bg-black text-[#E5E5E5] border border-white/10 px-8 py-3.5 font-bold uppercase text-xs tracking-widest rounded-lg hover:border-white/20 hover:bg-[#111] transition-all duration-200">
                   SEE HOW IT WORKS
                 </button>
               </div>
@@ -376,8 +376,8 @@ export default function SlayerIntro({
               </span>
             </div>
 
-            <div className="bg-[#4ADE80] hover:bg-[#4ADE80]/90 text-black shadow-[0_0_15px_rgba(0,255,136,0.5)] font-black text-[10.5px] uppercase tracking-widest px-4 py-1.5 rounded-md border border-black shadow-lg">
-              {activeOpp.status === 'Strengthening' ? 'ENTER' : 'ENTER'}
+            <div className="bg-[#4ADE80] hover:bg-[#4ADE80]/90 text-black font-black text-[10.5px] uppercase tracking-widest px-4 py-1.5 rounded-md border border-black shadow-lg">
+              ENTER
             </div>
           </div>
 
@@ -453,7 +453,7 @@ export default function SlayerIntro({
                 e.stopPropagation();
                 handleLaunchToActiveOpportunity();
               }}
-              className="w-full py-3 bg-white hover:bg-[#F4F5F6] text-black font-[800] uppercase tracking-wide text-xs rounded-sm transition-all duration-300 cursor-pointer flex items-center justify-center gap-2 shadow-xl hover:scale-[1.01]"
+              className="w-full py-3 bg-white hover:bg-zinc-100 text-black font-black uppercase tracking-widest text-xs rounded-lg transition-all duration-300 cursor-pointer flex items-center justify-center gap-2 shadow-xl hover:scale-[1.01]"
             >
               <span>Launch Live Workspace</span>
               <ArrowRight className="w-3.5 h-3.5" />

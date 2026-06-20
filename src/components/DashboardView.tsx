@@ -89,13 +89,15 @@ export function DashboardView() {
 
             {/* Symmetrical Parameters Dashboard Dial Box */}
             <div className="bg-black/20 border border-white/5 p-4 rounded-xl flex flex-col justify-center space-y-3.5 text-left">
+              {/* Trade Score hero anchor */}
+              <div className="pb-3 border-b border-white/5">
+                <span className="text-[8px] text-zinc-500 uppercase tracking-wider block mb-1">TRADE SCORE</span>
+                <span className="text-4xl md:text-5xl font-black text-[#4ADE80] leading-none">{confidence}</span>
+                <span className="text-[9px] text-zinc-500 uppercase tracking-wider ml-1">/ 100</span>
+              </div>
               <div className="flex justify-between items-center text-xs pb-2 border-b border-white/5">
                 <span className="text-zinc-400 uppercase text-[9px] tracking-wider">EXPECTED MOVE</span>
                 <span className="font-extrabold text-[#E5E5E5]">{expectedMove} <span className="text-[#d4d4d8] text-[8.5px]">({expectedRange})</span></span>
-              </div>
-              <div className="flex justify-between items-center text-xs pb-2 border-b border-white/5">
-                <span className="text-zinc-400 uppercase text-[9px] tracking-wider">TRADE SCORE</span>
-                <span className="font-extrabold text-[#E5E5E5]">{confidence} <span className="text-zinc-500 text-[8.5px]">PTS</span></span>
               </div>
               <div className="flex justify-between items-center text-xs">
                 <span className="text-zinc-400 uppercase text-[9px] tracking-wider">DEALER BIAS</span>
@@ -110,7 +112,7 @@ export function DashboardView() {
             <span className="uppercase text-[8px] text-zinc-400 block font-bold">DATA-DRIVEN. NO SPECULATION.</span>
             <div className="flex items-center gap-1">
               <span className="w-1.5 h-1.5 bg-black rounded-full animate-pulse" />
-              <span className="font-black text-[#d4d4d8] px-2 py-0.5 border border-black bg-[#d4d4d8]/5 rounded uppercase">
+              <span className="text-[8px] text-zinc-600 uppercase tracking-wider font-bold">
                 INTEGRITY CHECK: PASSED
               </span>
             </div>

@@ -62,7 +62,7 @@ function NavItem({ id, label, icon: Icon, adminOnly = false, activeColor = 'text
         setActiveTab(id);
         closeMobile();
       }}
-      className={`w-full flex items-center gap-3 px-3 py-2 rounded-sm text-[10px] font-bold uppercase tracking-wider transition-colors border ${
+      className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-colors border ${
         isActive
           ? adminOnly
             ? 'bg-rose-950/40 text-[#E5E5E5] border-rose-500/50'
@@ -160,7 +160,7 @@ export function AppShell({ children, session, onLogout, tierInfo, onUpgradeClick
                    <span className={`text-[10px] font-black uppercase truncate text-zinc-400 transition-all duration-300 ${isSidebarExpanded ? 'opacity-100 max-w-[120px]' : 'opacity-0 max-w-0'}`}>{session.name}</span>
                 </div>
                 {isSidebarExpanded && (
-                  <button onClick={onLogout} className="text-zinc-500 hover:text-amber-500 transition-colors p-1" title="Logout">
+                  <button onClick={onLogout} className="text-zinc-500 hover:text-amber-500 transition-colors p-2" title="Logout">
                     <LogOut className="w-4 h-4 shrink-0" />
                   </button>
                 )}
@@ -168,7 +168,7 @@ export function AppShell({ children, session, onLogout, tierInfo, onUpgradeClick
            ) : (
               <button
                 onClick={() => setShowAuthModal(true)}
-                className={`w-full px-3 py-2 border border-[#1f1f1f] hover:border-[#333] bg-black text-[#4ADE80] hover:text-[#E5E5E5] uppercase font-black transition-all flex items-center justify-center gap-1.5 text-[9px] rounded-xs cursor-pointer active:scale-95 ${isSidebarExpanded ? '' : 'px-0'}`}
+                className={`w-full px-3 py-2 border border-[#1f1f1f] hover:border-[#333] bg-black text-[#4ADE80] hover:text-[#E5E5E5] uppercase font-black transition-all flex items-center justify-center gap-1.5 text-[9px] rounded-lg cursor-pointer active:scale-95 ${isSidebarExpanded ? '' : 'px-0'}`}
                 title="LOGIN"
               >
                 {isSidebarExpanded ? 'LOGIN / CREATE ACCOUNT' : <Lock className="w-4 h-4" />}
@@ -182,7 +182,7 @@ export function AppShell({ children, session, onLogout, tierInfo, onUpgradeClick
          <div className="cursor-pointer scale-[0.85] origin-left" onClick={() => setActiveTab('home')}>
              <BrandHeader />
          </div>
-         <button onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)} className="text-zinc-400 p-1">
+         <button onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)} className="text-zinc-400 p-2">
              {isMobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
          </button>
       </div>
@@ -215,14 +215,14 @@ export function AppShell({ children, session, onLogout, tierInfo, onUpgradeClick
             {session?.authenticated ? (
               <button 
                 onClick={() => { onLogout(); setIsMobileMenuOpen(false); }} 
-                className="w-full flex items-center gap-3 px-3 py-3 rounded-sm text-[10px] font-bold uppercase tracking-wider text-amber-500 bg-amber-500/10 border border-amber-500/20 mt-6 justify-center"
+                className="w-full flex items-center gap-3 px-3 py-3 rounded-lg text-[10px] font-bold uppercase tracking-wider text-amber-500 bg-amber-500/10 border border-amber-500/20 mt-6 justify-center"
               >
                 <LogOut className="w-4 h-4" /> LOGOUT
               </button>
             ) : (
               <button
                 onClick={() => { setShowAuthModal(true); setIsMobileMenuOpen(false); }}
-                className="w-full px-3 py-3 mt-6 border border-[#1f1f1f] bg-[#111] text-[#4ADE80] uppercase font-black transition-all flex items-center justify-center gap-1.5 text-[10px] rounded-sm tracking-widest"
+                className="w-full px-3 py-3 mt-6 border border-[#1f1f1f] bg-[#111] text-[#4ADE80] uppercase font-black transition-all flex items-center justify-center gap-1.5 text-[10px] rounded-lg tracking-widest"
               >
                 LOGIN / CREATE ACCOUNT
               </button>

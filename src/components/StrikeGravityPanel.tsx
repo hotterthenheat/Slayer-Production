@@ -2,6 +2,7 @@ import React from 'react';
 import { useContractStore } from '../lib/store';
 import { Magnet, Shield, Swords, Layers3 } from 'lucide-react';
 import type { StrikeGravityResult, GravityZone } from '../lib/strikeGravity';
+import { PanelSkeleton } from './PanelSkeleton';
 
 /**
  * Strike Gravity Map — renders the server's Strike Gravity Engine output: the
@@ -26,11 +27,7 @@ export function StrikeGravityPanel() {
   };
 
   if (!grav || !grav.ranked || grav.ranked.length === 0) {
-    return (
-      <div className="rounded-lg border border-black/60 bg-black/40 p-4 text-center">
-        <p className="text-[10px] uppercase tracking-widest text-zinc-500 animate-pulse">Computing strike gravity map…</p>
-      </div>
-    );
+    return <PanelSkeleton label="Strike Gravity" />;
   }
 
   const maxG = Math.max(...grav.ranked.map((s) => s.gravityScore)) || 1;

@@ -718,7 +718,7 @@ export function DealerFlowView() {
           </div>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2.5">
+        <div className="flex flex-nowrap overflow-x-auto scrollbar-none items-center gap-2.5 pb-0.5">
           {[
             { label: 'Net GEX', value: profile ? fmtBn(profile.netGex) : '-', tone: profile?.netGex >= 0 ? 'text-[#4ADE80] font-bold' : 'text-[#F87171] font-bold', icon: <Layers className="w-3 h-3" /> },
             { label: 'Call Wall', value: profile?.callWall?.toFixed(0) ?? '-', tone: 'text-[#4ADE80] font-bold', icon: <Layers className="w-3 h-3" /> },
@@ -726,7 +726,7 @@ export function DealerFlowView() {
             { label: 'γ-Flip', value: profile?.gammaFlip?.toFixed(0) ?? '-', tone: 'text-amber-400 font-bold', icon: <Crosshair className="w-3 h-3" /> },
             { label: 'Pin Magnet', value: profile?.magnet?.toFixed(0) ?? '-', tone: 'text-sky-400 font-bold', icon: <Magnet className="w-3 h-3" /> },
           ].map(card => (
-            <div key={card.label} className="bg-black/50 border border-black/60 rounded-md px-3 py-2 min-w-[86px]" id={`card-${card.label.toLowerCase().replace(/\s+/g, '-')}`}>
+            <div key={card.label} className="bg-black/50 border border-black/60 rounded-md px-3 py-2 min-w-[86px] shrink-0" id={`card-${card.label.toLowerCase().replace(/\s+/g, '-')}`}>
               <div className="flex items-center gap-1 text-[7.5px] font-black tracking-widest text-zinc-500 uppercase">
                 {card.icon}
                 {card.label}
@@ -785,12 +785,12 @@ export function DealerFlowView() {
       <ZeroDtePanel />
 
       {/* ============== SUB-TABS SELECTOR SEAMLESS GRIDS ============== */}
-      <div className="flex flex-wrap gap-2.5 justify-start items-center" id="dealerflow-subtabs-bar">
+      <div className="flex flex-nowrap overflow-x-auto scrollbar-none gap-2.5 justify-start items-center pb-0.5" id="dealerflow-subtabs-bar">
         <button
           onClick={() => setActiveEngineView('profile')}
-          className={`flex items-center gap-2 px-4.5 py-2.5 font-mono text-[9px] font-black uppercase tracking-wider border rounded transition-all cursor-pointer ${
+          className={`flex shrink-0 items-center gap-2 px-4.5 py-3 font-mono text-[9px] font-black uppercase tracking-wider border rounded-lg transition-all cursor-pointer ${
             activeEngineView === 'profile'
-              ? theme.buttonActive
+              ? theme.buttonActive + ' border-b-2 border-b-[#4ADE80]'
               : theme.buttonInactive
           }`}
         >
@@ -799,9 +799,9 @@ export function DealerFlowView() {
         </button>
         <button
           onClick={() => setActiveEngineView('targets')}
-          className={`flex items-center gap-2 px-4.5 py-2.5 font-mono text-[9px] font-black uppercase tracking-wider border rounded transition-all cursor-pointer ${
+          className={`flex shrink-0 items-center gap-2 px-4.5 py-3 font-mono text-[9px] font-black uppercase tracking-wider border rounded-lg transition-all cursor-pointer ${
             activeEngineView === 'targets'
-              ? 'bg-rose-500/10 border-rose-500 text-[#E5E5E5] shadow-[0_0_12px_rgba(244,63,94,0.12)]'
+              ? 'bg-rose-500/10 border-rose-500 border-b-2 border-b-rose-400 text-[#E5E5E5] shadow-[0_0_12px_rgba(244,63,94,0.12)]'
               : 'bg-black/45 border-black text-zinc-500 hover:text-[#4ADE80] hover:border-black'
           }`}
         >
@@ -810,9 +810,9 @@ export function DealerFlowView() {
         </button>
         <button
           onClick={() => setActiveEngineView('physics')}
-          className={`flex items-center gap-2 px-4.5 py-2.5 font-mono text-[9px] font-black uppercase tracking-wider border rounded transition-all cursor-pointer ${
+          className={`flex shrink-0 items-center gap-2 px-4.5 py-3 font-mono text-[9px] font-black uppercase tracking-wider border rounded-lg transition-all cursor-pointer ${
             activeEngineView === 'physics'
-              ? 'bg-amber-500/10 border-amber-500 text-[#E5E5E5] shadow-[0_0_12px_rgba(245,158,11,0.12)]'
+              ? 'bg-amber-500/10 border-amber-500 border-b-2 border-b-amber-400 text-[#E5E5E5] shadow-[0_0_12px_rgba(245,158,11,0.12)]'
               : 'bg-black/45 border-black text-zinc-500 hover:text-[#4ADE80] hover:border-black'
           }`}
         >
@@ -821,9 +821,9 @@ export function DealerFlowView() {
         </button>
         <button
           onClick={() => setActiveEngineView('institutional')}
-          className={`flex items-center gap-2 px-4.5 py-2.5 font-mono text-[9px] font-black uppercase tracking-wider border rounded transition-all cursor-pointer ${
+          className={`flex shrink-0 items-center gap-2 px-4.5 py-3 font-mono text-[9px] font-black uppercase tracking-wider border rounded-lg transition-all cursor-pointer ${
             activeEngineView === 'institutional'
-              ? 'bg-fuchsia-500/10 border-fuchsia-500 text-[#E5E5E5] shadow-[0_0_12px_rgba(217,70,239,0.12)]'
+              ? 'bg-fuchsia-500/10 border-fuchsia-500 border-b-2 border-b-fuchsia-400 text-[#E5E5E5] shadow-[0_0_12px_rgba(217,70,239,0.12)]'
               : 'bg-black/45 border-black text-zinc-500 hover:text-[#4ADE80] hover:border-black'
           }`}
         >
@@ -832,9 +832,9 @@ export function DealerFlowView() {
         </button>
         <button
           onClick={() => setActiveEngineView('microstructure')}
-          className={`flex items-center gap-2 px-4.5 py-2.5 font-mono text-[9px] font-black uppercase tracking-wider border rounded transition-all cursor-pointer ${
+          className={`flex shrink-0 items-center gap-2 px-4.5 py-3 font-mono text-[9px] font-black uppercase tracking-wider border rounded-lg transition-all cursor-pointer ${
             activeEngineView === 'microstructure'
-              ? 'bg-cyan-500/10 border-cyan-500 text-[#E5E5E5] shadow-[0_0_12px_rgba(6,182,212,0.12)]'
+              ? 'bg-cyan-500/10 border-cyan-500 border-b-2 border-b-cyan-400 text-[#E5E5E5] shadow-[0_0_12px_rgba(6,182,212,0.12)]'
               : 'bg-black/45 border-black text-zinc-500 hover:text-[#4ADE80] hover:border-black'
           }`}
         >

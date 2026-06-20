@@ -1,6 +1,7 @@
 import React, { useMemo } from 'react';
 import { useContractStore } from '../lib/store';
 import { Activity, Gauge, Sigma, Layers, Target, Clock } from 'lucide-react';
+import { PanelSkeleton } from './PanelSkeleton';
 
 const pct = (v: any, d = 1) => (typeof v === 'number' && isFinite(v) ? `${(v * 100).toFixed(d)}%` : '—');
 const num = (v: any, d = 2) => (typeof v === 'number' && isFinite(v) ? v.toFixed(d) : '—');
@@ -75,11 +76,7 @@ export function QuantEdgePanel() {
   const edge = serverState?.quant_edge;
 
   if (!edge) {
-    return (
-      <div className="rounded-lg border border-black/60 bg-black/40 p-5 text-center">
-        <p className="text-[10px] uppercase tracking-widest text-zinc-500 animate-pulse">Loading analytics…</p>
-      </div>
-    );
+    return <PanelSkeleton label="Quant Edge" />;
   }
 
   const rnd = edge.rnd;

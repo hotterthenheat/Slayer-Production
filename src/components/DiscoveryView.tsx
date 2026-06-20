@@ -1209,7 +1209,7 @@ export function DiscoveryView({
                 initial={{ opacity: 0, y: 3 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: 3 }}
-                className={`absolute right-0 top-full mt-2 w-[300px] border shadow-2xl rounded-lg overflow-hidden z-50 text-left font-mono ${
+                className={`absolute right-0 top-full mt-2 w-[300px] max-w-[calc(100vw-24px)] border shadow-2xl rounded-lg overflow-hidden z-50 text-left font-mono ${
                   isLight ? 'bg-white border-black text-zinc-800' : 'bg-black border-black text-zinc-350'
                 }`}
               >
@@ -1686,10 +1686,26 @@ export function DiscoveryView({
             {filteredContracts.length === 0 && (
               <div className={`border p-8 rounded-xl text-center text-zinc-500 uppercase text-xs space-y-2 ${isLight ? 'bg-[#f4f4f5] border-black' : 'bg-black border-black'}`}>
                 <ShieldAlert className="w-8 h-8 text-zinc-500 mx-auto" />
-                <p className={`font-extrabold tracking-widest text-[10px] ${c_textWhite}`}>No active scanner signals discovered</p>
+                <p className={`font-extrabold tracking-widest text-[10px] ${c_textWhite}`}>No setups match your filters.</p>
                 <p className="text-[9px] text-zinc-500 leading-snug font-sans uppercase">
                   Try clearing the filters or modifying your manual search terms above.
                 </p>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setActiveShelf('all');
+                    setOptionTypeFilter('all');
+                    setSearchQuery('');
+                  }}
+                  className={`mt-3 inline-flex items-center gap-1.5 px-4 py-2 rounded-lg border font-mono text-[9px] font-black uppercase tracking-wider transition-all cursor-pointer ${
+                    isLight
+                      ? 'bg-transparent border-zinc-400 text-zinc-600 hover:border-zinc-700 hover:text-zinc-900'
+                      : 'bg-transparent border-zinc-600 text-zinc-400 hover:border-[#4ADE80] hover:text-[#4ADE80]'
+                  }`}
+                >
+                  <RefreshCw className="w-3 h-3" />
+                  Clear filters
+                </button>
               </div>
             )}
 

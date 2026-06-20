@@ -100,6 +100,7 @@ export function SubscriptionPricing({ onUpgradeComplete, onEnterApp, session, on
   const setCheckoutPlan = useContractStore(s => s.setCheckoutPlan);
 
   const [isPaymentInFlight, setIsPaymentInFlight] = useState(false);
+  const [checkoutError, setCheckoutError] = useState<string>('');
   const checkoutPayloadRef = useRef<{
     plan: string;
     address: string;
@@ -127,6 +128,7 @@ export function SubscriptionPricing({ onUpgradeComplete, onEnterApp, session, on
     setMockEmail(session?.email || '');
     setIsValidatingSuccess(false);
     setIsSuccessValidatedDone(false);
+    setCheckoutError('');
   };
 
   useEffect(() => {
@@ -157,9 +159,11 @@ export function SubscriptionPricing({ onUpgradeComplete, onEnterApp, session, on
         return;
       }
       // Non-ok or missing url: surface a lightweight error to the user.
-      alert(data?.error || 'Unable to start checkout. Please try again.');
+      setCheckoutError(data?.error || 'Unable to start checkout. Please try again.');
+      setSelectedPlanForCheckout(planKey);
     } catch (e) {
-      alert('Unable to reach the payment service. Please try again.');
+      setCheckoutError('Unable to reach the payment service. Please try again.');
+      setSelectedPlanForCheckout(planKey);
     }
   }
 
@@ -229,7 +233,7 @@ export function SubscriptionPricing({ onUpgradeComplete, onEnterApp, session, on
               }
             } else {
               setIsPaymentInFlight(false);
-              alert("Payment Authorization Refused: " + (data.error || "Please verify your subscription parameters."));
+              setCheckoutError("Payment Authorization Refused: " + (data.error || "Please verify your subscription parameters."));
               setCheckoutStep('details');
             }
           })
@@ -330,7 +334,7 @@ export function SubscriptionPricing({ onUpgradeComplete, onEnterApp, session, on
                 billingCycle === 'annual' ? 'bg-black text-[#E5E5E5]' : 'text-zinc-500 hover:text-[#E5E5E5] hover:bg-black'
               }`}
             >
-              Annual <span className="text-[9px] bg-black/20 text-[#4ADE80] px-1.5 py-0.5 rounded-sm">Save ~20%</span>
+              Annual <span className="text-[9px] bg-[#4ADE80]/15 text-[#4ADE80] px-1.5 py-0.5 rounded-full font-black">Save ~20%</span>
             </button>
           </div>
         </div>
@@ -349,7 +353,7 @@ export function SubscriptionPricing({ onUpgradeComplete, onEnterApp, session, on
               opacity: { duration: 0.6, delay: 0.1 }
             }}
             whileHover={{ scale: 1.05, y: -10, boxShadow: "0 30px 60px -15px rgba(52, 199, 89, 0.12)" }}
-            className="group apple-glass rounded-2xl p-6 flex flex-col justify-between relative transition-all duration-150 w-full sm:w-[calc(50%-12px)] lg:w-[calc(33.33%-16px)] xl:w-[calc(20%-20px)] min-w-[240px] max-w-[280px] lg:order-1 xl:order-1"
+            className="group apple-glass rounded-2xl p-6 flex flex-col justify-between relative transition-all duration-150 w-full sm:w-[calc(50%-12px)] lg:w-[calc(33.33%-16px)] xl:w-[calc(20%-20px)] sm:min-w-[240px] sm:max-w-[280px] lg:order-1 xl:order-1"
           >
             <div className="space-y-4 relative z-10">
               <div className="flex justify-between items-baseline border-b border-black/40 pb-4">
@@ -386,7 +390,7 @@ export function SubscriptionPricing({ onUpgradeComplete, onEnterApp, session, on
             <div className="pt-6">
               <button
                 onClick={() => handleStripeCheckout('discord')}
-                className="w-full py-4 bg-black/90 hover:bg-white hover:text-black border border-black text-zinc-350 font-bold uppercase tracking-widest text-[11px] rounded-lg transition-all duration-150 cursor-pointer shadow-lg"
+                className="w-full py-4 bg-white text-black hover:bg-zinc-100 font-black uppercase tracking-widest text-[11px] rounded-lg transition-all duration-150 cursor-pointer shadow-lg"
               >
                 Select Plan
               </button>
@@ -405,7 +409,7 @@ export function SubscriptionPricing({ onUpgradeComplete, onEnterApp, session, on
               opacity: { duration: 0.6, delay: 0.2 }
             }}
             whileHover={{ scale: 1.07, y: -12, boxShadow: "0 30px 60px -15px rgba(99, 102, 241, 0.25)" }}
-            className="group apple-glass rounded-2xl p-6 flex flex-col justify-between relative transition-all duration-150 w-full sm:w-[calc(50%-12px)] lg:w-[calc(33.33%-16px)] xl:w-[calc(20%-20px)] min-w-[240px] max-w-[280px] lg:order-3 xl:order-2"
+            className="group apple-glass rounded-2xl p-6 flex flex-col justify-between relative transition-all duration-150 w-full sm:w-[calc(50%-12px)] lg:w-[calc(33.33%-16px)] xl:w-[calc(20%-20px)] sm:min-w-[240px] sm:max-w-[280px] lg:order-3 xl:order-2"
           >
             <div className="space-y-4 relative z-10">
               <div className="flex justify-between items-baseline border-b border-black/40 pb-4">
@@ -446,7 +450,7 @@ export function SubscriptionPricing({ onUpgradeComplete, onEnterApp, session, on
             <div className="pt-6">
               <button
                 onClick={() => handleStripeCheckout('skyvision')}
-                className="w-full py-4 bg-black/90 hover:bg-white hover:text-black border border-black text-zinc-350 font-bold uppercase tracking-widest text-[11px] rounded-lg transition-all duration-150 cursor-pointer shadow-lg"
+                className="w-full py-4 bg-white text-black hover:bg-zinc-100 font-black uppercase tracking-widest text-[11px] rounded-lg transition-all duration-150 cursor-pointer shadow-lg"
               >
                 Select Plan
               </button>
@@ -465,10 +469,10 @@ export function SubscriptionPricing({ onUpgradeComplete, onEnterApp, session, on
               opacity: { duration: 0.6, delay: 0.3 }
             }}
             whileHover={{ scale: 1.08, y: -12, boxShadow: "0 30px 60px -10px rgba(48, 209, 88, 0.3)" }}
-            className="group apple-glass-bright rounded-2xl p-6 flex flex-col justify-between relative transition-all duration-150 border-2 border-black shadow-[0_0_25px_rgba(48,209,88,0.15)] w-full sm:w-[calc(50%-12px)] lg:w-[calc(33.33%-16px)] xl:w-[calc(20%-20px)] min-w-[240px] max-w-[280px] lg:order-2 xl:order-3"
+            className="group apple-glass-bright rounded-2xl pt-10 px-6 pb-6 flex flex-col justify-between relative transition-all duration-150 border-2 border-black shadow-[0_0_25px_rgba(48,209,88,0.15)] w-full sm:w-[calc(50%-12px)] lg:w-[calc(33.33%-16px)] xl:w-[calc(20%-20px)] sm:min-w-[240px] sm:max-w-[280px] lg:order-2 xl:order-3"
           >
-            <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-gradient-to-r from-zinc-300 to-zinc-300 text-[#000000] text-[9.5px] font-black uppercase tracking-widest px-3.5 py-1.5 rounded-full shadow-lg whitespace-nowrap z-10 border border-black">
-              🔥 BEST VALUE // MOST SUBSCRIBED
+            <div className="absolute top-3 left-1/2 -translate-x-1/2 bg-zinc-300 text-[#000000] text-[9.5px] font-black uppercase tracking-widest px-3.5 py-1.5 rounded-full shadow-lg whitespace-nowrap z-10 border border-black">
+              BEST VALUE // MOST SUBSCRIBED
             </div>
 
             <div className="space-y-4 relative z-10">
@@ -510,7 +514,7 @@ export function SubscriptionPricing({ onUpgradeComplete, onEnterApp, session, on
             <div className="pt-6">
               <button
                 onClick={() => handleStripeCheckout('pinpoint')}
-                className="w-full py-4 bg-gradient-to-r from-zinc-300 to-zinc-300 hover:from-zinc-300 hover:to-zinc-300 text-[#000000] font-black uppercase tracking-widest text-[11px] rounded-lg transition-all duration-150 cursor-pointer shadow-[0_10px_30px_rgba(48,209,88,0.25)] hover:scale-[1.01]"
+                className="w-full py-4 bg-white text-black hover:bg-zinc-100 font-black uppercase tracking-widest text-[11px] rounded-lg transition-all duration-150 cursor-pointer shadow-[0_10px_30px_rgba(48,209,88,0.25)] hover:scale-[1.01]"
               >
                 SELECT GEXBOT
               </button>
@@ -529,7 +533,7 @@ export function SubscriptionPricing({ onUpgradeComplete, onEnterApp, session, on
               opacity: { duration: 0.6, delay: 0.4 }
             }}
             whileHover={{ scale: 1.05, y: -10, boxShadow: "0 30px 60px -15px rgba(251, 191, 36, 0.12)" }}
-            className="group apple-glass rounded-2xl p-6 flex flex-col justify-between relative transition-all duration-150 w-full sm:w-[calc(50%-12px)] lg:w-[calc(33.33%-16px)] xl:w-[calc(20%-20px)] min-w-[240px] max-w-[280px] lg:order-4 xl:order-4"
+            className="group apple-glass rounded-2xl p-6 flex flex-col justify-between relative transition-all duration-150 w-full sm:w-[calc(50%-12px)] lg:w-[calc(33.33%-16px)] xl:w-[calc(20%-20px)] sm:min-w-[240px] sm:max-w-[280px] lg:order-4 xl:order-4"
           >
             <div className="space-y-4 relative z-10">
               <div className="flex justify-between items-baseline border-b border-black/40 pb-4">
@@ -570,7 +574,7 @@ export function SubscriptionPricing({ onUpgradeComplete, onEnterApp, session, on
             <div className="pt-6">
               <button
                 onClick={() => handleStripeCheckout('quant')}
-                className="w-full py-4 bg-black/90 hover:bg-white hover:text-black border border-black text-zinc-350 font-bold uppercase tracking-widest text-[11px] rounded-lg transition-all duration-150 cursor-pointer shadow-lg"
+                className="w-full py-4 bg-white text-black hover:bg-zinc-100 font-black uppercase tracking-widest text-[11px] rounded-lg transition-all duration-150 cursor-pointer shadow-lg"
               >
                 Select Plan
               </button>
@@ -589,7 +593,7 @@ export function SubscriptionPricing({ onUpgradeComplete, onEnterApp, session, on
               opacity: { duration: 0.6, delay: 0.5 }
             }}
             whileHover={{ scale: 1.05, y: -10, boxShadow: "0 30px 60px -15px rgba(255, 255, 255, 0.12)" }}
-            className="group apple-glass rounded-2xl p-6 flex flex-col justify-between relative transition-all duration-150 w-full sm:w-[calc(50%-12px)] lg:w-[calc(33.33%-16px)] xl:w-[calc(20%-20px)] min-w-[240px] max-w-[280px] lg:order-5 xl:order-5"
+            className="group apple-glass rounded-2xl p-6 flex flex-col justify-between relative transition-all duration-150 w-full sm:w-[calc(50%-12px)] lg:w-[calc(33.33%-16px)] xl:w-[calc(20%-20px)] sm:min-w-[240px] sm:max-w-[280px] lg:order-5 xl:order-5"
           >
             <div className="space-y-4 relative z-10">
               <div className="flex justify-between items-baseline border-b border-black/40 pb-4">
@@ -632,7 +636,7 @@ export function SubscriptionPricing({ onUpgradeComplete, onEnterApp, session, on
             <div className="pt-6">
               <button
                 onClick={() => handleStripeCheckout('lifetime')}
-                className="w-full py-4 bg-black/90 hover:bg-white hover:text-black border border-black text-zinc-350 font-bold uppercase tracking-widest text-[11px] rounded-lg transition-all duration-150 cursor-pointer shadow-lg"
+                className="w-full py-4 bg-white text-black hover:bg-zinc-100 font-black uppercase tracking-widest text-[11px] rounded-lg transition-all duration-150 cursor-pointer shadow-lg"
               >
                 CONTACT US
               </button>
@@ -741,6 +745,14 @@ export function SubscriptionPricing({ onUpgradeComplete, onEnterApp, session, on
                     </div>
                   )}
                 </div>
+
+                {checkoutError && checkoutStep === 'details' && (
+                  <div className="rounded-lg border border-[#F87171]/40 bg-[#F87171]/10 text-[#F87171] px-4 py-3 text-[11px] font-mono flex items-start gap-2">
+                    <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
+                    <span>{checkoutError}</span>
+                    <button onClick={() => setCheckoutError('')} className="ml-auto shrink-0 hover:opacity-70 transition-opacity"><X className="w-3.5 h-3.5" /></button>
+                  </div>
+                )}
 
                 {checkoutStep === 'details' && (
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-5 animate-fadeIn animate-duration-150">
