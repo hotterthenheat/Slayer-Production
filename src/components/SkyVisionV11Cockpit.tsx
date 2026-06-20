@@ -53,7 +53,7 @@ export function SkyVisionV11Cockpit({
           <div className="flex items-center gap-2">
             <Cpu className="w-5 h-5 text-[#4ADE80] animate-pulse" />
             <h2 className="text-sm font-black text-[#E5E5E5] tracking-[0.2em] uppercase">
-              SKYVISION V11 // INSTITUTIONAL DECISION SUITE
+              SKYVISION V11 // QUANTITATIVE ANALYSIS
             </h2>
           </div>
           <p className="text-[10.5px] text-zinc-500 mt-1 uppercase">
@@ -68,7 +68,7 @@ export function SkyVisionV11Cockpit({
           <div className="text-right">
             <div className="flex items-center gap-1.5 justify-end">
               <span className={`w-2 h-2 rounded-full ${integrity.isValid ? 'bg-black/40' : 'bg-rose-400'} animate-ping`} />
-              <span className="text-[9px] text-[#888888] font-bold uppercase tracking-wider">T0 INTEGRITY SCORE:</span>
+              <span className="text-[9px] text-[#888888] font-bold uppercase tracking-wider">DATA QUALITY:</span>
             </div>
             <span className="text-[13px] font-black text-[#E5E5E5]">{integrity.score}% / {integrity.greeksConsistency}</span>
           </div>
@@ -85,8 +85,8 @@ export function SkyVisionV11Cockpit({
         <div className="bg-rose-950/20 border border-rose-900/60 p-3.5 mb-4 text-[11px] text-rose-500 leading-normal flex gap-2">
           <AlertOctagon className="w-4 shrink-0 mt-0.5 animate-bounce" />
           <div>
-            <span className="font-bold uppercase block">DATA CORRUPTION WARNING</span>
-            Quality scores fell below the safe 75% threshold. SkyVision recommendation engines are deactivated until microstructural queue synchronicity is re-established.
+            <span className="font-bold uppercase block">DATA QUALITY WARNING</span>
+            Data quality dropped below the 75% threshold. Analysis results may be unreliable until the feed is restored.
           </div>
         </div>
       )}
@@ -103,7 +103,7 @@ export function SkyVisionV11Cockpit({
         >
           <div className="flex items-center gap-1.5">
             <Layers className="w-3.5 h-3.5" />
-            <span>EXPOSURE & SURFACE (T1-T4)</span>
+            <span>IV & DEALER EXPOSURE</span>
           </div>
         </button>
 
@@ -117,7 +117,7 @@ export function SkyVisionV11Cockpit({
         >
           <div className="flex items-center gap-1.5">
             <Search className="w-3.5 h-3.5" />
-            <span>FEATURE SIMILARITY (T5-T6)</span>
+            <span>SIMILAR SETUPS</span>
           </div>
         </button>
 
@@ -131,7 +131,7 @@ export function SkyVisionV11Cockpit({
         >
           <div className="flex items-center gap-1.5">
             <BarChart4 className="w-3.5 h-3.5" />
-            <span>OUTCOME DISTRIBUTION (T7-T8)</span>
+            <span>PROBABILITIES & EV</span>
           </div>
         </button>
 
@@ -145,7 +145,7 @@ export function SkyVisionV11Cockpit({
         >
           <div className="flex items-center gap-1.5">
             <DollarSign className="w-3.5 h-3.5" />
-            <span>VALUATION & ENTRY (T9-T11)</span>
+            <span>FAIR VALUE & ENTRY</span>
           </div>
         </button>
       </div>
@@ -160,7 +160,7 @@ export function SkyVisionV11Cockpit({
             {/* Vol Surface Curve Viewer */}
             <div className="bg-black/30 border border-black p-4 rounded-sm">
               <h3 className="text-xs font-black text-[#4ADE80] border-b border-black pb-2 mb-3 flex items-center gap-1.5">
-                <Activity className="w-3.5 text-[#4ADE80]" /> T2 // OPTIONS IMPLIED VOLATILITY SKEW
+                <Activity className="w-3.5 text-[#4ADE80]" /> IV SKEW BY STRIKE
               </h3>
               
               <div className="space-y-2">
@@ -192,7 +192,7 @@ export function SkyVisionV11Cockpit({
             {/* Dealer Walls Engine */}
             <div className="bg-black/30 border border-black p-4 rounded-sm">
               <h3 className="text-xs font-black text-[#4ADE80] border-b border-black pb-2 mb-3 flex items-center gap-1.5">
-                <Database className="w-3.5 text-[#4ADE80]" /> T3 // DEALER EXPOSURES & INVENTORY WALLS
+                <Database className="w-3.5 text-[#4ADE80]" /> DEALER POSITIONS & WALLS
               </h3>
 
               <div className="space-y-2.5">
@@ -223,7 +223,7 @@ export function SkyVisionV11Cockpit({
                 </div>
 
                 <div className="p-2 rounded-sm mirror-panel mt-2">
-                  <span className="text-[8px] text-zinc-500 block font-bold uppercase">CHARM EXPOSURE DECAY INFLUENCE:</span>
+                  <span className="text-[8px] text-zinc-500 block font-bold uppercase">CHARM DECAY EFFECT:</span>
                   <p className="text-[10px] text-[#4ADE80] leading-relaxed font-sans mt-0.5">
                     {metrics.dealer.charmExposureText}
                   </p>
@@ -236,7 +236,7 @@ export function SkyVisionV11Cockpit({
           {/* Market regime (Tier 4) */}
           <div className="bg-black border border-black p-3 rounded-sm flex flex-col sm:flex-row justify-between items-start sm:items-center text-[10.5px]">
             <div>
-              <span className="text-zinc-500 uppercase font-black">T4 // COMPOSITE MARKET REGIME CLASSIFIER:</span>
+              <span className="text-zinc-500 uppercase font-black">MARKET REGIME:</span>
               <p className="text-zinc-400 mt-0.5 font-sans leading-relaxed">
                 Structural label determined: <span className="text-[#E5E5E5] font-bold uppercase">{asset.type} REGIME DETECTED</span> • Spot {score.total > 70 ? 'exhibiting bullish momentum acceleration' : 'facing overhead liquidation pressure'}.
               </p>
@@ -253,7 +253,7 @@ export function SkyVisionV11Cockpit({
         <div className="space-y-4 animate-fade-in">
           <div>
             <h3 className="text-xs font-black text-[#4ADE80] border-b border-black pb-2 mb-2 uppercase flex items-center gap-1.5">
-              <Search className="w-3.5 text-[#4ADE80]" /> T5 // CURRENT ACTIVE STATE FEATURE VECTOR
+              <Search className="w-3.5 text-[#4ADE80]" /> CURRENT SIGNAL INPUTS
             </h3>
             
             {/* Feature lists */}
@@ -284,7 +284,7 @@ export function SkyVisionV11Cockpit({
           {/* Historical similarity table (Tier 6) */}
           <div className="bg-black/30 border border-black rounded-sm overflow-hidden">
             <div className="px-4 py-2 bg-black border-b border-black flex justify-between items-center text-xs font-black text-[#4ADE80] uppercase">
-              <span>T6 // HISTORICAL SIMILARITY ENGINE (KNN SUITE)</span>
+              <span>SIMILAR HISTORICAL SETUPS (KNN)</span>
               <span className="text-[10px] text-zinc-500">5 Closest Matches Found</span>
             </div>
 
@@ -298,7 +298,7 @@ export function SkyVisionV11Cockpit({
                     <th className="p-3 text-center">Outcome</th>
                     <th className="p-3 text-right">R-Multiple</th>
                     <th className="p-3 text-right">Max Drawdown</th>
-                    <th className="p-3 text-right">MFE Excursion</th>
+                    <th className="p-3 text-right">Max Gain</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-zinc-950 text-zinc-200">
@@ -329,9 +329,9 @@ export function SkyVisionV11Cockpit({
 
             {/* KNN Summary Stat Box */}
             <div className="p-3 bg-black/40 border-t border-black text-[10.5px] leading-relaxed font-sans text-zinc-400">
-              <span className="font-bold text-[#4ADE80] font-mono uppercase text-[9.5px]">Master Historic Precedent Summary:</span>
+              <span className="font-bold text-[#4ADE80] font-mono uppercase text-[9.5px]">Summary:</span>
               <p className="mt-0.5">
-                The similarity module tracked {metrics.similarTrades.length} high-correlation precedents in the backtest archive with a <span className="text-[#4ADE80] font-bold">{(metrics.similarTrades.filter(t => t.win).length / (metrics.similarTrades.length || 1) * 100).toFixed(1)}% historic win rate</span>. Average PnL excursion equals <span className="text-[#4ADE80] font-bold">+{(metrics.similarTrades.reduce((acc, t) => acc + t.pnlMultiplier, 0) / (metrics.similarTrades.length || 1)).toFixed(2)}R</span>, median adverse drawdown restricted to <span className="text-rose-500 font-bold">{(metrics.similarTrades.reduce((acc, t) => acc + t.maxDrawdown, 0) / (metrics.similarTrades.length || 1)).toFixed(1)}%</span>.
+                Found {metrics.similarTrades.length} similar past setups with a <span className="text-[#4ADE80] font-bold">{(metrics.similarTrades.filter(t => t.win).length / (metrics.similarTrades.length || 1) * 100).toFixed(1)}% win rate</span>. Average gain was <span className="text-[#4ADE80] font-bold">+{(metrics.similarTrades.reduce((acc, t) => acc + t.pnlMultiplier, 0) / (metrics.similarTrades.length || 1)).toFixed(2)}R</span>, average max drawdown was <span className="text-rose-500 font-bold">{(metrics.similarTrades.reduce((acc, t) => acc + t.maxDrawdown, 0) / (metrics.similarTrades.length || 1)).toFixed(1)}%</span>.
               </p>
             </div>
           </div>
@@ -346,7 +346,7 @@ export function SkyVisionV11Cockpit({
             {/* Outcome Spectrum Summation (Tier 7 & 8) */}
             <div className="bg-black/30 border border-black p-4 rounded-sm">
               <h3 className="text-xs font-black text-[#4ADE80] border-b border-black pb-2 mb-3 uppercase flex items-center gap-1.5">
-                <BarChart4 className="w-3.5 text-[#4ADE80]" /> T7 // PROBABILITY OUTCOME SPECTRUM
+                <BarChart4 className="w-3.5 text-[#4ADE80]" /> OUTCOME PROBABILITIES
               </h3>
 
               <div className="space-y-3 mt-1 text-[11px]">
@@ -380,19 +380,19 @@ export function SkyVisionV11Cockpit({
             <div className="bg-black/30 border border-black p-4 rounded-sm flex flex-col justify-between">
               <div>
                 <h3 className="text-xs font-black text-[#4ADE80] border-b border-black pb-2 mb-3 uppercase flex items-center gap-1.5">
-                  <Cpu className="w-3.5 text-[#4ADE80]" /> T8 // EV CALCULATIONS MATRIX (RISK-ADJUSTED)
+                  <Cpu className="w-3.5 text-[#4ADE80]" /> EXPECTED VALUE (RISK-ADJUSTED)
                 </h3>
 
                 <div className="p-3 bg-black/60 rounded-sm border border-black relative overflow-hidden mb-3">
                   <div className="absolute right-2 top-2 select-none font-bold text-[8px] text-[#4ADE80] uppercase border border-black px-1 py-0.5 rounded-sm">
                     STAT_READY
                   </div>
-                  <span className="text-[9px] text-[#888888] block uppercase font-mono">INTEGRATED EXPECTED VALUE ENSEMBLE</span>
+                  <span className="text-[9px] text-[#888888] block uppercase font-mono">EXPECTED VALUE</span>
                   <div className="flex items-baseline gap-1.5 mt-1 font-mono">
                     <span className="text-[22px] font-black tracking-wide text-[#4ADE80]">
                       {metrics.expectedValuePct >= 0 ? '+' : ''}{metrics.expectedValuePct.toFixed(1)}%
                     </span>
-                    <span className="text-[9.5px] text-zinc-550 uppercase">Expected return of layout per trade</span>
+                    <span className="text-[9.5px] text-zinc-550 uppercase">Expected return per trade</span>
                   </div>
                 </div>
 
@@ -415,11 +415,11 @@ export function SkyVisionV11Cockpit({
               {/* Tier 14 Machine Learning Adjuster */}
               <div className="mt-4 pt-3 border-t border-black/60 font-mono text-[10px]">
                 <div className="flex justify-between items-center font-black uppercase text-[#4ADE80] mb-1">
-                  <span>T14 // XGBoost PARAMETER BIAS ADJUST</span>
+                  <span>XGBoost SIGNAL ADJUSTMENT</span>
                   <span>{metrics.xgbAdjustPct >= 0 ? '+' : ''}{metrics.xgbAdjustPct.toFixed(2)}%</span>
                 </div>
                 <p className="text-[9.5px] text-zinc-550 leading-relaxed font-sans">
-                  Explainable regressor trees updated prior win likelihood models based on volatility contraction and GEX hedging flow pressure points.
+                  XGBoost model adjusted the win probability estimate based on current IV contraction and GEX hedging flow.
                 </p>
               </div>
 
@@ -438,7 +438,7 @@ export function SkyVisionV11Cockpit({
             <div className="bg-black/30 border border-black p-4 rounded-sm flex flex-col justify-between">
               <div>
                 <h3 className="text-xs font-black text-[#4ADE80] border-b border-black pb-2 mb-3 uppercase flex items-center gap-1.5">
-                  <Calculator className="w-3.5 text-[#4ADE80]" /> T9 // BLACK-SCHOLES OPTIONS VALUATION
+                  <Calculator className="w-3.5 text-[#4ADE80]" /> OPTIONS FAIR VALUE (BLACK-SCHOLES)
                 </h3>
 
                 <div className="space-y-3 text-[10.5px] leading-relaxed">
@@ -473,7 +473,7 @@ export function SkyVisionV11Cockpit({
 
               {/* Entry Optimisation (Tier 10) */}
               <div className="mt-4 pt-3 border-t border-black/60">
-                <span className="text-[8.5px] uppercase text-zinc-550 font-black block">T10 // MATHEMATICAL OPTIMAL FILLED CAP ENTRY ZONE:</span>
+                <span className="text-[8.5px] uppercase text-zinc-550 font-black block">OPTIMAL ENTRY ZONE:</span>
                 <p className="text-[10px] text-zinc-400 font-sans leading-relaxed mt-1">
                   Optimal Fill: <span className="text-[#4ADE80] font-mono font-bold">${metrics.entryZoneMin.toFixed(2)} - ${metrics.entryZoneMax.toFixed(2)}</span> (estimated bid slip {metrics.expectedSlippagePct.toFixed(2)}%). Validated by positive historical EV bounds.
                 </p>
@@ -483,7 +483,7 @@ export function SkyVisionV11Cockpit({
             {/* Target Distributions (Tier 11) */}
             <div className="bg-black/30 border border-black p-4 rounded-sm">
               <h3 className="text-xs font-black text-[#4ADE80] border-b border-black pb-2 mb-3 uppercase flex items-center gap-1.5">
-                <Percent className="w-3.5 text-[#4ADE80]" /> T11 // TARGET DISTRIBUTION ESTIMATOR
+                <Percent className="w-3.5 text-[#4ADE80]" /> PRICE TARGETS
               </h3>
 
               <div className="space-y-2 mt-1 text-[10.5px]">
@@ -517,7 +517,7 @@ export function SkyVisionV11Cockpit({
       <div className="mt-4 pt-3.5 border-t border-black/60 flex flex-col sm:flex-row justify-between items-start sm:items-center text-[10px] text-zinc-550 gap-2 uppercase font-bold uppercase tracking-wider select-none">
         <div className="flex items-center gap-1">
           <HelpCircle className="w-3.5 text-zinc-650" />
-          <span>T12 // Thesis engine: ACTIVE RE-EVALUATION OCCURRING MINUTE-WISE BY CORE ENGINE</span>
+          <span>Re-evaluated every minute</span>
         </div>
         <span>Ref code: SV_DECISION_FRAMEWORK_V11</span>
       </div>
