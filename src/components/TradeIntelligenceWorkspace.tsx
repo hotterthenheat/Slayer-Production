@@ -242,8 +242,8 @@ export function TradeIntelligenceWorkspace({
             </span>
           </div>
           <p className="text-[10.5px] font-mono text-zinc-500 mt-1">
-            Associated Underlying: <span className="text-[#4ADE80]">{selectedAsset.name} ({selectedTimeframe})</span> 
-            <span className="mx-2">|</span> Log Ingress: <span className="text-zinc-400">3 Seconds Ago</span>
+            Underlying: <span className="text-[#4ADE80]">{selectedAsset.name} ({selectedTimeframe})</span>
+            <span className="mx-2">|</span> Last update: <span className="text-zinc-400">3 seconds ago</span>
           </p>
         </div>
 
@@ -260,7 +260,7 @@ export function TradeIntelligenceWorkspace({
         
         {/* Metric 1: Recommendation Action Badge */}
         <div className="bg-black/50 border border-black p-4 rounded-sm flex flex-col justify-between">
-          <span className="text-[9.5px] font-mono text-zinc-500 uppercase tracking-widest">WORKSTATION DECISION</span>
+          <span className="text-[9.5px] font-mono text-zinc-500 uppercase tracking-widest">RECOMMENDED ACTION</span>
           <div className="my-2 flex items-center gap-3">
             <span className={`text-3xl font-mono font-black ${
               currentRecommendation === 'BUY' ? 'text-[#4ADE80]' :
@@ -271,23 +271,23 @@ export function TradeIntelligenceWorkspace({
             </span>
           </div>
           <span className="text-[10.5px] font-mono text-zinc-400 leading-normal">
-            {currentRecommendation === 'BUY' ? 'Immediate bullish execution suggested on pullback pockets.' :
-             currentRecommendation === 'EXIT' ? 'Setup fully invalidated. Cut active structures.' :
-             currentRecommendation === 'REDUCE' ? 'Trim size. Aggregate trend dynamics weakening.' :
-             'Secure positions or stand aside for clearer impulse alignment.'}
+            {currentRecommendation === 'BUY' ? 'Conditions favor entry. Buy on a small pullback.' :
+             currentRecommendation === 'EXIT' ? 'Setup failed. Exit now.' :
+             currentRecommendation === 'REDUCE' ? 'Momentum weakening. Cut size.' :
+             'Wait for a clearer signal before entering.'}
           </span>
         </div>
 
         {/* Metric 2: Living Confidence Score */}
         <div className="bg-black/50 border border-black p-4 rounded-sm flex flex-col justify-between">
           <span className="text-[9.5px] font-mono text-[#888888] uppercase tracking-widest flex justify-between items-center">
-            SYSTEM CONFIDENCE 
-            {lastConfidenceChange === 'UP' && <span className="text-[#4ADE80] text-[9px] uppercase font-black">holding</span>}
-            {lastConfidenceChange === 'DOWN' && <span className="text-[#F87171] text-[9px] uppercase font-black">failing</span>}
+            SIGNAL CONFIDENCE
+            {lastConfidenceChange === 'UP' && <span className="text-[#4ADE80] text-[9px] uppercase font-black">rising</span>}
+            {lastConfidenceChange === 'DOWN' && <span className="text-[#F87171] text-[9px] uppercase font-black">falling</span>}
           </span>
           <div className="my-2 flex items-baseline gap-1.5 font-mono">
             <span className="text-3xl font-bold font-mono text-zinc-100">{liveConfidence}%</span>
-            <span className="text-[10px] text-zinc-500 uppercase">INDEX RATING</span>
+            <span className="text-[10px] text-zinc-500 uppercase">SCORE</span>
           </div>
           <div className="w-full bg-black h-1.5 rounded-full overflow-hidden">
             <div
@@ -318,14 +318,14 @@ export function TradeIntelligenceWorkspace({
 
         {/* Metric 4: Thesis Health State */}
         <div className="bg-black/50 border border-black p-4 rounded-sm flex flex-col justify-between">
-          <span className="text-[9.5px] font-mono text-zinc-500 uppercase tracking-widest">ACTIVE TRADE DIAGNOSIS</span>
+          <span className="text-[9.5px] font-mono text-zinc-500 uppercase tracking-widest">TRADE HEALTH</span>
           <div className="my-2">
             <span className={`text-xs font-mono font-semibold tracking-wide uppercase px-2 py-1 rounded-sm block text-center border ${thesisHealthStatus.bg} ${thesisHealthStatus.color}`}>
               {thesisHealthStatus.text}
             </span>
           </div>
           <span className="text-[10px] font-mono text-zinc-500 leading-normal">
-            Max Expected Hold Time: <span className="font-bold text-zinc-400 uppercase">15-45 Min</span>
+            Typical hold time: <span className="font-bold text-zinc-400 uppercase">15-45 Min</span>
           </span>
         </div>
 
@@ -354,7 +354,7 @@ export function TradeIntelligenceWorkspace({
             </div>
 
             <p className="text-[10.5px] font-mono text-zinc-500 mb-4 leading-normal">
-              Continuous computer validation logs tracking structural health and invalidation metrics in real-time.
+              Live tracking of key structure and momentum conditions for this trade.
             </p>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

@@ -52,13 +52,13 @@ export function SmsDispatcherPanel({
   };
 
   const mockTwilioSequence = [
-    'ESTABLISHING TWILIO REST GATEWAY CLOUD GATEWAY LINK ...',
-    'VERIFYING CRYPTOGRAPHIC HMAC TOKEN CARRIER BRIDGE ...',
-    'COMPILING DEVIATION THREAD: CALCULATING P(WIN) AND DYNAMIC FAIR VALUE ...',
-    'MESSAGE GENERATION SUCCESSFUL // FORMATTING ENCRYPTED PAYLOAD ...',
-    'HANDSHARKING WITH MOBILITY PROTOCOLS (AT&T, VERIZON, T-MOBILE) ...',
-    'CARRIER REPROJECTION: SUCCESS // DISPATCHED THROUGH HIGH-VOLUME SMS DIRECT SHORTCODE 75293 ...',
-    'BROADCAST PROTOCOL COMPLETE // ALERT CONFIRMED ON TARGET CELLULAR TRANSPANEL'
+    'Connecting to Twilio ...',
+    'Verifying credentials ...',
+    'Building alert message ...',
+    'Message ready // encrypting payload ...',
+    'Handing off to carrier (AT&T, Verizon, T-Mobile) ...',
+    'Carrier accepted // sent via shortcode 75293 ...',
+    'Delivery confirmed'
   ];
 
   const handleSendSMS = () => {
@@ -112,19 +112,19 @@ export function SmsDispatcherPanel({
         <div className="flex items-center justify-between border-b border-black pb-3 mb-4">
           <div className="flex items-center gap-1.5">
             <Smartphone className="w-4 h-4 text-[#4ADE80] animate-pulse" />
-            <span className="text-xs tracking-[0.2em] font-bold text-[#E0E0E0]">DIRECT SMS DISPATCH COCKPIT</span>
+            <span className="text-xs tracking-[0.2em] font-bold text-[#E0E0E0]">SEND TRADE ALERT BY SMS</span>
           </div>
-          <span className="text-[9px] text-[#888888] font-bold uppercase select-none border border-black px-2 bg-black/40 py-0.5">V10 MOBILITY EDGE</span>
+          <span className="text-[9px] text-[#888888] font-bold uppercase select-none border border-black px-2 bg-black/40 py-0.5">V10</span>
         </div>
 
         <p className="text-[11px] text-zinc-400 leading-normal mb-4 font-sans">
-          Route this high Expected Value contract directly to your device via Twilio SMS carrier streams. Subscribers receive real-time updates as Bayesian offsets fluctuate.
+          Send this high-EV contract alert to your phone via SMS so you can act on it right away.
         </p>
 
         {/* Input area */}
         <div className="bg-black/40 border border-black p-4 rounded-sm mb-4">
           <div className="flex flex-col gap-2.5">
-            <label className="text-[10px] text-zinc-500 uppercase font-bold">DEVICE REGISTER (MOBILE PHONE NUMBER)</label>
+            <label className="text-[10px] text-zinc-500 uppercase font-bold">YOUR MOBILE NUMBER</label>
             <div className="flex gap-2">
               <div className="relative flex-1">
                 <span className="absolute left-3 top-2 text-zinc-650 text-xs">+1</span>
@@ -149,7 +149,7 @@ export function SmsDispatcherPanel({
             </div>
             {phoneNumber.length > 0 && phoneNumber.length < 14 && (
               <span className="text-[9px] text-[#F87171] flex items-center gap-1 mt-0.5">
-                <AlertCircle className="w-3" /> Minimum 10 digits required for telecom routing
+                <AlertCircle className="w-3" /> Enter at least 10 digits
               </span>
             )}
           </div>
@@ -159,7 +159,7 @@ export function SmsDispatcherPanel({
         {dispatchLogs.length > 0 && (
           <div className="bg-black border border-black rounded-sm p-3 mb-4 h-[120px] overflow-y-auto custom-scrollbar text-[9px] leading-relaxed text-zinc-400 select-text">
             <div className="text-zinc-550 border-b border-black pb-1 mb-1 font-bold tracking-wider text-[8px] uppercase">
-              DEVIATION SMS DISPATCH PIPELINE LOGS
+              SEND LOG
             </div>
             {dispatchLogs.map((log, i) => {
               const isLast = i === dispatchLogs.length - 1;
@@ -177,7 +177,7 @@ export function SmsDispatcherPanel({
       {/* Mock Physical Phone Screen Interface displaying the text alert! */}
       <div>
         <div className="text-[8.5px] uppercase text-zinc-650 font-bold mb-1.5 select-none text-center">
-          📱 SIMULATED SUBSCRIBER MESSAGE PREVIEW
+          SIMULATED SMS PREVIEW
         </div>
         <div className="bg-black border border-black rounded-sm p-3 font-sans relative overflow-hidden min-h-[92px]">
           {/* Top Status Bar of Phone */}
@@ -202,7 +202,7 @@ export function SmsDispatcherPanel({
           ) : (
             <div className="flex flex-col items-center justify-center py-3 text-center text-zinc-600 text-[10.5px]">
               <Smartphone className="w-5 text-zinc-700 mb-1" />
-              <span>Enter phone above and commit Direct Dispatch to receive live simulated SMS on this display framework.</span>
+              <span>Enter a phone number above and tap Dispatch to preview the SMS here.</span>
             </div>
           )}
         </div>

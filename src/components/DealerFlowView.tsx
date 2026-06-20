@@ -643,16 +643,16 @@ export function DealerFlowView() {
         </div>
         <div className="space-y-1.5">
           <h2 className="text-[11px] font-black tracking-widest text-[#E5E5E5] uppercase font-sans">
-            DEALER FLOW REGISTRATION PENDING
+            LOADING DEALER FLOW DATA
           </h2>
           <p className="text-[9px] text-zinc-500 uppercase tracking-widest leading-relaxed max-w-sm mx-auto">
-            Acquiring real-time hedging profiles, order flow matrices, and displacement zones. Select any strike or option type to boot the provider.
+            Loading hedging profiles, order flow, and price zones. Select any strike or option type to start the feed.
           </p>
         </div>
         <div className="flex items-center gap-2 justify-center">
           <span className="w-1.5 h-1.5 rounded-full bg-amber-500 inline-block" />
           <span className="text-[8px] font-mono tracking-widest text-zinc-400 font-bold uppercase">
-            CONNECTING TO STREAM PROVIDER...
+            CONNECTING TO LIVE FEED...
           </span>
         </div>
       </div>
@@ -713,7 +713,7 @@ export function DealerFlowView() {
               <FeedChip feed={profile?.feed} />
             </div>
             <p className="text-[9px] text-zinc-500 uppercase tracking-widest mt-0.5">
-              Gamma exposure · hedging pressure · displacement zones · volatility engine · {selectedTimeframe}
+              Gamma exposure · hedging pressure · price zones · volatility · {selectedTimeframe}
             </p>
           </div>
         </div>
@@ -743,7 +743,7 @@ export function DealerFlowView() {
           <span className="text-[8px] font-bold tracking-widest text-[#a1a1aa] uppercase mb-2 flex items-center gap-1.5"><Activity className="w-3 h-3 text-amber-500" /> Acceleration Flow</span>
           <div>
             <div className="text-[14px] font-mono font-black text-amber-400 mb-0.5">+4.2x / hr</div>
-            <div className="text-[9px] text-zinc-500 uppercase tracking-wide leading-snug">Gamma Expansion</div>
+            <div className="text-[9px] text-zinc-500 uppercase tracking-wide leading-snug">Gamma Acceleration</div>
           </div>
         </div>
         
@@ -751,7 +751,7 @@ export function DealerFlowView() {
           <span className="text-[8px] font-bold tracking-widest text-[#a1a1aa] uppercase mb-2 flex items-center gap-1.5"><Crosshair className="w-3 h-3 text-sky-400" /> Distance to Flip</span>
           <div>
             <div className="text-[14px] font-mono font-black text-[#E5E5E5] mb-0.5">{profile?.gammaFlip ? `${Math.abs(profile.spot - profile.gammaFlip).toFixed(1)} pts` : '--'}</div>
-            <div className="text-[9px] text-zinc-500 uppercase tracking-wide leading-snug">Structural Inversion Prox</div>
+            <div className="text-[9px] text-zinc-500 uppercase tracking-wide leading-snug">Distance to Gamma Flip</div>
           </div>
         </div>
 
@@ -762,7 +762,7 @@ export function DealerFlowView() {
            <span className="text-[8px] font-bold tracking-widest text-[#4ADE80] uppercase mb-2 flex items-center gap-1.5 relative z-10"><Clock className="w-3 h-3" /> Statistical Edge</span>
            <div className="relative z-10">
             <div className="text-[14px] font-mono font-black text-[#4ADE80] mb-0.5 leading-snug">72.4% Win Rate</div>
-            <div className="text-[8.5px] text-[#4ADE80] uppercase tracking-widest font-black">Cluster Probability</div>
+            <div className="text-[8.5px] text-[#4ADE80] uppercase tracking-widest font-black">Historical Win Rate</div>
           </div>
         </div>
       </div>
@@ -795,7 +795,7 @@ export function DealerFlowView() {
           }`}
         >
           <Layers className="w-3.5 h-3.5" />
-          HEDGING PROFILE & LIQUIDITY MATRIX
+          HEDGING PROFILE & LIQUIDITY LEVELS
         </button>
         <button
           onClick={() => setActiveEngineView('targets')}
@@ -817,7 +817,7 @@ export function DealerFlowView() {
           }`}
         >
           <Zap className="w-3.5 h-3.5 text-amber-400" />
-          SLAYER INST. PHYSICS ENGINE & CASCADES
+          DEALER MECHANICS & CASCADES
         </button>
         <button
           onClick={() => setActiveEngineView('institutional')}
@@ -828,7 +828,7 @@ export function DealerFlowView() {
           }`}
         >
           <Activity className="w-3.5 h-3.5 text-fuchsia-400" />
-          INSTITUTIONAL METRICS HUD
+          INSTITUTIONAL METRICS
         </button>
         <button
           onClick={() => setActiveEngineView('microstructure')}
@@ -839,7 +839,7 @@ export function DealerFlowView() {
           }`}
         >
           <Waves className="w-3.5 h-3.5 text-cyan-400" />
-          L2/L3 ORDER FLOW & MICROSTRUCTURE
+          ORDER FLOW & MICROSTRUCTURE
         </button>
       </div>
 
@@ -852,7 +852,7 @@ export function DealerFlowView() {
                 <Layers className={`w-3.5 h-3.5 ${theme.iconColor}`} />
                 Dealer Net Gamma Map
                 <span className="text-zinc-700">|</span>
-                <span className="text-zinc-550">Visualizing Inventory & Pinning Levels</span>
+                <span className="text-zinc-550">Dealer inventory & pin levels by strike</span>
               </div>
             </div>
             <DealerFlowMap profile={profile} decimals={selectedAsset.decimals} />
@@ -965,7 +965,7 @@ export function DealerFlowView() {
             <div className="flex items-center justify-between mb-3 shrink-0">
               <div className="flex items-center gap-2 text-[9px] font-black tracking-widest text-[#a1a1aa] uppercase">
                 <ShieldAlert className={`w-3.5 h-3.5 ${theme.iconColor}`} />
-                Price Action — Displacement & Imbalance Overlay
+                Price Action — Supply/Demand & Imbalance Overlay
               </div>
               <FeedChip feed={serverState?.candle_feed} />
             </div>
@@ -982,7 +982,7 @@ export function DealerFlowView() {
                 showFVGs={true}
                 showLiquiditySweeps={true}
                 showDisplacementEvents={true}
-                watermarkText="PRICE ACTION — DISPLACEMENT & IMBALANCE OVERLAY"
+                watermarkText="PRICE ACTION — SUPPLY/DEMAND & IMBALANCE OVERLAY"
               />
             </div>
           </div>

@@ -130,8 +130,8 @@ export function TopOpportunitiesHub({
         <div className="flex items-center gap-3">
           <Award className="w-5 h-5 text-[#4ADE80]" />
           <div>
-            <span className="text-[10px] tracking-[0.2em] text-[#888888] font-bold block uppercase">SYSTEM PERFORMANCE RATING</span>
-            <span className="text-xs text-[#4ADE80] font-sans tracking-wide">Continuous validation against institutional order blocks.</span>
+            <span className="text-[10px] tracking-[0.2em] text-[#888888] font-bold block uppercase">MODEL PERFORMANCE</span>
+            <span className="text-xs text-[#4ADE80] font-sans tracking-wide">Track record vs. actual trade outcomes.</span>
           </div>
         </div>
         
@@ -140,7 +140,7 @@ export function TopOpportunitiesHub({
           <span className="text-xs text-[#888888] uppercase">Target Hit Rate</span>
           <div className="text-right">
             <span className="text-xl font-bold text-[#4ADE80]">84.6%</span>
-            <span className="text-[9px] text-[#888888] block text-right">MODEL CAPABILITY</span>
+            <span className="text-[9px] text-[#888888] block text-right">PRICE TARGETS HIT</span>
           </div>
         </div>
 
@@ -149,7 +149,7 @@ export function TopOpportunitiesHub({
           <span className="text-xs text-[#888888] uppercase">Confidence Accuracy</span>
           <div className="text-right">
             <span className="text-xl font-bold text-[#E5E5E5]">91.2%</span>
-            <span className="text-[9px] text-[#888888] block text-right">MASTER ALIGNMENT</span>
+            <span className="text-[9px] text-[#888888] block text-right">WIN RATE ACCURACY</span>
           </div>
         </div>
       </div>
@@ -160,10 +160,10 @@ export function TopOpportunitiesHub({
           <div className="flex items-center gap-2">
             <Sparkles className="w-4 text-[#4ADE80]" />
             <h2 className="text-xs uppercase tracking-[0.2em] font-bold text-[#E0E0E0]">
-              TOP OPPORTUNITIES ENGINE
+              TOP OPPORTUNITIES
             </h2>
           </div>
-          <span className="text-[9px] text-zinc-550 border border-black px-2 py-0.5 bg-black/40">MASTER SCORE CLASSIFICATION</span>
+          <span className="text-[9px] text-zinc-550 border border-black px-2 py-0.5 bg-black/40">RANKED BY SCORE</span>
         </div>
 
         <div className="overflow-x-auto">
@@ -272,7 +272,7 @@ export function TopOpportunitiesHub({
                         }`}
                       >
                         {isSelected ? <Check className="w-3" /> : null}
-                        {isSelected ? 'LOADED' : 'DECIDERS'}
+                        {isSelected ? 'LOADED' : 'ANALYZE'}
                       </button>
                     </td>
                   </tr>
@@ -291,9 +291,9 @@ export function TopOpportunitiesHub({
           <div className="flex items-center justify-between px-3.5 py-2.5 bg-black/40 border-b border-black">
             <div className="flex items-center gap-2">
               <Compass className="w-4 h-4 text-[#4ADE80]" />
-              <span className="text-xs font-bold text-[#4ADE80] uppercase tracking-wider">TOP 10 RANKED BULLISH CALLS</span>
+              <span className="text-xs font-bold text-[#4ADE80] uppercase tracking-wider">TOP 10 CALLS</span>
             </div>
-            <span className="text-[8px] text-[#4ADE80] font-extrabold uppercase">AGGRESSIVE INSTITUTIONAL FLOW</span>
+            <span className="text-[8px] text-[#4ADE80] font-extrabold uppercase">BULLISH SETUPS</span>
           </div>
 
           <div className="divide-y divide-zinc-900 overflow-y-auto max-h-[360px]">
@@ -330,9 +330,9 @@ export function TopOpportunitiesHub({
           <div className="flex items-center justify-between px-3.5 py-2.5 bg-rose-950/20 border-b border-black">
             <div className="flex items-center gap-2">
               <Compass className="w-4 h-4 text-[#F87171]" />
-              <span className="text-xs font-bold text-[#F87171] uppercase tracking-wider">TOP 10 RANKED BEARISH PUTS</span>
+              <span className="text-xs font-bold text-[#F87171] uppercase tracking-wider">TOP 10 PUTS</span>
             </div>
-            <span className="text-[8px] text-rose-500 font-extrabold uppercase">AGGRESSIVE DISTRIBUTION REVERSAL</span>
+            <span className="text-[8px] text-rose-500 font-extrabold uppercase">BEARISH SETUPS</span>
           </div>
 
           <div className="divide-y divide-zinc-900 overflow-y-auto max-h-[360px]">

@@ -527,7 +527,7 @@ export default function QuantSuiteView() {
         <div>
           <h2 className="text-sm font-black tracking-widest text-[#FFF] uppercase flex items-center gap-2">
             <Calculator className="w-4 h-4 text-[#D9A15C]" />
-            Advanced Options Quantitative Lab & Intelligence Corridor
+            Options Quant Lab
             <span
               className={`text-[8px] font-black uppercase tracking-widest px-1.5 py-0.5 rounded-sm border ${
                 isLiveData
@@ -542,11 +542,11 @@ export default function QuantSuiteView() {
             </span>
           </h2>
           <p className="text-[10px] text-zinc-500 mt-1 uppercase tracking-wider">
-            SVI Interpolation Engine • Risk-Neutral Distributions • Multi-Leg Risk Matrix
+            Price Distribution (RND) • Realized Vol • Multi-Leg Risk Scenarios
           </p>
         </div>
         
-        {/* Rapid summary telemetries */}
+        {/* Rapid summary stats */}
         <div className="flex items-center gap-3 bg-[#0a0a0c] border border-zinc-800/40 rounded-sm p-2">
           <div className="flex flex-col">
             <span className="text-[8px] text-zinc-500 uppercase font-black">Local Spot</span>
@@ -554,17 +554,17 @@ export default function QuantSuiteView() {
           </div>
           <div className="w-px h-6 bg-zinc-800" />
           <div className="flex flex-col">
-            <span className="text-[8px] text-zinc-500 uppercase font-black">Breeden PDF Skew</span>
+            <span className="text-[8px] text-zinc-500 uppercase font-black">RND Skew</span>
             <span className={`text-[11px] font-bold ${rndResult.skewness < 0 ? 'text-amber-500' : 'text-emerald-500'}`}>{rndResult.skewness.toFixed(3)}</span>
           </div>
           <div className="w-px h-6 bg-zinc-800" />
           <div className="flex flex-col">
-            <span className="text-[8px] text-zinc-500 uppercase font-black">Y-Z Realized Vol</span>
+            <span className="text-[8px] text-zinc-500 uppercase font-black">Realized Vol (Y-Z)</span>
             <span className="text-[11px] font-bold text-white tabular-nums">{(volSuite.yangZhang * 100).toFixed(2)}%</span>
           </div>
           <div className="w-px h-6 bg-zinc-800" />
           <div className="flex flex-col">
-            <span className="text-[8px] text-zinc-500 uppercase font-black">Skew RR (25D)</span>
+            <span className="text-[8px] text-zinc-500 uppercase font-black">25-Delta Risk Reversal</span>
             <span className="text-[11px] font-bold text-emerald-400">{(skewMetrics.riskReversal25D * 100).toFixed(2)}%</span>
           </div>
         </div>
@@ -576,7 +576,7 @@ export default function QuantSuiteView() {
           onClick={() => setActiveSubTab('rnd')}
           className={`px-3 py-1.5 text-[9px] font-bold uppercase tracking-wider transition-all border rounded-xs cursor-pointer ${activeSubTab === 'rnd' ? 'bg-[#111] text-white border-zinc-700/50' : 'border-transparent text-zinc-500 hover:text-zinc-300'}`}
         >
-          Risk-Neutral PDF (BL)
+          Price Distribution (RND)
         </button>
         <button 
           onClick={() => setActiveSubTab('vol')}
@@ -594,7 +594,7 @@ export default function QuantSuiteView() {
           onClick={() => setActiveSubTab('scenarios')}
           className={`px-3 py-1.5 text-[9px] font-bold uppercase tracking-wider transition-all border rounded-xs cursor-pointer ${activeSubTab === 'scenarios' ? 'bg-[#111] text-white border-zinc-700/50' : 'border-transparent text-zinc-500 hover:text-zinc-300'}`}
         >
-          Shock Control Matrix
+          Scenario Stress Test
         </button>
         <button 
           onClick={() => setActiveSubTab('portfolio')}
@@ -606,13 +606,13 @@ export default function QuantSuiteView() {
           onClick={() => setActiveSubTab('alerts')}
           className={`px-3 py-1.5 text-[9px] font-bold uppercase tracking-wider transition-all border rounded-xs cursor-pointer ${activeSubTab === 'alerts' ? 'bg-[#111] text-white border-zinc-700/50' : 'border-transparent text-zinc-500 hover:text-zinc-300'}`}
         >
-          Trigger Engine
+          Alerts
         </button>
         <button 
           onClick={() => setActiveSubTab('calibration')}
           className={`px-3 py-1.5 text-[9px] font-bold uppercase tracking-wider transition-all border rounded-xs cursor-pointer ${activeSubTab === 'calibration' ? 'bg-[#111] text-white border-zinc-700/50' : 'border-transparent text-zinc-500 hover:text-zinc-300'}`}
         >
-          Calibration Journal
+          Trade Journal
         </button>
       </div>
 
@@ -632,8 +632,8 @@ export default function QuantSuiteView() {
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
                 <div className="lg:col-span-2 flex flex-col bg-[#050505] border border-[#1f1f1f] p-4 rounded-xs">
                   <div className="flex justify-between items-center border-b border-zinc-900 pb-2 mb-3">
-                    <span className="text-[11px] font-bold uppercase tracking-widest text-zinc-200">Implied Probability Density Function f(K)</span>
-                    <span className="text-[8px] text-zinc-600">BREEDEN-LITZENBERGER MODEL</span>
+                    <span className="text-[11px] font-bold uppercase tracking-widest text-zinc-200">Market-Implied Price Distribution f(K)</span>
+                    <span className="text-[8px] text-zinc-600">BREEDEN-LITZENBERGER (RND)</span>
                   </div>
 
                   {/* Render probability distribution graph in SVG */}
@@ -717,26 +717,26 @@ export default function QuantSuiteView() {
 
                   {/* Graph labels */}
                   <div className="flex justify-between text-[8px] text-zinc-600 border-t border-zinc-900 pt-1.5 px-1 font-bold">
-                    <span>-20% TAIL RISK</span>
-                    <span>ATM GAP</span>
-                    <span>+20% DEVIATION</span>
+                    <span>-20% DOWNSIDE</span>
+                    <span>ATM</span>
+                    <span>+20% UPSIDE</span>
                   </div>
                 </div>
 
-                {/* Cognitive info sidebar */}
+                {/* Distribution stats sidebar */}
                 <div className="flex flex-col gap-4">
                   <div className="bg-[#050505] border border-[#1f1f1f] p-4 rounded-xs">
                     <span className="text-[10px] uppercase font-black text-zinc-400 tracking-wider flex items-center gap-1.5">
                       <Brain className="w-3.5 h-3.5 text-zinc-500" />
-                      Moments Analysis
+                      Distribution Stats
                     </span>
                     <div className="mt-3 gap-3 flex flex-col">
                       <div className="flex justify-between border-b border-zinc-900/50 pb-1.5">
-                        <span className="text-[9px] text-zinc-500 font-bold uppercase">Volatility Disp</span>
+                        <span className="text-[9px] text-zinc-500 font-bold uppercase">Implied Spread</span>
                         <span className="text-[10px] font-bold text-white tabular-nums">{(rndResult.stdDev / spotPrice * 100).toFixed(2)}% implied</span>
                       </div>
                       <div className="flex justify-between border-b border-zinc-900/50 pb-1.5">
-                        <span className="text-[9px] text-zinc-500 font-bold uppercase">Neutral Expect</span>
+                        <span className="text-[9px] text-zinc-500 font-bold uppercase">Risk-Neutral Mean</span>
                         <span className="text-[10px] font-bold text-white tabular-nums">{rndResult.mean.toFixed(2)}</span>
                       </div>
                       <div className="flex justify-between border-b border-zinc-900/50 pb-1.5">
@@ -748,8 +748,8 @@ export default function QuantSuiteView() {
                         <span className="text-[10px] font-bold text-zinc-300 tabular-nums">{rndResult.kurtosis.toFixed(4)}</span>
                       </div>
                       <div className="flex justify-between">
-                        <span className="text-[9px] text-zinc-500 font-bold uppercase">Fat-Tail Status</span>
-                        <span className={`text-[10px] font-black uppercase ${rndResult.isFatTailed ? 'text-rose-500 animate-pulse' : 'text-zinc-600'}`}>{rndResult.isFatTailed ? 'FAT-TAILS DETECTED' : 'NORMAL RANGE'}</span>
+                        <span className="text-[9px] text-zinc-500 font-bold uppercase">Fat Tails</span>
+                        <span className={`text-[10px] font-black uppercase ${rndResult.isFatTailed ? 'text-rose-500 animate-pulse' : 'text-zinc-600'}`}>{rndResult.isFatTailed ? 'FAT TAILS DETECTED' : 'NORMAL RANGE'}</span>
                       </div>
                     </div>
                   </div>
@@ -761,7 +761,7 @@ export default function QuantSuiteView() {
                       Probability Pricer
                     </span>
                     <p className="text-[9.5px] text-zinc-500 mt-2 leading-relaxed">
-                      Taking the second derivative of the smile curve yields the risk-neutral PDF, allowing exact pricing of customized barrier probability thresholds directly from supply-demand.
+                      Derives the market-implied probability of price reaching any strike, read directly from the options chain via Breeden-Litzenberger (RND).
                     </p>
                     <div className="mt-4 flex flex-col gap-2">
                       <label className="text-[8px] text-zinc-500 uppercase font-black">Target strike price</label>
@@ -794,23 +794,23 @@ export default function QuantSuiteView() {
                   {/* Estimators comparison table */}
                   <div className="bg-[#050505] border border-[#1f1f1f] p-4 rounded-xs">
                     <span className="text-[11px] font-bold uppercase tracking-widest text-zinc-200 block border-b border-zinc-900 pb-2 mb-3">
-                      Historical Realized Volatility Estimators (20-day)
+                      Realized Volatility Estimators (20-day)
                     </span>
                     <div className="grid grid-cols-3 gap-2 mt-2">
                       <div className="bg-[#08080a] border border-zinc-800/40 rounded-sm p-3 flex flex-col items-center">
                         <span className="text-[8px] text-zinc-500 font-bold uppercase">Parkinson RV</span>
                         <span className="text-xl font-black text-rose-400 tabular-nums mt-1">{(volSuite.parkinson * 100).toFixed(2)}%</span>
-                        <p className="text-[7.5px] text-zinc-600 text-center mt-2 lowercase">uses daily HL ranges. Excludes overnight gap jumps.</p>
+                        <p className="text-[7.5px] text-zinc-600 text-center mt-2 lowercase">uses daily high/low range; excludes overnight gaps.</p>
                       </div>
                       <div className="bg-[#08080a] border border-zinc-800/40 rounded-sm p-3 flex flex-col items-center">
                         <span className="text-[8px] text-zinc-500 font-bold uppercase">Garman-Klass RV</span>
                         <span className="text-xl font-black text-teal-400 tabular-nums mt-1">{(volSuite.garmanKlass * 100).toFixed(2)}%</span>
-                        <p className="text-[7.5px] text-zinc-600 text-center mt-2 lowercase">uses OHLC. Accounts for intraday high/low shapes.</p>
+                        <p className="text-[7.5px] text-zinc-600 text-center mt-2 lowercase">uses OHLC; accounts for intraday high/low range.</p>
                       </div>
                       <div className="bg-[#08080a] border border-zinc-800/40 rounded-sm p-3 flex flex-col items-center">
                         <span className="text-[8px] text-[#fbbf24] font-bold uppercase">Yang-Zhang RV</span>
                         <span className="text-xl font-black text-amber-500 tabular-nums mt-1">{(volSuite.yangZhang * 100).toFixed(2)}%</span>
-                        <p className="text-[7.5px] text-zinc-600 text-center mt-2 lowercase">minimum variance. combines overnight jump & rs drift.</p>
+                        <p className="text-[7.5px] text-zinc-600 text-center mt-2 lowercase">minimum-variance estimator; combines overnight gaps and intraday drift.</p>
                       </div>
                     </div>
                   </div>
@@ -832,7 +832,7 @@ export default function QuantSuiteView() {
                       </div>
                       <span className="text-lg font-bold text-zinc-700">=</span>
                       <div className="flex flex-col bg-zinc-950 px-4 py-2 border border-zinc-800/40 rounded-xs">
-                        <span className="text-[8px] text-[#4ADE80] font-black uppercase">VRP Edge Spread</span>
+                        <span className="text-[8px] text-[#4ADE80] font-black uppercase">VRP (IV minus RV)</span>
                         <span className="text-xl font-black text-emerald-400">{(volSuite.varianceRiskPremium * 100).toFixed(2)} pts</span>
                       </div>
                       <div className="flex flex-col items-center">
@@ -847,7 +847,7 @@ export default function QuantSuiteView() {
                 <div className="bg-[#050505] border border-[#1f1f1f] p-4 rounded-xs flex flex-col">
                   <span className="text-[11px] font-bold uppercase tracking-widest text-zinc-200 block border-b border-zinc-900 pb-2 mb-3 flex items-center gap-1.5">
                     <History className="w-3.5 h-3.5 text-zinc-500" />
-                    Volatility Cone
+                    Vol Cone (Historical Range)
                   </span>
                   
                   {/* Table */}
@@ -887,7 +887,7 @@ export default function QuantSuiteView() {
                   <div className="flex justify-between items-center border-b border-zinc-900 pb-2">
                     <span className="text-[11px] font-bold uppercase tracking-widest text-zinc-200 flex items-center gap-1.5">
                       <Layers className="w-4 h-4 text-[#D9A15C]" />
-                      Custom Strategy legs configuration
+                      Strategy Legs
                     </span>
                     <div className="flex gap-2">
                       <button 
@@ -915,7 +915,7 @@ export default function QuantSuiteView() {
                   <div className="space-y-2 mt-1">
                     {strategyLegs.length === 0 ? (
                       <div className="text-center py-8 text-zinc-600 uppercase text-[9px] border border-dashed border-zinc-900 rounded-sm">
-                        No active legs in strategy. Use buttons below to add legs.
+                        No legs added. Use the buttons below to add legs.
                       </div>
                     ) : (
                       strategyLegs.map((leg) => (
@@ -1012,7 +1012,7 @@ export default function QuantSuiteView() {
                 {/* Risk & Payoff Sidebar Analysis */}
                 <div className="flex flex-col bg-[#050505] border border-[#1f1f1f] p-4 rounded-xs gap-4">
                   <span className="text-[11px] font-bold uppercase tracking-widest text-zinc-200 border-b border-zinc-900 pb-2">
-                    Payoff & Risk Intelligence
+                    Payoff & Risk Summary
                   </span>
 
                   {/* Summary grid */}
@@ -1024,7 +1024,7 @@ export default function QuantSuiteView() {
                       </span>
                     </div>
                     <div className="bg-[#08080a] border border-zinc-900 p-2.5 rounded-sm flex flex-col">
-                      <span className="text-[7.5px] text-zinc-600 font-bold uppercase">Breeden PoP</span>
+                      <span className="text-[7.5px] text-zinc-600 font-bold uppercase">Prob. of Profit (RND)</span>
                       <span className="text-sm font-black text-[#fbbf24] tabular-nums mt-1">
                         {(strategySuite.pop * 100).toFixed(1)}%
                       </span>
@@ -1045,10 +1045,10 @@ export default function QuantSuiteView() {
 
                   {/* Kelly sizing recommendation */}
                   <div className="bg-zinc-950 border border-zinc-900/60 p-3 rounded-sm">
-                    <span className="text-[8px] text-[#4ADE80] font-black uppercase tracking-wider block">Half-Kelly Exposure recommendation</span>
-                    <span className="text-md font-black text-white block mt-1">{(strategySuite.kellySizing * 100).toFixed(1)}% Fractional Capital</span>
+                    <span className="text-[8px] text-[#4ADE80] font-black uppercase tracking-wider block">Suggested Position Size (Half-Kelly)</span>
+                    <span className="text-md font-black text-white block mt-1">{(strategySuite.kellySizing * 100).toFixed(1)}% of capital</span>
                     <p className="text-[7.5px] text-zinc-650 mt-1 lowercase leading-relaxed">
-                      Sizing optimized purely from Implied Probability edge. limits drawdowns in continuous multi-asset trading.
+                      Sized from implied-probability edge. Reduces drawdowns across multiple trades.
                     </p>
                   </div>
 
@@ -1092,7 +1092,7 @@ export default function QuantSuiteView() {
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
                 <div className="lg:col-span-2 flex flex-col bg-[#050505] border border-[#1f1f1f] p-4 rounded-xs">
                   <div className="flex justify-between items-center border-b border-zinc-900 pb-2 mb-3">
-                    <span className="text-[11px] font-bold uppercase tracking-widest text-zinc-200">Portfolio Scenario Shock Matrix Control</span>
+                    <span className="text-[11px] font-bold uppercase tracking-widest text-zinc-200">Scenario Stress Test (Spot vs Vol)</span>
                     <div className="flex gap-1">
                       <button 
                         onClick={() => setSelectedDteScenario(dteD)} 
@@ -1104,7 +1104,7 @@ export default function QuantSuiteView() {
                         onClick={() => setSelectedDteScenario(Math.round(dteD/2))} 
                         className={`px-2 py-0.5 border text-[7.5px] rounded-xs cursor-pointer font-bold ${selectedDteScenario === Math.round(dteD/2) ? 'bg-[#111] text-white border-zinc-700' : 'border-transparent text-zinc-500 hover:text-zinc-350'}`}
                       >
-                        Half-Decay {Math.round(dteD/2)} DTE
+                        Mid-life {Math.round(dteD/2)} DTE
                       </button>
                       <button 
                         onClick={() => setSelectedDteScenario(0)} 
@@ -1119,7 +1119,7 @@ export default function QuantSuiteView() {
                   <div className="flex-1 overflow-x-auto">
                     <div className="min-w-[420px] grid grid-cols-6 gap-1 p-2 text-center text-[9px] font-bold bg-[#08080a] border border-zinc-900 rounded-sm">
                       {/* Y axis column header filler */}
-                      <span className="border-b border-zinc-900 pb-1.5 text-zinc-650 uppercase text-[7.5px]">Spot \ Vol Shift</span>
+                      <span className="border-b border-zinc-900 pb-1.5 text-zinc-650 uppercase text-[7.5px]">Spot / Vol Shift</span>
                       {volShocks.map((vol, vIdx) => (
                         <span key={vIdx} className="border-b border-zinc-900 pb-1.5 text-white">{(vol * 100).toFixed(1)}%</span>
                       ))}
@@ -1174,19 +1174,19 @@ export default function QuantSuiteView() {
                 {/* Explanation text sidebar */}
                 <div className="flex flex-col bg-[#050505] border border-[#1f1f1f] p-4 rounded-xs gap-3">
                   <span className="text-[11px] font-bold uppercase tracking-widest text-zinc-200 border-b border-zinc-900 pb-2">
-                    Deterministic Risk Parameters
+                    How to Read This Grid
                   </span>
                   <p className="text-[9.5px] text-zinc-500 leading-normal">
-                    This risk matrix evaluates 3D stress-tests. Rather than linear delta/gamma approximations which dissolve under large shocks, each grid node represents independent Black-Scholes-Merton re-valuation under exact custom constraints.
+                    Each cell shows estimated P&amp;L if spot and IV move by the amounts shown. Unlike simple delta approximations, each cell is a full Black-Scholes re-price under those exact conditions.
                   </p>
                   <p className="text-[9.5px] text-zinc-500 leading-normal">
-                    Select tabs above to slide the theoretical time decay from entry premium (30 DTE) toward mid-point (15 DTE) and full maturity bounds (0 DTE) to track the expansion of vega/theta risks.
+                    Use the tabs above to see P&amp;L at entry (full DTE), halfway through, or at expiration to track how theta and vega eat into the position over time.
                   </p>
                   <div className="bg-[#0a0a0d] border border-zinc-900 p-3 rounded-sm text-zinc-400 text-[8px] mt-2 gap-1.5 flex flex-col uppercase font-bold">
-                    <span className="text-white text-[9px] tracking-wider block">Regime Risk Mitigation</span>
-                    <span>• Delta mismatch: Hedge required above +4%</span>
-                    <span>• Vol threat: Long vega exposed in lower right</span>
-                    <span>• Pin danger: Lock zone peaks around spot +2.5%</span>
+                    <span className="text-white text-[9px] tracking-wider block">Key Risk Signals</span>
+                    <span>• Delta hedge needed above +4% spot move</span>
+                    <span>• Long vega risk visible in lower-right cells</span>
+                    <span>• Pin risk peaks near spot +2.5%</span>
                   </div>
                 </div>
               </div>
@@ -1199,7 +1199,7 @@ export default function QuantSuiteView() {
                   <div className="flex justify-between items-center border-b border-zinc-900 pb-2">
                     <span className="text-[11px] font-bold uppercase tracking-widest text-[#E5E5E5] flex items-center gap-1.5 animate-pulse">
                       <Scale className="w-4 h-4 text-emerald-400" />
-                      Portfolio Asset Position Book
+                      Position Book
                     </span>
                     <div className="flex gap-1.5">
                       <button 
@@ -1227,7 +1227,7 @@ export default function QuantSuiteView() {
                   <div className="space-y-1.5">
                     {portfolio.length === 0 ? (
                       <div className="text-center py-10 text-zinc-650 text-[9px] uppercase font-bold border border-dashed border-zinc-900">
-                        Portfolio is empty. Add draft stock or options to stress-test book.
+                        Book is empty. Add stock or options positions above.
                       </div>
                     ) : (
                       portfolio.map(p => (
@@ -1269,7 +1269,7 @@ export default function QuantSuiteView() {
                 {/* Portfolio Greeks aggregators */}
                 <div className="bg-[#050505] border border-[#1f1f1f] p-4 rounded-xs gap-3 flex flex-col">
                   <span className="text-[11px] font-bold uppercase tracking-widest text-[#E5E5E5] border-b border-zinc-900 pb-2">
-                    Compound Book Greeks
+                    Book Greeks (Totals)
                   </span>
                   
                   {/* Aggregated values layout */}
@@ -1293,11 +1293,11 @@ export default function QuantSuiteView() {
                       <span className="font-black text-rose-500 tabular-nums">${portfolioResult.theta.toFixed(1)} theta</span>
                     </div>
                     <div className="flex justify-between border-b border-zinc-900 pb-1 text-[9.5px]">
-                      <span className="text-zinc-500 uppercase font-black">Vanna (Spot-Vol)</span>
+                      <span className="text-zinc-500 uppercase font-black">Vanna (delta/vol sensitivity)</span>
                       <span className="font-black text-[#fbbf24] tabular-nums">{portfolioResult.vanna.toFixed(3)}</span>
                     </div>
                     <div className="flex justify-between border-b border-zinc-900 pb-1 text-[9.5px]">
-                      <span className="text-zinc-500 uppercase font-black">Charm clock (decay/t)</span>
+                      <span className="text-zinc-500 uppercase font-black">Charm (delta time-decay)</span>
                       <span className="font-black text-zinc-350 tabular-nums">{portfolioResult.charm.toFixed(3)}</span>
                     </div>
 
@@ -1320,7 +1320,7 @@ export default function QuantSuiteView() {
                   <div className="flex justify-between items-center border-b border-zinc-900 pb-2 mb-1">
                     <span className="text-[11px] font-bold uppercase tracking-widest text-zinc-200 flex items-center gap-1.5">
                       <RadioTower className="w-4 h-4 text-[#D9A15C]" />
-                      Real-Time Active Alert Rules
+                      Active Alert Rules
                     </span>
                     <button 
                       onClick={() => handleAddNewRule('spot', Math.round(spotPrice * 1.03))}
@@ -1368,7 +1368,7 @@ export default function QuantSuiteView() {
                   <div className="flex-1 overflow-y-auto max-h-[300px] mt-1 space-y-2 pr-1 scrollbar-thin">
                     {alertsLog.length === 0 ? (
                       <div className="text-center py-10 text-[8px] text-zinc-700 uppercase font-black">
-                        Listening for live quantitative alert triggers...
+                        Monitoring for alert triggers...
                       </div>
                     ) : (
                       alertsLog.map((log, idx) => (
@@ -1391,7 +1391,7 @@ export default function QuantSuiteView() {
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
                 <div className="lg:col-span-2 flex flex-col bg-[#050505] border border-[#1f1f1f] p-4 rounded-xs gap-3">
                   <span className="text-[11px] font-bold uppercase tracking-widest text-[#E5E5E5] border-b border-zinc-900 pb-2 block">
-                    Advanced prediction calibration trade journal
+                    Trade Journal
                   </span>
 
                   {/* Add Trade Trigger manually for simulation */}
@@ -1400,13 +1400,13 @@ export default function QuantSuiteView() {
                       onClick={() => handleLogTrade('GEX Mean Reversion', 0.60)}
                       className="px-2 py-1.5 bg-zinc-950 border border-zinc-900 hover:border-emerald-500/50 text-[#fbbf24] text-[8px] font-black uppercase rounded-xs cursor-pointer"
                     >
-                      + Draft GEX Mean Reversion Setup
+                      + Log GEX Mean Reversion Trade
                     </button>
                     <button 
                       onClick={() => handleLogTrade('Magnet Strike Drift', 0.58)}
                       className="px-2 py-1.5 bg-zinc-950 border border-zinc-900 hover:border-emerald-500/50 text-[#fbbf24] text-[8px] font-black uppercase rounded-xs cursor-pointer"
                     >
-                      + Draft Magnet Strike Setup
+                      + Log Magnet Strike Trade
                     </button>
                   </div>
 
@@ -1461,10 +1461,10 @@ export default function QuantSuiteView() {
                 <div className="bg-[#050505] border border-[#1f1f1f] p-4 rounded-xs flex flex-col gap-4">
                   <div className="flex items-center justify-between border-b border-zinc-900 pb-2">
                     <span className="text-[11px] font-bold uppercase tracking-widest text-zinc-200">
-                      Algorithmic Calibration Scoring
+                      Model Accuracy Scores
                     </span>
                     <span className="text-[7.5px] font-mono text-[#4ADE80] font-black uppercase">
-                      SELF-LEARNING V3 ACTIVE
+                      ACTIVE
                     </span>
                   </div>
 
@@ -1517,7 +1517,7 @@ export default function QuantSuiteView() {
                     {/* Expectancy by setup list */}
                     <div className="bg-black/40 border border-zinc-900 p-3 rounded flex flex-col gap-2">
                       <span className="text-[8.5px] text-zinc-400 uppercase font-black block border-b border-zinc-900 pb-1.5">
-                        Mathematical Expectancy
+                        Avg P&amp;L by Setup
                       </span>
                       <div className="space-y-2 text-[8 px]">
                         {calibrationLoop.expectancyBySetup.map((s, idx) => (
@@ -1537,7 +1537,7 @@ export default function QuantSuiteView() {
                     {/* Task 1 Dynamic Learning modifiers */}
                     <div className="bg-black/40 border border-zinc-900 p-3 rounded flex flex-col gap-2">
                       <span className="text-[8.5px] text-zinc-400 uppercase font-black block border-b border-zinc-900 pb-1.5">
-                        AI Model Weight Adjustments
+                        Setup Weight Adjustments
                       </span>
                       <div className="space-y-2 text-[8.5px] font-mono">
                         {(calibrationLoop.futureAdjustedWeightings || []).map((wt, idx) => {
@@ -1561,7 +1561,7 @@ export default function QuantSuiteView() {
                   {/* Live Failures Error Categorization Log */}
                   <div className="mt-2.5">
                     <span className="text-[8px] text-zinc-400 uppercase font-bold font-mono tracking-widest block border-b border-zinc-900 pb-1 mb-2">
-                      Cognitive Error Logs (Discrepancy ≥ 40%)
+                      Prediction Errors (Discrepancy of 40% or more)
                     </span>
                     <div className="max-h-[145px] overflow-y-auto space-y-1.5 pr-0.5">
                       {(calibrationLoop.errorDivergences || []).map((err, idx) => (
@@ -1585,7 +1585,7 @@ export default function QuantSuiteView() {
                       ))}
                       {(calibrationLoop.errorDivergences || []).length === 0 && (
                         <p className="text-center text-zinc-650 italic py-4 text-[8px]">
-                          All active trade outcomes correspond to cognitive parameters with zero high probability drifts.
+                          No large prediction errors detected in closed trades.
                         </p>
                       )}
                     </div>
@@ -1598,34 +1598,34 @@ export default function QuantSuiteView() {
         </AnimatePresence>
       </div>
 
-      {/* Expiry GEX graph and clock telemetry footer */}
+      {/* Expiry GEX graph and intraday decay footer */}
       <div className="grid grid-cols-1 lg:grid-cols-3 border-t border-[#1f1f1f] pt-4 gap-4" id="quant-suite-telemetry-footer">
         {/* Intraday clock */}
         <div className="bg-[#050505] border border-zinc-900 p-3 rounded-sm flex flex-col gap-2">
           <div className="flex justify-between items-center border-b border-zinc-900 pb-1.5">
             <span className="text-[9px] text-[#fbbf24] font-black uppercase flex items-center gap-1">
               <Clock className="w-3 h-3" />
-              Intraday Charm/Vanna decay clock
+              Intraday Decay Clock (Charm/Vanna)
             </span>
-            <span className="text-[7.5px] text-zinc-600 font-bold">ACCELERATION</span>
+            <span className="text-[7.5px] text-zinc-600 font-bold">DECAY RATE</span>
           </div>
           <div className="flex flex-col gap-1 text-[8.5px]">
             <div className="flex justify-between text-zinc-400 border-b border-zinc-900/50 pb-1">
               <span>09:30 AM - 12:00 PM EST</span>
-              <span>1.0x (Standard decay baseline)</span>
+              <span>1.0x (normal decay)</span>
             </div>
             <div className="flex justify-between text-zinc-400 border-b border-zinc-900/50 pb-1">
               <span>12:00 PM - 02:00 PM EST</span>
-              <span>0.8x (Lunch vacuum deceleration)</span>
+              <span>0.8x (midday slowdown)</span>
             </div>
             <div className="flex justify-between text-white border-b border-[#D9A15C]/25 pb-1 font-bold">
               <span className="text-amber-500 animate-pulse flex items-center gap-1">
                 <Zap className="w-2.5 h-2.5" /> 02:00 PM - 04:00 PM EST
               </span>
-              <span>2.5x+ (Power-Hour / Pre-Close spikes!)</span>
+              <span>2.5x+ (power hour / pre-close vol spikes)</span>
             </div>
             <div className="bg-zinc-950 border border-zinc-900/60 p-2 rounded-sm text-[7.8px] text-zinc-500 font-bold uppercase leading-normal mt-1 text-center">
-              ALERT: ~2:00 PM EST accelerates options hedge decays. Vol expansion setups optimize!
+              After 2:00 PM EST, option decay accelerates. Vol expansion setups work best in this window.
             </div>
           </div>
         </div>
@@ -1633,8 +1633,8 @@ export default function QuantSuiteView() {
         {/* Expiry GEX breakdown graph */}
         <div className="lg:col-span-2 bg-[#050505] border border-zinc-900 p-3 rounded-sm flex flex-col gap-1">
           <div className="flex justify-between items-center border-b border-zinc-900 pb-1.5 mb-2">
-            <span className="text-[9px] text-zinc-300 font-extrabold uppercase tracking-wide">Aggregate Spot Dealer GEX per Expiry Date</span>
-            <span className="text-[7.5px] text-zinc-600">PER-EXPIRY DECAYS</span>
+            <span className="text-[9px] text-zinc-300 font-extrabold uppercase tracking-wide">Dealer GEX by Expiry Date</span>
+            <span className="text-[7.5px] text-zinc-600">PER-EXPIRY</span>
           </div>
 
           <div className="grid grid-cols-6 gap-2 mt-1">
@@ -1644,7 +1644,7 @@ export default function QuantSuiteView() {
                 <span className={`text-[8px] font-black tabular-nums mt-1 ${node.totalGex >= 0 ? 'text-emerald-400' : 'text-rose-455'}`}>
                   {node.totalGex >= 0 ? `+$${(node.totalGex/1e6).toFixed(1)}M` : `-$${Math.abs(node.totalGex/1e6).toFixed(1)}M`}
                 </span>
-                <span className="text-[7px] text-zinc-550 mt-1 uppercase">Wall: {node.dominantStrike}</span>
+                <span className="text-[7px] text-zinc-550 mt-1 uppercase">Key strike: {node.dominantStrike}</span>
               </div>
             ))}
           </div>

@@ -19,7 +19,7 @@ export function ReportsView() {
         <div className="flex gap-2 items-center">
           <FileText className="w-4 h-4 text-[#4ADE80]" />
           <span className="text-[9.5px] text-[#4ADE80] uppercase tracking-widest font-black">
-            SLAYER EXECUTIVE COMPLIANCE REPORT CARD // EXPORT READY
+            PERFORMANCE REPORT
           </span>
         </div>
         
@@ -33,7 +33,7 @@ export function ReportsView() {
             <span>PRINT / SAVE PDF</span>
           </button>
           <div className="bg-black/40 px-3 py-1.5 border border-white/5 text-[8px] text-zinc-400 uppercase font-black rounded-lg">
-            CLASSIFICATION: COGNITIVE PRIVATE
+            PRIVATE
           </div>
         </div>
       </div>
@@ -47,12 +47,12 @@ export function ReportsView() {
           {/* Institutional Document Header */}
           <div className="border-b-2 border-black/40 pb-4 flex flex-col sm:flex-row justify-between items-start gap-4">
             <div className="space-y-1">
-              <span className="text-[8px] text-[#4ADE80] tracking-[0.25em] font-black block uppercase">PRIVATE DISCLOSURE COGNITIVE LEDGER</span>
+              <span className="text-[8px] text-[#4ADE80] tracking-[0.25em] font-black block uppercase">PRIVATE REPORT</span>
               <h2 className="text-xl md:text-2xl font-black text-[#E5E5E5] font-sans tracking-tight uppercase leading-none print:text-black">
-                Q2 MATHEMATICAL VALIDATION REPORT
+                Q2 BACKTEST VALIDATION REPORT
               </h2>
               <span className="text-[8px] text-zinc-500 font-bold block pt-1">
-                AUTHORS: SLAYERS MULTIVARIATE LABS • CALIBRATION NO. S-V11-S02
+                SLAYER LABS • REF NO. S-V11-S02
               </span>
             </div>
             
@@ -64,16 +64,16 @@ export function ReportsView() {
           </div>
 
           <p className="text-[11px] font-sans text-zinc-450 leading-relaxed font-light print:text-zinc-800">
-            This formal dossier presents quantitative validation findings relative to the V11 continuous options scoring pipeline. Backtested indexes demonstrate robust compliance across 487 out-of-sample setups with zero data leakage. We certify transaction performance, error margins, and dealer hedging buffers under security guidelines.
+            This report summarizes the V11 options scoring model over 487 out-of-sample trades. No in-sample data leakage. Results cover win rate, expected value, drawdown, and fill speed.
           </p>
 
           {/* FORMAL TABULAR REPORT CARD */}
           <div className="border border-white/5 rounded-xl bg-black/40 overflow-hidden shadow-inner print:border-black print:bg-white">
             <div className="grid grid-cols-4 bg-black/55 p-3 text-[8.5px] text-zinc-500 border-b border-white/5 uppercase font-bold tracking-wider print:bg-black print:text-black">
-              <span>METRIC CLASSIFICATION</span>
-              <span>FORMULA MODEL BASIS</span>
-              <span>TARGET CALIBRATION</span>
-              <span className="text-right">ACTUAL PERFORMANCE</span>
+              <span>METRIC</span>
+              <span>FORMULA</span>
+              <span>TARGET</span>
+              <span className="text-right">ACTUAL RESULT</span>
             </div>
 
             <div className="divide-y divide-white/5 font-mono text-[10.5px] text-[#4ADE80] print:divide-zinc-200 print:text-black">
@@ -120,8 +120,8 @@ export function ReportsView() {
         {/* Scenario 1 */}
         <div className="apple-glass p-5 rounded-2xl text-left flex flex-col justify-between space-y-3 shadow-md border border-white/5">
           <div className="space-y-1.5">
-            <span className="text-[7.5px] text-[#d4d4d8] block uppercase font-bold tracking-widest">STRESS TESTING MATRIX</span>
-            <h4 className="text-xs font-black text-[#E5E5E5] uppercase leading-none">SCENARIO A: DISPERSION</h4>
+            <span className="text-[7.5px] text-[#d4d4d8] block uppercase font-bold tracking-widest">STRESS TEST</span>
+            <h4 className="text-xs font-black text-[#E5E5E5] uppercase leading-none">SCENARIO A: SELL-OFF</h4>
             <p className="text-[10px] text-zinc-450 font-sans leading-relaxed pt-1 uppercase">
               Underlying Index undergoes sudden -5% liquidation cascade over standardNYSE opening blocks.
             </p>
@@ -135,8 +135,8 @@ export function ReportsView() {
         {/* Scenario 2 */}
         <div className="apple-glass p-5 rounded-2xl text-left flex flex-col justify-between space-y-3 shadow-md border border-white/5">
           <div className="space-y-1.5">
-            <span className="text-[7.5px] text-[#d4d4d8] block uppercase font-bold tracking-widest">STRESS TESTING MATRIX</span>
-            <h4 className="text-xs font-black text-[#E5E5E5] uppercase leading-none">SCENARIO B: VOL SHORT</h4>
+            <span className="text-[7.5px] text-[#d4d4d8] block uppercase font-bold tracking-widest">STRESS TEST</span>
+            <h4 className="text-xs font-black text-[#E5E5E5] uppercase leading-none">SCENARIO B: IV SPIKE</h4>
             <p className="text-[10px] text-zinc-455 font-sans leading-relaxed pt-1 uppercase">
               Implied volatility expansions of 15% spike on forward-month options chain contracts.
             </p>
@@ -150,8 +150,8 @@ export function ReportsView() {
         {/* Scenario 3 */}
         <div className="apple-glass p-5 rounded-2xl text-left flex flex-col justify-between space-y-3 shadow-md border border-white/5">
           <div className="space-y-1.5">
-            <span className="text-[7.5px] text-[#F87171] block uppercase font-bold tracking-widest">STRESS TESTING MATRIX</span>
-            <h4 className="text-xs font-black text-[#E5E5E5] uppercase leading-none">SCENARIO C: GEX BREAK</h4>
+            <span className="text-[7.5px] text-[#F87171] block uppercase font-bold tracking-widest">STRESS TEST</span>
+            <h4 className="text-xs font-black text-[#E5E5E5] uppercase leading-none">SCENARIO C: GEX SUPPORT BREAK</h4>
             <p className="text-[10px] text-zinc-455 font-sans leading-relaxed pt-1 uppercase">
               Spot price penetrates primary call/put wall GEX support floors on SPX index.
             </p>
@@ -174,17 +174,17 @@ export function ReportsView() {
         </div>
         <div className="text-[11px] leading-relaxed text-zinc-450 font-sans space-y-2 print:text-zinc-800">
           <p>
-            This file is classified as private intelligence. Distribution, duplication, or reproduction of these continuous calibration metrics is strictly prohibited under Export Control Regulations (15 CFR Chapter VII) for institutional users.
+            This report is private. Do not redistribute or reproduce the results without permission.
           </p>
           <p>
-            Formulas, variables, expected return calculations, and simulated balances provided across active sessions serve only for mathematical validation benchmarks. They do not constitute structural brokerage advice or financial consulting guarantees.
+            All figures, formulas, and expected return estimates are for informational and backtesting purposes only. They are not financial advice and do not guarantee future results.
           </p>
         </div>
       </div>
 
       {/* 5. STATUS BAR */}
       <div className="apple-glass min-h-[30px] p-3 rounded-xl flex items-center justify-between text-[8px] text-zinc-400 uppercase tracking-widest pl-4 font-black shadow-md print:hidden">
-        <span>SECURITY SIGNATURE COMMITTED C-L10X81</span>
+        <span>DOCUMENT SIGNED C-L10X81</span>
         <div className="flex items-center gap-1.5 text-[#E5E5E5]">
           <span className="h-1.5 w-1.5 bg-black rounded-full animate-ping" />
           <span>DOCUMENT VERIFIED</span>

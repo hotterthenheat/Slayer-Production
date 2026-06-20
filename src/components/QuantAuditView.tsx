@@ -812,10 +812,10 @@ export function QuantAuditView({
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border-b border-black/40 pb-4">
         <div>
           <span className="text-[8px] text-[#4ADE80] font-extrabold tracking-[0.25em] uppercase block mb-1">
-            • PERFORMANCE LEDGER
+            • TRADE HISTORY
           </span>
           <h1 className="text-xl md:text-2xl font-black text-[#E5E5E5] uppercase tracking-wider">
-            ACCOUNTABILITY REGISTRY
+            VERIFIED TRADE RECORD
           </h1>
         </div>
 
@@ -844,23 +844,23 @@ export function QuantAuditView({
             className="flex items-center gap-1.5 px-3 py-1.5 border border-rose-500/20 text-[#F87171] hover:bg-rose-500/5 hover:border-rose-500/50 text-[8px] font-black rounded cursor-pointer transition-all"
           >
             <RotateCcw className="w-2.5 h-2.5" />
-            <span>RESET ACTIVE SESSION</span>
+            <span>RESET SESSION</span>
           </button>
 
           {/* Synced ledger green badge */}
           <div className="flex items-center gap-1.5 px-3 py-1.5 border border-[#d4d4d8]/20 bg-[#d4d4d8]/5 text-[#d4d4d8] text-[8px] font-black rounded">
             <span className="w-1.5 h-1.5 bg-[#4ADE80] rounded-full animate-pulse" />
-            <span>SYNCED LEDGER</span>
+            <span>UP TO DATE</span>
           </div>
         </div>
       </div>
 
-      {/* 2. SYSTEM EFFICIENCY METRICS (5 CARDS GRID) */}
+      {/* 2. PERFORMANCE SUMMARY (5 CARDS GRID) */}
       <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
         {/* Acc value */}
         <div className="bg-black border border-black p-4 rounded-lg flex flex-col justify-between hover:border-black transition-all">
           <div className="flex justify-between items-center text-zinc-550">
-            <span className="text-[7.5px] font-black uppercase tracking-wider">ACCURACY VALUE</span>
+            <span className="text-[7.5px] font-black uppercase tracking-wider">WIN RATE</span>
             <Sparkles className="w-3.5 h-3.5 text-zinc-650" />
           </div>
           <div className="my-2.5">
@@ -869,7 +869,7 @@ export function QuantAuditView({
             </h3>
           </div>
           <p className="text-[7px] text-zinc-600 uppercase font-bold tracking-wider">
-            HISTORICAL HIT RATE
+            CLOSED TRADES
           </p>
         </div>
 
@@ -885,7 +885,7 @@ export function QuantAuditView({
             </h3>
           </div>
           <p className="text-[7px] text-zinc-600 uppercase font-bold tracking-wider">
-            MEAN TRADE CYCLE
+            AVG HOLD TIME
           </p>
         </div>
 
@@ -901,7 +901,7 @@ export function QuantAuditView({
             </h3>
           </div>
           <p className="text-[7px] text-zinc-600 uppercase font-bold tracking-wider">
-            ALL COMPLETED GAINS
+            AVG GAIN ON WINNERS
           </p>
         </div>
 
@@ -917,14 +917,14 @@ export function QuantAuditView({
             </h3>
           </div>
           <p className="text-[7px] text-zinc-600 uppercase font-bold tracking-wider">
-            STRICT RISK OUTCOMES
+            AVG LOSS ON LOSERS
           </p>
         </div>
 
         {/* All accumulated */}
         <div className="bg-black border border-black p-4 rounded-lg col-span-2 md:col-span-1 flex flex-col justify-between hover:border-black transition-all">
           <div className="flex justify-between items-center text-zinc-550">
-            <span className="text-[7.5px] font-black uppercase tracking-wider">ALL ACCUMULATED</span>
+            <span className="text-[7.5px] font-black uppercase tracking-wider">TOTAL RETURN</span>
             <ShieldCheck className="w-3.5 h-3.5 text-zinc-650" />
           </div>
           <div className="my-2.5">
@@ -933,13 +933,13 @@ export function QuantAuditView({
             </h3>
           </div>
           <p className="text-[7px] text-zinc-600 uppercase font-bold tracking-wider">
-            TOTAL MEAN EXPOSURE
+            ALL LOGGED TRADES
           </p>
         </div>
       </div>
 
-      {/* 3. INTERACTIVE SEARCH BAR (MANDATE 3 Trigger Standard) */}
-      <button 
+      {/* 3. INTERACTIVE SEARCH BAR */}
+      <button
         onClick={() => {
           useContractStore.getState().setIsGlobalSearchOpen(true);
         }}
@@ -948,7 +948,7 @@ export function QuantAuditView({
         <div className="flex items-center gap-2.5">
           <Search className="w-3.5 h-3.5 text-zinc-600 animate-pulse" />
           <span className="text-[9.5px] font-black tracking-wider text-zinc-400">
-            {searchQuery ? `ACTIVE FILTER: ${searchQuery}` : "TAP TO ACTIVATE CONTEXT-AWARE LEDGER SEARCH..."}
+            {searchQuery ? `FILTER: ${searchQuery}` : "SEARCH TRADE HISTORY..."}
           </span>
         </div>
         <div className="flex items-center gap-2">
@@ -960,7 +960,7 @@ export function QuantAuditView({
               }}
               className="text-[8px] bg-red-950/30 text-[#F87171] border border-red-900/30 px-2 py-1 rounded font-black hover:bg-red-500/10 transition-all cursor-pointer"
             >
-              CLEAR ACTIVE FILTER
+              CLEAR FILTER
             </span>
           )}
           <span className="text-[7.5px] bg-black border border-black text-zinc-550 px-1.5 py-0.5 rounded font-bold">
@@ -980,7 +980,7 @@ export function QuantAuditView({
               BULLISH CONTRACTS (CALLS)
             </span>
             <span className="text-[7.5px] text-zinc-550 font-extrabold uppercase">
-              {bullishTrades.length} CONTRACTS ACTIVE & SORTED
+              {bullishTrades.length} CONTRACTS
             </span>
           </div>
 
@@ -1027,7 +1027,7 @@ export function QuantAuditView({
                         {/* Subtitle trigger */}
                         <div className="flex items-center gap-1 text-[8.5px] text-zinc-550 mt-0.5 font-bold">
                           <Clock className="w-2.5 h-2.5 text-zinc-650" />
-                          <span>Trigger Time: {t.timestamp.includes('M') ? t.timestamp.split(' ').slice(1).join(' ') : '09:30 AM'}</span>
+                          <span>Entry Time: {t.timestamp.includes('M') ? t.timestamp.split(' ').slice(1).join(' ') : '09:30 AM'}</span>
                         </div>
                       </div>
                     </div>
@@ -1048,7 +1048,7 @@ export function QuantAuditView({
                       {/* Diagnostic Log Label */}
                       <div className="flex justify-between items-center text-zinc-500 border-b border-black pb-1.5 uppercase font-black text-[8px]">
                         <span className="text-[#d4d4d8] flex items-center gap-1">
-                          <Zap className="w-3 h-3 text-[#d4d4d8]" /> CALL TRANSACTION DIAGNOSTIC TRACE LOG
+                          <Zap className="w-3 h-3 text-[#d4d4d8]" /> CALL TRADE DETAIL
                         </span>
                         <span>HOLD TIME: {t.timeTaken || 20} MINS</span>
                       </div>
@@ -1070,9 +1070,9 @@ export function QuantAuditView({
                           </span>
                         </div>
                         <div className="bg-black p-2 border border-black rounded">
-                          <span className="text-zinc-650 block text-[6px] font-black uppercase tracking-wider">SEQUENCE RESULT</span>
+                          <span className="text-zinc-650 block text-[6px] font-black uppercase tracking-wider">RESULT</span>
                           <span className={`font-black text-[8px] block mt-1 uppercase ${calculatedGains >= 0 ? 'text-[#4ADE80]' : 'text-[#F87171]'}`}>
-                            {calculatedGains >= 0 ? 'GAIN' : 'INVALIDATED'}
+                            {calculatedGains >= 0 ? 'GAIN' : 'LOSS'}
                           </span>
                         </div>
                       </div>
@@ -1080,11 +1080,11 @@ export function QuantAuditView({
                       {/* Alpha Thesis & Probability Vectors */}
                       <div className="grid grid-cols-2 lg:grid-cols-4 gap-2">
                         <div className="bg-black p-2 border border-black rounded flex flex-col justify-between">
-                          <span className="text-zinc-600 text-[6.5px] font-black uppercase tracking-wider block">PROBABILITY VECTOR</span>
+                          <span className="text-zinc-600 text-[6.5px] font-black uppercase tracking-wider block">WIN PROBABILITY</span>
                           <span className="text-[#E5E5E5] font-extrabold text-[9px] block mt-0.5">{t.probabilityPositive}% POSITIVE</span>
                         </div>
                         <div className="bg-black p-2 border border-black rounded flex flex-col justify-between">
-                          <span className="text-zinc-600 text-[6.5px] font-black uppercase tracking-wider block">THESIS STABILITY</span>
+                          <span className="text-zinc-600 text-[6.5px] font-black uppercase tracking-wider block">SETUP CONFIDENCE</span>
                           <span className="text-[#d4d4d8] font-extrabold text-[9px] block mt-0.5">{t.thesisStability}% ACTIVE</span>
                         </div>
                         <div className="bg-black p-2 border border-black rounded flex flex-col justify-between">
@@ -1099,7 +1099,7 @@ export function QuantAuditView({
 
                       {/* Option Greek Profiles & Sensitivity */}
                       <div className="bg-black border border-black/60 p-2.5 rounded">
-                        <span className="text-zinc-600 font-black tracking-widest block text-[6.5px] uppercase mb-1.5">• GREEKS SENSITIVITY VECTORS</span>
+                        <span className="text-zinc-600 font-black tracking-widest block text-[6.5px] uppercase mb-1.5">• GREEKS</span>
                         <div className="grid grid-cols-4 gap-1.5 text-center">
                           <div className="bg-black p-1.5 border border-black rounded">
                             <span className="text-zinc-650 block text-[5.5px] font-black">DELTA (Δ)</span>
@@ -1122,14 +1122,14 @@ export function QuantAuditView({
 
                       {/* Technical and Market Structure Indicator States */}
                       <div className="bg-black border border-black/60 p-2.5 rounded space-y-2">
-                        <span className="text-zinc-600 font-black tracking-widest block text-[6.5px] uppercase">• ALPHA QUANT INDICATOR MAP</span>
+                        <span className="text-zinc-600 font-black tracking-widest block text-[6.5px] uppercase">• TECHNICAL INDICATORS</span>
                         <div className="grid grid-cols-2 md:grid-cols-3 gap-2 text-left text-[8px]">
                           <div className="bg-black p-1.5 border border-black rounded">
                             <span className="text-zinc-600 text-[6px] font-black block">VWAP LEVEL STATE</span>
                             <span className="text-[#E5E5E5] font-bold block truncate mt-0.5">{t.vwapState}</span>
                           </div>
                           <div className="bg-black p-1.5 border border-black rounded">
-                            <span className="text-zinc-600 text-[6px] font-black block">RSI CASCADE STRENGTH</span>
+                            <span className="text-zinc-600 text-[6px] font-black block">RSI STATE</span>
                             <span className="text-[#E5E5E5] font-bold block truncate mt-0.5">{t.rsiState}</span>
                           </div>
                           <div className="bg-black p-1.5 border border-black rounded">
@@ -1137,11 +1137,11 @@ export function QuantAuditView({
                             <span className="text-[#E5E5E5] font-bold block truncate mt-0.5">{t.structureState}</span>
                           </div>
                           <div className="bg-black p-1.5 border border-black rounded">
-                            <span className="text-zinc-600 text-[6px] font-black block">RELATIVE RVOL PROFILE</span>
+                            <span className="text-zinc-600 text-[6px] font-black block">RELATIVE VOLUME (RVOL)</span>
                             <span className="text-[#E5E5E5] font-bold block truncate mt-0.5">{t.rvolState}</span>
                           </div>
                           <div className="bg-black p-1.5 border border-black rounded">
-                            <span className="text-zinc-600 text-[6px] font-black block">GEX WALL DYNAMICS</span>
+                            <span className="text-zinc-600 text-[6px] font-black block">GEX LEVEL</span>
                             <span className="text-[#E5E5E5] font-bold block truncate mt-0.5">{t.gexState}</span>
                           </div>
                           <div className="bg-black p-1.5 border border-black rounded flex flex-col justify-between">
@@ -1153,7 +1153,7 @@ export function QuantAuditView({
 
                       {/* Chronology timeline flow */}
                       <div className="space-y-1.5">
-                        <span className="text-zinc-655 font-black tracking-widest block text-[6.5px] uppercase">• TARGETS CHRONOLOGY FLOW (HITS / MISSES)</span>
+                        <span className="text-zinc-655 font-black tracking-widest block text-[6.5px] uppercase">• TARGETS (HITS / MISSES)</span>
                         <div className="grid grid-cols-4 gap-2 text-left">
                           {/* target 1 */}
                           <div className="bg-black p-2 border border-black rounded flex flex-col justify-between">
@@ -1200,15 +1200,15 @@ export function QuantAuditView({
                       {/* Actions verdict */}
                       <div className="bg-black p-3.5 border border-black rounded-lg space-y-1">
                         <span className="text-[7px] text-[#d4d4d8] font-black uppercase tracking-wider block">
-                          ⚡ DIAGNOSTIC ACTION VERDICT
+                          ⚡ TRADE NOTES
                         </span>
                         <p className="text-[8.5px] text-zinc-400 font-sans tracking-tight text-justify font-extrabold leading-relaxed text-zinc-350 normal-case">
                           {t.id === "stat-1" ? (
-                            "IDENTIFIED ROBUST OPTIONAL DEEP BUY PRESSURE CONVERGING WITH VOLATILITY CRUSH. SYSTEM LOGGED CLEAN ENTRIES, HIT EVERY PROFIT CORE TARGET SECURELY BEFORE VOLUME COOLDOWN COMPLETED."
+                            "Strong buy pressure with volume confirmation. Hit every profit target before volume faded."
                           ) : t.id === "stat-2" ? (
-                            "IDENTIFIED SUPPORT AT 18200. PRICE REACHED TARGET 1 AND TARGET 2 SUCCESFULLY, BUT CHRONO CRITERIA CLOSED EARLY AS DELTA PRESSURE HEURISTICS INDICATED DECAY SURGE."
+                            "Support held at 18200. Price hit Target 1 and Target 2, then closed early as delta showed signs of decay."
                           ) : (
-                            "ALGORITHMIC RE-BALANCING ALIGNED WITH GEX RESISTANCE CLUSTERING. CRITERIA FULFILLED SECURELY UNDER NOMINAL COEFFICIENT PARAMETERS."
+                            "GEX resistance held as expected. All targets met within normal parameters."
                           )}
                         </p>
                       </div>
@@ -1221,7 +1221,7 @@ export function QuantAuditView({
                         }}
                         className="w-full text-center py-2 border border-black bg-[#d4d4d8]/5 hover:bg-[#d4d4d8]/10 text-[#d4d4d8] text-[8px] font-black uppercase rounded cursor-pointer tracking-wider transition-all"
                       >
-                        ATOMISTICALLY LAUNCH CONTRACT TO SKYVISION DECISION COCKPIT
+                        LOAD CONTRACT IN ANALYZER
                       </button>
                     </div>
                   )}
@@ -1232,7 +1232,7 @@ export function QuantAuditView({
 
             {bullishTrades.length === 0 && (
               <div className="text-center py-10 border border-black bg-black/40 rounded-lg">
-                <span className="text-[8.5px] text-zinc-600 font-black uppercase tracking-widest block">NO EXHAUSTIVE CALL TRANSACTIONS DATA FOUND</span>
+                <span className="text-[8.5px] text-zinc-600 font-black uppercase tracking-widest block">NO CALL TRADES FOUND</span>
               </div>
             )}
           </div>
@@ -1246,7 +1246,7 @@ export function QuantAuditView({
               BEARISH CONTRACTS (PUTS)
             </span>
             <span className="text-[7.5px] text-zinc-550 font-extrabold uppercase">
-              {bearishTrades.length} CONTRACTS ACTIVE & SORTED
+              {bearishTrades.length} CONTRACTS
             </span>
           </div>
 
@@ -1293,7 +1293,7 @@ export function QuantAuditView({
                         {/* Subtitle trigger */}
                         <div className="flex items-center gap-1 text-[8.5px] text-zinc-550 mt-0.5 font-bold">
                           <Clock className="w-2.5 h-2.5 text-zinc-650" />
-                          <span>Trigger Time: {t.timestamp.includes('M') ? t.timestamp.split(' ').slice(1).join(' ') : '02:15 PM'}</span>
+                          <span>Entry Time: {t.timestamp.includes('M') ? t.timestamp.split(' ').slice(1).join(' ') : '02:15 PM'}</span>
                         </div>
                       </div>
                     </div>
@@ -1316,7 +1316,7 @@ export function QuantAuditView({
                       {/* Diagnostic Log Label */}
                       <div className="flex justify-between items-center text-zinc-500 border-b border-black pb-1.5 uppercase font-black text-[8px]">
                         <span className="text-[#F87171] flex items-center gap-1">
-                          <Zap className="w-3 h-3 text-[#F87171]" /> PUT TRANSACTION DIAGNOSTIC TRACE LOG
+                          <Zap className="w-3 h-3 text-[#F87171]" /> PUT TRADE DETAIL
                         </span>
                         <span>HOLD TIME: {t.timeTaken || 15} MINS</span>
                       </div>
@@ -1338,7 +1338,7 @@ export function QuantAuditView({
                           </span>
                         </div>
                         <div className="bg-black p-2 border border-black rounded">
-                          <span className="text-zinc-655 block text-[6px] font-black uppercase tracking-wider">SEQUENCE RESULT</span>
+                          <span className="text-zinc-655 block text-[6px] font-black uppercase tracking-wider">RESULT</span>
                           <span className={`font-black text-[8px] block mt-1 uppercase ${isWin ? 'text-[#4ADE80]' : 'text-[#F87171]'}`}>
                             {isWin ? 'GAIN' : 'LOSS'}
                           </span>
@@ -1348,11 +1348,11 @@ export function QuantAuditView({
                       {/* Alpha Thesis & Probability Vectors */}
                       <div className="grid grid-cols-2 lg:grid-cols-4 gap-2">
                         <div className="bg-black p-2 border border-black rounded flex flex-col justify-between">
-                          <span className="text-zinc-600 text-[6.5px] font-black uppercase tracking-wider block">PROBABILITY VECTOR</span>
+                          <span className="text-zinc-600 text-[6.5px] font-black uppercase tracking-wider block">WIN PROBABILITY</span>
                           <span className="text-[#E5E5E5] font-extrabold text-[9px] block mt-0.5">{t.probabilityPositive}% POSITIVE</span>
                         </div>
                         <div className="bg-black p-2 border border-black rounded flex flex-col justify-between">
-                          <span className="text-zinc-600 text-[6.5px] font-black uppercase tracking-wider block">THESIS STABILITY</span>
+                          <span className="text-zinc-600 text-[6.5px] font-black uppercase tracking-wider block">SETUP CONFIDENCE</span>
                           <span className="text-[#d4d4d8] font-extrabold text-[9px] block mt-0.5">{t.thesisStability}% ACTIVE</span>
                         </div>
                         <div className="bg-black p-2 border border-black rounded flex flex-col justify-between">
@@ -1367,7 +1367,7 @@ export function QuantAuditView({
 
                       {/* Option Greek Profiles & Sensitivity */}
                       <div className="bg-black border border-black/60 p-2.5 rounded">
-                        <span className="text-zinc-600 font-black tracking-widest block text-[6.5px] uppercase mb-1.5">• GREEKS SENSITIVITY VECTORS</span>
+                        <span className="text-zinc-600 font-black tracking-widest block text-[6.5px] uppercase mb-1.5">• GREEKS</span>
                         <div className="grid grid-cols-4 gap-1.5 text-center">
                           <div className="bg-black p-1.5 border border-black rounded">
                             <span className="text-zinc-650 block text-[5.5px] font-black">DELTA (Δ)</span>
@@ -1390,14 +1390,14 @@ export function QuantAuditView({
 
                       {/* Technical and Market Structure Indicator States */}
                       <div className="bg-black border border-black/60 p-2.5 rounded space-y-2">
-                        <span className="text-zinc-600 font-black tracking-widest block text-[6.5px] uppercase">• ALPHA QUANT INDICATOR MAP</span>
+                        <span className="text-zinc-600 font-black tracking-widest block text-[6.5px] uppercase">• TECHNICAL INDICATORS</span>
                         <div className="grid grid-cols-2 md:grid-cols-3 gap-2 text-left text-[8px]">
                           <div className="bg-black p-1.5 border border-black rounded">
                             <span className="text-zinc-600 text-[6px] font-black block">VWAP LEVEL STATE</span>
                             <span className="text-[#E5E5E5] font-bold block truncate mt-0.5">{t.vwapState}</span>
                           </div>
                           <div className="bg-black p-1.5 border border-black rounded">
-                            <span className="text-zinc-600 text-[6px] font-black block">RSI CASCADE STRENGTH</span>
+                            <span className="text-zinc-600 text-[6px] font-black block">RSI STATE</span>
                             <span className="text-[#E5E5E5] font-bold block truncate mt-0.5">{t.rsiState}</span>
                           </div>
                           <div className="bg-black p-1.5 border border-black rounded">
@@ -1405,11 +1405,11 @@ export function QuantAuditView({
                             <span className="text-[#E5E5E5] font-bold block truncate mt-0.5">{t.structureState}</span>
                           </div>
                           <div className="bg-black p-1.5 border border-black rounded">
-                            <span className="text-zinc-600 text-[6px] font-black block">RELATIVE RVOL PROFILE</span>
+                            <span className="text-zinc-600 text-[6px] font-black block">RELATIVE VOLUME (RVOL)</span>
                             <span className="text-[#E5E5E5] font-bold block truncate mt-0.5">{t.rvolState}</span>
                           </div>
                           <div className="bg-black p-1.5 border border-black rounded">
-                            <span className="text-zinc-600 text-[6px] font-black block">GEX WALL DYNAMICS</span>
+                            <span className="text-zinc-600 text-[6px] font-black block">GEX LEVEL</span>
                             <span className="text-[#E5E5E5] font-bold block truncate mt-0.5">{t.gexState}</span>
                           </div>
                           <div className="bg-black p-1.5 border border-black rounded flex flex-col justify-between">
@@ -1421,7 +1421,7 @@ export function QuantAuditView({
 
                       {/* Chronology timeline flow */}
                       <div className="space-y-1.5">
-                        <span className="text-zinc-650 font-black tracking-widest block text-[6.5px] uppercase">• TARGETS CHRONOLOGY FLOW (HITS / MISSES)</span>
+                        <span className="text-zinc-650 font-black tracking-widest block text-[6.5px] uppercase">• TARGETS (HITS / MISSES)</span>
                         <div className="grid grid-cols-4 gap-2 text-left">
                           {/* target 1 */}
                           <div className="bg-black p-2 border border-black rounded flex flex-col justify-between">
@@ -1468,13 +1468,13 @@ export function QuantAuditView({
                       {/* Actions verdict */}
                       <div className="bg-black p-3.5 border border-black rounded-lg space-y-1">
                         <span className="text-[7.5px] text-[#F87171] font-black uppercase tracking-wider block">
-                          ⚡ DIAGNOSTIC ACTION VERDICT
+                          ⚡ TRADE NOTES
                         </span>
                         <p className="text-[8.5px] text-zinc-400 font-sans tracking-tight text-justify font-extrabold leading-relaxed text-zinc-350 normal-case">
                           {isWin ? (
-                            "DIAGNOSED POWERFUL SUDDEN LIQUIDITY OUTFLOW AND ORDER BOOK DRIFT WITH THE SHIELD SYSTEM TRIGGERING MASSIVE SHORT EXPANSION TO COMPLETE STRETCH PROFITS COMFORTABLY."
+                            "Selling pressure carried the put to profit targets. Position closed with gains."
                           ) : (
-                            t.failureReasons?.[0] || "PROTECTIVE THRESHOLDS REACHED BREACH LIMIT IN HOSTILE VOLATILITY ENVIRONMENT. STOP LOSS ACTIVE SAFEGUARDED REST OF TRADING CAPITAL."
+                            t.failureReasons?.[0] || "Stop loss hit. Remaining capital was protected."
                           )}
                         </p>
                       </div>
@@ -1487,7 +1487,7 @@ export function QuantAuditView({
                         }}
                         className="w-full text-center py-2 border border-[#F87171]/30 bg-rose-500/5 hover:bg-rose-500/10 text-[#F87171] text-[8px] font-black uppercase rounded cursor-pointer tracking-wider transition-all"
                       >
-                        ATOMISTICALLY LAUNCH CONTRACT TO SKYVISION DECISION COCKPIT
+                        LOAD CONTRACT IN ANALYZER
                       </button>
                     </div>
                   )}
@@ -1498,7 +1498,7 @@ export function QuantAuditView({
 
             {bearishTrades.length === 0 && (
               <div className="text-center py-10 border border-black bg-black/40 rounded-lg">
-                <span className="text-[8.5px] text-zinc-600 font-black uppercase tracking-widest block font-bold">NO EXHAUSTIVE PUT TRANSACTIONS DATA FOUND</span>
+                <span className="text-[8.5px] text-zinc-600 font-black uppercase tracking-widest block font-bold">NO PUT TRADES FOUND</span>
               </div>
             )}
           </div>
@@ -1509,7 +1509,7 @@ export function QuantAuditView({
       {/* FOOTER LOAD TAGS */}
       <div className="text-center font-sans pt-4">
         <span className="text-zinc-650 font-mono text-[7px] uppercase tracking-[0.3em] font-extrabold">
-          ⛓ AUTOMATIC ACCOUNTABILITY REGISTERS CRYPTOGRAPHICALLY SECURED TO HARDWARE ENCLAVES
+          ⛓ TRADE RECORD VERIFIED
         </span>
       </div>
 

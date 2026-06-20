@@ -26,7 +26,7 @@ export default function ArborCapital() {
   // Feature requests state
   const [userRequests, setUserRequests] = useState([
     { id: 'req-1', title: 'Imbalance sweep trigger audio alerts', type: 'Feature Request', votes: 24, status: 'Completed' },
-    { id: 'req-2', title: 'Vanna squeeze speed accelerator coefficients', type: 'Research suggestion', votes: 11, status: 'In Review' },
+    { id: 'req-2', title: 'Vanna exposure speed indicators', type: 'Research suggestion', votes: 11, status: 'In Review' },
     { id: 'req-3', title: 'Gamma Flip levels overlays in standard indices charts', type: 'Feature Request', votes: 19, status: 'Scheduled' }
   ]);
   const [newRequestTitle, setNewRequestTitle] = useState('');
@@ -59,26 +59,26 @@ export default function ArborCapital() {
   // Static mock data for the selected channel content
   const researchArticles = [
     {
-      title: 'Deep-Exhaustion Volatility Spikes: Dealer Dynamic Gamma Rebalancing Strategy',
+      title: 'Dealer Gamma Flips During Volatility Spikes: What the Data Shows',
       tag: 'Dealer Flow Analysis',
       date: 'June 08, 2026',
-      summary: 'An empirical breakdown of spot price velocity as market makers hit deep negative gamma thresholds. Historical win rate for buyer options spikes counts at 72.4% inside critical 90m gaps.',
+      summary: 'A breakdown of price speed when market makers hit deep negative gamma. Historical win rate for call buyers was 72.4% in the 90-minute window after these events.',
       readTime: '8 min read',
       isPremium: true
     },
     {
-      title: 'Structural Imbalances: Overbought RSI Cascade Divergences on Index Futures',
+      title: 'Overbought RSI Divergences on Index Futures: Hit Rate Review',
       tag: 'Market Research',
       date: 'June 07, 2026',
-      summary: 'Analyzing the statistical reliability of standard deviation reversion overlays. When combined with net orderblock sweeps, historical drawdown levels decline by over 14%.',
+      summary: 'How reliable are RSI reversion signals on index futures? When paired with order-block sweeps, historical max drawdown dropped by over 14%.',
       readTime: '6 min read',
       isPremium: false
     },
     {
-      title: 'Weekly Institutional Outlook: Core Index Flip Parameters and Vanna Targets',
+      title: 'Weekly Index Outlook: Key Call/Put Walls and Vanna Levels for SPX, NDX, RUT',
       tag: 'Macro Analysis',
       date: 'June 05, 2026',
-      summary: 'Critical Call Wall & Put Wall placements mapped for SPX, NDX, and RUT. Spot price clustering dictates an imminent volatility compression, which represents optimal setup for Calendars.',
+      summary: 'Call wall and put wall levels mapped for SPX, NDX, and RUT. Price clustering suggests a low-volatility period ahead, which favors Calendar spreads.',
       readTime: '12 min read',
       isPremium: true
     }
@@ -86,25 +86,25 @@ export default function ArborCapital() {
 
   const educationModules = [
     {
-      title: 'Institutional Options Greeks & Inventory Decoupled',
+      title: 'Options Greeks and Dealer Hedging Explained',
       level: 'CORE LESSON 1',
-      desc: 'Understand exactly how GEX (Gamma), DEX (Delta), and VEX (Vanna) dictate the dynamic hedging constraints of market makers. Never guess the dealer boundaries again.',
+      desc: 'Learn how GEX (gamma exposure), DEX (delta exposure), and VEX (vanna exposure) drive market maker hedging. Understand where dealers are likely to push price.',
       progress: '100% COMPLETED',
       icon: GraduationCap,
       color: 'text-indigo-400'
     },
     {
-      title: 'Orderblock & VWAP Space Trajectory Architecture',
+      title: 'Order Blocks and VWAP: Finding Key Price Levels',
       level: 'CORE LESSON 2',
-      desc: 'Master the art of locating major displacement zones. Understand how structure breaks (BOS) act as magnet boundaries for short-dated premiums.',
+      desc: 'How to spot major order blocks and displacement zones. Learn why structure breaks (BOS) often act as magnets for short-dated option premium.',
       progress: '80% COMPLETED',
       icon: BookOpen,
       color: 'text-[#4ADE80]'
     },
     {
-      title: 'Option Risk Management: Mitigating Mathematical Ruin Profiles',
-      level: 'ADVANCED METRIC 3',
-      desc: 'A complete framework addressing expected value, probability calibration, and drawdown models to maintain terminal equity paths in multi-volatility environments.',
+      title: 'Options Risk Management: Protecting Your Account',
+      level: 'ADVANCED LESSON 3',
+      desc: 'A practical framework covering expected value, probability sizing, and drawdown limits to keep your account healthy across different volatility conditions.',
       progress: 'NOT STARTED',
       icon: Compass,
       color: 'text-amber-400'
@@ -112,9 +112,9 @@ export default function ArborCapital() {
   ];
 
   const communityDiscussions = [
-    { id: 1, user: 'VolTrader_41', avatar: '🛡️', msg: 'SPX GEX wall just held beautifully at 5180. Dealers pushed it straight back into equilibrium. Standard compression protocol played out on target.', time: '12m ago' },
-    { id: 2, user: 'QuantDelta', avatar: '🔬', msg: 'Fascinating looking at the Vanna curve on QQQ right now. Implied Volatility decline is triggering automatic passive buyback flows.', time: '28m ago' },
-    { id: 3, user: 'SlayerAlpha_007', avatar: '🌲', msg: 'Has anyone tested the V8 live tracker outcomes vs the expected range bounds? My target 1 outcomes this morning hit with extreme accuracy.', time: '1h ago' }
+    { id: 1, user: 'VolTrader_41', avatar: '🛡️', msg: 'SPX GEX wall held at 5180. Dealers pushed price back up. Classic pin at that level.', time: '12m ago' },
+    { id: 2, user: 'QuantDelta', avatar: '🔬', msg: 'Watching the vanna curve on QQQ right now. IV declining and dealers are buying back hedges passively.', time: '28m ago' },
+    { id: 3, user: 'SlayerAlpha_007', avatar: '🌲', msg: 'Has anyone checked V8 live tracker results vs the expected move? My Target 1 calls hit spot on this morning.', time: '1h ago' }
   ];
 
   return (
@@ -125,19 +125,19 @@ export default function ArborCapital() {
         <div>
           <div className="flex items-center gap-2 text-[#4ADE80] mb-1">
             <Users className="w-4 h-4 text-[#4ADE80]" />
-            <span className="text-[10px] tracking-[0.25em] font-black uppercase font-mono">SLAYER LABS INTEL HUB</span>
+            <span className="text-[10px] tracking-[0.25em] font-black uppercase font-mono">SLAYER LABS</span>
           </div>
           <h2 className="text-xl font-bold tracking-wider text-[#E5E5E5] font-mono flex items-center gap-2">
-            🌲 SLAYER LABS: THE COMMUNITY & EDUCATION LAYER
+            🌲 SLAYER LABS: COMMUNITY AND EDUCATION
           </h2>
           <p className="text-xs text-zinc-400 font-sans mt-1 leading-normal text-left">
-            Where institutional software meets high-conviction collaboration. Proving what works, educating options traders, and sharing trade reviews.
+            Research, education, and trade reviews for options day traders. Built around verified results, not alerts.
           </p>
         </div>
         <div className="flex items-center gap-2 bg-black/40 p-2.5 border border-white/5 rounded-lg shrink-0">
-          <span className="text-[9px] text-[#A1A1AA] font-mono tracking-wider uppercase block">CORE TAGLINE</span>
+          <span className="text-[9px] text-[#A1A1AA] font-mono tracking-wider uppercase block">MISSION</span>
           <div className="h-5 w-px bg-white/10 mx-1"></div>
-          <span className="text-xs font-bold text-[#4ADE80] font-mono italic">"Where Intelligence Becomes Community."</span>
+          <span className="text-xs font-bold text-[#4ADE80] font-mono italic">"Verified results. Shared knowledge."</span>
         </div>
       </div>
 
@@ -147,24 +147,24 @@ export default function ArborCapital() {
           <Sparkles className="w-24 h-24 text-[#4ADE80] shrink-0" />
         </div>
         <div className="relative">
-          <h3 className="text-xs font-black tracking-widest text-[#E0E0E0] uppercase font-mono mb-2">Ecosystem Philosophy</h3>
+          <h3 className="text-xs font-black tracking-widest text-[#E0E0E0] uppercase font-mono mb-2">What This Is</h3>
           <p className="text-xs md:text-sm text-[#4ADE80] leading-relaxed font-sans max-w-4xl pt-0.5">
-            Slayer.trade is a financial technology company - <span className="font-bold text-[#4ADE80]">Slayer Labs is not a signal group or standard Discord alert room</span>. We believe in software that helps traders make better decisions using measurable data. The community exists to support the software and build elite accountability. The software does not exist to support the community.
+            Slayer.trade is a software company - <span className="font-bold text-[#4ADE80]">Slayer Labs is not a signal group or Discord alert room</span>. We build tools that help traders make better decisions using real, measurable data. The community exists to support the software and hold results accountable. The software does not exist to support the community.
           </p>
           <div className="flex flex-wrap gap-4 mt-4 text-[10px] text-zinc-400 font-mono uppercase">
             <div className="flex items-center gap-1.5">
               <span className="w-1.5 h-1.5 rounded-full bg-black"></span>
-              <span>100% Software First</span>
+              <span>Software First</span>
             </div>
             <div className="h-4 w-px bg-white/10"></div>
             <div className="flex items-center gap-1.5">
               <span className="w-1.5 h-1.5 rounded-full bg-[#d4d4d8]"></span>
-              <span>Measurable Accountability</span>
+              <span>Verified Results</span>
             </div>
             <div className="h-4 w-px bg-white/10"></div>
             <div className="flex items-center gap-1.5">
               <span className="w-1.5 h-1.5 rounded-full bg-[#d4d4d8]"></span>
-              <span>Institutional Frameworks</span>
+              <span>Data-Driven Methods</span>
             </div>
           </div>
         </div>
@@ -240,20 +240,20 @@ export default function ArborCapital() {
           <div className="bg-black/30 border border-white/5 rounded-2xl p-5 mt-2 flex flex-col font-mono text-xs gap-3">
             <span className="text-[9px] text-[#A1A1AA] uppercase tracking-widest font-black flex items-center gap-1">
               <Calendar className="w-3.5 h-3.5 text-[#4ADE80]" />
-              Upcoming Live Events Calendar
+              Upcoming Live Sessions
             </span>
 
             <div className="space-y-3.5 text-left">
               <div className="border-l-2 border-black pl-3">
                 <span className="text-[9px] text-[#d4d4d8] block font-bold uppercase tracking-wider">TODAY 15:30 UTC</span>
-                <span className="font-bold text-zinc-200 block">Intraday Dealer Flow Audit Review</span>
-                <span className="text-[10px] text-zinc-500 font-sans">Live platform screening with V8 systems experts</span>
+                <span className="font-bold text-zinc-200 block">Intraday Dealer Flow Review</span>
+                <span className="text-[10px] text-zinc-500 font-sans">Live platform walkthrough with V8 experts</span>
               </div>
               
               <div className="border-l-2 border-white/10 pl-3 text-[#888888]">
                 <span className="text-[9px] block uppercase tracking-wider">WEDNESDAY 19:15 UTC</span>
-                <span className="font-bold text-zinc-400 block">Volatility Squeeze Macro Panel</span>
-                <span className="text-[10px] text-zinc-650 font-sans">Educational theory detailing Vanna/Charm overlays</span>
+                <span className="font-bold text-zinc-400 block">Low-Volatility Environment Panel</span>
+                <span className="text-[10px] text-zinc-650 font-sans">Education session covering vanna and charm effects</span>
               </div>
             </div>
           </div>
@@ -269,9 +269,9 @@ export default function ArborCapital() {
               <div className="flex justify-between items-center border-b border-white/5 pb-3">
                 <h3 className="text-sm font-bold text-[#E5E5E5] font-mono uppercase tracking-widest flex items-center gap-1.5">
                   <FileText className="w-4.5 h-4.5 text-[#d4d4d8]" />
-                  Active Market Research & Flow Reports
+                  Market Research & Flow Reports
                 </h3>
-                <span className="text-[9px] text-zinc-500 font-mono">PUBLISHED BY SLAYER LABS QUANT DESK</span>
+                <span className="text-[9px] text-zinc-500 font-mono">PUBLISHED BY SLAYER LABS</span>
               </div>
 
               <div className="space-y-4">
@@ -299,7 +299,7 @@ export default function ArborCapital() {
                     </div>
 
                     <div className="mt-4 pt-3.5 border-t border-white/5 flex items-center justify-between text-[10.5px] font-mono select-none">
-                      <span className="text-zinc-550">Author: Senior Portfolio Strategist</span>
+                      <span className="text-zinc-550">Author: Slayer Labs Research</span>
                       <button className="text-[#d4d4d8] hover:underline flex items-center gap-1 bg-black/40 px-2.5 py-1 border border-white/5 rounded-lg cursor-pointer">
                         <span>EXPAND ENTIRE REPORT</span>
                       </button>
@@ -316,7 +316,7 @@ export default function ArborCapital() {
               <div className="flex justify-between items-center border-b border-white/5 pb-3">
                 <h3 className="text-sm font-bold text-[#E5E5E5] font-mono uppercase tracking-widest flex items-center gap-1.5">
                   <GraduationCap className="w-4.5 h-4.5 text-[#d4d4d8]" />
-                  Options Education & Risk Management Academy
+                  Options Education & Risk Management
                 </h3>
                 <span className="text-[9px] text-zinc-500 font-mono">3 / 5 MODULES COMPLETED</span>
               </div>
@@ -365,8 +365,8 @@ export default function ArborCapital() {
                     <Tv className="w-5 h-5" />
                   </div>
                   <div>
-                    <span className="text-xs font-bold text-[#E5E5E5] block font-mono">🎓 SLAYER WEEKLY CLASSROOM INTERACTIVE REPLAY</span>
-                    <span className="text-[11px] text-zinc-400 font-sans">Full visual breakdown of expected value systems & calibration buckets.</span>
+                    <span className="text-xs font-bold text-[#E5E5E5] block font-mono">🎓 SLAYER WEEKLY SESSION REPLAY</span>
+                    <span className="text-[11px] text-zinc-400 font-sans">Full walkthrough of expected value and probability sizing, with live examples.</span>
                   </div>
                 </div>
                 <button className="w-full sm:w-auto px-4 py-2 bg-[#d4d4d8] hover:bg-black/40 text-black font-extrabold text-xs font-mono uppercase rounded-lg transition-colors shadow cursor-pointer whitespace-nowrap shrink-0">
@@ -382,7 +382,7 @@ export default function ArborCapital() {
               <div className="flex justify-between items-center border-b border-white/5 pb-3">
                 <h3 className="text-sm font-bold text-[#E5E5E5] font-mono uppercase tracking-widest flex items-center gap-1.5">
                   <MessagesSquare className="w-4.5 h-4.5 text-[#d4d4d8]" />
-                  Intra-Session Member Trade Journals & Flow Discussions
+                  Member Trade Journals & Flow Discussion
                 </h3>
                 <span className="text-[9px] text-zinc-500 font-mono">148 MEMBERS LIVE ONLINE</span>
               </div>
@@ -420,12 +420,12 @@ export default function ArborCapital() {
               <div className="mt-3 p-2 bg-black/40 border border-[#2D2D30] rounded-xl flex items-center justify-between gap-3 font-mono">
                 <input 
                   type="text" 
-                  placeholder="Share journals commentary, critical pivot breakouts, or platform trades..."
+                  placeholder="Share your trade notes, key levels, or a question..."
                   className="bg-transparent border-0 text-xs text-zinc-350 placeholder-zinc-650 focus:outline-none flex-1 px-2.5 py-1.5"
                   readOnly
                 />
                 <button 
-                  onClick={() => alert('Slayer Labs journals require system authentication verified options logs.')}
+                  onClick={() => alert('Slayer Labs posts require a verified account.')}
                   className="px-4 py-2 bg-black/50 text-zinc-400 hover:text-[#E5E5E5] border border-white/5 text-[10px] font-bold uppercase rounded-lg cursor-pointer whitespace-nowrap mr-1 hover:bg-black"
                 >
                   SEND ENTRY
@@ -441,9 +441,9 @@ export default function ArborCapital() {
               <div className="flex justify-between items-center border-b border-white/5 pb-3">
                 <h3 className="text-sm font-bold text-[#E5E5E5] font-mono uppercase tracking-widest flex items-center gap-1.5">
                   <HelpCircle className="w-4.5 h-4.5 text-[#d4d4d8]" />
-                  Ecosystem Support & Dynamic Platform Proposals
+                  Support & Feature Requests
                 </h3>
-                <span className="text-[9px] text-zinc-500 font-mono">SLAYER ECOSYSTEM ROADMAP</span>
+                <span className="text-[9px] text-zinc-500 font-mono">PRODUCT ROADMAP</span>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-5 items-stretch text-left">
@@ -453,29 +453,29 @@ export default function ArborCapital() {
                   <div>
                     <h4 className="text-xs font-black text-[#d4d4d8] uppercase tracking-widest flex items-center gap-1 mb-2.5">
                       <MessageSquarePlus className="w-4 h-4 text-[#d4d4d8]" />
-                      Propose Platform Improvements
+                      Submit a Feature Request
                     </h4>
                     <p className="text-[11px] text-zinc-400 font-sans leading-relaxed mb-4">
-                      Submit and review feature pipeline requests representing SkyVision decisions index modules, or Pinpoint AI positioning telemetry models.
+                      Submit feature ideas or bug reports. Upvote existing requests to help us prioritize what to build next.
                     </p>
 
                     {requestSubmitted ? (
                       <div className="bg-black/40 text-[#d4d4d8] border border-[#d4d4d8]/20 p-4 rounded-xl flex items-start gap-2.5 mb-4 font-sans text-xs">
                         <CheckCircle className="w-4.5 h-4.5 shrink-0 text-[#d4d4d8]" />
                         <div>
-                          <span className="font-bold font-mono block">Proposal Lodged Successfully</span>
-                          We have recorded your suggestions for quantitative options triggers review.
+                          <span className="font-bold font-mono block">Request Submitted</span>
+                          Your request has been logged and will be reviewed by the team.
                         </div>
                       </div>
                     ) : (
                       <form onSubmit={handleAddRequest} className="space-y-3">
                         <div className="space-y-1">
-                          <label className="text-[9.5px] text-[#888888] uppercase font-bold block">PROPOSAL TITLE</label>
+                          <label className="text-[9.5px] text-[#888888] uppercase font-bold block">REQUEST TITLE</label>
                           <input 
                             type="text" 
                             value={newRequestTitle}
                             onChange={(e) => setNewRequestTitle(e.target.value)}
-                            placeholder="e.g. VEX option IV compression indicators..."
+                            placeholder="e.g. Alert when IV drops below 15%..."
                             className="w-full bg-black/40 border border-white/5 p-2.5 text-xs rounded-lg text-zinc-200 focus:outline-[1px] focus:outline-[#d4d4d8]/50"
                             required
                           />
@@ -490,7 +490,7 @@ export default function ArborCapital() {
                           >
                             <option value="Feature Request">Platform Feature Request</option>
                             <option value="Technical Bug">Technical Bug Report</option>
-                            <option value="Research Suggestion">Quantitative Research Suggestion</option>
+                            <option value="Research Suggestion">Research Suggestion</option>
                           </select>
                         </div>
 
@@ -498,7 +498,7 @@ export default function ArborCapital() {
                           type="submit"
                           className="w-full py-2.5 bg-[#d4d4d8] hover:bg-black/40 text-black font-extrabold uppercase text-[10px] rounded-lg transition-all shadow cursor-pointer"
                         >
-                          SUBMIT COMMITTED PROPOSAL
+                          SUBMIT REQUEST
                         </button>
                       </form>
                     )}
@@ -509,7 +509,7 @@ export default function ArborCapital() {
                 <div className="bg-black/30 border border-white/5 p-5 rounded-box flex flex-col font-mono text-xs rounded-2xl shadow-md">
                   <h4 className="text-xs font-black text-[#4ADE80] uppercase tracking-widest flex items-center gap-1 mb-3 pb-2 border-b border-white/5">
                     <Bookmark className="w-4 h-4 text-[#d4d4d8]" />
-                    Latest Member Proposals Map
+                    Open Requests
                   </h4>
 
                   <div className="space-y-2.5 overflow-y-auto max-h-[220px] flex-1">

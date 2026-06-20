@@ -16,7 +16,7 @@ export function SettingsView() {
         <div className="flex gap-2 items-center">
           <Key className="w-4 h-4 text-[#4ADE80]" />
           <span className="text-[9.5px] text-[#4ADE80] uppercase tracking-widest font-black">
-            SLAYER CONFIG SYSTEM SETTINGS // RECENT SESSION
+            SETTINGS // CURRENT SESSION
           </span>
         </div>
         <div className="flex items-center gap-1.5 bg-black/10 text-[#4ADE80] border border-black px-3 py-1 rounded-lg text-[9px] font-black uppercase">
@@ -32,9 +32,9 @@ export function SettingsView() {
 
           {/* Settings title */}
           <div className="border-b border-white/5 pb-5 mb-6 text-left">
-            <span className="text-[8px] text-zinc-550 tracking-[0.25em] font-black block uppercase">PREFERENCES HUB</span>
+            <span className="text-[8px] text-zinc-550 tracking-[0.25em] font-black block uppercase">PREFERENCES</span>
             <h2 className="text-xl sm:text-2xl font-black text-[#E5E5E5] tracking-tight uppercase leading-none font-sans mt-0.5">
-              SYSTEM CONFIGURATIONS
+              APP SETTINGS
             </h2>
           </div>
 
@@ -45,10 +45,10 @@ export function SettingsView() {
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-white/5 pb-5">
               <div className="space-y-1 max-w-md">
                 <span className="text-[11px] font-black text-[#E5E5E5] uppercase tracking-wider block">
-                  Model Strict Compliance mode
+                  Strict Signal Filter
                 </span>
                 <p className="text-[10px] text-zinc-450 font-sans leading-relaxed leading-snug">
-                  When active, execution recommendations strictly mandate both high htfAgreement and positive dealer GEX shielding. Neutral signals remain gated inside standard buffers.
+                  When on, trade signals only show when both higher-timeframe trend and dealer GEX support align. Borderline setups are hidden until conditions improve.
                 </p>
               </div>
 
@@ -65,10 +65,10 @@ export function SettingsView() {
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-white/5 pb-5">
               <div className="space-y-1 max-w-md">
                 <span className="text-[11px] font-black text-[#E5E5E5] uppercase tracking-wider block">
-                  CME Stream Dampener frequency
+                  Reduce Update Frequency
                 </span>
                 <p className="text-[10px] text-zinc-450 font-sans leading-relaxed leading-snug">
-                  Smooth volatility updates by pooling consecutive SSE intervals. Throttles rendering calculations from 0.8s loops to 1.6s locks, reducing browser pipeline CPU overhead.
+                  Slows live data refreshes from every 0.8s to every 1.6s. Reduces CPU usage on slower machines at the cost of slightly delayed updates.
                 </p>
               </div>
 
@@ -84,10 +84,10 @@ export function SettingsView() {
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-white/5 pb-5">
               <div className="space-y-1 max-w-md">
                 <span className="text-[11px] font-black text-[#E5E5E5] uppercase tracking-wider block">
-                  High Performance Latency limit
+                  200ms Calculation Timeout
                 </span>
                 <p className="text-[10px] text-zinc-450 font-sans leading-relaxed leading-snug">
-                  Enforces strict 200ms roundtrip timeout constraints on cloud-node calculations, falling back immediately to local calculations if network congestion swells.
+                  If server calculations take longer than 200ms, the app falls back to local results immediately. Keeps the UI responsive on slow connections.
                 </p>
               </div>
 
@@ -103,10 +103,10 @@ export function SettingsView() {
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <div className="space-y-1 max-w-md">
                 <span className="text-[11px] font-black text-[#E5E5E5] uppercase tracking-wider block">
-                  Simulated Sandbox engine
+                  Demo / Sandbox Mode
                 </span>
                 <p className="text-[10px] text-zinc-450 font-sans leading-relaxed leading-snug">
-                  Enables mock terminal trading records and offline caching regimes. When disabled, the system attempts direct real-time portfolio integration checks.
+                  Uses simulated trades and sample data instead of live market feeds. Turn off to connect to real-time data.
                 </p>
               </div>
 
@@ -129,10 +129,10 @@ export function SettingsView() {
         {/* API Credentials */}
         <div className="apple-glass p-5 rounded-2xl flex flex-col justify-between text-left space-y-4 border border-white/5 bg-black/30 shadow-md">
           <div className="space-y-1.5">
-            <span className="text-[8px] text-[#d4d4d8] block uppercase font-bold tracking-widest">TELECOM WEBHOOK CHANNELS</span>
-            <h4 className="text-xs font-black text-[#E5E5E5] uppercase">TWILIO INTEGRATION CREDENTIALS</h4>
+            <span className="text-[8px] text-[#d4d4d8] block uppercase font-bold tracking-widest">SMS ALERTS</span>
+            <h4 className="text-xs font-black text-[#E5E5E5] uppercase">TWILIO CREDENTIALS</h4>
             <p className="text-[10px] text-zinc-450 font-sans leading-relaxed uppercase leading-snug">
-              SMS dispatch channels route through a default client-side simulation. Real keys reside safely on standard server environment maps.
+              SMS alerts use a demo account by default. Your real API keys are stored securely on the server.
             </p>
           </div>
 
@@ -151,16 +151,16 @@ export function SettingsView() {
         {/* System parameters logs view */}
         <div className="apple-glass p-5 rounded-2xl flex flex-col justify-between text-left space-y-4 border border-white/5 bg-black/30 shadow-md">
           <div className="space-y-1.5">
-            <span className="text-[8px] text-[#d4d4d8] block uppercase font-bold tracking-widest">CUSTODY SYSTEM METRIC DECK</span>
-            <h4 className="text-xs font-black text-[#E5E5E5] uppercase">CALIBRATOR ATTRIBUTES</h4>
+            <span className="text-[8px] text-[#d4d4d8] block uppercase font-bold tracking-widest">APP STATUS</span>
+            <h4 className="text-xs font-black text-[#E5E5E5] uppercase">BUILD INFO</h4>
             <p className="text-[10px] text-zinc-455 font-sans leading-relaxed uppercase leading-snug">
-              Verify local browser storage cache status, software build numbers, and system diagnostic integrity bounds.
+              Local cache status, build version, and app diagnostics.
             </p>
           </div>
 
           <div className="space-y-2 text-xs">
             <div className="p-3 bg-black/40 border border-white/5 rounded-xl flex justify-between items-center shadow-inner">
-              <span className="text-zinc-550 block uppercase text-[8px] font-bold">LOCAL STORAGE CHRONOLOGY</span>
+              <span className="text-zinc-550 block uppercase text-[8px] font-bold">LOCAL CACHE</span>
               <span className="text-[#d4d4d8] font-bold font-mono text-[9.5px]">ACTIVE CACHED (68.4 KB)</span>
             </div>
             <div className="p-3 bg-black/40 border border-white/5 rounded-xl flex justify-between items-center shadow-inner">
@@ -182,20 +182,20 @@ export function SettingsView() {
         </div>
         <div className="text-[11px] leading-relaxed text-zinc-400 font-sans space-y-2">
           <p>
-            Configurations set above affect local browser runtime behaviors exclusively. All underlying data streams, telemetry records, and GEX calculations are compiled on secure backend server nodes and remain unaffected by client modifications.
+            These settings only change how the app behaves in your browser. All live data, GEX calculations, and alerts run on the server and are not affected by these options.
           </p>
           <p>
-            For safety and custody standards, do not attempt to bypass strict compliance gates during high-imbalance markets, as rapid volatility expansion sequences can impair outcome probability models.
+            For best results, leave the strict signal filter on during fast-moving or high-volatility market conditions. Turning it off may surface lower-quality signals.
           </p>
         </div>
       </div>
 
       {/* 5. STATUS BAR */}
       <div className="apple-glass min-h-[30px] p-3 rounded-xl flex items-center justify-between text-[8px] text-zinc-400 uppercase tracking-widest pl-4 font-black shadow-md">
-        <span>PREFERENCES SUCCESSFULLY WRITTEN AND COMMITTED LOCALLY</span>
+        <span>SETTINGS SAVED</span>
         <div className="flex items-center gap-1.5 text-[#E5E5E5]">
           <span className="h-1.5 w-1.5 bg-[#d4d4d8] rounded-full animate-ping" />
-          <span>PREFS WRITTEN</span>
+          <span>SAVED</span>
         </div>
       </div>
 

@@ -127,13 +127,13 @@ export function UserProfile({ session, onUpdateSession }: UserProfileProps) {
     // Reject formats outside of JPEG, PNG, or WebP. SVG must be blocked.
     const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
     if (!allowedTypes.includes(file.type)) {
-      setErrorMsg('VALIDATION FAILURE: File format rejected. Only JPEG, PNG, and WebP formats are permitted.');
+      setErrorMsg('Unsupported file type. Please use a JPEG, PNG, or WebP image.');
       return;
     }
 
     // Reject files above 5MB
     if (file.size > 5 * 1024 * 1024) {
-      setErrorMsg('VALIDATION FAILURE: File size limit exceeded. Maximum payload limit is 5.00 MB.');
+      setErrorMsg('File is too large. Maximum size is 5 MB.');
       return;
     }
 
@@ -147,7 +147,7 @@ export function UserProfile({ session, onUpdateSession }: UserProfileProps) {
 
       if (imgTester.width < minW || imgTester.height < minH) {
         setErrorMsg(
-          `VALIDATION FAILURE: Insufficient resolution. Target coordinates require a minimum of ${minW}x${minH} pixels. Selected file has ${imgTester.width}x${imgTester.height} pixels.`
+          `Image is too small. Minimum size is ${minW}x${minH} px. Your file is ${imgTester.width}x${imgTester.height} px.`
         );
         URL.revokeObjectURL(blobUrl);
         return;
@@ -339,7 +339,7 @@ export function UserProfile({ session, onUpdateSession }: UserProfileProps) {
   // Submit complete profile changes
   const handleSaveCompleteProfile = async () => {
     if (availability === 'invalid' || availability === 'taken') {
-      setErrorMsg('CONFLICT ERROR: Please solve username availability errors first.');
+      setErrorMsg('Please fix the username error before saving.');
       return;
     }
 
@@ -380,13 +380,13 @@ export function UserProfile({ session, onUpdateSession }: UserProfileProps) {
   return (
     <div className="bg-black/55 border border-black rounded-xl p-6 space-y-6 relative shadow-2xl">
       <div className="absolute top-0 right-0 p-3 text-[10px] text-zinc-600 font-bold uppercase tracking-widest font-mono">
-        IDENTITY WORKSTATION
+        PUBLIC PROFILE
       </div>
 
       <div className="flex items-center gap-2.5 border-b border-black pb-3">
         <User className="w-5 h-5 text-indigo-400" />
         <h2 className="text-lg font-black tracking-tight text-[#E5E5E5] uppercase font-mono">
-          Identity Mapping (Public Context)
+          Your Public Profile
         </h2>
       </div>
 
@@ -464,10 +464,10 @@ export function UserProfile({ session, onUpdateSession }: UserProfileProps) {
                 </div>
                 <div>
                   <span className="text-xs text-zinc-400 font-bold font-mono uppercase block">
-                    DRAG & DROP COVER IMAGE BANNER
+                    DRAG AND DROP OR CLICK TO UPLOAD COVER PHOTO
                   </span>
                   <span className="text-[10px] text-zinc-600 font-mono block mt-0.5">
-                    JPEG, PNG, WEBP ONLY (MINIMUM 600x200 RESOLUTION // MAX 5MB)
+                    JPEG, PNG, or WEBP - min 600x200 px - max 5 MB
                   </span>
                 </div>
               </div>
@@ -518,10 +518,10 @@ export function UserProfile({ session, onUpdateSession }: UserProfileProps) {
 
           <div className="space-y-1 shrink-0 pb-2">
             <h3 className="text-sm font-black text-[#E5E5E5] font-mono tracking-wider uppercase">
-              {nickname || 'QUICK ACCOUNT PROFILE'}
+              {nickname || 'YOUR NAME'}
             </h3>
             <p className="text-[10px] text-zinc-500 font-mono uppercase tracking-widest">
-              {handle ? `@${handle}` : 'NO HANDLE CONFIGURED'}
+              {handle ? `@${handle}` : 'NO USERNAME SET'}
             </p>
           </div>
         </div>
@@ -546,7 +546,7 @@ export function UserProfile({ session, onUpdateSession }: UserProfileProps) {
               placeholder="e.g. Robin Slayer"
             />
             <p className="text-[9.5px] text-zinc-600 font-mono leading-relaxed uppercase">
-              Supports spaces, unicode identifiers, and special trade descriptors.
+              Shown publicly on your profile. Spaces and special characters allowed.
             </p>
           </div>
 
@@ -609,12 +609,12 @@ export function UserProfile({ session, onUpdateSession }: UserProfileProps) {
             {isUpdating ? (
               <>
                 <Loader2 className="w-4 h-4 animate-spin" />
-                Synchronizing...
+                Saving...
               </>
             ) : (
               <>
                 <CheckCircle2 className="w-4 h-4 text-indigo-400" />
-                Commit Identity Changes
+                Save Profile
               </>
             )}
           </button>
@@ -633,7 +633,7 @@ export function UserProfile({ session, onUpdateSession }: UserProfileProps) {
               <div className="flex items-center gap-2">
                 <ImageIcon className="w-4 h-4 text-indigo-400" />
                 <span className="text-xs font-bold text-[#E5E5E5] uppercase tracking-widest font-mono">
-                  Crop Profile Asset: {cropParams.type}
+                  Crop {cropParams.type === 'avatar' ? 'Profile Photo' : 'Cover Photo'}
                 </span>
               </div>
               <button
@@ -650,7 +650,7 @@ export function UserProfile({ session, onUpdateSession }: UserProfileProps) {
 
             <div className="px-5 space-y-4">
               <p className="text-[10px] text-zinc-400 font-mono uppercase bg-black/40 p-2 border border-black rounded">
-                ⚡ QUANT COMMAND: Drag and move the image inside the crop window to align properly, then adjust your magnification slider.
+                Drag the image to reposition it, then use the zoom slider to scale.
               </p>
 
               {/* Crop Box Window */}
@@ -691,7 +691,7 @@ export function UserProfile({ session, onUpdateSession }: UserProfileProps) {
               {/* Zoom slider control */}
               <div className="space-y-1">
                 <div className="flex items-center justify-between font-mono text-[10px] text-zinc-400">
-                  <span>MAGNIFICATION ZOOM</span>
+                  <span>ZOOM</span>
                   <span className="text-zinc-200 font-bold">{Math.round(cropParams.zoom * 100)}%</span>
                 </div>
                 <input
@@ -731,12 +731,12 @@ export function UserProfile({ session, onUpdateSession }: UserProfileProps) {
                 {isUploading ? (
                   <>
                     <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                    Registering CDN...
+                    Uploading...
                   </>
                 ) : (
                   <>
                     <CheckCircle2 className="w-3.5 h-3.5" />
-                    Apply Selected Crop Area
+                    Apply Crop
                   </>
                 )}
               </button>

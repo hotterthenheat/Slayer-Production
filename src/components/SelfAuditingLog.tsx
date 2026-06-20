@@ -240,10 +240,10 @@ export function SelfAuditingLog({ trades, activeScore, onClearTrades }: V8Auditi
           <Database className="w-4 h-4 text-[#4ADE80] animate-pulse" />
           <div>
             <h1 className="text-sm font-semibold tracking-wide text-[#E5E5E5] uppercase leading-none font-mono">
-              QUANT AUDIT & SELF-LEARNING INTELLIGENCE
+              TRADE AUDIT & MODEL ACCURACY LOG
             </h1>
             <p className="text-[10px] text-zinc-500 font-sans mt-1">
-              Deep machine learning calibration curve engine tracking every prediction birth to death.
+              Tracks every trade prediction and outcome to show how accurate the model has been.
             </p>
           </div>
         </div>
@@ -254,7 +254,7 @@ export function SelfAuditingLog({ trades, activeScore, onClearTrades }: V8Auditi
             className="p-1 px-2.5 rounded-sm border border-black bg-black/40 text-zinc-400 hover:text-[#E5E5E5] transition-all text-[10px] uppercase font-bold flex items-center gap-1 cursor-pointer"
           >
             <HelpCircle className="w-3.5 h-3.5" />
-            <span>EXPLAIN V8 ENGINE</span>
+            <span>HOW THIS WORKS</span>
           </button>
           
           {onClearTrades && (
@@ -262,7 +262,7 @@ export function SelfAuditingLog({ trades, activeScore, onClearTrades }: V8Auditi
               onClick={onClearTrades}
               className="p-1 px-2.5 rounded-sm border border-black bg-rose-950/10 hover:bg-rose-950/25 border-[#F87171]/50 text-[#F87171] hover:text-[#F87171] transition-all text-[10px] uppercase font-black cursor-pointer"
             >
-              Flush Learning Database
+              Clear Trade Log
             </button>
           )}
         </div>
@@ -272,19 +272,19 @@ export function SelfAuditingLog({ trades, activeScore, onClearTrades }: V8Auditi
         <div className="p-4 bg-black border-b border-black text-zinc-400 leading-relaxed space-y-3 font-sans max-h-[300px] overflow-y-auto">
           <h3 className="font-mono text-[#E5E5E5] text-xs font-bold uppercase tracking-wider flex items-center gap-1.5 border-b border-black pb-1.5">
             <Cpu className="w-4 h-4 text-[#4ADE80]" />
-            COGNITIVE BLUEPRINT: SKYVISION V8 MACHINE CALIBRATION
+            HOW THE V8 AUDIT WORKS
           </h3>
           <p className="text-xs">
-            The **V8 Self-Auditing Framework** enforces systematic feedback loops, destroying opaque predictions. Instead of simply generating signals, the platform logs the exact technical states at the time of trade creation (IV, Greeks, VWAP alignment, GEX positioning, RSI structures) and verifies the outcome.
+            The V8 Audit Log records the exact market conditions at trade entry (IV, Greeks, VWAP, GEX, RSI) and then checks the actual outcome. This shows whether the model's predictions matched reality.
           </p>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3 font-mono text-[11px] text-zinc-400 mt-2">
             <div className="bg-black p-2.5 rounded-sm border border-black">
-              <span className="text-[#E5E5E5] block font-bold mb-1 uppercase">⚡ PROBABILITY CALIBRATION</span>
-              If actual outcomes (win rates) under-perform predicted scores, the ML Correction Layer recursively dampens and downgrades statistical values on active widgets, matching probability to empirical feedback.
+              <span className="text-[#E5E5E5] block font-bold mb-1 uppercase">⚡ MODEL ACCURACY (BRIER)</span>
+              When actual win rates fall below predicted probabilities, the model lowers its confidence scores to match what the data shows.
             </div>
             <div className="bg-black p-2.5 rounded-sm border border-black">
-              <span className="text-[#E5E5E5] block font-bold mb-1 uppercase">🔍 CRITICAL THESIS RANKINGS</span>
-              Discovers signal priorities entirely from data. Tracks structural invalidation to pinpoint whether lost VWAP, Gamma Flips, or RSI decays trigger early failures most frequently.
+              <span className="text-[#E5E5E5] block font-bold mb-1 uppercase">🔍 FAILURE BREAKDOWN</span>
+              Identifies which signal -- lost VWAP, gamma flip, or RSI reversal -- most often preceded a losing trade, ranked by frequency.
             </div>
           </div>
         </div>
@@ -300,7 +300,7 @@ export function SelfAuditingLog({ trades, activeScore, onClearTrades }: V8Auditi
               : 'text-zinc-400 hover:bg-black hover:text-zinc-200'
           }`}
         >
-          📈 PERFORMANCE DASHBOARD
+          📈 PERFORMANCE
         </button>
         <button
           onClick={() => setActiveSubTab('ml')}
@@ -310,7 +310,7 @@ export function SelfAuditingLog({ trades, activeScore, onClearTrades }: V8Auditi
               : 'text-zinc-400 hover:bg-black hover:text-zinc-200'
           }`}
         >
-          🧠 COGNITIVE MACHINE LEARNING
+          🧠 MODEL ANALYSIS
         </button>
         <button
           onClick={() => setActiveSubTab('calibration')}
@@ -320,7 +320,7 @@ export function SelfAuditingLog({ trades, activeScore, onClearTrades }: V8Auditi
               : 'text-zinc-400 hover:bg-black hover:text-zinc-200'
           }`}
         >
-          🎯 PROBABILITY CALIBRATION CURVES
+          🎯 PROBABILITY CALIBRATION
         </button>
         <button
           onClick={() => setActiveSubTab('strategy')}
@@ -330,7 +330,7 @@ export function SelfAuditingLog({ trades, activeScore, onClearTrades }: V8Auditi
               : 'text-zinc-400 hover:bg-black hover:text-zinc-200'
           }`}
         >
-          💡 STRATEGY DISCOVERY ENGINE
+          💡 STRATEGY INSIGHTS
         </button>
       </div>
 
@@ -342,9 +342,9 @@ export function SelfAuditingLog({ trades, activeScore, onClearTrades }: V8Auditi
           <div className="grid grid-cols-1 md:grid-cols-4 lg:grid-cols-7 gap-3 animate-fadeIn">
             {/* KPI 1 */}
             <div className="bg-black/60 p-3 border border-black rounded-sm text-center">
-              <span className="block text-[9px] text-zinc-550 uppercase font-black">TOTAL LOGGED TRADES</span>
+              <span className="block text-[9px] text-zinc-550 uppercase font-black">TOTAL TRADES</span>
               <span className="text-2xl font-black text-[#E5E5E5] block mt-1">{trades.length}</span>
-              <span className="text-[8px] text-zinc-600 block mt-0.5 leading-tight">Birth to Death Records</span>
+              <span className="text-[8px] text-zinc-600 block mt-0.5 leading-tight">Closed + Active</span>
             </div>
 
             {/* KPI 2 */}
@@ -369,28 +369,28 @@ export function SelfAuditingLog({ trades, activeScore, onClearTrades }: V8Auditi
             <div className="bg-black/60 p-3 border border-black rounded-sm text-center">
               <span className="block text-[9px] text-zinc-550 uppercase font-black">AVG EVENT GAIN</span>
               <span className="text-2xl font-black text-[#d4d4d8] block mt-1">+{kpiStats.avgGain}%</span>
-              <span className="text-[8.5px] text-zinc-650 block mt-0.5">Option Premium Expansion</span>
+              <span className="text-[8.5px] text-zinc-650 block mt-0.5">Avg premium gained on wins</span>
             </div>
 
             {/* KPI 5 */}
             <div className="bg-black/60 p-3 border border-black rounded-sm text-center">
               <span className="block text-[9px] text-zinc-550 uppercase font-black">AVG EVENT ADVERSE</span>
               <span className="text-2xl font-black text-rose-500 block mt-1">-{kpiStats.avgDrawdown}%</span>
-              <span className="text-[8.5px] text-zinc-650 block mt-0.5">Average Drawdown Dip</span>
+              <span className="text-[8.5px] text-zinc-650 block mt-0.5">Avg loss on losing trades</span>
             </div>
 
             {/* KPI 6 */}
             <div className="bg-black/60 p-3 border border-black rounded-sm text-center">
-              <span className="block text-[9px] text-zinc-550 uppercase font-black">PROBABILITY EXPEC.</span>
+              <span className="block text-[9px] text-zinc-550 uppercase font-black">EXPECTANCY</span>
               <span className="text-2xl font-black text-amber-500 block mt-1">+{kpiStats.expectancy}%</span>
-              <span className="text-[8.5px] text-zinc-650 block mt-0.5">Performance mathematical edge</span>
+              <span className="text-[8.5px] text-zinc-650 block mt-0.5">Edge per trade on average</span>
             </div>
 
             {/* KPI 7 */}
             <div className="bg-black/60 p-3 border border-black rounded-sm text-center">
-              <span className="block text-[9px] text-zinc-550 uppercase font-black">EXPECTED VALVE ACCURACY</span>
+              <span className="block text-[9px] text-zinc-550 uppercase font-black">MODEL ACCURACY</span>
               <span className="text-2xl font-black text-[#4ADE80] block mt-1">{kpiStats.expectedValueAccuracy}%</span>
-              <span className="text-[8.5px] text-zinc-650 block mt-0.5">Probability correlation index</span>
+              <span className="text-[8.5px] text-zinc-650 block mt-0.5">Predicted vs actual win rate</span>
             </div>
           </div>
         )}
@@ -403,9 +403,9 @@ export function SelfAuditingLog({ trades, activeScore, onClearTrades }: V8Auditi
               <div className="border-b border-black pb-2">
                 <h3 className="text-xs font-bold text-[#E5E5E5] uppercase flex items-center gap-1.5">
                   <Sliders className="w-4 h-4 text-[#d4d4d8]" />
-                  DATA-DECIDED FEATURE IMPORTANCE WEIGHTS
+                  SIGNAL IMPORTANCE (BY WIN RATE IMPACT)
                 </h3>
-                <span className="text-[9.5px] text-zinc-550 block font-sans">The ML system discovered signal significance mathematically:</span>
+                <span className="text-[9.5px] text-zinc-550 block font-sans">Which indicators most often preceded a winning trade:</span>
               </div>
 
               <div className="space-y-3.5">
@@ -421,7 +421,7 @@ export function SelfAuditingLog({ trades, activeScore, onClearTrades }: V8Auditi
 
                 <div>
                   <div className="flex justify-between text-[10px] uppercase font-bold text-[#4ADE80] mb-1">
-                    <span>2. Dealer posicioning & Spot GEX Support</span>
+                    <span>2. Dealer Positioning and GEX Support</span>
                     <span className="text-[#d4d4d8]">21.8%</span>
                   </div>
                   <div className="w-full bg-black h-2 rounded-sm overflow-hidden p-0.5 border border-black">
@@ -441,7 +441,7 @@ export function SelfAuditingLog({ trades, activeScore, onClearTrades }: V8Auditi
 
                 <div>
                   <div className="flex justify-between text-[10px] uppercase font-bold text-[#4ADE80] mb-1">
-                    <span>4. Relative Volume (RVOL) Excursions</span>
+                    <span>4. Relative Volume (RVOL) Spikes</span>
                     <span className="text-[#d4d4d8]">12.2%</span>
                   </div>
                   <div className="w-full bg-black h-2 rounded-sm overflow-hidden p-0.5 border border-black">
@@ -451,7 +451,7 @@ export function SelfAuditingLog({ trades, activeScore, onClearTrades }: V8Auditi
 
                 <div>
                   <div className="flex justify-between text-[10px] uppercase font-bold text-[#4ADE80] mb-1">
-                    <span>5. RSI Cascade Traps & Stop Hunts</span>
+                    <span>5. RSI Reversals and Stop Runs</span>
                     <span className="text-[#d4d4d8]">11.1%</span>
                   </div>
                   <div className="w-full bg-black h-2 rounded-sm overflow-hidden p-0.5 border border-black">
@@ -461,7 +461,7 @@ export function SelfAuditingLog({ trades, activeScore, onClearTrades }: V8Auditi
 
                 <div>
                   <div className="flex justify-between text-[10px] uppercase font-bold text-[#4ADE80] mb-1">
-                    <span>6. Multi-Timeframe (HTF) Concordance</span>
+                    <span>6. Multi-Timeframe Alignment</span>
                     <span className="text-zinc-500">10.0%</span>
                   </div>
                   <div className="w-full bg-black h-2 rounded-sm overflow-hidden p-0.5 border border-black">
@@ -477,25 +477,25 @@ export function SelfAuditingLog({ trades, activeScore, onClearTrades }: V8Auditi
                 <div className="border-b border-black pb-2 mb-3">
                   <h3 className="text-xs font-bold text-[#E5E5E5] uppercase flex items-center gap-1.5">
                     <Cpu className="w-4 h-4 text-[#4ADE80]" />
-                    ML CORRECTION BIAS CORRECTION MODULE
+                    MODEL STATUS AND CORRECTIONS
                   </h3>
-                  <span className="text-[9.5px] text-zinc-550 block font-sans">Adaptive correction layers stabilizing current statistical models:</span>
+                  <span className="text-[9.5px] text-zinc-550 block font-sans">Current model state and adjustments based on recent trade outcomes:</span>
                 </div>
 
                 <div className="space-y-2 text-[10px] font-mono leading-relaxed">
                   <div className="flex justify-between items-center bg-black/40 p-2 border border-black rounded-sm">
-                    <span className="text-zinc-400">ACTIVATED SYSTEM MODE:</span>
-                    <span className="text-[#4ADE80] font-bold uppercase">Correction Layer Sitting Superior</span>
+                    <span className="text-zinc-400">MODEL STATUS:</span>
+                    <span className="text-[#4ADE80] font-bold uppercase">Active - Correction On</span>
                   </div>
 
                   <div className="flex justify-between items-center bg-black/40 p-2 border border-black rounded-sm">
-                    <span className="text-zinc-400">MODEL BIAS CALIBRATION OFFSET:</span>
-                    <span className="text-[#4ADE80] font-bold block">-1.42% (Calibration Stabilizer)</span>
+                    <span className="text-zinc-400">PROBABILITY OFFSET:</span>
+                    <span className="text-[#4ADE80] font-bold block">-1.42% (auto-adjusted)</span>
                   </div>
 
                   <div className="flex justify-between items-center bg-black/40 p-2 border border-black rounded-sm">
-                    <span className="text-zinc-400">EXPLAINABILITY INDEX:</span>
-                    <span className="text-[#d4d4d8] font-bold block uppercase">High (Glass-box model parameters active)</span>
+                    <span className="text-zinc-400">TRANSPARENCY:</span>
+                    <span className="text-[#d4d4d8] font-bold block uppercase">High (all factors visible)</span>
                   </div>
                 </div>
 
@@ -503,24 +503,24 @@ export function SelfAuditingLog({ trades, activeScore, onClearTrades }: V8Auditi
                 <div className="bg-black/80 px-3 py-2 border border-black rounded-sm mt-3 h-[100px] overflow-y-auto text-[9.5px] text-[#4ADE80] p-1 font-mono space-y-1">
                   <div className="flex items-center gap-1">
                     <span className="text-[8px] text-zinc-650">04:14:54</span>
-                    <span className="text-zinc-400 font-bold">[ML ENGINE COMPOSER]</span>
-                    <span>Synchronizing 14 historical closed setups ...</span>
+                    <span className="text-zinc-400 font-bold">[MODEL UPDATE]</span>
+                    <span>Loading 14 closed trades ...</span>
                   </div>
                   <div className="flex items-center gap-1">
                     <span className="text-[8px] text-zinc-650">04:14:54</span>
-                    <span className="text-zinc-400 font-bold">[SYS WEIGHTS REBUILD]</span>
-                    <span>Disclosed Feature weights compiled successfully.</span>
+                    <span className="text-zinc-400 font-bold">[SIGNAL WEIGHTS]</span>
+                    <span>Signal importance scores updated.</span>
                   </div>
                   <div className="flex items-center gap-1">
                     <span className="text-[8px] text-zinc-650">04:14:55</span>
-                    <span className="text-yellow-500 font-bold">[REGIME AUTO FOCUS]</span>
-                    <span>Structure State detected: Reclaiming VWAP with elevated RVOL bias ...</span>
+                    <span className="text-yellow-500 font-bold">[MARKET CONDITION]</span>
+                    <span>Price reclaiming VWAP with elevated RVOL ...</span>
                   </div>
                 </div>
               </div>
 
               <div className="mt-3 text-zinc-500 text-[9px] leading-relaxed font-sans italic border-t border-black pt-2 flex items-center gap-1.5 select-none text-right justify-end">
-                <span>The system learns continuously as your trade actions accumulate.</span>
+                <span>Scores update each time you log a new trade.</span>
               </div>
             </div>
           </div>
@@ -531,7 +531,7 @@ export function SelfAuditingLog({ trades, activeScore, onClearTrades }: V8Auditi
           <div className="flex flex-col gap-4 animate-fadeIn">
             {/* Calibration details summary */}
             <div className="bg-black/40 border border-black rounded-sm p-4">
-              <span className="block text-[10px] text-zinc-550 uppercase mb-2 font-bold select-none">30-DAY EMPIRICAL PROBABILITY CALIBRATION LEDGER</span>
+              <span className="block text-[10px] text-zinc-550 uppercase mb-2 font-bold select-none">30-DAY PROBABILITY CALIBRATION (PREDICTED VS ACTUAL)</span>
               
               <div className="grid grid-cols-1 md:grid-cols-5 gap-3">
                 {calibrationBuckets.map((bucket, id) => (
@@ -558,8 +558,8 @@ export function SelfAuditingLog({ trades, activeScore, onClearTrades }: V8Auditi
                         bucket.calibrationState === 'Good' ? 'text-[#d4d4d8]' : 
                         bucket.calibrationState === 'Under-performing' ? 'text-rose-455 animate-pulse' : 'text-zinc-600'
                       }`}>
-                        {bucket.calibrationState === 'Good' ? 'CALIBRATED' : 
-                         bucket.calibrationState === 'Under-performing' ? 'DEMOTING MODEL' : 'COGNITIVE PENDING'}
+                        {bucket.calibrationState === 'Good' ? 'ON TARGET' :
+                         bucket.calibrationState === 'Under-performing' ? 'UNDERPERFORMING' : 'PENDING DATA'}
                       </span>
                     </div>
                   </div>
@@ -569,7 +569,7 @@ export function SelfAuditingLog({ trades, activeScore, onClearTrades }: V8Auditi
 
             {/* Target Reliability Auditing Grid */}
             <div className="bg-black/40 border border-black rounded-sm p-4">
-              <span className="block text-[10px] text-[#d4d4d8] uppercase mb-3 font-bold select-none">TARGET RELIABILITY BENCHMARK OVERVIEW</span>
+              <span className="block text-[10px] text-[#d4d4d8] uppercase mb-3 font-bold select-none">TARGET HIT RATE BREAKDOWN</span>
               
               <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                 {targetReliability.map((target, idx) => (
@@ -609,19 +609,19 @@ export function SelfAuditingLog({ trades, activeScore, onClearTrades }: V8Auditi
               <div className="border-b border-black pb-2">
                 <h3 className="text-xs font-bold text-[#E5E5E5] uppercase flex items-center gap-1.5">
                   <Award className="w-4 h-4 text-[#d4d4d8]" />
-                  AUTOMATICALLY DISCOVERED TRADING ADVANTAGES
+                  BEST CONDITIONS FOUND IN YOUR TRADE HISTORY
                 </h3>
-                <span className="text-[9px] text-zinc-500 font-sans block mt-0.5">Machine intelligence parsed all historic index profiles to reveal ultimate configurations:</span>
+                <span className="text-[9px] text-zinc-500 font-sans block mt-0.5">Conditions that produced the best results based on your logged trades:</span>
               </div>
 
               <div className="space-y-2.5 text-[10.5px]">
                 <div className="flex justify-between items-start gap-4 border-b border-black pb-2">
-                  <span className="text-zinc-500 font-bold uppercase min-w-[130px]">GOLDEN VOLATILITY BRACKET</span>
+                  <span className="text-zinc-500 font-bold uppercase min-w-[130px]">BEST MARKET CONDITION</span>
                   <span className="text-[#E5E5E5] text-right font-mono">{insights.bestRegime}</span>
                 </div>
 
                 <div className="flex justify-between items-start gap-4 border-b border-black pb-2">
-                  <span className="text-zinc-500 font-bold uppercase min-w-[110px]">ULTIMATE GEX CORNER</span>
+                  <span className="text-zinc-500 font-bold uppercase min-w-[110px]">BEST GEX SETUP</span>
                   <span className="text-[#d4d4d8] text-right font-semibold">{insights.bestGexState}</span>
                 </div>
 
@@ -631,7 +631,7 @@ export function SelfAuditingLog({ trades, activeScore, onClearTrades }: V8Auditi
                 </div>
 
                 <div className="flex justify-between items-start gap-4 border-b border-black pb-2">
-                  <span className="text-zinc-500 font-bold uppercase min-w-[110px]">PREFERREED RSI DEPTH</span>
+                  <span className="text-zinc-500 font-bold uppercase min-w-[110px]">BEST RSI CONDITION</span>
                   <span className="text-[#4ADE80] text-right">{insights.bestRsiStructure}</span>
                 </div>
               </div>
@@ -642,20 +642,20 @@ export function SelfAuditingLog({ trades, activeScore, onClearTrades }: V8Auditi
               <div className="border-b border-black pb-2">
                 <h3 className="text-xs font-bold text-[#E5E5E5] uppercase flex items-center gap-1.5">
                   <AlertTriangle className="w-4 h-4 text-rose-500" />
-                  FAILURE ANALYSIS & ENVIRONMENTAL THREAT VECTORS
+                  FAILURE ANALYSIS: WHY TRADES LOST
                 </h3>
-                <span className="text-[9px] text-zinc-550 block font-sans">Identifying where setups failed, mapping out zones of severe decay:</span>
+                <span className="text-[9px] text-zinc-550 block font-sans">Which conditions were present on losing trades, ranked by frequency:</span>
               </div>
 
               <div className="grid grid-cols-2 gap-3 pb-3">
                 <div className="bg-black/50 p-3 border border-black rounded-sm text-center">
-                  <span className="text-[8.5px] text-zinc-550 uppercase block font-black">MOST COMMON FAIL CRITERIA</span>
+                  <span className="text-[8.5px] text-zinc-550 uppercase block font-black">TOP LOSS REASON</span>
                   <span className="text-xs text-[#F87171] font-black tracking-wide block mt-1.5 font-mono uppercase bg-rose-950/20 py-1.5 rounded-sm border border-[#F87171]/30">
                     {failureStats.mainThreat}
                   </span>
                 </div>
                 <div className="bg-black/50 p-3 border border-black rounded-sm text-center flex flex-col justify-center">
-                  <span className="text-[8.5px] text-zinc-550 uppercase block font-black">TOTAL AUDITED ABORTIONS</span>
+                  <span className="text-[8.5px] text-zinc-550 uppercase block font-black">TOTAL LOSING TRADES</span>
                   <span className="text-xl font-bold text-rose-500 block">
                     {failureStats.totalFails} <span className="text-[9px] text-zinc-500">of {trades.length}</span>
                   </span>
@@ -663,7 +663,7 @@ export function SelfAuditingLog({ trades, activeScore, onClearTrades }: V8Auditi
               </div>
 
               <div className="space-y-1.5 text-[9.5px]">
-                <span className="text-[8.5px] text-zinc-550 block uppercase font-bold mb-1">Top Trigger Threat Frequency Breakdown:</span>
+                <span className="text-[8.5px] text-zinc-550 block uppercase font-bold mb-1">Loss Reason Frequency:</span>
                 {failureStats.sorted.slice(0, 4).map((f, id) => (
                   <div key={id} className="flex justify-between items-center text-zinc-400 font-mono">
                     <span className="flex items-center gap-1">
@@ -690,7 +690,7 @@ export function SelfAuditingLog({ trades, activeScore, onClearTrades }: V8Auditi
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-black pb-3 mb-3.5">
           <div className="flex items-center gap-2">
             <Zap className="w-4 h-4 text-[#4ADE80] animate-bounce" />
-            <span className="text-xs font-bold text-[#E5E5E5] uppercase tracking-wider">PERMANENT TRADE LIFECYCLE REGISTER</span>
+            <span className="text-xs font-bold text-[#E5E5E5] uppercase tracking-wider">FULL TRADE HISTORY</span>
           </div>
 
           <div className="flex items-center gap-3.5 flex-wrap sm:flex-nowrap">
@@ -713,7 +713,7 @@ export function SelfAuditingLog({ trades, activeScore, onClearTrades }: V8Auditi
 
             {/* Filter by outcomes */}
             <div className="flex items-center gap-1.5">
-              <span className="text-[#888888] text-[10px] uppercase">DIAGNOSTIC OUTCOME:</span>
+              <span className="text-[#888888] text-[10px] uppercase">OUTCOME:</span>
               <select
                 value={filterOutcome}
                 onChange={(e) => setFilterOutcome(e.target.value)}
@@ -736,20 +736,20 @@ export function SelfAuditingLog({ trades, activeScore, onClearTrades }: V8Auditi
                 <th className="p-2.5">Trade ID</th>
                 <th className="p-2.5">Contract</th>
                 <th className="p-2.5">Direction</th>
-                <th className="p-2.5">Greek Profile</th>
-                <th className="p-2.5">Initial VWAP State</th>
+                <th className="p-2.5">Greeks</th>
+                <th className="p-2.5">VWAP State</th>
                 <th className="p-2.5">IV Spot</th>
                 <th className="p-2.5 text-center">T1/T2/T3/Stretch</th>
                 <th className="p-2.5">Drawdown / Gain</th>
                 <th className="p-2.5">Duration</th>
-                <th className="p-2.5 text-right">Audit Outcome</th>
+                <th className="p-2.5 text-right">Outcome</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-zinc-900 text-zinc-350">
               {filteredTrades.length === 0 ? (
                 <tr>
                   <td colSpan={10} className="p-6 text-center text-zinc-600 uppercase italic tracking-widest text-[9px]">
-                    No matching quantitative lifecycle logs present in the verified auditor registry
+                    No trades match the selected filters
                   </td>
                 </tr>
               ) : (

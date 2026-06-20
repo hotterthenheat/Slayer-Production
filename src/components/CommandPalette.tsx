@@ -49,19 +49,19 @@ export function CommandPalette() {
     const go = (tab: any) => () => { setActiveTab(tab); close(); };
     const nav: Command[] = [
       { id: 'nav-home', title: 'Go to Home', hint: 'View', keywords: 'ecosystem intro dashboard', run: go('home') },
-      { id: 'nav-skyvision', title: 'Go to SkysVision — Decision Engine', hint: 'View', keywords: 'scanner setups score', run: go('skyvision') },
-      { id: 'nav-pinpoint', title: 'Go to Pinpoint AI — Dealer Flow', hint: 'View', keywords: 'gamma gex dealer flow', run: go('pinpoint') },
+      { id: 'nav-skyvision', title: 'Go to SkyVision — Trade Dashboard', hint: 'View', keywords: 'scanner setups score', run: go('skyvision') },
+      { id: 'nav-pinpoint', title: 'Go to Pinpoint GEX — Dealer Flow', hint: 'View', keywords: 'gamma gex dealer flow', run: go('pinpoint') },
       { id: 'nav-dealerflow', title: 'Go to Dealer Flow', hint: 'View', keywords: 'gex dex vex walls', run: go('dealerflow') },
-      { id: 'nav-auditor', title: 'Go to Trust Archive & Registry', hint: 'View', keywords: 'audit trades history registry', run: go('auditor') },
-      { id: 'nav-community', title: 'Go to Research & Community', hint: 'View', keywords: 'community slayer capital discord', run: go('community') },
+      { id: 'nav-auditor', title: 'Go to Trade History', hint: 'View', keywords: 'audit trades history registry', run: go('auditor') },
+      { id: 'nav-community', title: 'Go to Community', hint: 'View', keywords: 'community slayer capital discord', run: go('community') },
       { id: 'nav-workspace', title: 'Go to Workspace', hint: 'View', keywords: 'widgets layout panels', run: go('workspace') },
       { id: 'nav-settings', title: 'Open Settings', hint: 'View', keywords: 'preferences theme account profile', run: go('settings') },
       { id: 'nav-subscription', title: 'View Plans & Pricing', hint: 'Billing', keywords: 'upgrade subscribe tier plan', run: go('subscription') },
     ];
     const actions: Command[] = [
       { id: 'act-search', title: 'Open Global Search', hint: 'Action', keywords: 'find prism filter', run: () => { setIsGlobalSearchOpen(true); close(); } },
-      { id: 'act-calls', title: 'Set Contract Type → Calls', hint: 'Action', keywords: 'call c bullish', run: () => { setSelectedOptionType('C'); close(); } },
-      { id: 'act-puts', title: 'Set Contract Type → Puts', hint: 'Action', keywords: 'put p bearish', run: () => { setSelectedOptionType('P'); close(); } },
+      { id: 'act-calls', title: 'Set Contract Type to Calls', hint: 'Action', keywords: 'call c bullish', run: () => { setSelectedOptionType('C'); close(); } },
+      { id: 'act-puts', title: 'Set Contract Type to Puts', hint: 'Action', keywords: 'put p bearish', run: () => { setSelectedOptionType('P'); close(); } },
     ];
     const symbols: Command[] = ASSET_LIST.map(a => ({
       id: 'sym-' + a.ticker,

@@ -181,7 +181,7 @@ export function DealerFlowMap({ profile, decimals }: DealerFlowMapProps) {
           .attr('fill', '#38bdf8')
           .attr('text-anchor', 'middle')
           .attr('class', 'font-mono text-[9px] font-black uppercase tracking-widest')
-          .text('MAGNET PIN');
+          .text('PIN MAGNET');
     }
 
     // Adding Spotlight

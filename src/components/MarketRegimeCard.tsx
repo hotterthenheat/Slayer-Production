@@ -18,9 +18,9 @@ export function MarketRegimeCard({ score, assetTicker }: MarketRegimeProps) {
   
   // Trend stability status
   let trendStability = 'STRONG';
-  if (score.structureQuality >= 8) trendStability = 'EXCEPTIONAL FORCE';
-  else if (score.structureQuality >= 5) trendStability = 'STABLE ACCELERATION';
-  else if (score.structureQuality >= 3) trendStability = 'CONSOLIDATIVE NOISE';
+  if (score.structureQuality >= 8) trendStability = 'VERY STRONG';
+  else if (score.structureQuality >= 5) trendStability = 'STABLE';
+  else if (score.structureQuality >= 3) trendStability = 'CHOPPY';
   else trendStability = 'DETERIORATING';
 
   // Volatility and momentum indications
@@ -36,7 +36,7 @@ export function MarketRegimeCard({ score, assetTicker }: MarketRegimeProps) {
           </div>
           <span className="text-[10px] tracking-[0.25em] text-[#888888] font-bold uppercase">GLOBAL MARKET REGIME</span>
         </div>
-        <span className="text-[8px] text-[#888888]">REFRESH FEED: STREAM ACTIVE</span>
+        <span className="text-[8px] text-[#888888]">LIVE</span>
       </div>
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -57,7 +57,7 @@ export function MarketRegimeCard({ score, assetTicker }: MarketRegimeProps) {
             <span>Confidence</span>
           </div>
           <span className="text-sm font-bold tracking-tight text-[#E5E5E5]">
-            {confidence}% <span className="text-[10px] text-[#888888] font-normal">ACCURACY LEVEL</span>
+            {confidence}%
           </span>
         </div>
 
@@ -79,7 +79,7 @@ export function MarketRegimeCard({ score, assetTicker }: MarketRegimeProps) {
             <span>Participation</span>
           </div>
           <span className="text-xs font-bold tracking-wide text-[#4ADE80] uppercase">
-            {score.volumeExpansion >= 7 ? 'HIGH PARTICIPATION' : score.volumeExpansion >= 4 ? 'STABLE REGIME' : 'MUTED ACTION'}
+            {score.volumeExpansion >= 7 ? 'HIGH VOLUME' : score.volumeExpansion >= 4 ? 'NORMAL VOLUME' : 'LOW VOLUME'}
           </span>
         </div>
       </div>

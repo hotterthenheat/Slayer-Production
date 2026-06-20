@@ -29,9 +29,9 @@ export function InstitutionalDashboard() {
           <div className="flex justify-between items-center mb-3 border-b border-black/60 pb-2">
             <div className="flex items-center gap-2">
               <Hexagon className="w-4 h-4 text-sky-400" />
-              <span className="text-[10px] font-black tracking-widest uppercase text-sky-400">DEALER BEHAVIOR ENGINE</span>
+              <span className="text-[10px] font-black tracking-widest uppercase text-sky-400">DEALER BEHAVIOR</span>
             </div>
-            <span className="text-[8px] bg-black border border-sky-900/50 text-sky-500 px-1.5 py-0.5 rounded-sm">V11 CORE</span>
+            <span className="text-[8px] bg-black border border-sky-900/50 text-sky-500 px-1.5 py-0.5 rounded-sm">V11</span>
           </div>
           
           <div className="space-y-3">
@@ -42,7 +42,7 @@ export function InstitutionalDashboard() {
               </div>
               <div>
                 <span className="text-[8px] text-zinc-500 tracking-wider">CURRENT REGIME</span>
-                <div className={`text-[12px] font-bold text-[#E5E5E5]`}>{dealerBias === 'LONG GAMMA' ? 'RANGE BOUND' : 'DYNAMIC INSTABILITY'}</div>
+                <div className={`text-[12px] font-bold text-[#E5E5E5]`}>{dealerBias === 'LONG GAMMA' ? 'RANGE BOUND' : 'TRENDING / UNSTABLE'}</div>
               </div>
             </div>
             
@@ -78,7 +78,7 @@ export function InstitutionalDashboard() {
           <div className="flex justify-between items-center mb-3 border-b border-black/60 pb-2">
             <div className="flex items-center gap-2">
               <Activity className="w-4 h-4 text-amber-500" />
-              <span className="text-[10px] font-black tracking-widest uppercase text-amber-500">FORCED HEDGING DETECTOR</span>
+              <span className="text-[10px] font-black tracking-widest uppercase text-amber-500">FORCED HEDGING ALERT</span>
             </div>
           </div>
           
@@ -101,7 +101,7 @@ export function InstitutionalDashboard() {
             
             <div className="bg-amber-500/10 border border-amber-500/30 rounded-sm p-3 mt-1 flex justify-between items-center">
               <div>
-                <span className="text-[8px] text-amber-400/70 font-black tracking-widest uppercase block mb-0.5">POTENTIAL PRICE IMPACT</span>
+                <span className="text-[8px] text-amber-400/70 font-black tracking-widest uppercase block mb-0.5">PRICE IMPACT</span>
                 <span className="text-[14px] text-amber-400 font-black uppercase">HIGH SEVERITY</span>
               </div>
               <Activity className="w-6 h-6 text-amber-500 shadow-amber-500/50 animate-pulse" />
@@ -150,7 +150,7 @@ export function InstitutionalDashboard() {
         <div className="bg-[#0a0a0c] border border-black p-4 rounded-lg shadow-lg">
           <div className="flex items-center gap-2 mb-4 border-b border-black/60 pb-2">
             <TrendingUp className="w-4 h-4 text-[#4ADE80]" />
-            <span className="text-[10px] font-black tracking-widest uppercase text-[#4ADE80]">STRIKE ACCUMULATION ENGINE</span>
+            <span className="text-[10px] font-black tracking-widest uppercase text-[#4ADE80]">STRIKE ACCUMULATION</span>
           </div>
           
           <div className="grid grid-cols-3 gap-3 mb-4">
@@ -193,7 +193,7 @@ export function InstitutionalDashboard() {
         <div className="bg-[#0a0a0c] border border-black p-4 rounded-lg flex flex-col shadow-lg">
           <div className="flex items-center gap-2 mb-4 border-b border-black/60 pb-2">
             <Layers className="w-4 h-4 text-indigo-400" />
-            <span className="text-[10px] font-black tracking-widest uppercase text-indigo-400">INSTITUTIONAL POSITION SIMULATOR</span>
+            <span className="text-[10px] font-black tracking-widest uppercase text-indigo-400">POSITION SIMULATOR</span>
           </div>
           
           <div className="flex items-center justify-between bg-black/40 border border-black rounded-sm p-3 mb-4">
@@ -232,7 +232,7 @@ export function InstitutionalDashboard() {
               <div className="absolute left-0 top-0 bottom-0 w-1 bg-fuchsia-500" />
               <div className="pl-2">
                 <span className="text-[11px] font-bold text-zinc-200 block tracking-wide">If Dealer Hedge Accelerates</span>
-                <span className="text-[8.5px] text-zinc-500 uppercase font-bold tracking-wider mt-0.5 block">Forced Buying Delta</span>
+                <span className="text-[8.5px] text-zinc-500 uppercase font-bold tracking-wider mt-0.5 block">Dealer Forced Buying</span>
               </div>
               <div className="text-right">
                 <span className="text-[8px] text-zinc-500 uppercase font-bold tracking-widest block mb-0.5">Expected Premium</span>
@@ -250,7 +250,7 @@ export function InstitutionalDashboard() {
         <div className="bg-[#0a0a0c] border border-black p-4 rounded-lg flex flex-col shadow-lg">
           <div className="flex items-center gap-2 mb-4 border-b border-black/60 pb-2">
             <Activity className="w-4 h-4 text-orange-500" />
-            <span className="text-[10px] font-black tracking-widest uppercase text-orange-500">CATALYST ENGINE</span>
+            <span className="text-[10px] font-black tracking-widest uppercase text-orange-500">CATALYSTS</span>
           </div>
 
           <div className="flex-1 flex flex-col gap-3">
@@ -306,14 +306,14 @@ export function InstitutionalDashboard() {
         <div className="lg:col-span-2 bg-[#0a0a0c] border border-black p-4 rounded-lg shadow-lg">
           <div className="flex items-center gap-2 mb-4 border-b border-black/60 pb-2">
             <Terminal className="w-4 h-4 text-zinc-400" />
-            <span className="text-[10px] font-black tracking-widest uppercase text-zinc-300">RAW INSTITUTIONAL EXPOSURES</span>
+            <span className="text-[10px] font-black tracking-widest uppercase text-zinc-300">DEALER EXPOSURES</span>
           </div>
           
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
             {/* Real derived numbers mixed with mocked representation for UI */}
             <MetricBox label="Gamma Exposure" value={profile?.netGex ? (profile.netGex / 1e9).toFixed(2) + "B" : "1.23B"} color={profile?.netGex >= 0 ? "text-[#4ADE80]" : "text-[#F87171]"} />
-            <MetricBox label="Vanna Exposure" value="-124.5M" color="text-amber-400" />
-            <MetricBox label="Charm Exposure" value="-42.1M" color="text-[#F87171]" />
+            <MetricBox label="Vanna (dealer hedging)" value="-124.5M" color="text-amber-400" />
+            <MetricBox label="Charm (delta decay)" value="-42.1M" color="text-[#F87171]" />
             <MetricBox label="Color Exposure" value="+1.2M" color="text-sky-400" />
             <MetricBox label="Vomma Exposure" value="842K" color="text-fuchsia-400" />
             <MetricBox label="Volga Exposure" value="-312K" color="text-rose-400" />
@@ -332,7 +332,7 @@ export function InstitutionalDashboard() {
           <div className="flex items-center justify-between mb-4 border-b border-indigo-900/40 pb-2 z-10">
             <div className="flex items-center gap-2">
               <Zap className="w-4 h-4 text-indigo-400" />
-              <span className="text-[10px] font-black tracking-widest uppercase text-indigo-400">SLAYER MARKET ENGINE</span>
+              <span className="text-[10px] font-black tracking-widest uppercase text-indigo-400">MARKET ANALYSIS</span>
             </div>
             <span className="w-2 h-2 rounded-full bg-indigo-500 shadow-[0_0_8px_rgba(99,102,241,0.8)] animate-pulse" />
           </div>
@@ -366,7 +366,7 @@ export function InstitutionalDashboard() {
               </div>
               <div className="pt-2 mt-auto">
                 <div className="flex justify-between items-end mb-1">
-                  <span className="text-[8.5px] text-zinc-400 uppercase tracking-widest font-bold">Expected Continuation</span>
+                  <span className="text-[8.5px] text-zinc-400 uppercase tracking-widest font-bold">Prob. of Continuation</span>
                   <span className="text-[11px] text-[#F87171] font-black">68%</span>
                 </div>
                 <div className="w-full bg-black border border-black/80 h-1.5 rounded-full overflow-hidden">

@@ -50,13 +50,13 @@ export const FeatureMatrix: React.FC<FeatureMatrixProps> = ({ onEnterApp }) => {
         
         <div className="text-center space-y-3">
           <span className="text-[10px] font-mono tracking-[0.35em] text-[#A1A1AA] uppercase font-black bg-black px-4 py-1.5 border border-black rounded-md inline-block">
-            INTELLIGENCE OVERVIEW
+            PLATFORM OVERVIEW
           </span>
           <h2 className="text-3xl md:text-5xl font-black text-[#E5E5E5] tracking-tight uppercase font-sans">
-            Dynamic Ecosystem Core
+            What Is Inside
           </h2>
           <p className="text-zinc-500 text-xs md:text-sm font-mono max-w-xl mx-auto">
-            Scroll to explore the sub-second automated option analysis engines powering the institutional workspace.
+            Scroll to explore the tools powering the platform.
           </p>
         </div>
 
@@ -75,9 +75,9 @@ export const FeatureMatrix: React.FC<FeatureMatrixProps> = ({ onEnterApp }) => {
               <div className="flex justify-between items-center border-b border-black/60 pb-3 mb-4 font-mono text-[9px] text-zinc-505">
                 <span className="font-extrabold uppercase text-[#E5E5E5] tracking-widest flex items-center gap-1.5">
                   <span className="w-1.5 h-1.5 rounded-full bg-indigo-400 animate-pulse" />
-                  SKYSEYE v1.2 // CORE CONTRACT COCKPIT
+                  SKYSEYE v1.2 // TRADE DASHBOARD
                 </span>
-                <span className="uppercase text-zinc-650 font-bold">LIVE MODEL RENDER</span>
+                <span className="uppercase text-zinc-650 font-bold">LIVE</span>
               </div>
 
               <div className="space-y-4">
@@ -121,11 +121,11 @@ export const FeatureMatrix: React.FC<FeatureMatrixProps> = ({ onEnterApp }) => {
                 {/* Dynamic mathematical visuals */}
                 <div className="bg-black/40 p-3 border border-black/40 rounded-xl space-y-2">
                   <div className="flex justify-between items-center text-[8.5px] font-mono">
-                    <span className="text-zinc-500 uppercase font-bold">Implied Hedge Compression:</span>
+                    <span className="text-zinc-500 uppercase font-bold">Dealer Hedge Pressure:</span>
                     <span className="text-indigo-450 font-bold uppercase text-[8px] leading-relaxed">
-                      {activeGoalpost === 0 && 'Stable Consolidation'}
-                      {activeGoalpost === 1 && 'Hedge Squeeze Triggered'}
-                      {activeGoalpost === 2 && 'Fully Skybound Corridor'}
+                      {activeGoalpost === 0 && 'Stable'}
+                      {activeGoalpost === 1 && 'Squeeze Underway'}
+                      {activeGoalpost === 2 && 'Full Breakout Range'}
                     </span>
                   </div>
                   <div className="w-full bg-black h-1.5 rounded-full overflow-hidden">
@@ -156,37 +156,37 @@ export const FeatureMatrix: React.FC<FeatureMatrixProps> = ({ onEnterApp }) => {
             <div className="space-y-2">
               <span className="text-[9px] font-mono tracking-[0.2em] text-[#d4d4d8] uppercase font-bold flex items-center gap-1.5">
                 <Sliders className="w-3 h-3 text-indigo-455" />
-                DECISION ENGINE
+                TRADE DASHBOARD
               </span>
               <h3 className="text-2xl md:text-3xl font-black text-[#E5E5E5] uppercase tracking-tight font-sans">
-                Sky's Eye Cockpit
+                Sky's Eye Dashboard
               </h3>
             </div>
             <p className="text-zinc-400 text-xs md:text-sm leading-relaxed font-sans font-light">
-              Our institutional deep contract cockpit. Skyeye isolates specific index option contracts that feature dynamic model mispricings and optimal hedging corridors.
+              The main trade analysis screen. SkyVision highlights specific index option contracts showing potential mispricings and strong dealer hedging setups.
             </p>
-            
+
             <ul className="space-y-3 font-mono text-[9px] md:text-[10px] text-zinc-350">
               <li className="flex gap-2 items-start">
                 <Check className="w-3.5 h-3.5 text-[#d4d4d8] shrink-0 mt-0.5 animate-pulse" />
-                <span><strong className="text-[#E5E5E5] uppercase font-black mr-1">Option Goalposts:</strong> Automatically mapped exits utilizing real-time dealer speed constraints.</span>
+                <span><strong className="text-[#E5E5E5] uppercase font-black mr-1">Option Goalposts:</strong> Auto-calculated take-profit targets based on live dealer positioning.</span>
               </li>
               <li className="flex gap-2 items-start">
                 <Check className="w-3.5 h-3.5 text-[#d4d4d8] shrink-0 mt-0.5 animate-pulse" />
-                <span><strong className="text-[#E5E5E5] uppercase font-black mr-1">Conviction Meter:</strong> 100-point multi-factor model evaluating direction flow and Greeks profile.</span>
+                <span><strong className="text-[#E5E5E5] uppercase font-black mr-1">Conviction Score:</strong> 100-point score combining flow direction and the option Greeks profile.</span>
               </li>
               <li className="flex gap-2 items-start">
                 <Check className="w-3.5 h-3.5 text-[#d4d4d8] shrink-0 mt-0.5 animate-pulse" />
-                <span><strong className="text-[#E5E5E5] uppercase font-black mr-1">Volatility Suppression:</strong> Visualizes areas where hedge activity buffers or accelerates price action.</span>
+                <span><strong className="text-[#E5E5E5] uppercase font-black mr-1">IV Pressure Zones:</strong> Shows where dealer hedging is absorbing or amplifying price moves.</span>
               </li>
             </ul>
 
             <div className="pt-2">
-              <button 
+              <button
                 onClick={handleLaunchToSkyeye}
                 className="px-5 py-3 bg-white hover:bg-black text-black font-extrabold uppercase tracking-widest text-[9px] rounded-lg transition-all duration-300 flex items-center gap-1.5 cursor-pointer hover:scale-[1.01]"
               >
-                <span>Launch SkyEye Cockpit</span>
+                <span>Open SkyVision</span>
                 <ArrowRight className="w-3.5 h-3.5" />
               </button>
             </div>
@@ -206,14 +206,14 @@ export const FeatureMatrix: React.FC<FeatureMatrixProps> = ({ onEnterApp }) => {
             <div className="space-y-2">
               <span className="text-[9px] font-mono tracking-[0.2em] text-[#d4d4d8] uppercase font-bold flex items-center gap-1.5">
                 <Compass className="w-3 h-3 text-[#4ADE80]" />
-                MARKET MAP GPS
+                GEX MAP
               </span>
               <h3 className="text-2xl md:text-3xl font-black text-[#E5E5E5] uppercase tracking-tight font-sans">
-                Pinpoint GEX Matrix
+                Pinpoint GEX Chart
               </h3>
             </div>
             <p className="text-zinc-400 text-xs md:text-sm leading-relaxed font-sans font-light">
-              Every transaction requires an options market maker to take the other side, and they must immediately hedge. Pinpoint tracks these institutional commitments to reveal specific key barriers.
+              Every options trade forces the market maker to hedge. Pinpoint tracks those hedges by strike so you can see exactly where dealer buying and selling pressure sits.
             </p>
             
             <ul className="space-y-3 font-mono text-[9px] md:text-[10px] text-zinc-350">
@@ -232,11 +232,11 @@ export const FeatureMatrix: React.FC<FeatureMatrixProps> = ({ onEnterApp }) => {
             </ul>
 
             <div className="pt-2">
-              <button 
+              <button
                 onClick={() => handleLaunchToTab('pinpoint')}
                 className="px-5 py-3 bg-black hover:bg-black text-[#E5E5E5] border border-black font-extrabold uppercase tracking-widest text-[9px] rounded-lg transition-all duration-300 flex items-center gap-1.5 cursor-pointer hover:scale-[1.01]"
               >
-                <span>Launch Pinpoint Matrix</span>
+                <span>Open Pinpoint GEX</span>
                 <ArrowRight className="w-3.5 h-3.5" />
               </button>
             </div>
@@ -255,9 +255,9 @@ export const FeatureMatrix: React.FC<FeatureMatrixProps> = ({ onEnterApp }) => {
               <div className="flex justify-between items-center border-b border-black/60 pb-3 mb-4 font-mono text-[9px] text-zinc-500">
                 <span className="font-extrabold uppercase text-[#E5E5E5] tracking-widest flex items-center gap-1.5">
                   <span className="w-1.5 h-1.5 rounded-full bg-black/40 animate-pulse" />
-                  PINPOINT // ACTIVE GEX SPECTRUM GRAPH
+                  PINPOINT // GEX BY STRIKE
                 </span>
-                <span className="uppercase text-zinc-650 font-bold">LIVE RENDER</span>
+                <span className="uppercase text-zinc-650 font-bold">LIVE</span>
               </div>
 
               {/* Simulated GEX Strike Histogram bar layout */}
@@ -319,9 +319,9 @@ export const FeatureMatrix: React.FC<FeatureMatrixProps> = ({ onEnterApp }) => {
               <div className="flex justify-between items-center border-b border-black/60 pb-3 mb-4 font-mono text-[9px] text-zinc-500">
                 <span className="font-extrabold uppercase text-[#E5E5E5] tracking-widest flex items-center gap-1.5">
                   <span className="w-1.5 h-1.5 rounded-full bg-black animate-pulse" />
-                  TRUST REGISTER // COMPLIANT HISTORICAL ARCHIVE
+                  TRADE HISTORY ARCHIVE
                 </span>
-                <span className="uppercase text-zinc-650 font-bold">AUDIT RENDER</span>
+                <span className="uppercase text-zinc-650 font-bold">AUDITED</span>
               </div>
 
               {/* Cryptographic rolling table */}
@@ -370,28 +370,28 @@ export const FeatureMatrix: React.FC<FeatureMatrixProps> = ({ onEnterApp }) => {
             <div className="space-y-2">
               <span className="text-[9px] font-mono tracking-[0.2em] text-[#d4d4d8] uppercase font-bold flex items-center gap-1.5">
                 <Database className="w-3 h-3 text-zinc-500" />
-                PERMANENT PROOF REGISTER
+                VERIFIED TRADE HISTORY
               </span>
               <h3 className="text-2xl md:text-3xl font-black text-[#E5E5E5] uppercase tracking-tight font-sans">
                 The Trust Ledger
               </h3>
             </div>
             <p className="text-zinc-400 text-xs md:text-sm leading-relaxed font-sans font-light">
-              No deleted calls, no photoshopped gains. Every single signal dispatched to subscribers is permanently indexed in our cryptographically signed public trust journal.
+              No deleted calls, no edited screenshots. Every signal sent to subscribers is permanently recorded in a publicly verifiable trade log.
             </p>
-            
+
             <ul className="space-y-3 font-mono text-[9px] md:text-[10px] text-zinc-350">
               <li className="flex gap-2 items-start">
                 <Check className="w-3.5 h-3.5 text-[#d4d4d8] shrink-0 mt-0.5 animate-pulse" />
-                <span><strong className="text-[#E5E5E5] uppercase font-black mr-1">Cryptographic Logs:</strong> Fully immutable trade signatures hashed on-chain at milliseconds speed.</span>
+                <span><strong className="text-[#E5E5E5] uppercase font-black mr-1">Signed Trade Logs:</strong> Every alert is timestamped and signed so results cannot be altered.</span>
               </li>
               <li className="flex gap-2 items-start">
                 <Check className="w-3.5 h-3.5 text-[#d4d4d8] shrink-0 mt-0.5 animate-pulse" />
-                <span><strong className="text-[#E5E5E5] uppercase font-black mr-1">Model Accuracy:</strong> Instantly check historical performance specs against exact entry ranges.</span>
+                <span><strong className="text-[#E5E5E5] uppercase font-black mr-1">Historical Accuracy:</strong> Check past performance against the exact entry prices sent to subscribers.</span>
               </li>
               <li className="flex gap-2 items-start">
                 <Check className="w-3.5 h-3.5 text-[#d4d4d8] shrink-0 mt-0.5 animate-pulse" />
-                <span><strong className="text-[#E5E5E5] uppercase font-black mr-1">Complete Transparency:</strong> Open auditable trails designed strictly to meet SEC disclosure benchmarks.</span>
+                <span><strong className="text-[#E5E5E5] uppercase font-black mr-1">Full Transparency:</strong> Open audit trail built to meet SEC disclosure standards.</span>
               </li>
             </ul>
 
@@ -420,37 +420,37 @@ export const FeatureMatrix: React.FC<FeatureMatrixProps> = ({ onEnterApp }) => {
             <div className="space-y-2">
               <span className="text-[9px] font-mono tracking-[0.2em] text-[#d4d4d8] uppercase font-bold flex items-center gap-1.5">
                 <MessageSquare className="w-3 h-3 text-[#5865F2]" />
-                COMMUNITY ALERT HUD
+                DISCORD ALERTS
               </span>
               <h3 className="text-2xl md:text-3xl font-black text-[#E5E5E5] uppercase tracking-tight font-sans">
-                Slayer Labs Discord Webhooks
+                Discord Trade Alerts
               </h3>
             </div>
             <p className="text-zinc-400 text-xs md:text-sm leading-relaxed font-sans font-light">
-              Get high-conviction decision analytics immediately in your pocket. Our cloud routing servers push automated webhook alerts into Discord chat instantly as clusters are discovered.
+              Get trade alerts straight to your phone via Discord. Automated alerts are sent to the channel the moment a setup is detected.
             </p>
-            
+
             <ul className="space-y-3 font-mono text-[9px] md:text-[10px] text-zinc-350">
               <li className="flex gap-2 items-start">
                 <Check className="w-3.5 h-3.5 text-[#d4d4d8] shrink-0 mt-0.5 animate-pulse" />
-                <span><strong className="text-[#E5E5E5] uppercase font-black mr-1">Zero Lag Dispatches:</strong> Directly routed from our back-end calculation cluster to chat API gates.</span>
+                <span><strong className="text-[#E5E5E5] uppercase font-black mr-1">Instant Delivery:</strong> Alerts go straight from the server to Discord with no manual step.</span>
               </li>
               <li className="flex gap-2 items-start">
                 <Check className="w-3.5 h-3.5 text-[#d4d4d8] shrink-0 mt-0.5 animate-pulse" />
-                <span><strong className="text-[#E5E5E5] uppercase font-black mr-1">Structured Alerts:</strong> Complete guidelines specifying targets, entry zone limits, and stop losses.</span>
+                <span><strong className="text-[#E5E5E5] uppercase font-black mr-1">Clear Alert Format:</strong> Each alert includes the target, entry range, take-profit levels, and stop loss.</span>
               </li>
               <li className="flex gap-2 items-start">
                 <Check className="w-3.5 h-3.5 text-[#d4d4d8] shrink-0 mt-0.5 animate-pulse" />
-                <span><strong className="text-[#E5E5E5] uppercase font-black mr-1">Professional Network:</strong> Collaborate live in real-time with an active network of options traders.</span>
+                <span><strong className="text-[#E5E5E5] uppercase font-black mr-1">Active Community:</strong> Chat live with other options traders in the server.</span>
               </li>
             </ul>
 
             <div className="pt-2">
-              <button 
+              <button
                 onClick={() => handleLaunchToTab('community')}
                 className="px-5 py-3 bg-black hover:bg-black text-[#E5E5E5] border border-black font-extrabold uppercase tracking-widest text-[9px] rounded-lg transition-all duration-300 flex items-center gap-1.5 cursor-pointer hover:scale-[1.01]"
               >
-                <span>Connect Alert Channels</span>
+                <span>Open Discord</span>
                 <ArrowRight className="w-3.5 h-3.5" />
               </button>
             </div>
@@ -468,7 +468,7 @@ export const FeatureMatrix: React.FC<FeatureMatrixProps> = ({ onEnterApp }) => {
               <div className="absolute top-0 left-0 right-0 h-1 bg-[#5865F2]" />
               <div className="flex justify-between items-center border-b border-black/60 pb-3 mb-4 font-mono text-[9px] text-[#A1A1AA]">
                 <span className="font-extrabold uppercase text-[#E5E5E5] tracking-widest flex items-center gap-1.5">
-                  <span className="font-bold text-[#E5E5E5] bg-[#5865F2] px-2 py-0.5 rounded-sm text-[7px] leading-relaxed">DISCORD_HUD</span>
+                  <span className="font-bold text-[#E5E5E5] bg-[#5865F2] px-2 py-0.5 rounded-sm text-[7px] leading-relaxed">DISCORD</span>
                   #spx-realtime-alerts webhook
                 </span>
                 <span className="uppercase text-zinc-650 font-bold">CLIENT CONNECTED</span>
@@ -493,10 +493,10 @@ export const FeatureMatrix: React.FC<FeatureMatrixProps> = ({ onEnterApp }) => {
                 {/* Main Embed section */}
                 <div className="bg-black border-l-4 border-[#d4d4d8] p-3.5 rounded-r-md space-y-2 text-xs">
                   <div className="font-mono text-[10.5px] font-black text-[#d4d4d8] uppercase">
-                    🚨 SPX MOMENTUM GRID SIGNAL: CONVICTION SECURED
+                    🚨 SPX ALERT: HIGH-SCORE SETUP FOUND
                   </div>
                   <p className="text-[#4ADE80] text-[10.5px] font-light leading-snug">
-                    High-speed options order-flow clustering detected on institutional SPX grids. Volatility showing compression patterns above key support.
+                    Large options order flow detected on SPX. IV is compressing above key support.
                   </p>
                   
                   <div className="grid grid-cols-2 gap-2 mt-2 pt-2 border-t border-black font-mono text-[9.5px]">
@@ -538,9 +538,9 @@ export const FeatureMatrix: React.FC<FeatureMatrixProps> = ({ onEnterApp }) => {
               <div className="flex justify-between items-center border-b border-black/60 pb-3 mb-4 font-mono text-[9px] text-zinc-500">
                 <span className="font-extrabold uppercase text-[#E5E5E5] tracking-widest flex items-center gap-1.5">
                   <span className="w-1.5 h-1.5 rounded-full bg-black/40 animate-pulse" />
-                  ECOLOGICAL QUANT FLOW // CONTINUOUS SWEEPS
+                  DEALER FLOW // LIVE SWEEPS
                 </span>
-                <span className="uppercase text-zinc-650 font-bold">LIVE RENDER</span>
+                <span className="uppercase text-zinc-650 font-bold">LIVE</span>
               </div>
 
               {/* Simulated live sweeps ticker flow */}
@@ -598,37 +598,37 @@ export const FeatureMatrix: React.FC<FeatureMatrixProps> = ({ onEnterApp }) => {
             <div className="space-y-2">
               <span className="text-[9px] font-mono tracking-[0.2em] text-[#d4d4d8] uppercase font-bold flex items-center gap-1.5">
                 <Activity className="w-3 h-3 text-[#4ADE80]" />
-                FLOW MONITOR
+                ORDER FLOW
               </span>
               <h3 className="text-2xl md:text-3xl font-black text-[#E5E5E5] uppercase tracking-tight font-sans">
-                Dealer Flow Sweep Engine
+                Live Order-Flow Monitor
               </h3>
             </div>
             <p className="text-zinc-400 text-xs md:text-sm leading-relaxed font-sans font-light">
-              Follow the whale entries that force index swings. Our Dealer Flow Stream continuously indexes institutional block sweep purchases on all major indexing options grids.
+              See the large trades that move index prices. The Dealer Flow feed watches for institutional block sweeps across major index options and flags them as they print.
             </p>
-            
+
             <ul className="space-y-3 font-mono text-[9px] md:text-[10px] text-zinc-350">
               <li className="flex gap-2 items-start">
                 <Check className="w-3.5 h-3.5 text-[#d4d4d8] shrink-0 mt-0.5 animate-pulse" />
-                <span><strong className="text-[#E5E5E5] uppercase font-black mr-1">Whale Block Flagging:</strong> Isolate multi-million dollar sweeps forcing quick dealer hedging offsets.</span>
+                <span><strong className="text-[#E5E5E5] uppercase font-black mr-1">Large Block Alerts:</strong> Flags multi-million dollar sweeps that force dealers to hedge quickly.</span>
               </li>
               <li className="flex gap-2 items-start">
                 <Check className="w-3.5 h-3.5 text-[#d4d4d8] shrink-0 mt-0.5 animate-pulse" />
-                <span><strong className="text-[#E5E5E5] uppercase font-black mr-1">Velocity Indicators:</strong> Tracks sweep rate accelerations to spotlight breakout triggers immediately.</span>
+                <span><strong className="text-[#E5E5E5] uppercase font-black mr-1">Sweep Rate Tracker:</strong> Watches how fast sweeps accelerate to catch breakout moves early.</span>
               </li>
               <li className="flex gap-2 items-start">
                 <Check className="w-3.5 h-3.5 text-[#d4d4d8] shrink-0 mt-0.5 animate-pulse" />
-                <span><strong className="text-[#E5E5E5] uppercase font-black mr-1">Buyer Aggregation:</strong> Compiles sub-order streams to compute genuine conviction values.</span>
+                <span><strong className="text-[#E5E5E5] uppercase font-black mr-1">Aggregated Flow Score:</strong> Rolls up split orders to show the true buyer conviction level.</span>
               </li>
             </ul>
 
             <div className="pt-2">
-              <button 
+              <button
                 onClick={() => handleLaunchToTab('dealerflow')}
                 className="px-5 py-3 bg-black hover:bg-black text-[#E5E5E5] border border-black font-extrabold uppercase tracking-widest text-[9px] rounded-lg transition-all duration-300 flex items-center gap-1.5 cursor-pointer hover:scale-[1.01]"
               >
-                <span>Stream Dealer Sweeps</span>
+                <span>Open Dealer Flow</span>
                 <ArrowRight className="w-3.5 h-3.5" />
               </button>
             </div>

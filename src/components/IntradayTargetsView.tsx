@@ -55,10 +55,10 @@ export function IntradayTargetsView({ profile, ticker, decimals }: IntradayTarge
          <div>
            <h2 className="text-[13px] font-black tracking-widest text-[#e4e4e7] uppercase flex items-center gap-2">
              <Target className="w-4 h-4 text-[#4ADE80]" />
-             Strategic Intraday Nodes
+             Key Intraday Strikes
            </h2>
            <p className="text-[9px] text-zinc-500 uppercase tracking-widest mt-1">
-             Algorithmic isolation of high-magnetism strikes based on order flow & dealer repositioning.
+             High-OI strikes where dealer hedging creates strong price magnets.
            </p>
          </div>
          <div className="bg-black border border-black px-3.5 py-2 rounded-lg flex items-center gap-3">
@@ -72,7 +72,7 @@ export function IntradayTargetsView({ profile, ticker, decimals }: IntradayTarge
       {targets.length === 0 ? (
         <div className="py-16 text-center bg-black/40 border border-black rounded-lg flex flex-col items-center justify-center">
           <Activity className="w-8 h-8 text-zinc-800 animate-pulse mb-3" />
-          <div className="text-[10px] text-zinc-500 uppercase tracking-widest font-black">No Convergence Nodes Detected</div>
+          <div className="text-[10px] text-zinc-500 uppercase tracking-widest font-black">No Key Strikes Detected</div>
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
@@ -129,7 +129,7 @@ export function IntradayTargetsView({ profile, ticker, decimals }: IntradayTarge
 
                   <div className="mb-5 flex-1">
                      <span className={`text-[9.5px] uppercase font-black tracking-widest flex items-center gap-1.5 bg-black border border-black px-2.5 py-1.5 rounded-md inline-flex ${isDominantCall ? 'text-[#4ADE80] border-black' : 'text-[#F87171] border-[#F87171]/50/40'}`}>
-                       {isDominantCall ? 'Upside Gamma Target' : 'Downside Floor Zone'}
+                       {isDominantCall ? 'Call Resistance / Upside Target' : 'Put Support / Downside Floor'}
                      </span>
                   </div>
 
@@ -152,7 +152,7 @@ export function IntradayTargetsView({ profile, ticker, decimals }: IntradayTarge
                   <div className="flex items-center justify-between mt-auto bg-black/60 border border-black/80 rounded-md p-2 relative z-10 overflow-hidden">
                      <div className={`absolute inset-0 opacity-10 ${t.netGex > 0 ? 'bg-black/40' : 'bg-rose-500'}`} />
                      <span className="text-[8px] font-black uppercase text-zinc-400 tracking-widest flex items-center gap-1.5">
-                        <Zap className="w-3 h-3 text-zinc-500" /> Net Delta Force
+                        <Zap className="w-3 h-3 text-zinc-500" /> Net GEX
                      </span>
                      <span className={`text-[12px] font-mono font-black ${t.netGex > 0 ? 'text-[#4ADE80]' : 'text-[#F87171]'}`}>
                         {t.netGex >= 1e9 || t.netGex <= -1e9 ? fmtBn(t.netGex) : fmtMn(t.netGex)}

@@ -16,10 +16,10 @@ export function InstitutionalHUD() {
   // Safely extract hud_metrics with absolute parity to server SSE payload
   const metrics = useMemo(() => {
     return serverState?.hud_metrics || {
-      reflexivity_vector: '+0.12 λ [STABLE GRAVITY PIN]',
-      systemic_fragility: 'DAMPENED / STABLE',
-      campaign_state: 'CONVERGENT GRAVITY RECONCILIATION',
-      propagation_path: 'PASSIVE THETA STREAM -> STABILIZED RANGE PIN'
+      reflexivity_vector: '+0.12 λ [STABLE]',
+      systemic_fragility: 'LOW / STABLE',
+      campaign_state: 'RANGE-BOUND / THETA DECAY',
+      propagation_path: 'THETA DECAY -> RANGE PIN'
     };
   }, [serverState?.hud_metrics]);
 
@@ -32,7 +32,7 @@ export function InstitutionalHUD() {
         textColor: 'text-[#F87171]',
         dotColor: 'bg-rose-500',
         glowColor: 'shadow-rose-500/20',
-        desc: 'Elevated tail stress. High dynamic hedging required.'
+        desc: 'Elevated stress. Dealers likely hedging aggressively.'
       };
     } else if (text.includes('SENSITIVE') || text.includes('FRICTION')) {
       return {
@@ -40,7 +40,7 @@ export function InstitutionalHUD() {
         textColor: 'text-amber-400',
         dotColor: 'bg-amber-400',
         glowColor: 'shadow-amber-400/20',
-        desc: 'Intermittent friction detected. Delta sensitivity is moderate.'
+        desc: 'Some friction detected. Delta sensitivity is moderate.'
       };
     } else {
       return {
@@ -48,7 +48,7 @@ export function InstitutionalHUD() {
         textColor: 'text-[#4ADE80]',
         dotColor: 'bg-[#4ADE80] text-black',
         glowColor: 'shadow-zinc-300/20',
-        desc: 'System remains within normal statistical bounds. Stable core.'
+        desc: 'Within normal range. Market is stable.'
       };
     }
   }, [metrics.systemic_fragility]);
@@ -73,15 +73,15 @@ export function InstitutionalHUD() {
         <div className="flex items-center gap-2">
           <Cpu className="w-4 h-4 text-[#4ADE80] animate-pulse" />
           <span className="text-[10px] text-[#E5E5E5] tracking-[0.25em] uppercase font-black font-sans leading-none">
-            INSTITUTIONAL COCKPIT HUD / SYSTEM MATRIX
+            INSTITUTIONAL METRICS HUD
           </span>
         </div>
         <div className="flex items-center gap-4 text-[8px] font-mono text-zinc-400 tracking-wider">
           <div className="flex items-center gap-1.5 bg-white/5 px-2 py-0.5 border border-white/10 rounded-xs">
             <Terminal className="w-3 h-3 text-zinc-500" />
-            <span className="text-[#4ADE80]">STREAMING CORE: REAL-TIME SEC</span>
+            <span className="text-[#4ADE80]">LIVE FEED: REAL-TIME</span>
           </div>
-          <span className="hidden sm:inline-block">REGION: CONTINUOUS INTEGRITY S2</span>
+          <span className="hidden sm:inline-block">SESSION: US MARKET HOURS</span>
         </div>
       </div>
 
@@ -94,7 +94,7 @@ export function InstitutionalHUD() {
             <div className="flex items-center gap-1.5">
               <Compass className="w-3.5 h-3.5 text-zinc-400" />
               <span className="text-[8px] text-zinc-500 tracking-wider font-extrabold uppercase font-mono">
-                REFLEXIVITY VECTOR
+                FEEDBACK SPEED
               </span>
             </div>
             <div className="pt-1.5">
@@ -104,7 +104,7 @@ export function InstitutionalHUD() {
             </div>
           </div>
           <span className="text-[8.5px] text-zinc-400 leading-normal font-sans border-t border-white/5 pt-2">
-            Captures option feedback-loop speed and dealer delta acceleration strength.
+            How fast dealer delta adjustments are feeding back into price.
           </span>
         </div>
 
@@ -114,7 +114,7 @@ export function InstitutionalHUD() {
             <div className="flex items-center gap-1.5">
               <ShieldAlert className="w-3.5 h-3.5 text-zinc-400" />
               <span className="text-[8px] text-zinc-500 tracking-wider font-extrabold uppercase font-mono">
-                SYSTEMIC FRAGILITY
+                MARKET FRAGILITY
               </span>
             </div>
             <div className="flex items-center gap-2 pt-1.5">
@@ -135,7 +135,7 @@ export function InstitutionalHUD() {
             <div className="flex items-center gap-1.5">
               <Target className="w-3.5 h-3.5 text-zinc-400" />
               <span className="text-[8px] text-zinc-500 tracking-wider font-extrabold uppercase font-mono">
-                CAMPAIGN STATE
+                MARKET STATE
               </span>
             </div>
             <div className="pt-1.5">
@@ -145,7 +145,7 @@ export function InstitutionalHUD() {
             </div>
           </div>
           <span className="text-[8.5px] text-zinc-400 leading-normal font-sans border-t border-white/5 pt-2">
-            Translates passive and active institutional accumulations into action regimes.
+            Current market mode based on institutional positioning and order flow.
           </span>
         </div>
 
@@ -155,7 +155,7 @@ export function InstitutionalHUD() {
             <div className="flex items-center gap-1.5">
               <GitBranch className="w-3.5 h-3.5 text-zinc-400" />
               <span className="text-[8px] text-zinc-500 tracking-wider font-extrabold uppercase font-mono">
-                PROPAGATION PATH
+                FLOW PATH
               </span>
             </div>
             <div className="pt-1.5">
@@ -165,7 +165,7 @@ export function InstitutionalHUD() {
             </div>
           </div>
           <span className="text-[8.5px] text-zinc-400 leading-normal font-sans border-t border-white/5 pt-2">
-            V11 model flow-channel pathway for structural gamma and delta realignments.
+            How gamma and delta are expected to shift as price moves.
           </span>
         </div>
 

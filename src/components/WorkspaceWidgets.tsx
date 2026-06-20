@@ -68,7 +68,7 @@ const WhaleSweeps = React.memo(() => {
   const items = ['4500 SPX 7615C // $1.5M SWEEP', '900 NDX 18300P // $0.8M BLOCK', '2100 QQQ 448C // $0.6M UNUSUAL'];
   return (
     <div className="space-y-1">
-      <div className="text-[9px] text-[#A3A3A3] uppercase tracking-widest mb-1">Institutional Block Tape</div>
+      <div className="text-[9px] text-[#A3A3A3] uppercase tracking-widest mb-1">Large Order Flow</div>
       {items.map((line, i) => (
         <div key={i} className="text-[10px] text-[#E5E5E5] tabular-nums truncate border-b border-[#1F1F1F] pb-0.5">{line}</div>
       ))}
@@ -180,7 +180,7 @@ const AdminWidget = React.memo(({ kind }: { kind: 'health' | 'crm' | 'fin' }) =>
       </div>
     );
   }
-  return <div className="text-[10px] text-[#A3A3A3] tabular-nums flex items-center justify-center h-full">Admin Data Stream</div>;
+  return <div className="text-[10px] text-[#A3A3A3] tabular-nums flex items-center justify-center h-full">Admin Data</div>;
 });
 
 // Dense, Information-Rich Trading Widgets
@@ -225,7 +225,7 @@ const SkysVisionScannerWidget = React.memo(() => {
     <div className="flex flex-col h-full space-y-1">
       <div className="flex justify-between items-center bg-[#111] border border-[#1F1F1F] p-1.5 rounded-sm">
         <span className="text-[8.5px] font-black text-[#4ADE80] uppercase tracking-widest">Scanner Active <span className="animate-pulse">●</span></span>
-        <span className="text-[8.5px] font-bold text-zinc-500 uppercase">Filtered: High Probability</span>
+        <span className="text-[8.5px] font-bold text-zinc-500 uppercase">High Probability Setups</span>
       </div>
       <MockTerminalTable headers={['Ticker', 'Direction', 'Strike', 'Edge', 'Flow', 'Status']} rows={data} />
     </div>

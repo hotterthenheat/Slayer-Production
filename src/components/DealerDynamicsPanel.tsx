@@ -29,7 +29,7 @@ export function DealerDynamicsPanel() {
   if (!dd) {
     return (
       <div className="rounded-lg border border-black/60 bg-black/40 p-4 text-center">
-        <p className="text-[10px] uppercase tracking-widest text-zinc-500 animate-pulse">Computing dealer dynamics…</p>
+        <p className="text-[10px] uppercase tracking-widest text-zinc-500 animate-pulse">Loading dealer dynamics…</p>
       </div>
     );
   }
@@ -54,15 +54,15 @@ export function DealerDynamicsPanel() {
       <div className="flex items-center gap-2">
         <Activity className="w-4 h-4 text-[#C084FC]" />
         <h2 className="text-xs font-black tracking-widest uppercase text-[#E5E5E5]">Dealer Dynamics — {selectedAsset?.ticker}</h2>
-        <span className="text-[8px] text-zinc-500 uppercase tracking-widest ml-auto">vanna · charm · migration · vacuums · walls</span>
+        <span className="text-[8px] text-zinc-500 uppercase tracking-widest ml-auto">hedging flow · time decay · gamma · strike shift · walls</span>
       </div>
 
       {/* Vanna + Charm + Gamma + Migration */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-        <Tile label="Vanna Hedge Flow" value={v.hedgeFlow} sub={`${v.trend} · ${fmtK(v.net)}`} tone={v.hedgeFlow === 'SUPPORTIVE' ? '#4ADE80' : v.hedgeFlow === 'PRESSURING' ? '#F87171' : '#60A5FA'} active />
-        <Tile label="Charm Decay Bias" value={c.bias} sub={`${fmtK(c.netPerDay)}/day · ${Math.round(c.intensity * 100)}% int`} tone={dirTone(c.bias)} active />
-        <Tile label="Gamma Hedging" value={g.state.replace('_', ' ')} sub={`vel ${fmtK(g.velocity)}`} tone={g.state === 'ADDING_HEDGES' ? '#4ADE80' : g.state === 'REMOVING_HEDGES' ? '#F87171' : '#60A5FA'} active />
-        <Tile label="Strike Migration" value={m.direction} sub={`CoM ${m.shift >= 0 ? '+' : ''}${num(m.shift, decimals)}`} tone={dirTone(m.direction)} active={m.direction !== 'STABLE'} />
+        <Tile label="Vanna (dealer hedging)" value={v.hedgeFlow} sub={`${v.trend} · ${fmtK(v.net)}`} tone={v.hedgeFlow === 'SUPPORTIVE' ? '#4ADE80' : v.hedgeFlow === 'PRESSURING' ? '#F87171' : '#60A5FA'} active />
+        <Tile label="Charm (time decay of hedges)" value={c.bias} sub={`${fmtK(c.netPerDay)}/day · ${Math.round(c.intensity * 100)}% intensity`} tone={dirTone(c.bias)} active />
+        <Tile label="Dealer gamma hedging" value={g.state.replace('_', ' ')} sub={`rate ${fmtK(g.velocity)}`} tone={g.state === 'ADDING_HEDGES' ? '#4ADE80' : g.state === 'REMOVING_HEDGES' ? '#F87171' : '#60A5FA'} active />
+        <Tile label="Strike migration (where dealer gamma is shifting)" value={m.direction} sub={`Center ${m.shift >= 0 ? '+' : ''}${num(m.shift, decimals)}`} tone={dirTone(m.direction)} active={m.direction !== 'STABLE'} />
       </div>
 
       {/* Wall strength + liquidity vacuums */}
@@ -81,12 +81,12 @@ export function DealerDynamicsPanel() {
         </div>
 
         <div className="flex flex-col gap-2">
-          <div className="flex items-center gap-2"><Wind className="w-3 h-3 text-zinc-400" /><h3 className="text-[9px] font-black tracking-widest uppercase text-zinc-400">Liquidity Vacuums</h3></div>
+          <div className="flex items-center gap-2"><Wind className="w-3 h-3 text-zinc-400" /><h3 className="text-[9px] font-black tracking-widest uppercase text-zinc-400">Liquidity Vacuums (fast-move zones)</h3></div>
           <div className="grid grid-cols-2 gap-2">
             <Tile label="Nearest Above" value={fmtZone(vac.nearestAbove)} sub={vac.nearestAbove ? `${(vac.nearestAbove.widthPct * 100).toFixed(1)}% gap · ${Math.round(vac.nearestAbove.score * 100)}%` : 'none'} tone="#F87171" active={!!vac.nearestAbove} />
             <Tile label="Nearest Below" value={fmtZone(vac.nearestBelow)} sub={vac.nearestBelow ? `${(vac.nearestBelow.widthPct * 100).toFixed(1)}% gap · ${Math.round(vac.nearestBelow.score * 100)}%` : 'none'} tone="#4ADE80" active={!!vac.nearestBelow} />
           </div>
-          <span className="text-[8px] text-zinc-600 leading-tight">Thin OI/GEX/volume bands — price tends to move fast through these (explosive-move targets).</span>
+          <span className="text-[8px] text-zinc-600 leading-tight">Thin OI and volume gaps — price can move quickly through these zones.</span>
         </div>
       </div>
 

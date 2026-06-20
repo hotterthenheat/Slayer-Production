@@ -106,33 +106,33 @@ export function AlertsView() {
       id: 'alt-5a21',
       timestamp: '14:22:04',
       priority: 'CRITICAL',
-      type: 'LIQUIDITY SWEEP',
-      message: 'Institutional sweep void detected immediately below SPX 7620 node. Net dealer GEX shelter buffers shifted 15% lower.',
+      type: 'LARGE SWEEP DETECTED',
+      message: 'Institutional sweep printed just below SPX 7620. Dealer GEX support has shifted 15% lower.',
       source: 'CBOE DIRECT FEED'
     },
     {
       id: 'alt-12b4',
       timestamp: '14:15:30',
       priority: 'HIGH',
-      type: 'EXPECTED RANGE EXCURSION',
-      message: 'Spot price deviated past first standard boundary threshold. Underlying volatility index expanding rapidly.',
-      source: 'VOLATILITY PIPELINE'
+      type: 'PRICE OUTSIDE EXPECTED RANGE',
+      message: 'Spot price broke past the first standard deviation boundary. IV is expanding quickly.',
+      source: 'IV MONITOR'
     },
     {
       id: 'alt-88c9',
       timestamp: '14:02:11',
       priority: 'MEDIUM',
-      type: 'GAMMA FLIP SHIFT',
-      message: 'Dealer gamma profile rebalancing near active strike nodes. Re-hedging pressures build on short positions.',
-      source: 'GEX SKEW ENGINE'
+      type: 'GAMMA FLIP',
+      message: 'Dealer gamma is rebalancing near key strikes. Re-hedging pressure is building on short positions.',
+      source: 'GEX FEED'
     },
     {
       id: 'alt-09f1',
       timestamp: '13:58:15',
       priority: 'LOW',
-      type: 'TIME DECAY COMPILING',
-      message: 'Theta parameters accelerated on front-month QQQ expiration sets as market enters consolidation block.',
-      source: 'SURFACE MATRIX'
+      type: 'THETA DECAY NOTE',
+      message: 'Theta is accelerating on front-month QQQ as the market consolidates near expiration.',
+      source: 'IV SURFACE'
     }
   ]);
 
@@ -145,36 +145,36 @@ export function AlertsView() {
         id: `alt-${Math.random().toString(36).substring(2, 6)}`,
         timestamp: time,
         priority: 'CRITICAL',
-        type: 'TAIL EXCURSION WARNING',
-        message: `Tail Risk VaR exceeded 95% boundaries on ${selectedAsset.ticker} index. Dynamic hedge safeguards activated.`,
-        source: 'RISK CONTROL ENGINE'
+        type: 'TAIL RISK WARNING',
+        message: `${selectedAsset.ticker} moved past the 95% VaR threshold. Hedge activity triggered.`,
+        source: 'RISK MONITOR'
       };
     } else if (priority === 'HIGH') {
       newAlert = {
         id: `alt-${Math.random().toString(36).substring(2, 6)}`,
         timestamp: time,
         priority: 'HIGH',
-        type: 'MOMENTUM VELOCITY ALIGNMENT',
-        message: `High Timeframe trend agreement confirmed on ${selectedAsset.ticker}. Execution signals registered on V11.`,
-        source: 'COPTIC TRACKER'
+        type: 'MOMENTUM ALIGNMENT',
+        message: `${selectedAsset.ticker} trend is aligned across timeframes. Setup score elevated.`,
+        source: 'TREND TRACKER'
       };
     } else if (priority === 'MEDIUM') {
       newAlert = {
         id: `alt-${Math.random().toString(36).substring(2, 6)}`,
         timestamp: time,
         priority: 'MEDIUM',
-        type: 'VOLUME PROFILE SPIKE',
-        message: `Trading volume expanded 3.2x normal standards over 5-minute index blocks. Spreads consolidating inside nodes.`,
-        source: 'CME BLOCK SCANNER'
+        type: 'VOLUME SPIKE',
+        message: `Volume expanded 3.2x the 5-minute average. Spreads tightening near key strikes.`,
+        source: 'BLOCK SCANNER'
       };
     } else {
       newAlert = {
         id: `alt-${Math.random().toString(36).substring(2, 6)}`,
         timestamp: time,
         priority: 'LOW',
-        type: 'FEED SYNC NOTICE',
-        message: `Direct clearing socket latency checked at 0.82 seconds. All data coordinates synchronized perfectly.`,
-        source: 'TELEMETRY'
+        type: 'FEED STATUS',
+        message: `Data feed latency checked at 0.82 seconds. All feeds synced.`,
+        source: 'FEED STATUS'
       };
     }
 
@@ -200,12 +200,12 @@ export function AlertsView() {
         <div className="flex gap-2 items-center">
           <Terminal className="w-4 h-4 text-[#4ADE80] animate-pulse" />
           <span className="text-[9.5px] text-[#4ADE80] uppercase tracking-widest font-black">
-            SLAYER PRIORITIZED ALERTS COCKPIT // REALTIME SIGNAL STREAM
+            SLAYER ALERTS // LIVE SIGNAL STREAM
           </span>
         </div>
         <div className="flex items-center gap-1.5 bg-black/40 p-1 px-1.5 border border-white/5 rounded-lg">
           <span className="text-[8.5px] uppercase tracking-widest text-[#4ADE80] px-2 font-black">
-            LIVE TELEMETRY ACTIVE
+            LIVE
           </span>
         </div>
       </div>
@@ -225,7 +225,7 @@ export function AlertsView() {
                   <span>Multiple Trades Found</span>
                 </div>
                 <h2 className="text-xl md:text-2xl font-black text-[#E5E5E5] font-sans uppercase tracking-tight">
-                  OPTION DISCOVERY CLUSTER DETECTED
+                  MULTIPLE SETUPS FOUND
                 </h2>
               </div>
               <div className="bg-amber-400/10 text-amber-300 font-extrabold border border-amber-400/20 px-3 py-1 rounded-lg text-sm font-mono uppercase tracking-widest shrink-0">
@@ -234,7 +234,7 @@ export function AlertsView() {
             </div>
 
             <p className="text-[11px] font-sans text-zinc-400 leading-relaxed text-left max-w-3xl">
-              The automated quantitative engine has surfaced **{bestTradesList.length} trades** with exceptional ratings. In accordance with system safety constraints, execution is restricted to <span className="text-[#E5E5E5] font-bold">one isolated contract at a time</span> to avoid overlapping GEX hedge correlation. Select one option setup from the cluster below to lock the focused 100% Best Trade:
+              {bestTradesList.length} high-scoring setups are active right now. Focus on <span className="text-[#E5E5E5] font-bold">one contract at a time</span> to avoid overlapping GEX exposure. Pick a setup below to lock it as your primary alert:
             </p>
 
             {/* List of high confidence options during "Multiple Found" mode */}
@@ -247,22 +247,22 @@ export function AlertsView() {
                 >
                   <div className="flex justify-between items-start">
                     <div>
-                      <span className="text-[8px] text-zinc-500 font-black block tracking-widest uppercase">OPTION TARGET</span>
+                      <span className="text-[8px] text-zinc-500 font-black block tracking-widest uppercase">CONTRACT</span>
                       <span className="text-lg font-black text-[#E5E5E5]">{trade.ticker} {trade.strike} {trade.type}</span>
                     </div>
                     <div className="text-right">
-                      <span className="text-[8.5px] text-zinc-500 block">HEALTH INDEX</span>
+                      <span className="text-[8.5px] text-zinc-500 block">SCORE</span>
                       <span className="text-[#4ADE80] font-black text-sm">{trade.health}/100</span>
                     </div>
                   </div>
 
                   <div className="grid grid-cols-2 gap-2 text-[10.5px] py-1 border-t border-white/5">
                     <div>
-                      <span className="text-zinc-500 text-[8px] block">MARKET VALUE</span>
+                      <span className="text-zinc-500 text-[8px] block">MARKET PRICE</span>
                       <span className="text-[#4ADE80] font-bold">${trade.marketPrice.toFixed(2)}</span>
                     </div>
                     <div>
-                      <span className="text-zinc-500 text-[8px] block">EXPECTED ZONE</span>
+                      <span className="text-zinc-500 text-[8px] block">ENTRY ZONE</span>
                       <span className="text-[#4ADE80] font-bold">{trade.entryZone}</span>
                     </div>
                   </div>
@@ -295,7 +295,7 @@ export function AlertsView() {
                     <span>100% Best Trade Locked</span>
                   </div>
                   <h2 className="text-2xl font-black text-[#E5E5E5] font-sans uppercase tracking-tight">
-                    OPTIMAL CONSOLIDATING EXPOSURE BOUNDS
+                    TOP TRADE ALERT
                   </h2>
                 </div>
                 
@@ -316,7 +316,7 @@ export function AlertsView() {
                 {/* Left Block Contract Name */}
                 <div className="bg-black/40 border border-white/5 p-5 rounded-2xl flex flex-col justify-between text-left space-y-4 shadow-md md:col-span-1">
                   <div>
-                    <span className="text-[8px] text-zinc-500 tracking-wider uppercase block">LOCKED CONTRACT</span>
+                    <span className="text-[8px] text-zinc-500 tracking-wider uppercase block">CONTRACT</span>
                     <span className="text-2xl font-black text-[#E5E5E5] font-sans block tracking-tight uppercase leading-snug pt-1">
                       {activeTrade.ticker} {activeTrade.strike}{activeTrade.isCall ? 'C' : 'P'}
                     </span>
@@ -325,10 +325,10 @@ export function AlertsView() {
                   
                   <div className="pt-2 border-t border-white/5 flex justify-between items-end">
                     <div>
-                      <span className="text-[8.5px] text-zinc-500 uppercase block">DECISION SCORES</span>
-                      <span className="text-xl font-extrabold text-[#d4d4d8]">{activeTrade.health} <span className="text-[10px] text-zinc-550 font-bold uppercase">SECURED</span></span>
+                      <span className="text-[8.5px] text-zinc-500 uppercase block">SCORE</span>
+                      <span className="text-xl font-extrabold text-[#d4d4d8]">{activeTrade.health}</span>
                     </div>
-                    <span className="text-[8px] text-zinc-650 uppercase font-black">V11 PLATINUM CODE</span>
+                    <span className="text-[8px] text-zinc-650 uppercase font-black">TOP PICK</span>
                   </div>
                 </div>
 
@@ -350,7 +350,7 @@ export function AlertsView() {
                       <span className="text-[#E5E5E5] font-bold text-sm">${activeTrade.modelValue.toFixed(2)}</span>
                     </div>
                     <div>
-                      <span className="text-zinc-500 text-[8.5px] block uppercase">MISPRICING SKEW</span>
+                      <span className="text-zinc-500 text-[8.5px] block uppercase">MISPRICING</span>
                       <span className="text-indigo-400 font-black text-sm">
                         +{(((activeTrade.modelValue - activeTrade.marketPrice) / activeTrade.marketPrice) * 100).toFixed(0)}%
                       </span>
@@ -374,14 +374,14 @@ export function AlertsView() {
               {/* Action buttons with high glow */}
               <div className="border-t border-white/10 pt-4 flex flex-col sm:flex-row justify-between items-center gap-4">
                 <p className="text-[10px] font-sans text-zinc-450 leading-relaxed text-left">
-                  This 100% Isolated Trade is verified by net historical delta flow curves. Rebalancing weights are mathematically calibrated against extreme tail risk, achieving near-perfect GEX asymmetry.
+                  This is the highest-scoring setup right now, based on historical flow data and GEX positioning.
                 </p>
-                
-                <button 
+
+                <button
                   onClick={() => handleActivateOnWorkspace(activeTrade)}
                   className="w-full sm:w-auto px-6 py-3 bg-white hover:bg-black text-black font-extrabold uppercase text-[10px] tracking-widest rounded-xl transition-all duration-300 flex items-center justify-center gap-2 cursor-pointer shadow-lg hover:scale-[1.02] shrink-0"
                 >
-                  <span>Activate Option Terminal Workspace</span>
+                  <span>Open in SkyVision</span>
                   <ArrowRight className="w-4 h-4 text-black" />
                 </button>
               </div>
@@ -399,13 +399,13 @@ export function AlertsView() {
           
           <div className="border-b border-black pb-3 flex justify-between items-start">
             <div className="text-left space-y-1">
-              <span className="text-[8px] text-[#d4d4d8] tracking-[0.25em] font-black block">SYSTEM SEVERITY DISPATCH QUEUE</span>
+              <span className="text-[8px] text-[#d4d4d8] tracking-[0.25em] font-black block">LIVE ALERT QUEUE</span>
               <h2 className="text-xl font-black text-[#E5E5E5] uppercase tracking-tight font-sans">
-                TELEMETRY PRIORITY BOARD
+                PRIORITY ALERTS
               </h2>
             </div>
             <div className="text-right bg-rose-400/10 text-[#F87171] font-extrabold border border-rose-400/20 px-3 py-1 rounded-lg text-sm">
-              <span className="text-zinc-500 uppercase text-[8px] block">CRITICAL STATUS</span>
+              <span className="text-zinc-500 uppercase text-[8px] block">CRITICAL</span>
               <span className="font-extrabold text-[13px] block">
                 {telemetryAlerts.filter(a => a.priority === 'CRITICAL').length}
               </span>
@@ -413,7 +413,7 @@ export function AlertsView() {
           </div>
 
           <p className="text-[11px] font-sans text-zinc-400 leading-relaxed max-w-3xl font-light text-left">
-            Dynamic threshold alerts sorted automatically on mathematical relevance. When a spot boundary slips or GEX imbalances cross established risk parameters, direct updates compile here in real-time.
+            Alerts are sorted by priority. When price breaks a key level or GEX shifts beyond normal limits, a new alert appears here automatically.
           </p>
 
           {/* Incident stream layout list block */}
@@ -458,7 +458,7 @@ export function AlertsView() {
             ) : (
               <div className="py-12 text-center text-zinc-600 text-[10.5px] bg-black/30 border border-white/5 rounded-2xl uppercase">
                 <CheckSquare className="w-5 text-zinc-700 mx-auto mb-1 animate-bounce" />
-                <span>Zero prioritized incidents currently on telemetry stream channels.</span>
+                <span>No alerts at the moment.</span>
               </div>
             )}
           </div>
@@ -472,10 +472,10 @@ export function AlertsView() {
         {/* Simulate Controls */}
         <div className="apple-glass p-5 rounded-2xl flex flex-col justify-between text-left space-y-4 shadow-md">
           <div className="space-y-1">
-            <span className="text-[8px] text-[#d4d4d8] block uppercase font-bold tracking-widest">COMMAND SIGNALS SIMULATOR</span>
-            <h4 className="text-xs font-black text-[#E5E5E5] uppercase">DEPLOYS THRESHOLDS</h4>
+            <span className="text-[8px] text-[#d4d4d8] block uppercase font-bold tracking-widest">ALERT SIMULATOR</span>
+            <h4 className="text-xs font-black text-[#E5E5E5] uppercase">TRIGGER A TEST ALERT</h4>
             <p className="text-[10.5px] text-zinc-400 font-sans leading-relaxed">
-              Manually deploy simulated market events downstream. Verify compliance speeds, SMPP dispatch routing, and prioritizations.
+              Fire a simulated alert at any priority level to test how the queue looks and responds.
             </p>
           </div>
 
@@ -514,10 +514,10 @@ export function AlertsView() {
         {/* Action console clears */}
         <div className="apple-glass p-5 rounded-2xl flex flex-col justify-between text-left space-y-4 shadow-md">
           <div className="space-y-1">
-            <span className="text-[8px] text-[#d4d4d8] block uppercase font-bold tracking-widest">INCIDENT CONSOLE HOUSEKEEPING</span>
-            <h4 className="text-xs font-black text-[#E5E5E5] uppercase">FLUSH COMPLIANT LEDGERS</h4>
+            <span className="text-[8px] text-[#d4d4d8] block uppercase font-bold tracking-widest">CLEAR ALERTS</span>
+            <h4 className="text-xs font-black text-[#E5E5E5] uppercase">CLEAR THE QUEUE</h4>
             <p className="text-[10.5px] text-zinc-400 font-sans leading-relaxed">
-              Clear current active logs. This performing action maintains local isolation parameters, purging transient setup events completely on active node sessions.
+              Remove all alerts from the list. This only clears your current view and does not affect stored history.
             </p>
           </div>
 
@@ -527,7 +527,7 @@ export function AlertsView() {
             className="w-full py-2.5 bg-black/60 hover:bg-black/90 border border-white/10 hover:border-red-400/40 text-[#F87171] hover:text-red-400 font-extrabold uppercase rounded-lg cursor-pointer transition-all disabled:opacity-35 text-[8.5px] tracking-widest flex items-center justify-center gap-1"
           >
             <Trash2 className="w-3.5 h-3.5" />
-            <span>FLUSH TELEMETRY ALERTS QUEUE</span>
+            <span>CLEAR ALL ALERTS</span>
           </button>
         </div>
 
@@ -538,25 +538,25 @@ export function AlertsView() {
         <div className="flex items-center gap-2 border-b border-white/5 pb-2">
           <Layers className="w-3.5 h-3.5 text-zinc-550" />
           <h4 className="text-[10.5px] font-black text-[#E5E5E5] uppercase tracking-wider block">
-            CBOE Deviation Alarm Standards
+            How Alert Thresholds Work
           </h4>
         </div>
         <div className="text-[11px] leading-relaxed text-zinc-400 font-sans space-y-2">
           <p>
-            Alarm triggers follow rigorous regulatory parameters aligned with SEC Rule 15c3-5 for high-performance visual terminal devices. System coordinates monitor continuous asset distributions using double-signed covariant algorithms, establishing immediate alarms under high-imbalance shifts:
+            Alert thresholds follow SEC Rule 15c3-5 guidelines. The system monitors asset price distributions and triggers alerts when an imbalance is detected:
           </p>
           <p>
-            A Critical notification is registered when a spot value breaks past established Standard Deviations, or if GEX dealer protection falls below 4.2 Billion Dollars in the respective contract set.
+            A Critical alert fires when spot price breaks past a standard deviation boundary, or when dealer GEX support drops below $4.2B on the relevant contract.
           </p>
         </div>
       </div>
 
       {/* 6. COCKPIT DESK STATUS BAR */}
       <div className="apple-glass min-h-[30px] p-3 rounded-xl flex items-center justify-between text-[8px] text-zinc-400 uppercase tracking-widest pl-4 font-black shadow-md">
-        <span>INCIDENTS RECONCILED ACCORDING TO CBOE TELEMETRICS</span>
+        <span>ALERTS FOLLOW CBOE STANDARDS</span>
         <div className="flex items-center gap-1.5 text-[#E5E5E5]">
           <span className="h-1.5 w-1.5 bg-[#d4d4d8] rounded-full animate-ping" />
-          <span>DESK SECURED</span>
+          <span>FEED LIVE</span>
         </div>
       </div>
 

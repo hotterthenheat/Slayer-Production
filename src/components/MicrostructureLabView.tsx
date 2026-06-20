@@ -53,7 +53,7 @@ interface MockScenario {
 const SCENARIOS: Record<string, MockScenario> = {
   gammaSqueeze: {
     name: 'FOMC Short Gamma Squeeze',
-    desc: 'Extreme Call-heavy Open Interest trigger lines force dealers to buy aggressively on upward ticks, amplifying momentum during critical FOMC afternoons.',
+    desc: 'Heavy call OI forces dealers to buy aggressively on every uptick, amplifying momentum on FOMC afternoons.',
     spotPrice: 5000,
     timeMin: 880, // 2:40 PM EST
     eventMode: 'none',
@@ -67,8 +67,8 @@ const SCENARIOS: Record<string, MockScenario> = {
     ]
   },
   liquidCollapse: {
-    name: 'Slasher Macro Panic Collapse',
-    desc: 'Unprecedented Put clustering meets zero liquidity buffers and negative power-hour MOC imbalances to trigger recursive gravitational margin-sell cascades.',
+    name: 'Macro Panic Collapse',
+    desc: 'Heavy put OI, thin liquidity, and a large sell MOC imbalance combine in the final hour, driving a rapid sell-off cascade.',
     spotPrice: 4950,
     timeMin: 955, // 3:55 PM EST (Power hour close)
     eventMode: 'extreme_event',
@@ -83,7 +83,7 @@ const SCENARIOS: Record<string, MockScenario> = {
   },
   pinTrap: {
     name: 'Lunch-Hour Pin Trap Constriction',
-    desc: 'Co-centered heavy strike straddles act as a strong magnet, locking local drift ranges tightly inside the dealer trap convexity corridor.',
+    desc: 'Large straddle OI at the same strike pins price in a tight range as dealers hedge both sides, creating a price magnet.',
     spotPrice: 5020,
     timeMin: 740, // 12:20 PM EST (Lunch vacuum)
     eventMode: 'none',
@@ -568,7 +568,7 @@ export function MicrostructureLabView() {
   const pineState = useMemo(() => {
     const isTrapActive = Math.abs(detailedSimulation.netCharm) > 1500000 && mocSide === 'neutral' && detailedSimulation.fragility < 35;
     const isAirPocket = detailedSimulation.liquidityCoeff < 0.5 || eventMode === 'extreme_event';
-    const pathsDirection = detailedSimulation.flow > 0 ? 'COUPLED SLIDE UPWARDS' : (detailedSimulation.flow < 0 ? 'GRAVITATIONAL COMPRESSION DOWNWARDS' : 'MEAN REVERSION DRIFT');
+    const pathsDirection = detailedSimulation.flow > 0 ? 'DEALERS BUYING — PRICE RISING' : (detailedSimulation.flow < 0 ? 'DEALERS SELLING — PRICE FALLING' : 'MEAN REVERSION');
     
     const trapUpper = spot * 1.002;
     const trapLower = spot * 0.998;
@@ -608,7 +608,7 @@ export function MicrostructureLabView() {
             <div className="flex items-center gap-2">
               <div className="w-2 h-2 rounded-full bg-cyan-400 animate-pulse" />
               <div className="font-sans font-black text-xs tracking-widest text-zinc-100 uppercase">
-                25-Step Recursive Hedging Cascade Pathway
+                Dealer Hedging Cascade (25-Step Simulation)
               </div>
             </div>
             
@@ -641,10 +641,10 @@ export function MicrostructureLabView() {
             {pineState.isTrapActive && (
               <div className="absolute top-4 left-6 bg-amber-500/10 border border-amber-500/20 rounded px-2 py-1 text-left select-none animate-fadeIn z-10">
                 <div className="flex items-center gap-1 font-mono text-[8px] text-amber-400 font-extrabold uppercase">
-                  <Flame className="w-2.5 h-2.5" /> DEALER TRAP INITIATED
+                  <Flame className="w-2.5 h-2.5" /> PRICE PIN ACTIVE
                 </div>
                 <div className="text-[7.5px] text-zinc-500 font-mono mt-0.5 uppercase">
-                  Spot pinned boundary: ${pineState.trapLower.toFixed(1)} – ${pineState.trapUpper.toFixed(1)}
+                  Pinned range: ${pineState.trapLower.toFixed(1)} to ${pineState.trapUpper.toFixed(1)}
                 </div>
               </div>
             )}
@@ -652,10 +652,10 @@ export function MicrostructureLabView() {
             {pineState.isAirPocket && (
               <div className="absolute bottom-4 right-6 bg-[#F87171]/10 border border-rose-500/20 rounded px-2 py-1 text-left select-none animate-pulse z-10">
                 <div className="flex items-center gap-1 font-mono text-[8px] text-[#F87171] font-extrabold uppercase">
-                  <AlertTriangle className="w-2.5 h-2.5" /> AIR POCKET DETECTED
+                  <AlertTriangle className="w-2.5 h-2.5" /> LIQUIDITY GAP (FAST-MOVE ZONE)
                 </div>
                 <div className="text-[7.5px] text-zinc-550 font-mono mt-0.5 uppercase">
-                  Low options liquidity gap matches high slide risk
+                  Thin options OI — price can move quickly through this area
                 </div>
               </div>
             )}
@@ -706,7 +706,7 @@ export function MicrostructureLabView() {
                 })}
               </svg>
             ) : (
-              <span className="text-zinc-650 text-[10px] font-mono">Diverging vectors awaiting calculation constraints</span>
+              <span className="text-zinc-650 text-[10px] font-mono">Add options above to run the simulation</span>
             )}
             
             <div className="absolute right-4 bottom-4 font-mono text-[7.5px] text-zinc-550 flex flex-col text-right">
@@ -722,31 +722,31 @@ export function MicrostructureLabView() {
               <span className={`text-xs font-black font-mono block mt-1 ${detailedSimulation.netDelta >= 0 ? 'text-[#4ADE80]' : 'text-[#F87171]'}`}>
                 {detailedSimulation.netDelta.toLocaleString(undefined, { maximumFractionDigits: 0 })}
               </span>
-              <span className="text-[6.5px] text-[#38bdf8] block tracking-wider uppercase font-mono mt-0.5">MM DELTA HEDGE</span>
+              <span className="text-[6.5px] text-[#38bdf8] block tracking-wider uppercase font-mono mt-0.5">DEALER DELTA HEDGE</span>
             </div>
 
             <div className="bg-black border border-black/60 rounded p-2.5 text-left">
-              <span className="text-[7.5px] text-zinc-550 font-extrabold uppercase tracking-widest block">Gamma Imbalance Coefficient</span>
+              <span className="text-[7.5px] text-zinc-550 font-extrabold uppercase tracking-widest block">Net Gamma (dealer hedging bias)</span>
               <span className={`text-xs font-black font-mono block mt-1 ${detailedSimulation.netGamma >= 0 ? 'text-[#4ADE80]' : 'text-[#F87171]'}`}>
                 {detailedSimulation.netGamma.toLocaleString(undefined, { maximumFractionDigits: 1 })}
               </span>
-              <span className="text-[6.5px] text-[#38bdf8] block tracking-wider uppercase font-mono mt-0.5">MM GAMMA STABILITY</span>
+              <span className="text-[6.5px] text-[#38bdf8] block tracking-wider uppercase font-mono mt-0.5">+ STABLE / - VOLATILE</span>
             </div>
 
             <div className="bg-black border border-black/60 rounded p-2.5 text-left">
-              <span className="text-[7.5px] text-zinc-550 font-extrabold uppercase tracking-widest block">Vanna Covariance Drift</span>
+              <span className="text-[7.5px] text-zinc-550 font-extrabold uppercase tracking-widest block">Vanna (IV-driven hedge flow)</span>
               <span className={`text-xs font-black font-mono block mt-1 ${detailedSimulation.netVanna >= 0 ? 'text-[#4ADE80]' : 'text-[#F87171]'}`}>
                 {detailedSimulation.netVanna.toLocaleString(undefined, { maximumFractionDigits: 1 })}
               </span>
-              <span className="text-[6.5px] text-[#38bdf8] block tracking-wider uppercase font-mono mt-0.5">IV SHIFT SENSITIVITY</span>
+              <span className="text-[6.5px] text-[#38bdf8] block tracking-wider uppercase font-mono mt-0.5">SENSITIVITY TO IV SHIFTS</span>
             </div>
 
             <div className="bg-black border border-black/60 rounded p-2.5 text-left">
-              <span className="text-[7.5px] text-zinc-550 font-extrabold uppercase tracking-widest block">Terminal Hedging Flow</span>
+              <span className="text-[7.5px] text-zinc-550 font-extrabold uppercase tracking-widest block">Final Dealer Flow ($)</span>
               <span className={`text-xs font-black font-mono block mt-1 ${detailedSimulation.flow >= 0 ? 'text-[#4ADE80]' : 'text-[#F87171]'}`}>
                 ${(detailedSimulation.flow / 1_000_000).toFixed(2)}M
               </span>
-              <span className="text-[6.5px] text-[#38bdf8] block tracking-wider uppercase font-mono mt-0.5">SQUEEZE DURATION DRIVER</span>
+              <span className="text-[6.5px] text-[#38bdf8] block tracking-wider uppercase font-mono mt-0.5">DRIVES MOVE PERSISTENCE</span>
             </div>
           </div>
           
@@ -761,7 +761,7 @@ export function MicrostructureLabView() {
               <div className="flex items-center gap-2">
                 <Sliders className="w-4 h-4 text-[#4ADE80]" />
                 <div className="font-sans font-black text-xs tracking-widest text-zinc-100 uppercase">
-                  Cascade Control Deck
+                  Simulation Controls
                 </div>
               </div>
 
@@ -781,7 +781,7 @@ export function MicrostructureLabView() {
             {/* Slider 1: Spot Price */}
             <div className="space-y-1">
               <div className="flex justify-between items-center text-[8.5px] font-mono">
-                <span className="text-zinc-450 font-extrabold uppercase">Underlying Spot (S_0)</span>
+                <span className="text-zinc-450 font-extrabold uppercase">Spot Price</span>
                 <span className="text-[#E5E5E5] font-black">${spot.toFixed(2)}</span>
               </div>
               <input
@@ -798,7 +798,7 @@ export function MicrostructureLabView() {
             {/* Slider 2: Market Session Minutes */}
             <div className="space-y-1">
               <div className="flex justify-between items-center text-[8.5px] font-mono">
-                <span className="text-zinc-450 font-extrabold uppercase">Session Minute Clock</span>
+                <span className="text-zinc-450 font-extrabold uppercase">Time of Day</span>
                 <span className="text-[#E5E5E5] font-black">{timeMin} mins</span>
               </div>
               <input
@@ -819,12 +819,12 @@ export function MicrostructureLabView() {
 
             {/* Selector 3: Event Slasher Volatility Impact */}
             <div className="space-y-1.5 pt-1">
-              <span className="text-[8.5px] text-zinc-400 font-extrabold uppercase block tracking-wider">Event Mode Slasher Impact</span>
+              <span className="text-[8.5px] text-zinc-400 font-extrabold uppercase block tracking-wider">Volatility Scenario</span>
               <div className="grid grid-cols-3 gap-1.5">
                 {[
-                  { value: 'none', label: 'STANDARD' },
+                  { value: 'none', label: 'NORMAL' },
                   { value: 'event', label: 'MACRO NEWS' },
-                  { value: 'extreme_event', label: 'SLASHER SHOCK' }
+                  { value: 'extreme_event', label: 'MARKET SHOCK' }
                 ].map(mode => (
                   <button
                     key={mode.value}
@@ -877,21 +877,21 @@ export function MicrostructureLabView() {
               <div className="bg-black/30 border border-amber-900/40 p-2 rounded flex items-center gap-2 mt-2">
                 <Clock className="w-3.5 h-3.5 text-amber-500 shrink-0" />
                 <span className="text-[8px] font-mono leading-normal text-amber-400/90 uppercase">
-                  MOC Imbalance Active (Power Hour). Delta Flow Injection: <strong className="text-[#E5E5E5]">${(detailedSimulation.mocData.delta_dollars / 1_000_000).toFixed(0)}M</strong> (Multiplier: {detailedSimulation.mocData.multiplier.toFixed(2)}x)
+                  MOC imbalance active (final 10 min). Flow injection: <strong className="text-[#E5E5E5]">${(detailedSimulation.mocData.delta_dollars / 1_000_000).toFixed(0)}M</strong> (multiplier: {detailedSimulation.mocData.multiplier.toFixed(2)}x)
                 </span>
               </div>
             ) : (
               <div className="bg-black border border-black/60 p-2 rounded text-zinc-500 text-[8px] italic text-center">
-                MOC processing offline (Strictly active between 15:50 and 16:00 EST above ${DealerFlowPhysics.MOC_IMBALANCE_THRESHOLD / 1_000_000}M).
+                MOC inactive (only applies 15:50-16:00 EST when size exceeds ${DealerFlowPhysics.MOC_IMBALANCE_THRESHOLD / 1_000_000}M).
               </div>
             )}
           </div>
 
           <div className="border-t border-black/60 pt-4 mt-4 flex items-center justify-between text-[8px] font-mono text-zinc-500">
-            <span>STRICT FORMULA (CASCADE.py) ENFORCED</span>
+            <span>SIMULATION MODEL ACTIVE</span>
             <div className="flex items-center gap-1">
               <span className="w-1.5 h-1.5 rounded-full bg-black/40" />
-              <span>STABILITY CHECKS PASSED</span>
+              <span>CHECKS PASSED</span>
             </div>
           </div>
         </div>
@@ -907,16 +907,16 @@ export function MicrostructureLabView() {
           <div className="flex items-center gap-2">
             <Activity className="w-4 h-4 text-[#4ADE80]" />
             <div className="font-sans font-black text-xs tracking-widest text-[#FFFFFF] uppercase">
-              Microstructure Deep Quant Analytics View
+              Order Flow and Dealer Positioning Analysis
             </div>
           </div>
 
           <div className="flex gap-2">
             {[
-              { id: 'terminal', label: 'Tactical Terminal & Scenarios', icon: Terminal },
-              { id: 'orderbook', label: 'L2/L3 Order Book & Toxicity', icon: Layers },
-              { id: 'gex_chart', label: 'GEX Sensitivity Curve', icon: GitBranch },
-              { id: 'campaigns', label: 'Campaigns & Divergence', icon: Cpu },
+              { id: 'terminal', label: 'Scenarios and Sim Log', icon: Terminal },
+              { id: 'orderbook', label: 'Order Book and Flow', icon: Layers },
+              { id: 'gex_chart', label: 'Dealer Support (GEX) Curve', icon: GitBranch },
+              { id: 'campaigns', label: 'Positioning and Events', icon: Cpu },
             ].map(tab => {
               const Icon = tab.icon;
               return (
@@ -947,7 +947,7 @@ export function MicrostructureLabView() {
               <div>
                 <span className="text-[9px] text-zinc-450 font-black tracking-widest uppercase block mb-1">Prebuilt Playbook Scenarios</span>
                 <p className="text-[10px] text-zinc-400 leading-relaxed mb-4">
-                  Inject institutional market regimes to verify how different options distributions slide or compress spot.
+                  Load a preset scenario to see how different options setups affect price movement.
                 </p>
 
                 <div className="space-y-3">
@@ -975,7 +975,7 @@ export function MicrostructureLabView() {
               <div className="p-3 rounded mirror-panel flex items-center gap-2">
                 <CheckCircle2 className="w-4 h-4 text-[#4ADE80] shrink-0" />
                 <span className="text-[8px] font-mono text-zinc-450 tracking-wide uppercase leading-normal">
-                  Scenarios load genuine contract matrices directly matching the exact SVI and local volatility equations.
+                  Scenarios use real options math to model how dealer hedging affects price.
                 </span>
               </div>
             </div>
@@ -983,13 +983,13 @@ export function MicrostructureLabView() {
             {/* Real Calculation step-by-step scrolling raw terminal */}
             <div className="lg:col-span-2 space-y-2 flex flex-col">
               <div className="flex items-center justify-between">
-                <span className="text-[9px] text-zinc-450 font-black tracking-widest uppercase block">Recursive Hedging Drift Execution log</span>
-                <span className="text-[7.5px] text-zinc-550 font-mono">25-STEP EVAL VECTOR TRACE</span>
+                <span className="text-[9px] text-zinc-450 font-black tracking-widest uppercase block">Step-by-Step Hedge Simulation Log</span>
+                <span className="text-[7.5px] text-zinc-550 font-mono">25 STEPS</span>
               </div>
 
               <div className="bg-black border border-black rounded p-4 h-[240px] overflow-y-auto font-mono text-[9px] text-[#4ADE80] space-y-1.5 scrollbar-thin select-text">
                 <div className="text-[#4ADE80] font-extrabold select-none border-b border-black/60 pb-1.5 mb-2 flex items-center justify-between">
-                  <span>SLAYER INST. COMPUTING ENGINE [BUILD V1.107]</span>
+                  <span>DEALER HEDGE SIMULATION [BUILD V1.107]</span>
                   <span>UTC TIME: 22:15:40</span>
                 </div>
                 
@@ -1025,7 +1025,7 @@ export function MicrostructureLabView() {
                 })}
                 
                 <div className="text-[#4ADE80] border-t border-black/60 pt-2 mt-2 font-bold select-none flex items-center justify-between">
-                  <span>&gt; CASCADE COMPUTATION TERMINATED. CONVERGENCE CONSTRAINTS SOLVED.</span>
+                  <span>&gt; SIMULATION COMPLETE.</span>
                   <span className="text-zinc-550 text-[8px]">TOTAL FLOW: ${(detailedSimulation.flow / 1_000_000).toFixed(2)}M</span>
                 </div>
               </div>
@@ -1039,19 +1039,19 @@ export function MicrostructureLabView() {
           <div className="space-y-4 animate-fadeIn" id="gex-sensitivity-curve-container">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 border-b border-black/40 pb-2">
               <div>
-                <span className="text-[10px] text-zinc-100 font-black tracking-wider uppercase block">Gamma Exposure (GEX) Sensitivity Curve</span>
+                <span className="text-[10px] text-zinc-100 font-black tracking-wider uppercase block">Dealer Support (GEX) Curve</span>
                 <p className="text-[9px] text-zinc-450 leading-relaxed max-w-xl">
-                  Plots net dealer dynamic options exposure relative to hypothetical pricing changes. Spot prices located below the <strong className="text-amber-400">Zero Gamma Flip point</strong> accelerate selling pressure, while positive gamma regions dampen overall index volatility.
+                  Shows where dealers are net long or short gamma. Below the <strong className="text-amber-400">gamma flip level</strong>, dealers amplify selling; above it, they act as a cushion and dampen volatility.
                 </p>
               </div>
 
               <div className="flex items-center gap-3 font-mono text-[8.5px] bg-black border border-black px-3 py-2 rounded">
-                <span className="text-zinc-400">ESTIMATED FLIP POINT:</span>
+                <span className="text-zinc-400">GAMMA FLIP LEVEL:</span>
                 <span className="text-amber-400 font-extrabold font-mono">${gexSensitivityArray.flipLevel.toFixed(1)}</span>
                 <span className="text-zinc-550">|</span>
-                <span className="text-zinc-400">CURRENT REGIME:</span>
+                <span className="text-zinc-400">DEALER GAMMA:</span>
                 <span className={`font-black ${detailedSimulation.netGamma >= 0 ? 'text-[#4ADE80]' : 'text-[#F87171]'}`}>
-                  {detailedSimulation.netGamma >= 0 ? 'POSITIVE GAMMA' : 'NEGATIVE GAMMA'}
+                  {detailedSimulation.netGamma >= 0 ? 'POSITIVE (STABILIZING)' : 'NEGATIVE (AMPLIFYING)'}
                 </span>
               </div>
             </div>
@@ -1136,13 +1136,13 @@ export function MicrostructureLabView() {
               </svg>
 
               <div className="absolute left-4 top-4 font-mono text-[8px] text-zinc-500 flex flex-col uppercase">
-                <span className="flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-black/40" /> POSITIVE GEX REGIME [STABLE]</span>
-                <span className="flex items-center gap-1 mt-1"><span className="w-1.5 h-1.5 rounded-full bg-rose-455" /> NEGATIVE GEX REGIME [VOLATILITY SQUEEZE]</span>
+                <span className="flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-black/40" /> POSITIVE DEALER GAMMA [CUSHIONS MOVES]</span>
+                <span className="flex items-center gap-1 mt-1"><span className="w-1.5 h-1.5 rounded-full bg-rose-455" /> NEGATIVE DEALER GAMMA [AMPLIFIES MOVES]</span>
               </div>
 
               <div className="absolute right-4 bottom-4 font-mono text-[7px] text-zinc-550 text-right uppercase">
-                <span>ESTIMATED CONVEXITY RATIO: (∂²VEX/∂S²): 1.1448</span>
-                <span className="block">Zero-Gamma zone: ${gexSensitivityArray.flipLevel.toFixed(1)}</span>
+                <span>GEX curve convexity: 1.1448</span>
+                <span className="block">Gamma flip level: ${gexSensitivityArray.flipLevel.toFixed(1)}</span>
               </div>
             </div>
           </div>
@@ -1157,27 +1157,27 @@ export function MicrostructureLabView() {
               <div>
                 <div className="flex items-center gap-2 border-b border-black pb-2 mb-3">
                   <Cpu className="w-3.5 h-3.5 text-[#4ADE80]" />
-                  <span className="font-mono text-[9px] font-black text-zinc-100 uppercase tracking-widest">Campaign State Machine Solver</span>
+                  <span className="font-mono text-[9px] font-black text-zinc-100 uppercase tracking-widest">Positioning Trend Tracker</span>
                 </div>
 
                 <p className="text-[10px] text-zinc-400 font-sans leading-normal mb-3">
-                  Computes structural positioning trends by assessing first-order and second-order derivatives on contract Open Interest and Delta Flow History tracks.
+                  Tracks how open interest and order flow are building or unwinding over time to identify institutional positioning trends.
                 </p>
 
                 {/* Visual State Ring / Indicator bar */}
                 <div className="p-3 rounded bg-black/90 border border-black flex items-center justify-between mb-4 relative overflow-hidden select-none">
                   <div className="absolute top-0 right-0 h-full w-1.5 bg-[#4ADE80]" />
                   <div>
-                    <span className="text-[7.5px] text-zinc-500 font-black block tracking-widest uppercase">SOLVED CAMPAIGN STATE</span>
+                    <span className="text-[7.5px] text-zinc-500 font-black block tracking-widest uppercase">CURRENT POSITION STATE</span>
                     <span className="text-xs font-black text-[#E5E5E5] font-mono uppercase tracking-wider block mt-0.5">
                       {activeCampaignState.state}
                     </span>
                     <span className="text-[7.5px] text-[#4ADE80] font-mono uppercase mt-1 block">
-                      OI Accel a_oi: {activeCampaignState.a_oi >= 0 ? '+' : ''}{activeCampaignState.a_oi.toLocaleString()} • Flow Velocity v_flow: {activeCampaignState.v_flow >= 0 ? '+' : ''}{activeCampaignState.v_flow.toLocaleString()} 
+                      OI rate: {activeCampaignState.a_oi >= 0 ? '+' : ''}{activeCampaignState.a_oi.toLocaleString()} • Flow rate: {activeCampaignState.v_flow >= 0 ? '+' : ''}{activeCampaignState.v_flow.toLocaleString()}
                     </span>
                   </div>
                   <div className="text-right">
-                    <span className="text-[7.5px] text-zinc-500 font-black block tracking-widest uppercase">COMPLETION STICKER</span>
+                    <span className="text-[7.5px] text-zinc-500 font-black block tracking-widest uppercase">COMPLETION</span>
                     <span className="text-xs font-black text-[#4ADE80] font-mono block mt-0.5">
                       {activeCampaignState.completion}%
                     </span>
@@ -1186,11 +1186,11 @@ export function MicrostructureLabView() {
 
                 {/* Slider track adjustments */}
                 <div className="space-y-3.5">
-                  <span className="text-[8px] text-zinc-450 font-black tracking-widest uppercase block mb-1">Position History Tracker Tuning</span>
-                  
+                  <span className="text-[8px] text-zinc-450 font-black tracking-widest uppercase block mb-1">OI and Flow History Inputs</span>
+
                   <div className="bg-black/40 border border-black/50 rounded p-3 space-y-2">
                     <div className="flex justify-between items-center text-[8.5px] font-mono">
-                      <span className="text-zinc-500 uppercase">1. Max Core Contract Capacity</span>
+                      <span className="text-zinc-500 uppercase">1. Max OI Capacity</span>
                       <input 
                         type="number" 
                         step="500000"
@@ -1234,7 +1234,7 @@ export function MicrostructureLabView() {
               </div>
 
               <div className="border-t border-black/60 pt-3 mt-4 text-[7px] text-zinc-550 font-mono text-right uppercase block">
-                STATE_ENGINES.py / Campaign Machine solver
+                POSITIONING TREND TRACKER
               </div>
             </div>
 
@@ -1243,17 +1243,17 @@ export function MicrostructureLabView() {
               <div>
                 <div className="flex items-center gap-2 border-b border-black pb-2 mb-3">
                   <AlertTriangle className="w-3.5 h-3.5 text-[#4ADE80]" />
-                  <span className="font-mono text-[9px] font-black text-zinc-100 uppercase tracking-widest">Event Positioning Divergence Engine</span>
+                  <span className="font-mono text-[9px] font-black text-zinc-100 uppercase tracking-widest">Event vs. Pre-Position Mismatch</span>
                 </div>
 
                 <p className="text-[10px] text-zinc-400 font-sans leading-normal mb-3">
-                  Models options positioning volatility shocks and gravity unwinds when pre-event options hedging positions collide directly with real corporate headline outcomes.
+                  Models how options hedges unwind when the actual headline outcome differs from where traders were positioned before the event.
                 </p>
 
                 {/* Layout Toggles */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
                   <div className="bg-black/80 p-3 rounded border border-black">
-                    <span className="text-[8px] text-zinc-550 font-black tracking-wider block uppercase mb-1.5">Pre-Event Positioning Sentiment</span>
+                    <span className="text-[8px] text-zinc-550 font-black tracking-wider block uppercase mb-1.5">Where traders were positioned before the event</span>
                     <div className="flex gap-1">
                       {(['bullish', 'neutral', 'bearish'] as const).map(val => (
                         <button
@@ -1309,14 +1309,14 @@ export function MicrostructureLabView() {
                   </div>
 
                   <div className="bg-black border border-black p-2.5 rounded text-center">
-                    <span className="text-[7px] text-zinc-550 font-bold block uppercase tracking-wider">Vanna Vol Shock</span>
+                    <span className="text-[7px] text-zinc-550 font-bold block uppercase tracking-wider">IV Unwind Multiplier (Vanna)</span>
                     <span className="text-xs font-mono text-[#38bdf8] font-black block mt-1">
                       {eventDivergenceState.vanna_shock.toFixed(1)}x
                     </span>
                   </div>
 
                   <div className="bg-black border border-black p-2.5 rounded text-center">
-                    <span className="text-[7px] text-zinc-550 font-bold block uppercase tracking-wider">Divergence Index</span>
+                    <span className="text-[7px] text-zinc-550 font-bold block uppercase tracking-wider">Position vs. Outcome Gap</span>
                     <span className="text-xs font-mono text-zinc-200 font-black block mt-1">
                       {eventDivergenceState.divergence > 0 ? '+' : ''}{eventDivergenceState.divergence}
                     </span>
@@ -1326,14 +1326,14 @@ export function MicrostructureLabView() {
                 {eventDivergenceState.unwind_risk !== 'Low' && (
                   <div className="bg-rose-950/10 border border-red-955/40 p-2 rounded mt-3 text-left animate-fadeIn">
                     <span className="text-[7.5px] font-mono text-[#F87171] leading-tight uppercase block font-semibold">
-                      ⚡ SHOCK COLLISION IN PROGRESS: Marketmakers suffering rapid pricing resets. Delta gravity multipliers are boosted by {eventDivergenceState.vanna_shock.toFixed(1)}x!
+                      ⚡ HEDGE UNWIND IN PROGRESS: Dealers repricing rapidly. IV-driven flow amplified {eventDivergenceState.vanna_shock.toFixed(1)}x above normal.
                     </span>
                   </div>
                 )}
               </div>
 
               <div className="border-t border-black/60 pt-3 mt-4 text-[7px] text-zinc-550 font-mono text-right uppercase block">
-                STATE_ENGINES.py / Event Divergence Machine
+                EVENT VS. POSITION MISMATCH
               </div>
             </div>
 
@@ -1351,11 +1351,11 @@ export function MicrostructureLabView() {
                   <div className="flex items-center gap-2">
                     <Table className="w-4 h-4 text-[#4ADE80]" />
                     <span className="font-mono text-[9.5px] font-black text-zinc-100 uppercase tracking-widest">
-                      {selectedAsset.ticker} Level 2 Deep Ledger (DOM)
+                      {selectedAsset.ticker} Order Book (DOM)
                     </span>
                     <span
                       className="text-[7px] font-black uppercase tracking-widest px-1 py-0.5 rounded-sm border text-amber-400 border-amber-500/40 bg-amber-500/10"
-                      title="Reconstructed depth-of-market model anchored to live spot and real VPIN toxicity. This app does not ingest a raw L2/L3 exchange feed."
+                      title="Simulated order book anchored to live spot and real informed-trading (VPIN) data. Not a live exchange feed."
                     >
                       MODEL
                     </span>
@@ -1363,7 +1363,7 @@ export function MicrostructureLabView() {
                   <div className="flex items-center gap-1.5">
                     <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse" />
                     <span className="text-[7.5px] font-mono text-rose-455 font-bold uppercase tracking-widest">
-                      HFT ENGAGEMENT RATIO: ACTIVE
+                      LIVE SIMULATION ACTIVE
                     </span>
                   </div>
                 </div>
@@ -1371,12 +1371,12 @@ export function MicrostructureLabView() {
                 {/* Filters */}
                 <div className="flex items-center gap-1.5 mb-4">
                   <span className="text-[7.5px] text-zinc-500 font-extrabold uppercase tracking-widest mr-1">
-                    LEDGER FILTER:
+                    FILTER:
                   </span>
                   {[
-                    { id: 'all', label: 'ALL DEPT' },
-                    { id: 'institutional', label: 'INSTITUTIONAL ONLY' },
-                    { id: 'all_alerts', label: 'DETECTORS ONLY' }
+                    { id: 'all', label: 'ALL ORDERS' },
+                    { id: 'institutional', label: 'LARGE ORDERS ONLY' },
+                    { id: 'all_alerts', label: 'ALERTS ONLY' }
                   ].map(btn => (
                     <button
                       key={btn.id}
@@ -1399,7 +1399,7 @@ export function MicrostructureLabView() {
                     <div className="text-left">Price (${selectedAsset.ticker})</div>
                     <div>Size (Contracts)</div>
                     <div>Depth (Lots)</div>
-                    <div>Signature / State</div>
+                    <div>Order Type</div>
                   </div>
 
                   {/* ASKS (LADDER REVERSED SO HIGHEST IS ON TOP) */}
@@ -1509,7 +1509,7 @@ export function MicrostructureLabView() {
               </div>
 
               <div className="border-t border-[#1F1F1F] pt-3.5 mt-5 text-[7px] text-zinc-550 font-mono text-right uppercase block">
-                SKYSVISION ORDERBOOK ENGINE (V3.14) • SECURE STREAM
+                SIMULATED ORDER BOOK • ANCHORED TO LIVE DATA
               </div>
             </div>
 
@@ -1521,12 +1521,12 @@ export function MicrostructureLabView() {
                 <div className="flex items-center gap-1.5 border-b border-[#222] pb-2 mb-3.5">
                   <Gauge className="w-3.5 h-3.5 text-cyan-400" />
                   <span className="font-mono text-[9px] font-black text-zinc-100 uppercase tracking-widest">
-                    Imbalance & Volatility Toxicity Meter
+                    Order Imbalance and Informed-Flow Meter
                   </span>
                 </div>
 
                 <p className="text-[10px] text-zinc-400 font-sans leading-normal mb-4">
-                  OBI evaluates cumulative bid/ask ratio. VPIN captures flow toxicity (informed trading toxicity vs mm passive fills).
+                  OBI shows whether more size sits on bids or asks. VPIN (informed-trading pressure) rises when one side dominates, signaling non-random flow.
                 </p>
 
                 {/* Meter 1: OBI Gauge */}
@@ -1554,9 +1554,9 @@ export function MicrostructureLabView() {
                 {/* Meter 2: VPIN Volume Toxicity */}
                 <div className="mb-4">
                   <div className="flex justify-between items-center text-[8px] font-black uppercase text-zinc-400 tracking-wider mb-1.5">
-                    <span>VPIN Volume Toxicity Coefficient</span>
+                    <span>Informed-trading pressure (VPIN)</span>
                     <span className={`font-mono text-[9.5px] font-bold ${vpinToxicity > 65 ? 'text-rose-500 animate-pulse font-black' : 'text-cyan-400'}`}>
-                      {vpinToxicity.toFixed(1)}% {vpinToxicity > 65 ? '[HIGH TOXICITY]' : '[NORMAL]'}
+                      {vpinToxicity.toFixed(1)}% {vpinToxicity > 65 ? '[HIGH]' : '[NORMAL]'}
                     </span>
                   </div>
                   <div className="h-1.5 bg-[#141414] rounded overflow-hidden relative border border-[#222]">
@@ -1572,9 +1572,9 @@ export function MicrostructureLabView() {
                 {/* Meter 3: Absorption Strength */}
                 <div>
                   <div className="flex justify-between items-center text-[8px] font-black uppercase text-zinc-400 tracking-wider mb-1.5">
-                    <span>MM Absorption Strength</span>
+                    <span>Market-maker absorption strength</span>
                     <span className="font-mono text-[9.5px] font-bold text-emerald-400">
-                      {absorptionStrength.toFixed(1)}% [SECURE]
+                      {absorptionStrength.toFixed(1)}%
                     </span>
                   </div>
                   <div className="h-1.5 bg-[#141414] rounded overflow-hidden relative border border-[#222]">
@@ -1593,7 +1593,7 @@ export function MicrostructureLabView() {
                   <div className="flex items-center gap-1.5 border-b border-[#222] pb-2 mb-3">
                     <Activity className="w-3.5 h-3.5 text-rose-500" />
                     <span className="font-mono text-[9px] font-black text-zinc-100 uppercase tracking-widest">
-                      Real-time Microstructure Alert Feed
+                      Live Order Book Alert Feed
                     </span>
                   </div>
 
@@ -1607,7 +1607,7 @@ export function MicrostructureLabView() {
                         <div className="flex items-center justify-between text-[8px] tracking-wider font-extrabold text-zinc-550 border-b border-zinc-900 pb-1 mb-1">
                           <span>TIME: {feed.time}</span>
                           <span className={feed.side === 'BID' ? 'text-emerald-500' : 'text-[#F87171]'}>
-                            TARGET: {feed.side} (${feed.price})
+                            {feed.side} @ ${feed.price}
                           </span>
                         </div>
                         <p className={feed.style}>{feed.text}</p>
@@ -1622,7 +1622,7 @@ export function MicrostructureLabView() {
                 </div>
 
                 <div className="border-t border-[#1F1F1F] pt-2.5 mt-4 text-[7px] text-zinc-550 font-mono text-right uppercase block">
-                  CANCELLATION_SOLVER.py • INSTANT COGNITIVE TRACKING
+                  ORDER ACTIVITY FEED
                 </div>
               </div>
 
@@ -1641,7 +1641,7 @@ export function MicrostructureLabView() {
           <div className="flex items-center gap-2">
             <Layers className="w-4 h-4 text-[#4ADE80]" />
             <div className="font-sans font-black text-xs tracking-widest text-[#FFFFFF] uppercase">
-              Microstructure Options Chain Configurator
+              Options Chain Builder
             </div>
           </div>
           <span className="font-mono text-[8px] text-zinc-550 uppercase">
@@ -1698,7 +1698,7 @@ export function MicrostructureLabView() {
           </div>
 
           <div className="space-y-1">
-            <span className="text-[7.5px] text-zinc-450 font-black uppercase tracking-wider block">Implied Vol (sigma)</span>
+            <span className="text-[7.5px] text-zinc-450 font-black uppercase tracking-wider block">Implied Vol (IV)</span>
             <input
               type="number"
               step="0.01"
@@ -1727,12 +1727,12 @@ export function MicrostructureLabView() {
               <tr className="border-b border-black text-zinc-550 uppercase text-[8px] font-black tracking-widest bg-black/20">
                 <th className="py-2 px-3">Contract Type</th>
                 <th className="py-2 px-3 text-right">Strike Price</th>
-                <th className="py-2 px-3 text-right">Maturity (years)</th>
-                <th className="py-2 px-3 text-right">Volatility</th>
+                <th className="py-2 px-3 text-right">Days to Expiry</th>
+                <th className="py-2 px-3 text-right">IV</th>
                 <th className="py-2 px-3 text-right">Open Interest (OI)</th>
                 <th className="py-2 px-3 text-right">Delta</th>
                 <th className="py-2 px-3 text-right">Gamma</th>
-                <th className="py-2 px-3 text-right">Charm</th>
+                <th className="py-2 px-3 text-right">Charm (time decay of delta)</th>
                 <th className="py-2 px-3 text-right">Action</th>
               </tr>
             </thead>
@@ -1771,7 +1771,7 @@ export function MicrostructureLabView() {
               {options.length === 0 && (
                 <tr>
                   <td colSpan={9} className="text-center text-zinc-650 py-6 italic font-mono text-[9px]">
-                    No options loaded. Inject or build options above.
+                    No options loaded. Add options using the form above.
                   </td>
                 </tr>
               )}

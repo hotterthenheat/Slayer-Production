@@ -109,9 +109,9 @@ export function OpportunitiesDashboard({
             <Activity className="w-5 text-[#4ADE80] animate-pulse" />
           </div>
           <div>
-            <span className="text-[10px] text-zinc-500 block uppercase font-mono tracking-widest">Global Intelligence System</span>
+            <span className="text-[10px] text-zinc-500 block uppercase font-mono tracking-widest">Market Overview</span>
             <span className="text-sm font-bold font-mono tracking-tight text-[#E5E5E5] uppercase">
-              ACTIVE COALITION REGIME STATE
+              CURRENT MARKET REGIME
             </span>
           </div>
         </div>
@@ -120,7 +120,7 @@ export function OpportunitiesDashboard({
           <div className="text-center md:text-left">
             <span className="text-[9px] text-zinc-500 uppercase font-mono block">Regime Trend</span>
             <span className="text-sm font-mono text-[#4ADE80] font-bold uppercase flex items-center gap-1">
-              [holding] BULLISH
+              BULLISH
             </span>
           </div>
           <div className="text-center md:text-left">
@@ -132,9 +132,9 @@ export function OpportunitiesDashboard({
             <span className="text-sm font-mono text-zinc-200 font-bold uppercase">Strong</span>
           </div>
           <div className="text-center md:text-left">
-            <span className="text-[9px] text-zinc-500 uppercase font-mono block">Momentum Acceleration</span>
+            <span className="text-[9px] text-zinc-500 uppercase font-mono block">Momentum</span>
             <span className="text-sm font-mono text-[#4ADE80] font-bold uppercase flex items-center gap-1 animate-pulse">
-              [testing] Increasing
+              Increasing
             </span>
           </div>
         </div>
@@ -144,9 +144,9 @@ export function OpportunitiesDashboard({
       <section className="flex flex-col gap-3">
         <div className="flex items-center justify-between">
           <h3 className="text-xs font-bold font-mono tracking-wider text-zinc-400 uppercase flex items-center gap-2">
-            <Sparkles className="w-3.5 text-[#4ADE80]" /> HIGHLIGHT OPPORTUNITY ENGINE
+            <Sparkles className="w-3.5 text-[#4ADE80]" /> TOP OPPORTUNITIES
           </h3>
-          <span className="text-[9px] font-mono text-zinc-600 uppercase">SORTED BY CONVECTIVE WEIGHT</span>
+          <span className="text-[9px] font-mono text-zinc-600 uppercase">SORTED BY SCORE</span>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -201,16 +201,16 @@ export function OpportunitiesDashboard({
         </div>
       </section>
 
-      {/* 3. Global Premium Matrix: Top 10 Calls & Top 10 Puts */}
+      {/* 3. Top 10 Calls and Top 10 Puts */}
       <section className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         
         {/* Top 10 Calls List */}
         <div className="flex flex-col gap-3">
           <div className="flex items-center justify-between border-b border-black pb-1">
             <span className="text-xs font-semibold font-mono tracking-wider text-[#4ADE80] flex items-center gap-1.5 uppercase">
-              [holding] Top 10 Call Opportunities
+              Top 10 Call Opportunities
             </span>
-            <span className="text-[9px] font-mono text-zinc-605">ACCELERATIVE HIGH IMPULSE</span>
+            <span className="text-[9px] font-mono text-zinc-605">BULLISH SETUPS</span>
           </div>
 
           <div className="bg-black/30 border border-black overflow-x-auto rounded-sm">
@@ -259,9 +259,9 @@ export function OpportunitiesDashboard({
         <div className="flex flex-col gap-3">
           <div className="flex items-center justify-between border-b border-black pb-1">
             <span className="text-xs font-semibold font-mono tracking-wider text-[#F87171] flex items-center gap-1.5 uppercase">
-              [failing] Top 10 Put Opportunities
+              Top 10 Put Opportunities
             </span>
-            <span className="text-[9px] font-mono text-zinc-605">ACCELERATIVE DOWN SHIFT</span>
+            <span className="text-[9px] font-mono text-zinc-605">BEARISH SETUPS</span>
           </div>
 
           <div className="bg-black/30 border border-black overflow-x-auto rounded-sm">

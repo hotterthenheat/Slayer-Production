@@ -89,11 +89,11 @@ export function AutomationView() {
         <div className="flex gap-2 items-center">
           <Cpu className="w-4 h-4 text-[#4ADE80] animate-pulse" />
           <span className="text-[9.5px] text-[#4ADE80] uppercase tracking-widest font-black">
-            SLAYER AUTOMATION PIPELINE MANAGER // SMS DISPATCH
+            AUTOMATED SMS ALERTS
           </span>
         </div>
         <div className="flex items-center gap-1.5 bg-black/40 p-1 px-1.5 border border-white/5 rounded-lg text-[9px] text-[#4ADE80] font-bold uppercase">
-          TWILIO CARRIER GATEWAY ACTIVE
+          TWILIO CONNECTED
         </div>
       </div>
 
@@ -105,13 +105,13 @@ export function AutomationView() {
           {/* Node Graph Header */}
           <div className="border-b border-black/40 pb-3 flex justify-between items-start">
             <div className="text-left space-y-1">
-              <span className="text-[8px] text-zinc-500 tracking-[0.25em] font-black block">SYSTEM LOGICAL FLOW INTERFACE</span>
+              <span className="text-[8px] text-zinc-500 tracking-[0.25em] font-black block">HOW IT WORKS</span>
               <h2 className="text-xl font-black text-[#E5E5E5] uppercase tracking-tight font-sans">
-                REALTIME DISPATCH NETWORK ENGINE
+                ALERT DELIVERY FLOW
               </h2>
             </div>
             <span className="text-[9px] bg-white text-black font-extrabold px-3 py-1.5 rounded-lg uppercase tracking-widest leading-none">
-              SYSTEM LEVEL: V11 CORE
+              V11
             </span>
           </div>
 
@@ -200,16 +200,16 @@ export function AutomationView() {
         <div className="apple-glass p-6 rounded-2xl flex flex-col justify-between space-y-4 shadow-lg border border-white/5">
           <div className="text-left space-y-3">
             <div className="flex items-center justify-between border-b border-black/40 pb-2">
-              <span className="text-xs font-black text-[#E5E5E5] uppercase tracking-wider">SMS CONTROL CHANNELS</span>
-              <span className="text-[7px] text-zinc-500 font-bold">TELECOM PORT: SMPP5</span>
+              <span className="text-xs font-black text-[#E5E5E5] uppercase tracking-wider">SEND SMS ALERT</span>
+              <span className="text-[7px] text-zinc-500 font-bold">VIA TWILIO</span>
             </div>
 
             <p className="text-[11px] text-zinc-400 font-sans leading-relaxed leading-snug">
-              Route current high expected value model thresholds directly to your physical terminal device via Twilio telecom pipelines.
+              Send the current high-EV trade alert directly to your phone via SMS.
             </p>
 
             <div className="bg-black/40 border border-white/5 p-4 rounded-xl flex flex-col gap-3">
-              <span className="text-[8px] text-zinc-550 uppercase font-black block">DEVICE PHONE REGISTRY</span>
+              <span className="text-[8px] text-zinc-550 uppercase font-black block">YOUR PHONE NUMBER</span>
               <div className="flex gap-2.5">
                 <div id="phone-prefix-wrap" className="relative flex-1">
                   <span className="absolute left-3 top-2.5 text-zinc-650 text-xs font-bold">+1</span>
@@ -234,7 +234,7 @@ export function AutomationView() {
               </div>
               {phoneNumber.length > 0 && phoneNumber.replace(/\D/g, '').length < 10 && (
                 <span className="text-[8px] text-amber-400 flex items-center gap-1">
-                  <AlertCircle className="w-3" /> INPUT VALID PHONE IDENTIFIER (MIN 10 COUNTS)
+                  <AlertCircle className="w-3" /> Enter at least 10 digits
                 </span>
               )}
             </div>
@@ -243,7 +243,7 @@ export function AutomationView() {
             {dispatchLogs.length > 0 && (
               <div className="bg-black/40 border border-white/5 rounded-xl p-3 h-[110px] overflow-y-auto text-[8.5px] leading-relaxed text-zinc-400 scrolling-auto select-text font-mono">
                 <span className="text-zinc-500 font-bold block uppercase border-b border-black/40 pb-1 mb-1.5 font-sans tracking-wide">
-                  COGNITIVE CARRIER SOCKET STREAM
+                  SEND LOG
                 </span>
                 {dispatchLogs.map((log, i) => {
                   const isLast = i === dispatchLogs.length - 1;
@@ -263,9 +263,9 @@ export function AutomationView() {
         <div className="apple-glass p-6 rounded-2xl flex flex-col justify-between shadow-lg border border-white/5">
           <div className="text-left space-y-3">
             <div className="border-b border-black/40 pb-2">
-              <span className="text-[8px] text-zinc-500 uppercase tracking-widest font-black block">SUBSCRIBER MOBILE HUB PREVIEW</span>
+              <span className="text-[8px] text-zinc-500 uppercase tracking-widest font-black block">MESSAGE PREVIEW</span>
               <h3 className="text-[11px] font-black text-[#E5E5E5] uppercase tracking-wider mt-0.5">
-                Physical Device Simulation
+                Simulated Phone Screen
               </h3>
             </div>
 
@@ -293,7 +293,7 @@ export function AutomationView() {
               ) : (
                 <div className="flex flex-col items-center justify-center py-6 text-center text-zinc-600 text-[10px] font-mono leading-relaxed uppercase">
                   <Smartphone className="w-5 text-zinc-700 mb-1" />
-                  <span>Execute Telecom Outbound dispatch to paint live message distributions on this module display.</span>
+                  <span>Enter a phone number and tap Dispatch to see a preview of the SMS here.</span>
                 </div>
               )}
 
@@ -309,22 +309,22 @@ export function AutomationView() {
         <div className="flex items-center gap-2 border-b border-white/5 pb-2">
           <Layers className="w-3.5 h-3.5 text-zinc-550" />
           <h4 className="text-[10.5px] font-black text-[#E5E5E5] uppercase tracking-wider block">
-            SMPP Carrier Gateway Routing Rules
+            How SMS Delivery Works
           </h4>
         </div>
         <div className="text-[11px] leading-relaxed text-zinc-400 font-sans space-y-2">
           <p>
-            The Direct Outbound SMS engine communicates via Short Message Peer-to-Peer (SMPP v3.4) connections directly routed into Tier-1 telecommunication switches. This bypasses typical client-side latency blocks, maintaining alert propagation under 0.6 seconds worldwide.
+            Alerts are sent through Twilio directly to the carrier, keeping delivery time under 0.6 seconds worldwide.
           </p>
           <p>
-            Signal queues are rate-limited to 10 alerts per minute to prevent provider spam filtering triggers relative to CBOE spot movements, securing reliable reception inside high-frequency volatility windows.
+            To protect deliverability, alerts are capped at 10 per minute. This prevents your number from being flagged as spam during fast market moves.
           </p>
         </div>
       </div>
 
       {/* 5. STATUS BAR */}
       <div className="apple-glass min-h-[30px] p-3 rounded-xl flex items-center justify-between text-[8px] text-zinc-400 uppercase tracking-widest pl-4 font-black shadow-md">
-        <span>SMPP CONNECTION STYLED SYNC ENGINE OVER CARRIER TR-8</span>
+        <span>TWILIO CONNECTED</span>
         <div className="flex items-center gap-1.5 text-[#d4d4d8] font-bold">
           <span className="h-1.5 w-1.5 bg-black rounded-full animate-ping" />
           <span>SOCKET CONNECTED</span>

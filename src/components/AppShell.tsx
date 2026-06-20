@@ -112,25 +112,25 @@ export function AppShell({ children, session, onLogout, tierInfo, onUpgradeClick
           style={{ WebkitOverflowScrolling: 'touch' }}
         >
           <div className={`text-[8px] text-zinc-600 font-black tracking-widest px-2 py-1 uppercase mb-1 whitespace-nowrap overflow-hidden transition-all duration-300 ${isSidebarExpanded ? 'opacity-100' : 'opacity-0 h-0 py-0 mb-0 pointer-events-none'}`}>
-            Cognitive Core
+            Main Views
           </div>
           
-          <NavItem id="home" label="Ecosystem" icon={Home} activeColor="text-[#F4F5F6]" />
-          <NavItem id="skyvision" label="SkysVision" icon={Sparkles} activeColor="text-[#6A93B5]" />
-          <NavItem id="pinpoint" label="Pinpoint AI" icon={Dna} activeColor="text-[#C79350]" />
+          <NavItem id="home" label="Home" icon={Home} activeColor="text-[#F4F5F6]" />
+          <NavItem id="skyvision" label="SkyVision" icon={Sparkles} activeColor="text-[#6A93B5]" />
+          <NavItem id="pinpoint" label="Pinpoint GEX" icon={Dna} activeColor="text-[#C79350]" />
           <NavItem id="quant" label="Quant Lab" icon={LineChart} activeColor="text-[#D9A15C]" />
-          <NavItem id="auditor" label="Trust Archive" icon={Database} />
+          <NavItem id="auditor" label="Trade History" icon={Database} />
           
           <div className={`text-[8px] text-zinc-600 font-black tracking-widest px-2 py-1 uppercase mt-4 mb-1 whitespace-nowrap overflow-hidden transition-all duration-300 ${isSidebarExpanded ? 'opacity-100' : 'opacity-0 h-0 py-0 mb-0 mt-0 pointer-events-none'}`}>
-            Tools & Assets
+            Tools
           </div>
-          
-          <NavItem id="workspace" label="Terminal" icon={LayoutGrid} />
-          <NavItem id="community" label="Research" icon={GraduationCap} activeColor="text-[#3F9C79]" />
+
+          <NavItem id="workspace" label="Workspace" icon={LayoutGrid} />
+          <NavItem id="community" label="Community" icon={GraduationCap} activeColor="text-[#3F9C79]" />
           
           <div className="mt-auto pt-4 flex flex-col gap-1.5 border-t border-[#1F1F1F] mt-2">
             <NavItem id="settings" label="Settings" icon={SlidersHorizontal} />
-            <NavItem id="admin" label="Overseer Panel" icon={Lock} adminOnly />
+            <NavItem id="admin" label="Admin Panel" icon={Lock} adminOnly />
           </div>
         </div>
 
@@ -195,22 +195,22 @@ export function AppShell({ children, session, onLogout, tierInfo, onUpgradeClick
         >
           <div className="p-4 flex flex-col gap-2">
             <div className="text-[8px] text-zinc-600 font-black tracking-widest px-2 py-1 uppercase mb-2">
-              Cognitive Core
+              Main Views
             </div>
-            <NavItem id="home" label="Ecosystem" icon={Home} activeColor="text-[#F4F5F6]" isMobile />
-            <NavItem id="skyvision" label="SkysVision" icon={Sparkles} activeColor="text-[#6A93B5]" isMobile />
-            <NavItem id="pinpoint" label="Pinpoint AI" icon={Dna} activeColor="text-[#C79350]" isMobile />
+            <NavItem id="home" label="Home" icon={Home} activeColor="text-[#F4F5F6]" isMobile />
+            <NavItem id="skyvision" label="SkyVision" icon={Sparkles} activeColor="text-[#6A93B5]" isMobile />
+            <NavItem id="pinpoint" label="Pinpoint GEX" icon={Dna} activeColor="text-[#C79350]" isMobile />
             <NavItem id="quant" label="Quant Lab" icon={LineChart} activeColor="text-[#D9A15C]" isMobile />
-            <NavItem id="auditor" label="Trust Archive" icon={Database} isMobile />
-            
+            <NavItem id="auditor" label="Trade History" icon={Database} isMobile />
+
             <div className="text-[8px] text-zinc-600 font-black tracking-widest px-2 py-1 uppercase mt-6 mb-2">
-              Tools & Assets
+              Tools
             </div>
-            
-            <NavItem id="workspace" label="Terminal" icon={LayoutGrid} isMobile />
-            <NavItem id="community" label="Research" icon={GraduationCap} activeColor="text-[#3F9C79]" isMobile />
+
+            <NavItem id="workspace" label="Workspace" icon={LayoutGrid} isMobile />
+            <NavItem id="community" label="Community" icon={GraduationCap} activeColor="text-[#3F9C79]" isMobile />
             <NavItem id="settings" label="Settings" icon={SlidersHorizontal} isMobile />
-            <NavItem id="admin" label="Overseer Panel" icon={Lock} adminOnly isMobile />
+            <NavItem id="admin" label="Admin Panel" icon={Lock} adminOnly isMobile />
             
             {session?.authenticated ? (
               <button 

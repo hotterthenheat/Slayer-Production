@@ -46,8 +46,8 @@ export function AiIntelligenceLayer() {
             <Brain className="w-4 h-4 text-[#4ADE80]" />
           </div>
           <div>
-            <h2 className={`text-sm font-black tracking-widest uppercase ${isLight ? 'text-zinc-900' : 'text-[#E5E5E5]'}`}>Quant Co-Pilot</h2>
-            <p className="text-[9px] text-zinc-500 uppercase tracking-widest mt-0.5">Live dealer-positioning read from the quant engine</p>
+            <h2 className={`text-sm font-black tracking-widest uppercase ${isLight ? 'text-zinc-900' : 'text-[#E5E5E5]'}`}>AI Assistant</h2>
+            <p className="text-[9px] text-zinc-500 uppercase tracking-widest mt-0.5">Ask about dealer positioning and key levels</p>
           </div>
         </div>
       </div>
@@ -76,7 +76,7 @@ export function AiIntelligenceLayer() {
       {loading && (
         <div className="p-4 flex gap-3 text-zinc-400 font-mono text-sm items-center border border-zinc-800 rounded mt-2 animate-pulse">
           <div className="w-4 h-4 rounded-full border-2 border-indigo-500 border-t-transparent animate-spin" />
-          Reading live dealer positioning and key levels...
+          Analyzing dealer positioning and key levels...
         </div>
       )}
 

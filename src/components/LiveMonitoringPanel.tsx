@@ -25,8 +25,8 @@ export function LiveMonitoringPanel({
 
   let statusStr: 'ACTIVE' | 'WEAKENING' | 'INVALIDATED' = 'ACTIVE';
   let statusColor = 'text-[#4ADE80] border-black bg-black/40';
-  let instructionTitle = 'SUGGESTED ACTION: HOLD / ACCUMULATE';
-  let instructionDesc = 'The bullish thesis remains completely optimal. Retain all limit entries and target exits under standard configurations.';
+  let instructionTitle = 'SUGGESTED ACTION: HOLD';
+  let instructionDesc = 'Setup is still valid. Hold your position and keep your original take-profit and stop-loss levels.';
   let exitCoordinates = `Target Stops: Hold current limits. Target exit at market if price falls below $${(currentPrice * 0.992).toFixed(2)}.`;
   
   // Custom checklist of conditions
@@ -35,32 +35,32 @@ export function LiveMonitoringPanel({
   if (invalidationTriggered) {
     statusStr = 'INVALIDATED';
     statusColor = 'text-[#F87171] border-[#F87171]/50 bg-rose-950/40 animate-pulse';
-    instructionTitle = 'CRITICAL: IMMEDIATE EXIT REQUIRED';
-    instructionDesc = 'Thesis collapsed. Major displacement levels broken or invalidation anchors crossed. Discard any remaining exposure immediately.';
-    exitCoordinates = `EXECUTION COORDINATES: Deliver exit order at market immediately (Current: $${currentPrice.toFixed(2)}). DO NOT attempt to hold for pullbacks.`;
+    instructionTitle = 'EXIT NOW';
+    instructionDesc = 'Setup has failed. Key support levels are broken. Close your position immediately.';
+    exitCoordinates = `EXIT AT MARKET NOW (Current: $${currentPrice.toFixed(2)}). Do not wait for a bounce.`;
     drivers = [
       { label: 'VWAP Support Breach', ok: false, desc: 'Price closed heavily past the major intraday VWAP anchor.' },
-      { label: 'Structural Continuation Failure', ok: false, desc: 'Lower low recorded. Broken market structure support line.' },
-      { label: 'Fading Order Block Participation', ok: false, desc: 'Distribution volume completely outpaced institutional buy queues.' },
+      { label: 'Structure Broke Down', ok: false, desc: 'Lower low recorded. Market structure support line broken.' },
+      { label: 'Buying Volume Fading', ok: false, desc: 'Sell volume is overtaking buy volume.' },
     ];
   } else if (isWeak) {
     statusStr = 'WEAKENING';
     statusColor = 'text-amber-500 border-amber-950 bg-[#78350F]/20';
-    instructionTitle = 'REDUCE DEPLOYMENT RISK';
-    instructionDesc = 'Minor structures are starting to fade. RSI rollover mapped on lower timeframes. Decrease lot size exposures by 50% immediately to lock in rewards.';
-    exitCoordinates = `ADJUSTED TARGETS: Secure 50% of trade size. Set remaining limits to break-even coordinates. Exit of all positions on drop under $${(currentPrice * 0.996).toFixed(2)}.`;
+    instructionTitle = 'REDUCE POSITION SIZE';
+    instructionDesc = 'Momentum is fading on shorter timeframes. Cut your position size by 50% to lock in gains.';
+    exitCoordinates = `ADJUSTED PLAN: Close 50% now. Move stop on remainder to break-even. Exit all if price drops under $${(currentPrice * 0.996).toFixed(2)}.`;
     drivers = [
-      { label: '1m / 5m RSI Rollover', ok: false, desc: 'Negative momentum crossing registered on fast-frame indicators.' },
-      { label: 'Buying Exhaustion Detected', ok: false, desc: 'Aggressed ask-volume slowing down on orderbook sweeps.' },
-      { label: 'Sustained Value Gaps Tested', ok: true, desc: 'Prior bullish fair value gaps are holding, but under extreme stress.' },
+      { label: '1m / 5m RSI Rolling Over', ok: false, desc: 'Momentum turning negative on short-term charts.' },
+      { label: 'Buying Momentum Fading', ok: false, desc: 'Buy-side volume weakening on the order book.' },
+      { label: 'Fair Value Gaps Holding (Barely)', ok: true, desc: 'Prior bullish fair value gaps are still intact but under stress.' },
     ];
   } else {
     statusStr = 'ACTIVE';
     statusColor = 'text-[#4ADE80] border-black bg-black/40';
     drivers = [
-      { label: 'Order Blocks Holding Pristine', ok: true, desc: 'Bullish order gates are defending critical support boundaries.' },
-      { label: 'RVOL Expanding Upward', ok: true, desc: 'Relative volume continues to increase on each positive expansion wave.' },
-      { label: 'Higher-Lows successfully mapped', ok: true, desc: 'Ascending trend alignment remains completely intact on all frames.' },
+      { label: 'Support Levels Holding', ok: true, desc: 'Key support zones are defending price.' },
+      { label: 'Volume Expanding on Up-Moves', ok: true, desc: 'Relative volume increasing with each positive candle.' },
+      { label: 'Higher Lows Intact', ok: true, desc: 'Uptrend structure is intact across all timeframes.' },
     ];
   }
 
@@ -72,12 +72,12 @@ export function LiveMonitoringPanel({
   // Core 7 monitored vectors
   const monitoredProperties = [
     { name: 'VWAP', status: invalidationTriggered ? 'FAILED' : score.vwapAlignment >= 5 ? 'SUPPORTING' : 'CONSOLIDATIVE', color: invalidationTriggered ? 'text-[#F87171]' : score.vwapAlignment >= 5 ? 'text-[#4ADE80]' : 'text-amber-500' },
-    { name: 'RSI Continuity', status: invalidationTriggered ? 'DIVERGENCE' : score.rsiCascade >= 5 ? 'PERFECT CASCADE' : 'OVERBOUGHT RETRACE', color: invalidationTriggered ? 'text-[#F87171]' : score.rsiCascade >= 5 ? 'text-[#4ADE80]' : 'text-amber-500' },
-    { name: 'RVOL', status: score.volumeExpansion >= 6 ? 'EXPANDED INSTITUTIONAL' : 'MUTED ACTION', color: score.volumeExpansion >= 6 ? 'text-[#4ADE80]' : 'text-zinc-500' },
-    { name: 'Market Structure', status: invalidationTriggered ? 'CRACKED SUPPORTS' : score.structureQuality >= 6 ? 'HIGHER LOW CORES' : 'COMPRESSED RANGE', color: invalidationTriggered ? 'text-[#F87171]' : score.structureQuality >= 6 ? 'text-[#4ADE80]' : 'text-amber-500' },
-    { name: 'Momentum', status: score.momentumAcceleration >= 6 ? 'ACCELERATING VELOCITY' : 'STABLE SYNC', color: score.momentumAcceleration >= 6 ? 'text-[#4ADE80]' : 'text-zinc-500' },
-    { name: 'Liquidity', status: score.liquiditySweep >= 5 ? 'POOLS CLEANSED' : 'BOUNDS MAINTAINED', color: score.liquiditySweep >= 5 ? 'text-[#4ADE80]' : 'text-zinc-500' },
-    { name: 'Target Probabilities', status: invalidationTriggered ? '0% [COLLAPSED]' : `${Math.min(96, Math.max(70, score.total + 3))}% COMPLETED`, color: invalidationTriggered ? 'text-[#F87171]' : 'text-[#4ADE80]' }
+    { name: 'RSI Continuity', status: invalidationTriggered ? 'DIVERGING' : score.rsiCascade >= 5 ? 'TRENDING' : 'OVERBOUGHT - PULLBACK', color: invalidationTriggered ? 'text-[#F87171]' : score.rsiCascade >= 5 ? 'text-[#4ADE80]' : 'text-amber-500' },
+    { name: 'RVOL', status: score.volumeExpansion >= 6 ? 'HIGH' : 'NORMAL', color: score.volumeExpansion >= 6 ? 'text-[#4ADE80]' : 'text-zinc-500' },
+    { name: 'Market Structure', status: invalidationTriggered ? 'BROKEN' : score.structureQuality >= 6 ? 'HIGHER LOWS' : 'RANGING', color: invalidationTriggered ? 'text-[#F87171]' : score.structureQuality >= 6 ? 'text-[#4ADE80]' : 'text-amber-500' },
+    { name: 'Momentum', status: score.momentumAcceleration >= 6 ? 'ACCELERATING' : 'STABLE', color: score.momentumAcceleration >= 6 ? 'text-[#4ADE80]' : 'text-zinc-500' },
+    { name: 'Liquidity', status: score.liquiditySweep >= 5 ? 'SWEPT' : 'INTACT', color: score.liquiditySweep >= 5 ? 'text-[#4ADE80]' : 'text-zinc-500' },
+    { name: 'Target Probabilities', status: invalidationTriggered ? '0% [FAILED]' : `${Math.min(96, Math.max(70, score.total + 3))}%`, color: invalidationTriggered ? 'text-[#F87171]' : 'text-[#4ADE80]' }
   ];
 
   return (
@@ -87,7 +87,7 @@ export function LiveMonitoringPanel({
         <div className="flex items-[#888] justify-between border-b border-black pb-3 mb-4 gap-2">
           <div className="flex items-center gap-1.5">
             <CheckCircle className="w-4 h-4 text-[#4ADE80] animate-pulse" />
-            <span className="text-xs tracking-[0.2em] font-bold text-[#E0E0E0]">LIVE THESIS MONITORING ENGINE</span>
+            <span className="text-xs tracking-[0.2em] font-bold text-[#E0E0E0]">LIVE TRADE MONITOR</span>
           </div>
           <span className="text-[8px] border border-black px-1.5 bg-black/40 py-0.2 select-none uppercase">continuous feed</span>
         </div>
@@ -102,7 +102,7 @@ export function LiveMonitoringPanel({
 
         {/* Confidence Vector trajectory */}
         <div className="bg-black/40 p-3 border border-black rounded-sm mb-4">
-          <span className="text-[9px] text-[#888888] font-bold uppercase block mb-2">Confidence Trajectory Vector</span>
+          <span className="text-[9px] text-[#888888] font-bold uppercase block mb-2">Confidence Trend</span>
           <div className="flex items-center justify-between text-[11px]">
             <span className="text-zinc-500 font-semibold">{baseConf}% [BASE]</span>
             <span className="text-zinc-650">➔</span>
@@ -119,7 +119,7 @@ export function LiveMonitoringPanel({
 
         {/* 7 Monitored Properties Table */}
         <div className="bg-black/25 border border-black rounded-sm p-3 mb-4">
-          <span className="text-[9px] text-[#888888] font-bold uppercase block mb-2">REAL-TIME CONTINUOUS VECTORS</span>
+          <span className="text-[9px] text-[#888888] font-bold uppercase block mb-2">LIVE READINGS</span>
           <div className="space-y-1.5 text-[10.5px]">
             {monitoredProperties.map((v, idx) => (
               <div key={idx} className="flex justify-between items-center border-b border-black/40 pb-1 last:border-0 last:pb-0">
@@ -133,7 +133,7 @@ export function LiveMonitoringPanel({
         {/* Specific drivers/deterioration list */}
         <div className="space-y-2 mb-4">
           <span className="text-[9px] text-[#888888] font-bold uppercase block">
-            {statusStr === 'ACTIVE' ? 'Primary Health Factors' : 'Thesis Deterioration Triggers'}
+            {statusStr === 'ACTIVE' ? 'Why the Setup is Still Valid' : 'Why the Setup is Failing'}
           </span>
           {drivers.map((drv, idx) => (
             <div key={idx} className="bg-black/60 p-2.5 border border-black rounded-sm">

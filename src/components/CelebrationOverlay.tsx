@@ -305,17 +305,17 @@ export function CelebrationOverlay({ purchasedTier, isOpen, onComplete }: Celebr
               transition={{ duration: 0.4, delay: 0.15 }}
             >
               <h2 className="text-xl font-black text-[#E5E5E5] tracking-widest mb-2 uppercase">
-                {purchasedTier >= 5 ? 'Elite Tier Activated' : 
-                 purchasedTier === 4 ? 'Professional Clearance' : 
-                 purchasedTier === 3 ? 'Gexbot Access Granted' : 'Upgraded'}
+                {purchasedTier >= 5 ? 'Lifetime Access Active' :
+                 purchasedTier === 4 ? 'Quant Suite Unlocked' :
+                 purchasedTier === 3 ? 'Pinpoint GEX Unlocked' : 'Upgraded'}
               </h2>
-              
+
               <p className="text-zinc-400 text-[10.5px] font-mono mb-6 leading-relaxed">
-                System parameters elevated and restriction sets lifted. Real-time options exposure algorithms loaded successfully.
+                Your new plan is live. All features for your tier are now unlocked.
               </p>
 
               <div className="inline-block bg-black/65 border border-black rounded-lg px-4 py-2.5 text-[9px] font-mono font-bold text-zinc-400 uppercase tracking-widest select-none">
-                <span className="text-[#4ADE80]">&gt;&gt;</span> MODULES REBOOTED SECURELY
+                <span className="text-[#4ADE80]">&gt;&gt;</span> READY
               </div>
             </motion.div>
           </div>
