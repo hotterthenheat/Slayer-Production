@@ -42,7 +42,7 @@ import {
   generateReferralCode,
 } from './src/server/auth';
 import { db, sse, type SSEClient, type SSEDiscoveryClient } from './src/server/state';
-import { constructPayload, broadcastSSE, broadcastDiscoverySSE } from './src/server/marketEngine';
+import { constructPayload, broadcastSSE, broadcastDiscoverySSE, gatePayloadByTier, accessTierToLevel } from './src/server/marketEngine';
 
 const app = express();
 // Trust only the configured number of proxy hops (Render/most PaaS = 1) rather
@@ -2037,6 +2037,19 @@ app.post('/api/billing/sim-cron-invoice', express.json(), async (req, res) => {
 
 
 // Server-Sent Events Endpoint (Module 2 Single-Session IP check block)
+// Premium payload blocks are gated server-side by the viewer's tier so the SSE feed
+// can't be used to bypass the paywall (the client TierGuard only hides tabs). Gating
+// is active in production only; in dev/local everything is unlocked, matching the
+// client's localhost unlock so the terminal is fully usable before billing is wired.
+const STREAM_GATING_ENABLED = process.env.NODE_ENV === 'production';
+async function resolveViewerTier(session: ActiveSession | null | undefined): Promise<number> {
+  if (!STREAM_GATING_ENABLED) return 5;                       // dev/local → full access
+  if (!session || !session.email) return 0;                  // unauthenticated → guest
+  if (roleForEmail(session.email) !== 'user') return 5;      // owner/admin/moderator → full
+  const user = await dbGetUser(session.email.toLowerCase().trim());
+  return accessTierToLevel(user?.access_tier);
+}
+
 app.get('/api/stream', async (req, res) => {
   console.log('[STREAM API] Request arrived for /api/stream');
   try {
@@ -2064,6 +2077,8 @@ app.get('/api/stream', async (req, res) => {
     // Retrieve session to resolve user records
     const session = await getSessionFromCookies(req.headers.cookie);
     const userUserEmail = (session && session.email) ? session.email.toLowerCase().trim() : undefined;
+    // Resolve the viewer's numeric access tier once, to gate premium payload blocks.
+    const viewerTier = await resolveViewerTier(session);
 
     // Single-Session Concurrency Check Block
     if (userUserEmail) {
@@ -2100,7 +2115,8 @@ app.get('/api/stream', async (req, res) => {
         positionOpen: parsedPositionOpen
       },
       userEmail: userUserEmail,
-      ip: clientIp
+      ip: clientIp,
+      tier: viewerTier
     };
 
     sse.clients.push(clientObj);
@@ -2108,7 +2124,7 @@ app.get('/api/stream', async (req, res) => {
     // Send initial payload immediately. Guard so a payload-construction throw can't
     // reject this async handler (which under Express 4 becomes an unhandledRejection).
     try {
-      const initialPayload = constructPayload(clientObj.params);
+      const initialPayload = gatePayloadByTier(constructPayload(clientObj.params), viewerTier);
       res.write(`data: ${JSON.stringify(initialPayload)}\n\n`);
       console.log('[STREAM API] Initial payload sent');
     } catch (e) {

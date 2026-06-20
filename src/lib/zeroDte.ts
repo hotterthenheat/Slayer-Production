@@ -153,19 +153,32 @@ export function compute0DTE(params: {
   const emEod = bands.find((b) => b.horizon === 'EOD')?.movePts || (spot * atmIv * Math.sqrt(T));
   const eodMagnet = eodMagnetTarget(strikes, spot);
 
-  // Gamma share at the magnet (concentration of |GEX| within ±1 strike of it).
+  // Gamma share at the magnet — concentration of |GEX| within ±1 strike of it (the
+  // magnet plus its immediate neighbours), NOT a single exact strike. Matching only
+  // the bare strike made the share ≈ 1/N (a few percent) on a full chain, so the pin
+  // probability never cleared its alert threshold; the band makes the feature live.
   const totalAbsGex = strikes.reduce((s, x) => s + Math.abs(x.netGex), 0) || 1;
+  const strikeList = strikes.map((x) => x.strike).filter((s) => s > 0).sort((a, b) => a - b);
+  let spacing = Infinity;
+  for (let i = 1; i < strikeList.length; i++) { const d = strikeList[i] - strikeList[i - 1]; if (d > 0) spacing = Math.min(spacing, d); }
+  if (!isFinite(spacing) || spacing <= 0) spacing = Math.max(1, magnet * 0.0025);
+  const band = spacing * 1.5; // ±1 strike inclusive
   const magnetAbsGex = strikes
-    .filter((x) => Math.abs(x.strike - magnet) < 1e-9)
+    .filter((x) => Math.abs(x.strike - magnet) <= band)
     .reduce((s, x) => s + Math.abs(x.netGex), 0);
   const gammaShare = Math.min(1, magnetAbsGex / totalAbsGex);
 
   const fracSessionElapsed = 1 - Math.max(0, Math.min(1, hoursToClose / SESSION_HOURS));
   const pin = pinProbability({ spot, magnet, gammaShare, netGex, emToClosePts: emEod, fracSessionElapsed });
 
-  // Settlement risk: P(|return| > 1 EM) — for a normal that's ~31.7% baseline,
-  // computed exactly here as 2·N(−1) since 1 EM = 1σ over the remaining horizon.
-  const settlementRiskPct = 2 * stdNormalCDF(-1);
+  // Settlement risk: P(|close − now| > 1 EM). A normal gives 2·N(−1) ≈ 31.7%, but the
+  // dealer gamma regime reshapes the terminal distribution: net-short gamma (GEX < 0)
+  // amplifies moves → wider close → higher risk; net-long gamma dampens → tighter →
+  // lower risk. Scale the effective σ by the regime (±25%) so the figure is live, not
+  // a constant (which left the "wide distribution" alert permanently dead).
+  const gammaRegime = Math.max(-1, Math.min(1, netGex / totalAbsGex));
+  const volAdj = Math.max(0.75, Math.min(1.25, 1 - 0.25 * gammaRegime));
+  const settlementRiskPct = Math.max(0, Math.min(1, 2 * stdNormalCDF(-1 / volAdj)));
 
   return { hoursToClose, T, expectedMove: bands, pin, eodMagnet, settlementRiskPct, atmIv };
 }

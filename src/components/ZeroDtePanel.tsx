@@ -19,7 +19,7 @@ export function ZeroDtePanel() {
   const fmt = (v: number) => (isFinite(v) ? v.toLocaleString(undefined, { maximumFractionDigits: decimals }) : '—');
   const pct = (v: number) => `${Math.round(v * 100)}%`;
 
-  if (!z || !gex) {
+  if (!z || !gex || !(gex.spot > 0)) {
     return (
       <div className="rounded-lg border border-black/60 bg-black/40 p-4 text-center">
         <p className="text-[10px] uppercase tracking-widest text-zinc-500 animate-pulse">Computing 0DTE probabilities…</p>
@@ -30,12 +30,19 @@ export function ZeroDtePanel() {
   const spot = gex.spot;
   const eod = z.expectedMove.find((b) => b.horizon === 'EOD');
   const oneH = z.expectedMove.find((b) => b.horizon === '1H');
-  const callWall = gex.callWall, putWall = gex.putWall;
+  const callWall = gex.callWall > 0 ? gex.callWall : 0;
+  const putWall = gex.putWall > 0 ? gex.putWall : 0;
 
   // Touch probabilities to the walls + ATM ITM, from the same iv / time-to-close.
-  const potCall = probabilityOfTouch(spot, callWall, z.T, z.atmIv);
-  const potPut = probabilityOfTouch(spot, putWall, z.T, z.atmIv);
+  // Skip walls the dealer engine hasn't resolved yet (0/undefined) so we never render
+  // a nonsensical "wall 0" row or feed an invalid barrier into the first-passage math.
+  const potCall = callWall > 0 ? probabilityOfTouch(spot, callWall, z.T, z.atmIv) : 0;
+  const potPut = putWall > 0 ? probabilityOfTouch(spot, putWall, z.T, z.atmIv) : 0;
   const atmCallITM = probExpireITM(spot, Math.round(spot), z.T, z.atmIv, true);
+  const walls = [
+    { label: 'Call Wall', strike: callWall, p: potCall, tone: '#F87171' },
+    { label: 'Put Wall', strike: putWall, p: potPut, tone: '#4ADE80' },
+  ].filter((w) => w.strike > 0);
 
   const Cell = ({ label, value, sub, tone = '#E5E5E5' }: { label: string; value: string; sub?: string; tone?: string }) => (
     <div className="rounded-md border border-zinc-800/50 bg-black/35 p-2.5 flex flex-col gap-0.5">
@@ -72,7 +79,8 @@ export function ZeroDtePanel() {
       {/* Probability of touch to the walls */}
       <div className="flex flex-col gap-2">
         <div className="flex items-center gap-2"><Crosshair className="w-3 h-3 text-zinc-400" /><h3 className="text-[9px] font-black tracking-widest uppercase text-zinc-400">Probability of Touch (to dealer walls)</h3></div>
-        {[{ label: 'Call Wall', strike: callWall, p: potCall, tone: '#F87171' }, { label: 'Put Wall', strike: putWall, p: potPut, tone: '#4ADE80' }].map(({ label, strike, p, tone }) => (
+        {walls.length === 0 && <span className="text-[9px] text-zinc-600">Dealer walls not yet resolved.</span>}
+        {walls.map(({ label, strike, p, tone }) => (
           <div key={label} className="flex items-center gap-2">
             <span className="text-[9px] font-bold w-24 shrink-0" style={{ color: tone }}>{label} {fmt(strike)}</span>
             <div className="flex-1 h-2 rounded-sm bg-black/50 overflow-hidden">

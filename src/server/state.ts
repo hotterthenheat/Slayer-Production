@@ -138,6 +138,8 @@ export interface SSEClient {
   };
   userEmail?: string;
   ip?: string;
+  /** Numeric access level (0 guest … 5 lifetime) used to gate premium payload blocks. */
+  tier?: number;
 }
 
 export interface SSEDiscoveryClient {

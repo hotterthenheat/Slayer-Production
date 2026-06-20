@@ -34,7 +34,14 @@ export function DealerDynamicsPanel() {
     );
   }
 
-  const fmtK = (v: number) => `${v >= 0 ? '+' : '−'}$${(Math.abs(v) / 1e6).toFixed(1)}M`;
+  const fmtK = (v: number) => {
+    if (!isFinite(v)) return '—';
+    const a = Math.abs(v), sign = v >= 0 ? '+' : '−';
+    if (a >= 1e9) return `${sign}$${(a / 1e9).toFixed(2)}B`;
+    if (a >= 1e6) return `${sign}$${(a / 1e6).toFixed(1)}M`;
+    if (a >= 1e3) return `${sign}$${(a / 1e3).toFixed(0)}K`;
+    return `${sign}$${a.toFixed(0)}`;
+  };
   const dirTone = (d: string) => (d === 'BULLISH' ? '#4ADE80' : d === 'BEARISH' ? '#F87171' : '#60A5FA');
   const trendTone = (t: string) => (t === 'RISING' ? '#4ADE80' : t === 'FALLING' ? '#F87171' : '#60A5FA');
 
