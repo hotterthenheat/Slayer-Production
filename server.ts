@@ -2589,17 +2589,20 @@ async function startServer() {
 // ==========================================
 app.post('/api/ai/analyze', async (req, res) => {
   try {
-    // SECURITY: require an authenticated session AND a paid tier. This is the
-    // premium Quant Co-Pilot (client-gated at Tier 3). The tier is read from the
-    // DB — never trusted from the cookie/localStorage.
-    const session = await getSessionFromCookies(req.headers.cookie);
-    if (!session || !session.email) {
-      return res.status(401).json({ error: 'Authentication required.' });
-    }
-    const aiDbUser = await dbGetUser(session.email.toLowerCase().trim());
-    const AI_TIER_RANK: Record<string, number> = { guest: 0, discord: 1, intraday: 2, quant: 3, enterprise: 4, lifetime: 5 };
-    if ((AI_TIER_RANK[aiDbUser?.access_tier as string] ?? 0) < 3) {
-      return res.status(403).json({ error: 'This feature requires the Pinpoint (Tier 3) plan or higher.' });
+    // SECURITY: require an authenticated session AND a paid tier in production
+    // (premium Quant Co-Pilot, client-gated at Tier 3; tier read from the DB, never
+    // the cookie). In dev/non-production the gate is skipped so the terminal is
+    // fully usable on localhost.
+    if (process.env.NODE_ENV === 'production') {
+      const session = await getSessionFromCookies(req.headers.cookie);
+      if (!session || !session.email) {
+        return res.status(401).json({ error: 'Authentication required.' });
+      }
+      const aiDbUser = await dbGetUser(session.email.toLowerCase().trim());
+      const AI_TIER_RANK: Record<string, number> = { guest: 0, discord: 1, intraday: 2, quant: 3, enterprise: 4, lifetime: 5 };
+      if ((AI_TIER_RANK[aiDbUser?.access_tier as string] ?? 0) < 3) {
+        return res.status(403).json({ error: 'This feature requires the Pinpoint (Tier 3) plan or higher.' });
+      }
     }
 
     const ticker = String(req.body?.ticker || 'SPX').toUpperCase();

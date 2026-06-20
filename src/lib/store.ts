@@ -217,12 +217,39 @@ function formatDuration(totalSeconds: number): string {
   ].join(':');
 }
 
+/**
+ * True when the app is running locally / in the Vite dev server. Used to unlock the
+ * full terminal on localhost so it's usable before billing is wired — production
+ * (a real deployed domain) always enforces the paywall.
+ */
+export function isLocalDevEnv(): boolean {
+  try {
+    // import.meta.env.DEV is true under `npm run dev`; the hostname check also
+    // covers a locally-served production build.
+    const dev = typeof import.meta !== 'undefined' && (import.meta as any).env?.DEV;
+    if (dev) return true;
+  } catch { /* import.meta may be unavailable in some bundles */ }
+  if (typeof window === 'undefined') return false;
+  const h = window.location.hostname;
+  return h === 'localhost' || h === '127.0.0.1' || h === '0.0.0.0' || h.endsWith('.local');
+}
+
 export function useTierValidation() {
   const setPurchasedTier = useContractStore(s => s.setPurchasedTier);
   const setIsAuthenticated = useContractStore(s => s.setIsAuthenticated);
 
   // Strictly validate condition on mount and hydration
   useEffect(() => {
+    // 0. Local/dev: unlock the entire terminal (no paywall screens) so it's fully
+    //    usable on localhost before payments are connected. Set an explicit
+    //    localStorage 'slayer_tier' to a lower number to simulate a gated tier.
+    if (isLocalDevEnv()) {
+      const override = localStorage.getItem('slayer_tier');
+      setPurchasedTier(override != null && override !== '' ? Number(override) : 5);
+      setIsAuthenticated(true);
+      return;
+    }
+
     // 1. Instantly force sync from local drift before network
     if (typeof window !== 'undefined') {
       const localSync = Number(localStorage.getItem('slayer_tier') || '0');
