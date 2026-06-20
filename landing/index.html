@@ -1,0 +1,339 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Slayer Terminal — Launching Soon</title>
+<meta name="description" content="Slayer Terminal — the options terminal. SkysVision finds the setup, Pinpoint AI reads the flow. Launching soon." />
+<meta property="og:title" content="Slayer Terminal — Launching Soon" />
+<meta property="og:description" content="The options terminal. Read the flow. Rank the contract. Launching soon." />
+<meta property="og:type" content="website" />
+<meta name="twitter:card" content="summary_large_image" />
+<meta name="twitter:site" content="@JoinSlayer" />
+<meta name="theme-color" content="#0A0A0B" />
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2064%2064'%3E%3Crect%20width='64'%20height='64'%20rx='14'%20fill='%230A0A0B'/%3E%3Ctext%20x='9'%20y='44'%20font-family='monospace'%20font-size='30'%20font-weight='700'%20fill='%235F656B'%3E%3E%3C/text%3E%3Ctext%20x='27'%20y='44'%20font-family='monospace'%20font-size='30'%20font-weight='800'%20fill='%23F4F5F6'%3ES%3C/text%3E%3Crect%20x='47'%20y='22'%20width='8'%20height='22'%20rx='1'%20fill='%23F4F5F6'/%3E%3C/svg%3E" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+<style>
+  :root{
+    /* Slayer Terminal — brand neutrals */
+    --black:#08090A; --matte:#0A0A0B; --char:#0C0D0F; --gun:#16181C; --gun2:#1c1e22;
+    --white:#F4F5F6; --mute:#9AA0A6; --dim:#6B7177; --dim2:#454E58;
+    /* family accents */
+    --steel:#6A93B5; --amber:#C79350; --green:#3F9C79;
+    --mono:"JetBrains Mono",ui-monospace,SFMono-Regular,monospace;
+    --ease-expo:cubic-bezier(0.16,1,0.3,1); --ease-spring:cubic-bezier(0.22,1.2,0.36,1);
+  }
+  @keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+  @keyframes rise{from{opacity:0;transform:translateY(18px)}to{opacity:1;transform:translateY(0)}}
+  @keyframes scrollUp{from{transform:translateY(0)}to{transform:translateY(-50%)}}
+  @keyframes scrollDown{from{transform:translateY(-50%)}to{transform:translateY(0)}}
+  @keyframes caret{0%,48%{opacity:1}49%,100%{opacity:0}}
+
+  *{box-sizing:border-box;margin:0;padding:0}
+  html{-webkit-text-size-adjust:100%}
+  body{background:var(--black); color:var(--mute); font-family:var(--mono); line-height:1.5;
+    -webkit-font-smoothing:antialiased; min-height:100svh; position:relative; overflow-x:hidden}
+  ::selection{background:var(--white); color:#000}
+
+  /* ── live code/finance backdrop (real Slayer motif) ── */
+  .rain{position:fixed; inset:0; z-index:0; overflow:hidden; pointer-events:none}
+  .col{position:absolute; top:0; display:flex; flex-direction:column; gap:17px; white-space:nowrap;
+    font-family:var(--mono); font-size:12px; line-height:1.85; will-change:transform; user-select:none}
+  .col .ln{color:var(--dim2)}
+  .col .ln.steel{color:var(--steel); opacity:.55}
+  .col .ln.amber{color:var(--amber); opacity:.55}
+  .col .ln.bright{color:var(--dim)}
+
+  .scrim{position:fixed; inset:0; z-index:0; pointer-events:none;
+    background:radial-gradient(ellipse 72% 62% at 50% 44%, rgba(8,9,10,.9) 0%, rgba(8,9,10,.55) 44%, transparent 78%)}
+  .vig{position:fixed; inset:0; z-index:0; pointer-events:none;
+    box-shadow:inset 0 0 260px 70px rgba(0,0,0,.92); background:radial-gradient(ellipse at center, transparent 52%, rgba(0,0,0,.62) 100%)}
+
+  .page{position:relative; z-index:1; display:flex; flex-direction:column; min-height:100svh}
+
+  /* ── header ── */
+  header{display:flex; align-items:center; justify-content:space-between; padding:24px clamp(18px,3vw,40px)}
+  .brand{display:inline-flex; align-items:center; text-decoration:none; font-weight:800; font-size:24px; line-height:1}
+  .brand .pr{color:var(--dim); font-size:.82em; margin-right:1px; font-weight:700}
+  .brand .es{color:var(--white); letter-spacing:-.5px}
+  .brand .cr{display:inline-block; width:10px; height:21px; margin-left:3px; border-radius:1px; background:var(--white);
+    box-shadow:0 0 12px rgba(244,245,246,.5); animation:caret 1.08s steps(1) infinite}
+  .pill{display:inline-flex; align-items:center; gap:8px; font-size:10px; font-weight:500; letter-spacing:.2em; text-transform:uppercase;
+    color:var(--mute); padding:8px 13px; border-radius:7px; background:var(--matte); border:1px solid var(--gun)}
+  .pill .d{width:6px; height:6px; border-radius:50%; background:var(--mute); animation:pulse 2.4s ease-in-out infinite}
+
+  /* ── hero ── */
+  main{flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center; padding:46px clamp(18px,3vw,40px) 58px}
+  .prompt-line{font-size:13px; font-weight:500; letter-spacing:.06em; color:var(--dim); margin-bottom:15px; opacity:0; animation:rise .7s var(--ease-expo) .05s forwards}
+
+  h1.lockup{font-weight:800; font-size:clamp(22px,6.4vw,60px); line-height:1; letter-spacing:-.02em;
+    display:inline-flex; align-items:center; margin-bottom:22px; white-space:nowrap; max-width:100%;
+    opacity:0; animation:rise .85s var(--ease-expo) .13s forwards}
+  h1.lockup .pr{color:var(--dim); font-size:.84em; margin-right:.04em; font-weight:700}
+  h1.lockup .wm{color:var(--white)}
+  h1.lockup .cr{display:inline-block; width:.5em; height:.92em; margin-left:.14em; border-radius:2px; background:var(--white);
+    box-shadow:0 0 18px rgba(244,245,246,.5); animation:caret 1.08s steps(1) infinite}
+
+  .statement{display:flex; flex-direction:column; gap:6px; align-items:flex-start; margin-bottom:20px;
+    font-weight:700; font-size:clamp(21px,3.4vw,31px); line-height:1.16; color:var(--white); letter-spacing:-.01em;
+    opacity:0; animation:rise .8s var(--ease-expo) .22s forwards}
+  .statement .ln{display:flex; align-items:center; gap:14px}
+  .statement .bar{flex:0 0 auto; width:4px; height:.88em; border-radius:1px}
+  .statement .b-amber{background:var(--amber)}
+  .statement .b-steel{background:var(--steel)}
+
+  .tagline{font-size:clamp(13px,1.7vw,15.5px); font-weight:400; color:var(--mute); max-width:54ch; line-height:1.6;
+    margin-bottom:28px; opacity:0; animation:rise .8s var(--ease-expo) .3s forwards}
+  .tagline .nm{color:var(--white)}
+
+  .live{font-size:11px; font-weight:500; letter-spacing:.22em; text-transform:uppercase; color:var(--dim);
+    display:inline-flex; align-items:center; gap:9px; margin-bottom:34px; opacity:0; animation:rise .8s var(--ease-expo) .38s forwards}
+  .live .d{width:6px; height:6px; border-radius:50%; background:var(--mute); animation:pulse 2s ease-in-out infinite}
+
+  .ctas{display:flex; gap:12px; flex-wrap:wrap; justify-content:center; opacity:0; animation:rise .8s var(--ease-expo) .46s forwards; transition:opacity .4s, transform .4s}
+  .ctas.hide{opacity:0; transform:translateY(-8px); pointer-events:none; height:0; margin:0; overflow:hidden}
+  .btn{font-family:var(--mono); font-weight:700; font-size:13px; letter-spacing:.02em; text-decoration:none; cursor:pointer; padding:14px 24px; border-radius:9px;
+    display:inline-flex; align-items:center; gap:10px; border:1px solid transparent; transition:transform .25s var(--ease-spring), border-color .25s, color .25s, background .25s}
+  .btn svg{width:15px; height:15px}
+  .btn-solid{background:var(--white); color:#000}
+  .btn-solid:hover{transform:translateY(-2px)} .btn-solid:active{transform:scale(.98)}
+  .btn-ghost{color:var(--white); background:transparent; border-color:var(--gun2)}
+  .btn-ghost:hover{transform:translateY(-2px); border-color:var(--mute)} .btn-ghost:active{transform:scale(.98)}
+
+  /* ── gated waitlist ── */
+  .gate{width:min(500px,100%); max-height:0; opacity:0; overflow:hidden; transform:translateY(16px);
+    transition:max-height .6s var(--ease-expo), opacity .5s ease, transform .5s var(--ease-expo)}
+  .gate.open{max-height:780px; opacity:1; transform:none}
+  .card{position:relative; border-radius:16px; padding:26px; text-align:left; margin-top:6px;
+    background:var(--char); border:1px solid var(--gun); overflow:hidden; box-shadow:0 40px 90px -50px #000}
+  .card .accent{position:absolute; top:0; left:0; right:0; height:1.5px; background:linear-gradient(90deg,transparent,rgba(244,245,246,.7),transparent)}
+  .ch{display:flex; align-items:center; justify-content:space-between; padding-bottom:14px; margin-bottom:18px; border-bottom:1px solid var(--gun)}
+  .ch .k{font-size:9px; font-weight:700; letter-spacing:.24em; text-transform:uppercase; color:var(--mute)}
+  .ch .s{font-size:9px; font-weight:500; letter-spacing:.18em; text-transform:uppercase; color:var(--green); display:flex; align-items:center; gap:7px}
+  .ch .s .d{width:6px; height:6px; border-radius:50%; background:var(--green); box-shadow:0 0 7px rgba(63,156,121,.55); animation:pulse 2s ease-in-out infinite}
+  .card h2{font-weight:800; font-size:19px; color:var(--white); margin-bottom:6px; letter-spacing:-.01em}
+  .card .blurb{font-size:13px; font-weight:400; color:var(--dim); margin-bottom:18px; line-height:1.55}
+
+  form{display:flex; flex-direction:column; gap:12px}
+  .field label{display:block; font-size:9px; font-weight:700; letter-spacing:.2em; text-transform:uppercase; color:var(--dim); margin-bottom:7px}
+  .field input,.field select{width:100%; background:var(--matte); border:1px solid var(--gun); border-radius:8px; padding:13px 14px; color:var(--white); font-family:var(--mono); font-size:14px; transition:border-color .2s, box-shadow .2s}
+  .field input::placeholder{color:var(--dim2)}
+  .field input:focus,.field select:focus{outline:none; border-color:var(--dim); box-shadow:0 0 0 3px rgba(244,245,246,.05)}
+  .field select{appearance:none; -webkit-appearance:none; cursor:pointer; padding-right:38px;
+    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%239AA0A6' stroke-width='2.5'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E"); background-repeat:no-repeat; background-position:right 14px center}
+  .hp{position:absolute; left:-9999px; opacity:0; height:0; width:0}
+  .err{font-size:11px; color:#d96a5e; min-height:14px}
+  .submit{margin-top:4px; width:100%; background:var(--white); color:#000; border:none; cursor:pointer; font-family:var(--mono); font-weight:700; font-size:12px; letter-spacing:.12em; text-transform:uppercase; padding:15px; border-radius:9px; display:inline-flex; align-items:center; justify-content:center; gap:10px; transition:transform .25s var(--ease-spring), opacity .2s}
+  .submit:hover{transform:translateY(-2px)} .submit:active{transform:scale(.98)} .submit:disabled{opacity:.55; cursor:default; transform:none}
+  .submit svg{width:14px; height:14px}
+  .orline{margin-top:14px; text-align:center; font-size:10.5px; color:var(--dim2)}
+  .orline a{color:var(--mute); text-decoration:none; border-bottom:1px solid var(--gun2)}
+  .orline a:hover{color:var(--white)}
+
+  .done{display:none; flex-direction:column; align-items:center; text-align:center; padding:8px 0 4px}
+  .done .ic{width:46px; height:46px; border-radius:50%; display:grid; place-items:center; margin-bottom:14px; background:rgba(63,156,121,.1); border:1px solid rgba(63,156,121,.34)}
+  .done .ic svg{width:22px; height:22px; color:var(--green)}
+  .done h3{font-weight:800; font-size:18px; color:var(--white); margin-bottom:6px}
+  .done p{font-size:13px; font-weight:400; color:var(--dim); line-height:1.55}
+  .card.sent form,.card.sent .orline{display:none}
+  .card.sent .done{display:flex}
+  .card.sent .ch .s{color:var(--dim)} .card.sent .ch .s .d{background:var(--dim2); box-shadow:none; animation:none}
+
+  /* ── footer ── */
+  footer{display:flex; align-items:center; justify-content:space-between; gap:16px; flex-wrap:wrap; padding:22px clamp(18px,3vw,40px) 30px; border-top:1px solid var(--matte)}
+  .fl{display:flex; gap:22px; flex-wrap:wrap; align-items:center}
+  .fl a{color:var(--dim); text-decoration:none; font-size:13px; font-weight:500; display:inline-flex; align-items:center; gap:8px; transition:color .2s}
+  .fl a:hover{color:var(--white)} .fl a svg{width:15px; height:15px}
+  .fl .sep{color:var(--gun2)}
+  .fl .fam{font-size:10px; font-weight:500; letter-spacing:.16em; text-transform:uppercase; color:var(--dim2)}
+  .copy{font-size:9.5px; font-weight:500; letter-spacing:.16em; text-transform:uppercase; color:var(--dim2)}
+
+  a:focus-visible,button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid var(--white); outline-offset:2px}
+
+  @media (max-width:560px){
+    header{padding:18px}
+    main{padding:34px 18px 48px}
+    .brand{font-size:20px} .brand .cr{width:9px; height:18px}
+    .pill{font-size:9px; padding:7px 10px; letter-spacing:.14em}
+    .statement{align-items:center}
+    .ctas{flex-direction:column; align-self:stretch; width:100%}
+    .btn{justify-content:center}
+    footer{padding:18px; flex-direction:column; align-items:flex-start; gap:12px}
+  }
+  @media (prefers-reduced-motion:reduce){
+    *{animation:none !important}
+    .prompt-line,h1.lockup,.statement,.tagline,.live,.ctas{opacity:1}
+    .col{display:none}
+  }
+</style>
+</head>
+<body>
+  <div class="rain" id="rain" aria-hidden="true"></div>
+  <div class="scrim"></div>
+  <div class="vig"></div>
+
+  <div class="page">
+    <header>
+      <a class="brand" href="/" aria-label="Slayer Terminal home">
+        <!-- LOGOMARK: standalone command prompt > S_ , live blinking cursor -->
+        <span class="pr" aria-hidden="true">&gt;</span><span class="es">S</span><span class="cr" aria-hidden="true"></span>
+      </a>
+      <span class="pill"><span class="d"></span>Pre-launch</span>
+    </header>
+
+    <main>
+      <span class="prompt-line">slayer:~ $</span>
+
+      <!-- big command-line wordmark lockup -->
+      <h1 class="lockup" aria-label="slayer_terminal">
+        <span class="pr" aria-hidden="true">&gt;</span><span class="wm">slayer_terminal</span><span class="cr" aria-hidden="true"></span>
+      </h1>
+
+      <!-- signature accent-bar statement -->
+      <div class="statement">
+        <span class="ln"><span class="bar b-amber"></span>Read the flow.</span>
+        <span class="ln"><span class="bar b-steel"></span>Rank the contract.</span>
+      </div>
+
+      <p class="tagline">The options terminal — <span class="nm">SkysVision</span> finds the setup, <span class="nm">Pinpoint&nbsp;AI</span> reads the flow. In final calibration.</p>
+
+      <span class="live"><span class="d"></span>Launching soon</span>
+
+      <div class="ctas" id="ctas">
+        <button class="btn btn-solid" id="reveal" type="button">
+          Request early access
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+        </button>
+        <a class="btn btn-ghost" href="https://x.com/JoinSlayer" target="_blank" rel="noopener">
+          <svg viewBox="0 0 24 24" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>
+          Follow @JoinSlayer
+        </a>
+      </div>
+
+      <!-- gated: email only appears after Request early access -->
+      <div class="gate" id="gate">
+        <div class="card" id="card">
+          <div class="accent"></div>
+          <div class="ch"><span class="k">Early Access</span><span class="s"><span class="d"></span>Waitlist Open</span></div>
+          <h2>Get in before launch.</h2>
+          <p class="blurb">Drop your email and we'll send your access the moment the terminal opens.</p>
+
+          <form id="wl" name="waitlist" method="POST" data-netlify="true" netlify-honeypot="bot-field" novalidate>
+            <input type="hidden" name="form-name" value="waitlist" />
+            <p class="hp"><label>Skip: <input name="bot-field" tabindex="-1" autocomplete="off" /></label></p>
+            <div class="field"><label for="name">Name</label><input id="name" name="name" type="text" placeholder="Your name" autocomplete="name" /></div>
+            <div class="field"><label for="email">Email *</label><input id="email" name="email" type="email" placeholder="you@email.com" autocomplete="email" required /></div>
+            <div class="field"><label for="trade">What do you trade?</label>
+              <select id="trade" name="trade">
+                <option value="">Select one (optional)</option>
+                <option>Index options (SPX / NDX)</option>
+                <option>Equity options</option>
+                <option>Futures</option>
+                <option>Just exploring</option>
+              </select>
+            </div>
+            <div class="err" id="err" role="alert"></div>
+            <button class="submit" type="submit" id="btn"><span id="btnlabel">Join the waitlist</span>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+            </button>
+          </form>
+          <div class="orline">or email <a href="mailto:info@slayerterminal.com">info@slayerterminal.com</a></div>
+
+          <div class="done">
+            <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></div>
+            <h3>You're on the list.</h3>
+            <p>We'll email <b id="sentto">you</b> the moment access opens.</p>
+          </div>
+        </div>
+      </div>
+    </main>
+
+    <footer>
+      <div class="fl">
+        <a href="https://x.com/JoinSlayer" target="_blank" rel="noopener">
+          <svg viewBox="0 0 24 24" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>
+          @JoinSlayer
+        </a>
+        <span class="sep">·</span>
+        <span class="fam">SkysVision · Pinpoint AI · Arbor</span>
+      </div>
+      <div class="copy">© 2026 Slayer Terminal</div>
+    </footer>
+  </div>
+
+  <script>
+    (function(){
+      var reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+      // ── live backdrop: real Slayer code/data motif ──
+      var POOL = [
+        "def terminal(chain, strat):","    setups = skysvision.scan(chain, strat)","    flow = pinpoint.dealers(chain)",
+        "    return setups.head(5), flow","top, flow = terminal(spx_chain, my_strat)","top[0]   # SPX 6050C 0DTE score 92",
+        "flow.gex # -1.2bn  flip 5980","skysvision.scan() -> 5 setups","pinpoint.dealers() -> gex -1.2bn","flip 5,980   build 5.2.1",
+        "NET GEX -1.2bn   FLIP 5,980","DEX +0.42   VEX 0.78","SPX 6050C 0DTE   92","NDX 21800P 1DTE   87","QQQ 505C WK   81",
+        "IWM 232P 0DTE   74","upper = ema + k * atr","if px >= upper: return HOLDING","if px <= lower: return FAILING",
+        "return TESTING","regime: short gamma","> live","slayer:~ $","setups = rank(chain, strat)","score = wilson(w, n)",
+        "reprice(S, sigma - 0.012*dPct)","CALL WALL 6100   PUT WALL 5950","P_cal 0.64   EV +0.31R","SLAYER/LIVE  09:41:06 ET",
+        "0DTE  filled  6050C  +34%","dealers.hedge -> accel up","ev = sum p(x)*payoff(x)","chain('SPX', 0DTE).rank()"
+      ];
+      function rnd(a){return a[Math.floor(Math.random()*a.length)];}
+      function tint(s){
+        var l=s.toLowerCase();
+        if(l.indexOf('skysvision')>-1||l.indexOf('setup')>-1||l.indexOf('scan')>-1||l.indexOf('rank')>-1||l.indexOf('score')>-1) return 'steel';
+        if(l.indexOf('pinpoint')>-1||l.indexOf('gex')>-1||l.indexOf('dex')>-1||l.indexOf('vex')>-1||l.indexOf('flip')>-1||l.indexOf('dealer')>-1||l.indexOf('wall')>-1) return 'amber';
+        return (Math.random()>0.8)?'bright':'';
+      }
+      if(!reduce){
+        var rain = document.getElementById('rain');
+        var w = window.innerWidth;
+        var cols = Math.max(4, Math.min(10, Math.floor(w/170)));
+        for(var c=0;c<cols;c++){
+          var col = document.createElement('div'); col.className='col';
+          col.style.left = (c*(100/cols) + (Math.random()*4-2)) + '%';
+          var dur = 36 + Math.random()*42;
+          col.style.animation = (Math.random()>0.5?'scrollUp ':'scrollDown ') + dur + 's linear infinite';
+          col.style.animationDelay = (-Math.random()*dur) + 's';
+          col.style.opacity = (0.42 + Math.random()*0.22).toFixed(2);
+          var lines = []; for(var i=0;i<22;i++){ lines.push(rnd(POOL)); }
+          var two = lines.concat(lines), html='';
+          for(var j=0;j<two.length;j++){ var cl=tint(two[j]); html += '<span class="ln'+(cl?(' '+cl):'')+'">'+two[j]+'</span>'; }
+          col.innerHTML = html; rain.appendChild(col);
+        }
+      }
+
+      // ── reveal gate: email only after click ──
+      var reveal=document.getElementById('reveal'), gate=document.getElementById('gate'), ctas=document.getElementById('ctas'), emailEl=document.getElementById('email');
+      reveal.addEventListener('click', function(){
+        gate.classList.add('open'); ctas.classList.add('hide');
+        setTimeout(function(){ try{ emailEl.focus({preventScroll:false}); }catch(e){ emailEl.focus(); } gate.scrollIntoView({behavior:'smooth', block:'center'}); }, 320);
+      });
+      function closeGate(){
+        if(!gate.classList.contains('open')) return;
+        gate.classList.remove('open'); ctas.classList.remove('hide');
+        if(document.activeElement && document.activeElement.blur){ document.activeElement.blur(); }
+        window.scrollTo({top:0, behavior:'smooth'});
+      }
+      // Esc closes the waitlist and returns to the home view
+      document.addEventListener('keydown', function(e){ if(e.key==='Escape'||e.key==='Esc'){ closeGate(); } });
+
+      // ── waitlist submit ── Netlify: leave "/" ; Formspree/Getform: set endpoint URL.
+      var FORM_ENDPOINT="/";
+      var form=document.getElementById('wl'), card=document.getElementById('card'), err=document.getElementById('err'), btn=document.getElementById('btn'), btnlabel=document.getElementById('btnlabel');
+      function validEmail(v){ return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v); }
+      form.addEventListener('submit', function(e){
+        e.preventDefault(); err.textContent='';
+        var email=(emailEl.value||'').trim();
+        if(!validEmail(email)){ err.textContent='Enter a valid email address.'; emailEl.focus(); return; }
+        if(form.querySelector('[name="bot-field"]').value){ return; }
+        btn.disabled=true; btnlabel.textContent='Submitting...';
+        var body=new URLSearchParams(new FormData(form)).toString();
+        fetch(FORM_ENDPOINT,{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:body})
+          .then(function(r){ if(!r.ok) throw 0; document.getElementById('sentto').textContent=email; card.classList.add('sent'); })
+          .catch(function(){ btn.disabled=false; btnlabel.textContent='Join the waitlist'; err.textContent='Something went wrong. Email info@slayerterminal.com and we will add you.'; });
+      });
+    })();
+  </script>
+</body>
+</html>

@@ -1,0 +1,27 @@
+# Slayer Terminal — PRE-LAUNCH landing page deploy (Netlify, static).
+#
+# This config is ONLY for the temporary "coming soon" page in /landing.
+# It intentionally does NOT build the main app (that ships separately later,
+# e.g. on Render, at which point you repoint DNS).
+#
+# The waitlist form in landing/index.html is auto-detected by Netlify Forms
+# (data-netlify="true" + hidden form-name="waitlist" + bot-field honeypot).
+# Submissions land in: Netlify dashboard -> Forms -> "waitlist".
+# Set the form notification email to info@slayerterminal.com.
+
+[build]
+  # No build step — the page is plain static HTML.
+  command = "echo 'Slayer Terminal landing — static, no build required.'"
+  publish = "landing"
+
+[build.environment]
+  # Skip dependency install; nothing in /landing needs node_modules.
+  NETLIFY_SKIP_NPM_INSTALL = "true"
+
+# Security + caching headers for the static page.
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Frame-Options = "SAMEORIGIN"
+    X-Content-Type-Options = "nosniff"
+    Referrer-Policy = "strict-origin-when-cross-origin"

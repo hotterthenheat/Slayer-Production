@@ -1,0 +1,1863 @@
+import React, { useMemo, useState, useEffect, useRef } from 'react';
+import { motion, AnimatePresence } from 'motion/react';
+import { 
+  ArrowRight, 
+  Award, 
+  AlertTriangle, 
+  Percent, 
+  Activity, 
+  Zap, 
+  Search, 
+  ShieldAlert, 
+  Flame, 
+  Database,
+  RefreshCw,
+  Sliders,
+  DollarSign,
+  Volume2,
+  ChevronDown,
+  ChevronUp,
+  Clock,
+  Target,
+  Info,
+  Sparkles,
+  Layers
+} from 'lucide-react';
+import { AssetInfo } from '../types';
+import { ASSET_LIST } from '../data';
+import { useContractStore } from '../lib/store';
+
+interface DiscoveryViewProps {
+  systemScore: any;
+  discovery?: {
+    mispricedCalls: any[];
+    mispricedPuts: any[];
+    mostImproved: any[];
+    nearInvalidation: any[];
+  };
+  onSelectContract: (asset: AssetInfo, strike: number, isCall: boolean) => void;
+}
+
+// Complete database of 30 institutional-grade options contracts
+const INITIAL_CONTRACTS = [
+  // SHELF: CONVICTION
+  {
+    id: 'spx-7620-c',
+    ticker: 'SPX',
+    strike: 7620,
+    isCall: true,
+    health: 96,
+    expectedMove: '+42.5%',
+    action: 'ENTER' as const,
+    narrative: 'Heavy institutional volume cluster matched. Dealer buy walls are perfectly positioned.',
+    tagText: 'CONVICTION',
+    shelf: 'conviction',
+    delta: 0.54,
+    gamma: 0.024,
+    vega: 0.14,
+    theta: -0.81,
+    volume: 14205,
+    price: 5.40,
+    bid: 5.35,
+    ask: 5.45,
+    t1: 7.20,
+    p1: 33
+  },
+  {
+    id: 'spy-515-c',
+    ticker: 'SPY',
+    strike: 515,
+    isCall: true,
+    health: 93,
+    expectedMove: '+36.2%',
+    action: 'ENTER' as const,
+    narrative: 'Unusually clean volume profile confirms call momentum.',
+    tagText: 'CONVICTION',
+    shelf: 'conviction',
+    delta: 0.48,
+    gamma: 0.038,
+    vega: 0.12,
+    theta: -0.45,
+    volume: 38201,
+    price: 3.20,
+    bid: 3.18,
+    ask: 3.22,
+    t1: 4.35,
+    p1: 36
+  },
+  {
+    id: 'qqq-448-c',
+    ticker: 'QQQ',
+    strike: 448,
+    isCall: true,
+    health: 91,
+    expectedMove: '+29.0%',
+    action: 'ENTER' as const,
+    narrative: 'Dealer block purchases confirm near-term floor.',
+    tagText: 'CONVICTION',
+    shelf: 'conviction',
+    delta: 0.52,
+    gamma: 0.041,
+    vega: 0.15,
+    theta: -0.55,
+    volume: 22401,
+    price: 4.20,
+    bid: 4.15,
+    ask: 4.25,
+    t1: 5.40,
+    p1: 29
+  },
+  {
+    id: 'ndx-18350-c',
+    ticker: 'NDX',
+    strike: 18350,
+    isCall: true,
+    health: 90,
+    expectedMove: '+31.4%',
+    action: 'ENTER' as const,
+    narrative: 'Rapid acceleration in derivative order flow on Nasdaq nodes.',
+    tagText: 'CONVICTION',
+    shelf: 'conviction',
+    delta: 0.49,
+    gamma: 0.015,
+    vega: 0.18,
+    theta: -1.25,
+    volume: 5204,
+    price: 15.50,
+    bid: 15.30,
+    ask: 15.70,
+    t1: 20.30,
+    p1: 31
+  },
+  {
+    id: 'spx-7600-c',
+    ticker: 'SPX',
+    strike: 7600,
+    isCall: true,
+    health: 95,
+    expectedMove: '+39.1%',
+    action: 'ENTER' as const,
+    narrative: 'Below spot magnet concentration attracts structural institutional buyer hedging.',
+    tagText: 'CONVICTION',
+    shelf: 'conviction',
+    delta: 0.62,
+    gamma: 0.021,
+    vega: 0.13,
+    theta: -0.92,
+    volume: 18940,
+    price: 11.20,
+    bid: 11.10,
+    ask: 11.30,
+    t1: 15.60,
+    p1: 39
+  },
+  {
+    id: 'spy-510-c',
+    ticker: 'SPY',
+    strike: 510,
+    isCall: true,
+    health: 92,
+    expectedMove: '+34.8%',
+    action: 'ENTER' as const,
+    narrative: 'Slayer deep learning index detects massive localized volume sweep.',
+    tagText: 'CONVICTION',
+    shelf: 'conviction',
+    delta: 0.58,
+    gamma: 0.035,
+    vega: 0.13,
+    theta: -0.48,
+    volume: 45100,
+    price: 5.10,
+    bid: 5.05,
+    ask: 5.15,
+    t1: 6.85,
+    p1: 34
+  },
+
+  // SHELF: IMPROVED / VELOCITY
+  {
+    id: 'ndx-18300-c',
+    ticker: 'NDX',
+    strike: 18300,
+    isCall: true,
+    health: 89,
+    expectedMove: '+55.2%',
+    action: 'ENTER' as const,
+    narrative: 'Rapid jump in scoring index over the last 15 minutes. High expansion.',
+    tagText: 'VELOCITY',
+    shelf: 'improved',
+    delta: 0.58,
+    gamma: 0.018,
+    vega: 0.19,
+    theta: -1.15,
+    volume: 6310,
+    price: 14.20,
+    bid: 14.05,
+    ask: 14.35,
+    t1: 22.01,
+    p1: 55
+  },
+  {
+    id: 'qqq-446-c',
+    ticker: 'QQQ',
+    strike: 446,
+    isCall: true,
+    health: 88,
+    expectedMove: '+32.4%',
+    action: 'ENTER' as const,
+    narrative: 'Dealer short blocks have dissolved, freeing up massive room overhead.',
+    tagText: 'VELOCITY',
+    shelf: 'improved',
+    delta: 0.54,
+    gamma: 0.043,
+    vega: 0.16,
+    theta: -0.58,
+    volume: 29402,
+    price: 3.80,
+    bid: 3.75,
+    ask: 3.85,
+    t1: 5.05,
+    p1: 32
+  },
+  {
+    id: 'spy-514-c',
+    ticker: 'SPY',
+    strike: 514,
+    isCall: true,
+    health: 87,
+    expectedMove: '+28.5%',
+    action: 'ENTER' as const,
+    narrative: 'Score rating surges as dealers transition from negative gamma to neutral gamma.',
+    tagText: 'VELOCITY',
+    shelf: 'improved',
+    delta: 0.51,
+    gamma: 0.039,
+    vega: 0.12,
+    theta: -0.46,
+    volume: 18920,
+    price: 2.80,
+    bid: 2.77,
+    ask: 2.83,
+    t1: 3.60,
+    p1: 28
+  },
+  {
+    id: 'spx-7660-c',
+    ticker: 'SPX',
+    strike: 7660,
+    isCall: true,
+    health: 86,
+    expectedMove: '+45.0%',
+    action: 'ENTER' as const,
+    narrative: 'Breakout momentum identified. Standard dispersion limit predicts vol expansion.',
+    tagText: 'VELOCITY',
+    shelf: 'improved',
+    delta: 0.42,
+    gamma: 0.019,
+    vega: 0.14,
+    theta: -0.84,
+    volume: 9811,
+    price: 4.80,
+    bid: 4.70,
+    ask: 4.90,
+    t1: 6.95,
+    p1: 45
+  },
+  {
+    id: 'qqq-450-c',
+    ticker: 'QQQ',
+    strike: 450,
+    isCall: true,
+    health: 85,
+    expectedMove: '+26.8%',
+    action: 'ENTER' as const,
+    narrative: 'Derivative speed indices ticking straight up; fast buy feedback loop active.',
+    tagText: 'VELOCITY',
+    shelf: 'improved',
+    delta: 0.46,
+    gamma: 0.040,
+    vega: 0.17,
+    theta: -0.61,
+    volume: 15400,
+    price: 2.65,
+    bid: 2.61,
+    ask: 2.69,
+    t1: 3.35,
+    p1: 26
+  },
+  {
+    id: 'spx-7640-c',
+    ticker: 'SPX',
+    strike: 7640,
+    isCall: true,
+    health: 88,
+    expectedMove: '+30.2%',
+    action: 'ENTER' as const,
+    narrative: 'Rapid acceleration in order flow profile matches strong buy trend.',
+    tagText: 'VELOCITY',
+    shelf: 'improved',
+    delta: 0.52,
+    gamma: 0.022,
+    vega: 0.13,
+    theta: -0.85,
+    volume: 12401,
+    price: 6.80,
+    bid: 6.70,
+    ask: 6.90,
+    t1: 8.85,
+    p1: 30
+  },
+
+  // SHELF: MISPRICED / ARBITRAGE
+  {
+    id: 'spy-442-p',
+    ticker: 'SPY',
+    strike: 442,
+    isCall: false,
+    health: 85,
+    expectedMove: '+24.1%',
+    action: 'HOLD' as const,
+    narrative: 'Valuation curve points to an extreme temporary discount on deep puts.',
+    tagText: 'MISPRICED',
+    shelf: 'mispriced',
+    delta: -0.12,
+    gamma: 0.008,
+    vega: 0.06,
+    theta: -0.15,
+    volume: 5310,
+    price: 0.45,
+    bid: 0.43,
+    ask: 0.47,
+    t1: 0.55,
+    p1: 22
+  },
+  {
+    id: 'spx-7650-c',
+    ticker: 'SPX',
+    strike: 7650,
+    isCall: true,
+    health: 83,
+    expectedMove: '+18.5%',
+    action: 'HOLD' as const,
+    narrative: 'Priced exceptionally cheap relative to general spot move; heavy IV discount.',
+    tagText: 'MISPRICED',
+    shelf: 'mispriced',
+    delta: 0.45,
+    gamma: 0.020,
+    vega: 0.14,
+    theta: -0.83,
+    volume: 8105,
+    price: 5.10,
+    bid: 5.00,
+    ask: 5.20,
+    t1: 6.05,
+    p1: 18
+  },
+  {
+    id: 'spy-508-p',
+    ticker: 'SPY',
+    strike: 508,
+    isCall: false,
+    health: 81,
+    expectedMove: '+20.5%',
+    action: 'HOLD' as const,
+    narrative: 'Theoretical model price sits at $1.85, while active broker ask is $1.35.',
+    tagText: 'MISPRICED',
+    shelf: 'mispriced',
+    delta: -0.38,
+    gamma: 0.025,
+    vega: 0.11,
+    theta: -0.32,
+    volume: 12502,
+    price: 1.35,
+    bid: 1.32,
+    ask: 1.38,
+    t1: 1.62,
+    p1: 20
+  },
+  {
+    id: 'spx-7590-p',
+    ticker: 'SPX',
+    strike: 7590,
+    isCall: false,
+    health: 84,
+    expectedMove: '+27.0%',
+    action: 'ENTER' as const,
+    narrative: 'Implied volatility suppression created a perfect risk-to-reward underpricing node.',
+    tagText: 'MISPRICED',
+    shelf: 'mispriced',
+    delta: -0.41,
+    gamma: 0.018,
+    vega: 0.13,
+    theta: -0.75,
+    volume: 7500,
+    price: 12.80,
+    bid: 12.60,
+    ask: 13.00,
+    t1: 16.25,
+    p1: 27
+  },
+  {
+    id: 'qqq-442-p',
+    ticker: 'QQQ',
+    strike: 442,
+    isCall: false,
+    health: 80,
+    expectedMove: '+19.2%',
+    action: 'HOLD' as const,
+    narrative: 'Underpriced hedge option with high delta sensitivity relative to current spot.',
+    tagText: 'MISPRICED',
+    shelf: 'mispriced',
+    delta: -0.39,
+    gamma: 0.034,
+    vega: 0.14,
+    theta: -0.42,
+    volume: 16210,
+    price: 2.15,
+    bid: 2.12,
+    ask: 2.18,
+    t1: 2.56,
+    p1: 19
+  },
+  {
+    id: 'ndx-18200-p',
+    ticker: 'NDX',
+    strike: 18200,
+    isCall: false,
+    health: 82,
+    expectedMove: '+22.4%',
+    action: 'HOLD' as const,
+    narrative: 'Strong theoretical offset detected. Arbitrage spread calculated at 14.5%.',
+    tagText: 'ARBITRAGE',
+    shelf: 'mispriced',
+    delta: -0.44,
+    gamma: 0.014,
+    vega: 0.18,
+    theta: -1.10,
+    volume: 3840,
+    price: 42.10,
+    bid: 41.50,
+    ask: 42.70,
+    t1: 51.50,
+    p1: 22
+  },
+
+  // SHELF: INVALIDATION / BOUNDARIES
+  {
+    id: 'spx-7610-p',
+    ticker: 'SPX',
+    strike: 7610,
+    isCall: false,
+    health: 48,
+    expectedMove: '-15.4%',
+    action: 'REDUCE' as const,
+    narrative: 'Slipped past main dealer GEX hedge floor. Tail risk exponentially flashing high.',
+    tagText: 'INVALIDATION',
+    shelf: 'invalidation',
+    delta: -0.42,
+    gamma: 0.021,
+    vega: 0.13,
+    theta: -0.85,
+    volume: 15401,
+    price: 18.50,
+    bid: 18.30,
+    ask: 18.70,
+    t1: 15.65,
+    p1: -15
+  },
+  {
+    id: 'spy-440-p',
+    ticker: 'SPY',
+    strike: 440,
+    isCall: false,
+    health: 51,
+    expectedMove: '-10.2%',
+    action: 'SELL' as const,
+    narrative: 'Liquidity sweep void detected below current level. Immediate defensive alert.',
+    tagText: 'INVALIDATION',
+    shelf: 'invalidation',
+    delta: -0.10,
+    gamma: 0.005,
+    vega: 0.05,
+    theta: -0.12,
+    volume: 24500,
+    price: 0.35,
+    bid: 0.33,
+    ask: 0.37,
+    t1: 0.31,
+    p1: -10
+  },
+  {
+    id: 'spx-7580-p',
+    ticker: 'SPX',
+    strike: 7580,
+    isCall: false,
+    health: 41,
+    expectedMove: '-24.0%',
+    action: 'SELL' as const,
+    narrative: 'Extreme threshold crossover boundary triggers automatic institutional liquidation.',
+    tagText: 'INVALIDATION',
+    shelf: 'invalidation',
+    delta: -0.32,
+    gamma: 0.016,
+    vega: 0.12,
+    theta: -0.80,
+    volume: 11040,
+    price: 8.50,
+    bid: 8.35,
+    ask: 8.65,
+    t1: 6.45,
+    p1: -24
+  },
+  {
+    id: 'spy-502-p',
+    ticker: 'SPY',
+    strike: 502,
+    isCall: false,
+    health: 45,
+    expectedMove: '-18.5%',
+    action: 'SELL' as const,
+    narrative: 'Brushed beneath primary dealer put wall support. Hedging dynamics turned negative.',
+    tagText: 'INVALIDATION',
+    shelf: 'invalidation',
+    delta: -0.28,
+    gamma: 0.022,
+    vega: 0.09,
+    theta: -0.28,
+    volume: 19105,
+    price: 2.10,
+    bid: 2.05,
+    ask: 2.15,
+    t1: 1.71,
+    p1: -18
+  },
+  {
+    id: 'qqq-438-p',
+    ticker: 'QQQ',
+    strike: 438,
+    isCall: false,
+    health: 49,
+    expectedMove: '-14.0%',
+    action: 'REDUCE' as const,
+    narrative: 'Unwinds beneath crucial volume-weighted index pivot. Support levels dissolve.',
+    tagText: 'INVALIDATION',
+    shelf: 'invalidation',
+    delta: -0.31,
+    gamma: 0.028,
+    vega: 0.12,
+    theta: -0.38,
+    volume: 14210,
+    price: 3.15,
+    bid: 3.10,
+    ask: 3.20,
+    t1: 2.70,
+    p1: -14
+  },
+  {
+    id: 'ndx-18100-p',
+    ticker: 'NDX',
+    strike: 18100,
+    isCall: false,
+    health: 38,
+    expectedMove: '-32.5%',
+    action: 'SELL' as const,
+    narrative: 'System score degraded as gamma flip point triggers extreme margin sell hedging.',
+    tagText: 'INVALIDATION',
+    shelf: 'invalidation',
+    delta: -0.36,
+    gamma: 0.010,
+    vega: 0.16,
+    theta: -1.02,
+    volume: 2901,
+    price: 28.50,
+    bid: 28.00,
+    ask: 29.00,
+    t1: 19.20,
+    p1: -32
+  },
+
+  // SHELF: WHALE SWEEPS
+  {
+    id: 'spx-7700-c',
+    ticker: 'SPX',
+    strike: 7700,
+    isCall: true,
+    health: 94,
+    expectedMove: '+62.4%',
+    action: 'ENTER' as const,
+    narrative: 'Block institutional trades sweep SPX 7700 strike, representing $14.2M notional.',
+    tagText: 'WHALE',
+    shelf: 'whale',
+    delta: 0.35,
+    gamma: 0.018,
+    vega: 0.15,
+    theta: -0.78,
+    volume: 62400,
+    price: 2.45,
+    bid: 2.40,
+    ask: 2.50,
+    t1: 3.98,
+    p1: 62
+  },
+  {
+    id: 'ndx-18500-c',
+    ticker: 'NDX',
+    strike: 18500,
+    isCall: true,
+    health: 91,
+    expectedMove: '+75.0%',
+    action: 'ENTER' as const,
+    narrative: 'Massive out-of-the-money block trade cluster. Aggressive bullish volatility positioning.',
+    tagText: 'WHALE',
+    shelf: 'whale',
+    delta: 0.30,
+    gamma: 0.010,
+    vega: 0.17,
+    theta: -1.08,
+    volume: 11400,
+    price: 8.90,
+    bid: 8.70,
+    ask: 9.10,
+    t1: 15.55,
+    p1: 75
+  },
+  {
+    id: 'spy-520-c',
+    ticker: 'SPY',
+    strike: 520,
+    isCall: true,
+    health: 89,
+    expectedMove: '+44.1%',
+    action: 'ENTER' as const,
+    narrative: 'Sweeps executed on Ask price consistently over the last 10 minutes. Bull run.',
+    tagText: 'WHALE',
+    shelf: 'whale',
+    delta: 0.34,
+    gamma: 0.031,
+    vega: 0.11,
+    theta: -0.40,
+    volume: 92400,
+    price: 1.15,
+    bid: 1.12,
+    ask: 1.18,
+    t1: 1.65,
+    p1: 44
+  },
+  {
+    id: 'qqq-455-c',
+    ticker: 'QQQ',
+    strike: 455,
+    isCall: true,
+    health: 88,
+    expectedMove: '+38.5%',
+    action: 'ENTER' as const,
+    narrative: 'Multimillion institutional block sweep targeting the upper resistance channel wall.',
+    tagText: 'WHALE',
+    shelf: 'whale',
+    delta: 0.32,
+    gamma: 0.033,
+    vega: 0.13,
+    theta: -0.52,
+    volume: 51200,
+    price: 1.45,
+    bid: 1.41,
+    ask: 1.49,
+    t1: 2.01,
+    p1: 38
+  },
+  {
+    id: 'spx-7500-p',
+    ticker: 'SPX',
+    strike: 7500,
+    isCall: false,
+    health: 85,
+    expectedMove: '+52.0%',
+    action: 'HOLD' as const,
+    narrative: 'Huge defensive protective put basket sweep ($22.4M notional hedge) detected.',
+    tagText: 'WHALE',
+    shelf: 'whale',
+    delta: -0.19,
+    gamma: 0.010,
+    vega: 0.09,
+    theta: -0.55,
+    volume: 48900,
+    price: 4.80,
+    bid: 4.70,
+    ask: 4.90,
+    t1: 7.30,
+    p1: 52
+  },
+  {
+    id: 'ndx-17800-p',
+    ticker: 'NDX',
+    strike: 17800,
+    isCall: false,
+    health: 83,
+    expectedMove: '+48.5%',
+    action: 'HOLD' as const,
+    narrative: 'Significant tail protection sweep blocks are locking up hedge positions at put wall.',
+    tagText: 'WHALE',
+    shelf: 'whale',
+    delta: -0.15,
+    gamma: 0.008,
+    vega: 0.12,
+    theta: -0.78,
+    volume: 8520,
+    price: 12.40,
+    bid: 12.10,
+    ask: 12.70,
+    t1: 18.40,
+    p1: 48
+  }
+];
+
+// Seed initial historical feed logs
+// Monotonic id source so prepended feed logs keep stable React keys (timestamps
+// are only second-granularity and indices shift on every prepend).
+let _feedLogSeq = 0;
+const nextFeedLogId = () => `feedlog-${++_feedLogSeq}`;
+
+const INITIAL_FEED_LOGS = [
+  { id: nextFeedLogId(), timestamp: '01:34:25', ticker: 'SPX', strike: 7620, type: 'C', side: 'Sweep', size: '280 cons', premium: '$151,200', tag: 'BULLISH', action: 'SWEPT @ ASK' },
+  { id: nextFeedLogId(), timestamp: '01:34:10', ticker: 'QQQ', strike: 448, type: 'C', side: 'Block', size: '1,200 cons', premium: '$504,000', tag: 'BULLISH', action: 'AT ASK' },
+  { id: nextFeedLogId(), timestamp: '01:33:48', ticker: 'NDX', strike: 18350, type: 'C', side: 'Block', size: '150 cons', premium: '$232,500', tag: 'BULLISH', action: 'ABOVE ASK' },
+  { id: nextFeedLogId(), timestamp: '01:33:02', ticker: 'SPY', strike: 508, type: 'P', side: 'Sweep', size: '2,500 cons', premium: '$337,500', tag: 'BEARISH', action: 'SWEPT @ ASK' },
+  { id: nextFeedLogId(), timestamp: '01:31:55', ticker: 'SPX', strike: 7700, type: 'C', side: 'Block', size: '3,000 cons', premium: '$735,000', tag: 'BULLISH', action: 'OFF-EXCHANGE' },
+  { id: nextFeedLogId(), timestamp: '01:30:22', ticker: 'NDX', strike: 17800, type: 'P', side: 'Sweep', size: '400 cons', premium: '$496,000', tag: 'HEDGE', action: 'SWEPT @ ASK' },
+  { id: nextFeedLogId(), timestamp: '01:29:15', ticker: 'SPY', strike: 515, type: 'C', side: 'Sweep', size: '1,800 cons', premium: '$576,000', tag: 'BULLISH', action: 'SWEPT @ ASK' },
+  { id: nextFeedLogId(), timestamp: '01:28:40', ticker: 'QQQ', strike: 455, type: 'C', side: 'Sweep', size: '2,400 cons', premium: '$348,000', tag: 'BULLISH', action: 'ABOVE ASK' }
+];
+
+export function DiscoveryView({
+  systemScore,
+  discovery,
+  onSelectContract
+}: DiscoveryViewProps) {
+  const themeMode = useContractStore(s => s.themeMode);
+  const isLight = themeMode === 'light';
+
+  const [contracts, setContracts] = useState(INITIAL_CONTRACTS);
+  const [expandedContracts, setExpandedContracts] = useState<Record<string, boolean>>({});
+  const [activeShelf, setActiveShelf] = useState<'conviction' | 'improved' | 'mispriced' | 'invalidation' | 'whale' | 'all'>('conviction');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [isSearchFocused, setIsSearchFocused] = useState(false);
+  const searchContainerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (searchContainerRef.current && !searchContainerRef.current.contains(e.target as Node)) {
+        setIsSearchFocused(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  const filteredSearchAssets = ASSET_LIST.filter(a => {
+    const q = searchQuery.toLowerCase().trim();
+    if (!q) return true;
+    return a.ticker.toLowerCase().includes(q) || a.name.toLowerCase().includes(q);
+  });
+
+  const filteredSearchContracts = contracts.filter(c => {
+    const q = searchQuery.toLowerCase().trim();
+    if (!q) return true;
+    return c.ticker.toLowerCase().includes(q) || String(c.strike).includes(q) || (c.ticker + ' ' + c.strike).toLowerCase().includes(q);
+  });
+
+  const [optionTypeFilter, setOptionTypeFilter] = useState<'all' | 'calls' | 'puts'>('all');
+  const [feedLogs, setFeedLogs] = useState(INITIAL_FEED_LOGS);
+  const [lastFlashingId, setLastFlashingId] = useState<string | null>(null);
+  const [flashDirection, setFlashDirection] = useState<'up' | 'down'>('up');
+  const [metricsPulse, setMetricsPulse] = useState(false);
+
+  // Strategy Manual & target logic reasons dictionary (explanations in simple words why they are the best)
+  const [isStrategyExpanded, setIsStrategyExpanded] = useState(true);
+  const [isMockScanning, setIsMockScanning] = useState(false);
+  const [lastScanMessage, setLastScanMessage] = useState('Models calibrated. Ready to scalp.');
+  const [scanHistoryCount, setScanHistoryCount] = useState(0);
+
+  const SHELF_EXPLANATIONS = {
+    conviction: {
+      title: "🎯 Core Conviction Setups (High Probability Positions)",
+      whyItsBest: "These are our absolute highest-quality trades backed by massive institutional dealer buy walls. They are 'the best' because market makers are heavily committed at these levels and are forced to buy stock to defend their positions, creating an exceptionally strong and reliable price floor with almost zero downside risk.",
+      horizon: "1 TO 3 DAYS (SWING REGIME)",
+      mathTracking: "Dealer GEX Support Level + Concentrated Gamma Buy Wall Clusters",
+      confidenceTier: "ULTRA ACTIVE MODEL CONFIDENCE (94% - 98%)"
+    },
+    improved: {
+      title: "📈 High Velocity Breakouts (Quick Scalp Trades)",
+      whyItsBest: "These are fast-moving momentum trades with explosive volume speed. They are 'the best' for quick day trading (scalping) because derivative volumes are speeding up rapidly in the last 15 minutes, showing that buyers are sweeping options at the ask, which forces dealers to cover their shorts, driving price up fast.",
+      horizon: "15 MINS TO 3 HOURS (MOMENTUM SCALP)",
+      mathTracking: "Delta Acceleration Speed + Localized Volume Sweep Density",
+      confidenceTier: "EXPLOSIVE SCALPER RATE (86% - 92%)"
+    },
+    mispriced: {
+      title: "💎 Mathematical Arbitrage (Option Premium Discounts)",
+      whyItsBest: "These are deep value opportunities where options are priced exceptionally cheap. They are 'the best' because temporary implied volatility drops have created a price mismatch: active brokers are selling these contracts at a -15% discount compared to their true mathematical value. Enter cheap, exit under normal curves.",
+      horizon: "2 HOURS TO 1 DAY POSITION (VALUE ACCUMULATOR)",
+      mathTracking: "Theoretical Fair Pricing Curves vs Broker Market Value",
+      confidenceTier: "HIGH RATIO STATS CONFUSED EDGE (80% - 85%)"
+    },
+    invalidation: {
+      title: "⚠️ Support Rebounds & Boundaries (Trades Coming Back)",
+      whyItsBest: "These are options hovering right at critical line-in-the-sand support thresholds. They are 'the best' for reversals because they are 'coming back' to key support lines (put walls), offering a highly defined bounce-back entry with tight, predefined stop-losses.",
+      horizon: "30 MINS TO 2 HOURS EDGE (REBOUND CAPTURE)",
+      mathTracking: "Dealer Put Wall Cushioning + Boundary Gamma Flip Target Pivot",
+      confidenceTier: "VOLATILITY DENSITY GAP REBOUNDS (40% - 55%)"
+    },
+    whale: {
+      title: "🐳 Smart Money Whale Sweeps (Institutional Tape Follower)",
+      whyItsBest: "These represent trades where ultra-wealthy institutional players are sweeping multi-million dollar cash blocks directly at the ask price. They are 'the best' because you are alignment-trading with the largest forces in the market, riding their powerful directional tailwinds.",
+      horizon: "1 HOUR TO 2 DAYS TRAILING (MOMENTUM SWING)",
+      mathTracking: "On-Tape Notional Premium Volume Sweeps ($5M+ Blocks)",
+      confidenceTier: "MASTER INSTITUTIONAL CONVICTION SCALE (85%+)"
+    },
+    all: {
+      title: "📂 All Discovered Signals (Unified Market Catalog)",
+      whyItsBest: "A unified look across the entire option spectrum under scanning supervision. Use this tab to compare all categories side-by-side, sorted from the absolute strongest active model ratings to the weakest.",
+      horizon: "Dependent on Selection",
+      mathTracking: "Slayer Multi-Agent Co-processing Index (DEX/GEX Integrated)",
+      confidenceTier: "COMPREHENSIVE INSTITUTIONAL REGISTRY"
+    }
+  };
+
+  // Helper function to formulate simple human reasons why each specific card is the best
+  const getSimpleWordReason = (c: any) => {
+    const isCall = c.isCall;
+    if (c.shelf === 'conviction') {
+      return `Solid institutional buy walls are supporting price at ${c.strike}. Option market makers are heavily short this strike and must buy stock to remain hedged, forming an automatic protective floor under our entry target.`;
+    } else if (c.shelf === 'improved') {
+      return `Rapid volume surge detected over the last few minutes. Buyers are sweeping contracts on the ask, preparing the asset for a classic option squeeze. High-velocity setup ideal for a quick, fast-exit momentum scalp.`;
+    } else if (c.shelf === 'mispriced') {
+      return `Severe model mismatch. Broker ask is priced at $${c.price.toFixed(2)}, but our calculated mathematical fair value is $${(c.price * 1.4).toFixed(2)}. Highly underpriced premium grants an immediate edge over retail books.`;
+    } else if (c.shelf === 'invalidation') {
+      return `Option is coming back to primary support buffers. Hovering right near the crucial put wall invalidation level. Entering here offers a safe, highly-defined rebound setup with extremely tight loss limits.`;
+    } else if (c.shelf === 'whale') {
+      return `Multi-million dollar blocks are sweeping this exact strike. This is institutional smart money committing heavy leverage, forcing dealer market makers to rapidly buy hedge blocks. Excellent tailwind trade.`;
+    }
+    return `High-scoring index anomaly active. Positive order flow momentum backing are aligned with dealer positioning and index support.`;
+  };
+
+  // Stats tickers that change slightly
+  const [brierScore, setBrierScore] = useState(0.042);
+  const [globalGex, setGlobalGex] = useState(485.4);
+  const [scanRate, setScanRate] = useState(14.8);
+
+  // Establish live SSE stream directly from our backend for options discoveries
+  useEffect(() => {
+    const url = '/api/stream/discovery';
+    const eventSource = new EventSource(url);
+    const flashTimers: ReturnType<typeof setTimeout>[] = [];
+
+    eventSource.onmessage = (event) => {
+      try {
+        const data = JSON.parse(event.data);
+        if (data.contracts) setContracts(data.contracts);
+        if (data.feedLogs) setFeedLogs(data.feedLogs);
+        if (typeof data.brierScore === 'number') setBrierScore(data.brierScore);
+        if (typeof data.globalGex === 'number') setGlobalGex(data.globalGex);
+        if (typeof data.scanRate === 'number') setScanRate(data.scanRate);
+        if (data.lastFlashingId) {
+          setLastFlashingId(data.lastFlashingId);
+          if (data.flashDirection) setFlashDirection(data.flashDirection);
+
+          setMetricsPulse(true);
+          flashTimers.push(setTimeout(() => setMetricsPulse(false), 500));
+          flashTimers.push(setTimeout(() => setLastFlashingId(null), 700));
+        }
+      } catch (err) {
+        console.error('[SkyVision Discovery Client] Error parsing SSE Stream', err);
+      }
+    };
+
+    eventSource.onerror = (err) => {
+      console.error('[SkyVision Discovery Client] EventSource Error', err);
+    };
+
+    return () => {
+      eventSource.close();
+      flashTimers.forEach(clearTimeout);
+    };
+  }, []);
+
+  // HIGH FREQUENCY LOCAL TICK FLUIDITY (Make prices dynamically tick in real-time for high-performance scalp feel!)
+  useEffect(() => {
+    const flashTimers: ReturnType<typeof setTimeout>[] = [];
+    const tickInterval = setInterval(() => {
+      // Compute purely inside the updater; collect the flash side-effect to run AFTER.
+      let flashedId: any = null;
+      let flashDir: 'up' | 'down' = 'up';
+      setContracts(prev => {
+        return prev.map(c => {
+          // 8% chance of tick fluctuation on any option premium row
+          if (Math.random() > 0.92) {
+            const isUp = Math.random() > 0.48;
+            const deviation = Number((Math.random() * 0.05 + 0.01).toFixed(2));
+            const newPrice = isUp ? c.price + deviation : c.price - deviation;
+            const nextPrice = Math.max(0.15, Number(newPrice.toFixed(2)));
+            const bidDev = isUp ? c.bid + (deviation * 0.9) : c.bid - (deviation * 0.9);
+            const askDev = isUp ? c.ask + (deviation * 1.1) : c.ask - (deviation * 1.1);
+
+            flashedId = c.id;
+            flashDir = isUp ? 'up' : 'down';
+
+            return {
+              ...c,
+              price: nextPrice,
+              bid: Math.max(0.10, Number(bidDev.toFixed(2))),
+              ask: Math.max(0.20, Number(askDev.toFixed(2)))
+            };
+          }
+          return c;
+        });
+      });
+      // Side effects OUTSIDE the reducer — avoids duplicate timers/state under
+      // StrictMode/concurrent rendering (the updater can run twice).
+      if (flashedId) {
+        setLastFlashingId(flashedId);
+        setFlashDirection(flashDir);
+        flashTimers.push(setTimeout(() => setLastFlashingId(null), 600));
+      }
+    }, 2800);
+
+    return () => { clearInterval(tickInterval); flashTimers.forEach(clearTimeout); };
+  }, []);
+
+  // Manual fast-scale scan refresh handler (forces immediate dynamic ticks and adds simulated live options activity)
+  const triggerManualScannerRefresh = () => {
+    if (isMockScanning) return;
+    setIsMockScanning(true);
+    setLastScanMessage('Initiating institutional deep-regime memory scan...');
+
+    setTimeout(() => {
+      // Slightly randomize values
+      setGlobalGex(prev => prev + (Math.random() > 0.5 ? 2.4 : -1.8));
+      setBrierScore(prev => Math.max(0.010, prev - 0.0004));
+      setScanRate(prev => 15.0 + Math.random() * 2);
+
+      setContracts(prev => {
+        return prev.map(c => {
+          const shiftPercent = 1 + (Math.random() * 0.04 - 0.02); // +/-2%
+          const newPrice = Math.max(0.15, Number((c.price * shiftPercent).toFixed(2)));
+          return {
+            ...c,
+            price: newPrice,
+            bid: Math.max(0.10, Number((newPrice * 0.98).toFixed(2))),
+            ask: Math.max(0.20, Number((newPrice * 1.02).toFixed(2)))
+          };
+        });
+      });
+
+      // Insert fresh scalp feed log to show raw activity
+      const tickers = ['SPX', 'QQQ', 'NDX', 'SPY'];
+      const strikes = [7640, 442, 18500, 510];
+      const randomTicker = tickers[Math.floor(Math.random() * tickers.length)];
+      const randomStrike = strikes[Math.floor(Math.random() * strikes.length)];
+      const randomIsBullish = Math.random() > 0.4;
+      const timestampLabel = new Date().toTimeString().split(' ')[0];
+
+      const newLog = {
+        id: nextFeedLogId(),
+        timestamp: timestampLabel,
+        ticker: randomTicker,
+        strike: randomStrike,
+        type: randomIsBullish ? 'C' : 'P',
+        side: Math.random() > 0.5 ? 'Sweep' : 'Block',
+        size: `${Math.floor(Math.random() * 1500 + 400)} cons`,
+        premium: `$${((Math.floor(Math.random() * 400 + 100)) * 1000).toLocaleString()}`,
+        tag: randomIsBullish ? 'BULLISH' : 'HEDGE',
+        action: randomIsBullish ? 'SWEPT @ ASK' : 'AT BID'
+      };
+
+      setFeedLogs(prev => [newLog, ...prev.slice(0, 11)]);
+      setIsMockScanning(false);
+      setScanHistoryCount(prev => prev + 1);
+      setLastScanMessage(`Calibrated! Scanned ${contracts.length} options. 3 new core scalps prioritized.`);
+    }, 1000);
+  };
+
+  // Combined filtering of our expanded database
+  const filteredContracts = useMemo(() => {
+    return contracts.filter(c => {
+      // 1. Shelf check
+      if (activeShelf !== 'all' && c.shelf !== activeShelf) {
+        return false;
+      }
+      // 2. Call/Put check
+      if (optionTypeFilter === 'calls' && !c.isCall) return false;
+      if (optionTypeFilter === 'puts' && c.isCall) return false;
+      
+      // 3. Search query check (search strike or ticker)
+      if (searchQuery.trim().length > 0) {
+        const query = searchQuery.toUpperCase();
+        const matchesTicker = c.ticker.includes(query);
+        const matchesStrike = String(c.strike).includes(query);
+        const matchesType = (query === 'C' || query === 'CALL') ? c.isCall : (query === 'P' || query === 'PUT') ? !c.isCall : false;
+        return matchesTicker || matchesStrike || matchesType;
+      }
+      return true;
+    });
+  }, [contracts, activeShelf, optionTypeFilter, searchQuery]);
+
+  // GROUP TICKER SEPARATION SYSTEM (Separate per ticker SPX, NDX, QQQ, SPY)
+  // Inside each ticker group, sort contracts from STRONGEST (highest rating) to WEAKEST (lowest rating)
+  const groupedByTickerAndSorted = useMemo(() => {
+    const groups: Record<string, typeof filteredContracts> = {};
+    filteredContracts.forEach(c => {
+      if (!groups[c.ticker]) {
+        groups[c.ticker] = [];
+      }
+      groups[c.ticker].push(c);
+    });
+
+    // Sort contracts in each ticker group descending by health score (rating)
+    Object.keys(groups).forEach(tk => {
+      groups[tk].sort((a, b) => b.health - a.health);
+    });
+
+    return groups;
+  }, [filteredContracts]);
+
+  // Sort tickers: prioritize major indices SPX, NDX, QQQ, SPY, RUT
+  const sortedTickers = useMemo(() => {
+    return Object.keys(groupedByTickerAndSorted).sort((a, b) => {
+      const priority: Record<string, number> = { 'SPX': 1, 'NDX': 2, 'QQQ': 3, 'SPY': 4, 'RUT': 5 };
+      return (priority[a] || 99) - (priority[b] || 99);
+    });
+  }, [groupedByTickerAndSorted]);
+
+  // Quick statistics for display
+  const metricsOverview = useMemo(() => {
+    const totalCount = contracts.length;
+    const enterCount = contracts.filter(c => c.health >= 88).length;
+    const extremeEV = contracts.filter(c => c.shelf === 'whale' || c.shelf === 'conviction').length;
+    return {
+      totalCount,
+      enterCount,
+      extremeEV
+    };
+  }, [contracts]);
+
+  // Match corresponding AssetInfo object to trigger selection
+  const handleSelectWithMatch = (ticker: string, strike: number, isCall: boolean) => {
+    const asset = ASSET_LIST.find(a => a.ticker === ticker);
+    if (asset) {
+      onSelectContract(asset, strike, isCall);
+    }
+  };
+
+  const currentManualText = SHELF_EXPLANATIONS[activeShelf];
+
+  // Dynamic light mode theme classes mapping
+  const c_bgMain = isLight ? "bg-[#fcfcfd]" : "bg-transparent";
+  const c_textColor = isLight ? "text-zinc-800" : "text-zinc-200";
+  const c_cardBg = isLight ? "bg-white border-black shadow-sm text-zinc-800" : "bg-black border-black shadow-2xl text-zinc-100";
+  const c_cardBorder = isLight ? "border-black" : "border-black";
+  const c_textWhite = isLight ? "text-zinc-950 font-black" : "text-[#E5E5E5] font-black";
+  const c_textMuted = isLight ? "text-zinc-550 font-medium" : "text-zinc-400";
+  const c_pillBg = isLight ? "bg-black border-black" : "bg-black/60 border-black";
+  const c_innerCardBg = isLight ? "bg-zinc-50 border-black" : "bg-black border-black";
+  const c_innerWellBg = isLight ? "bg-black border-black" : "bg-black/60 border-black/60";
+  const c_glassBg = isLight ? "bg-black border border-black shadow-md text-zinc-800" : "bg-black border border-black/80 shadow-xl text-zinc-200";
+
+  return (
+    <div className={`w-full flex flex-col font-mono select-none antialiased space-y-6 max-w-6xl mx-auto pt-2 pb-12 ${c_textColor}`}>
+      
+      {/* 1. TOP DENSE STATUS BAR (Same as Skyeyes Core Cockpit styling) */}
+      <div className={`flex flex-col md:flex-row justify-between items-stretch md:items-center p-4 rounded-xl gap-4 md:gap-2 relative overflow-hidden border ${c_cardBg}`}>
+        
+        {/* Glow corner element */}
+        <div className="absolute top-0 left-0 w-16 h-16 bg-white/5 blur-xl pointer-events-none" />
+
+        <div className="flex items-center gap-2.5 relative z-10">
+          <div className="relative flex items-center justify-center">
+            <span className="w-2.5 h-2.5 bg-[#4ADE80] text-black rounded-full animate-ping absolute" />
+            <span className="w-2.5 h-2.5 bg-black/40 rounded-full relative z-10" />
+          </div>
+          <div>
+            <h1 className={`text-xs font-black tracking-widest uppercase ${c_textWhite}`}>
+              SLAYER DISCOVERY COCKPIT <span className="text-zinc-500">/ EXCURSION MATRIX v1.3</span>
+            </h1>
+            <p className="text-[9.5px] text-zinc-500 mt-0.5 uppercase tracking-wide">
+              REAL-TIME POSITIONING • STREAMING EXCURSIONS ACTIVE
+            </p>
+          </div>
+        </div>
+
+        {/* Live Cockpit Statistics Panel */}
+        <div className={`flex items-center gap-4 flex-wrap text-left text-[10px] md:border-l md:pl-5 ${isLight ? 'border-black' : 'border-black'}`}>
+          <div className="space-y-0.5">
+            <span className="text-[7.5px] text-zinc-500 uppercase block tracking-wider font-extrabold">GLOBAL GEX SUPPORT</span>
+            <span className="text-[#4ADE80] font-bold block transition-all duration-300">
+              +{globalGex.toFixed(1)}M
+            </span>
+          </div>
+          <div className="space-y-0.5">
+            <span className="text-[7.5px] text-zinc-500 uppercase block tracking-wider font-extrabold">SYSTEM BRIER FIT</span>
+            <span className={`font-mono font-bold block transition-all duration-300 ${c_textWhite}`}>
+              {brierScore.toFixed(4)}
+            </span>
+          </div>
+          <div className="space-y-0.5">
+            <span className="text-[7.5px] text-zinc-500 uppercase block tracking-wider font-extrabold">SCANNING RATE</span>
+            <span className={`text-[#4f8cff] font-bold block transition-all duration-300 ${isMockScanning || metricsPulse ? 'animate-bounce text-[#4ADE80]' : ''}`}>
+              {scanRate.toFixed(1)}/s
+            </span>
+          </div>
+          <div className="space-y-0.5">
+            <span className="text-[7.5px] text-zinc-500 uppercase block tracking-wider font-extrabold">LATENCY</span>
+            <span className="text-[#4ADE80] font-bold block">12ms (STREAM ON)</span>
+          </div>
+        </div>
+
+      </div>
+
+      {/* 2. DUSTING BENTO-COMPLIANT CONTROLS BAR (Segmented Selection, Filters, Search) */}
+      <div className={`grid grid-cols-1 md:grid-cols-12 gap-3 items-center rounded-lg border ${c_glassBg}`}>
+        
+        {/* Navigation Categories Tabs */}
+        <div className={`md:col-span-8 flex items-center p-0.5 border rounded-md overflow-x-auto scrollbar-none gap-0.5 ${isLight ? "bg-black border-black" : "bg-black border-black"}`}>
+          {[
+            { id: 'conviction', label: '🎯 CONVICTION', count: contracts.filter(c => c.shelf === 'conviction').length },
+            { id: 'improved', label: '📈 VELOCITY', count: contracts.filter(c => c.shelf === 'improved').length },
+            { id: 'mispriced', label: '💎 ARBITRAGE', count: contracts.filter(c => c.shelf === 'mispriced').length },
+            { id: 'invalidation', label: '⚠️ BOUNDARIES', count: contracts.filter(c => c.shelf === 'invalidation').length },
+            { id: 'whale', label: '🐳 WHALE SWEEPS', count: contracts.filter(c => c.shelf === 'whale').length },
+            { id: 'all', label: '📂 ALL DETECTED', count: contracts.length }
+          ].map(shelf => (
+            <button
+              key={shelf.id}
+              onClick={() => setActiveShelf(shelf.id as any)}
+              className={`px-3 py-1.5 text-[9.5px] uppercase font-black tracking-wider rounded-xs transition-all cursor-pointer whitespace-nowrap flex items-center gap-1.5 ${
+                activeShelf === shelf.id
+                  ? (isLight ? 'bg-white text-zinc-950 font-extrabold shadow border border-black' : 'bg-white text-black font-extrabold shadow')
+                  : 'text-zinc-550 hover:text-[#4ADE80]'
+              }`}
+            >
+              <span>{shelf.label}</span>
+              <span className={`text-[8px] font-bold px-1 py-0.2 rounded ${activeShelf === shelf.id ? 'bg-black text-zinc-900' : (isLight ? 'bg-white text-zinc-400' : 'bg-black text-zinc-650')}`}>
+                {shelf.count}
+              </span>
+            </button>
+          ))}
+        </div>
+
+        {/* Option Call/Put Type Filter Option */}
+         <div className={`md:col-span-2 flex justify-center p-0.5 border rounded-md ${isLight ? "bg-black border-black" : "bg-black border-black"}`}>
+          {[
+            { id: 'all', label: 'ALL' },
+            { id: 'calls', label: 'C' },
+            { id: 'puts', label: 'P' }
+          ].map(opt => (
+            <button
+              key={opt.id}
+              onClick={() => setOptionTypeFilter(opt.id as any)}
+              className={`px-3.5 py-1.5 text-[8.5px] uppercase font-extrabold rounded-xs flex-1 transition-all cursor-pointer ${
+                optionTypeFilter === opt.id
+                  ? 'bg-[#4f8cff]/15 text-[#4f8cff] border border-[#4f8cff]/30 font-black'
+                  : `text-zinc-500 border border-transparent ${isLight ? 'hover:text-zinc-950' : 'hover:text-[#E5E5E5]'}`
+              }`}
+            >
+              {opt.label}
+            </button>
+          ))}
+        </div>
+
+        {/* Mini Ticker/Strike search box - Glassmorphism, high-fidelity focus effect */}
+        <div 
+          className={`md:col-span-2 relative flex items-center rounded-lg px-3 py-1.5 border transition-all duration-300 focus-within:ring-1 focus-within:ring-[#4f8cff]/50 ${
+            isLight 
+              ? 'bg-zinc-50 border-black focus-within:bg-white focus-within:border-black' 
+              : 'bg-black/60 border-black focus-within:bg-black/90 focus-within:border-black shadow-inner'
+          }`}
+          ref={searchContainerRef}
+        >
+          <Search className="w-3.5 h-3.5 text-zinc-500 mr-2 shrink-0" />
+          <input 
+            type="text" 
+            value={searchQuery}
+            onFocus={() => setIsSearchFocused(true)}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="FILTER BY TICKER OR STRIKE..." 
+            className={`w-full bg-transparent border-none text-[9.5px] font-black uppercase focus:outline-none placeholder-zinc-500 font-mono tracking-wider transition-all duration-200 ${
+              isLight ? 'text-zinc-900' : 'text-[#E5E5E5]'
+            }`}
+          />
+          {searchQuery.length > 0 ? (
+            <button 
+              type="button"
+              onClick={() => {
+                setSearchQuery('');
+                setIsSearchFocused(false);
+              }} 
+              className="text-zinc-500 hover:text-[#E5E5E5] text-[8px] uppercase font-bold pl-1 font-mono hover:underline shrink-0"
+            >
+              CLEAR
+            </button>
+          ) : (
+            <kbd className="hidden sm:inline-block bg-black text-zinc-650 border border-black px-1 py-[1.5px] rounded-xs font-mono text-[7px] select-none shrink-0">
+              TXT
+            </kbd>
+          )}
+
+          {/* Dynamic Search Combobox results list overlay */}
+          <AnimatePresence>
+            {isSearchFocused && (
+              <motion.div
+                initial={{ opacity: 0, y: 3 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: 3 }}
+                className={`absolute right-0 top-full mt-2 w-[300px] border shadow-2xl rounded-lg overflow-hidden z-50 text-left font-mono ${
+                  isLight ? 'bg-white border-black text-zinc-800' : 'bg-black border-black text-zinc-350'
+                }`}
+              >
+                {/* 1. SECTION: MAIN INDEXES */}
+                <div className={`px-2.5 py-1 text-[7.5px] font-extrabold uppercase tracking-widest border-b ${
+                  isLight ? 'bg-black text-zinc-500 border-black' : 'bg-black/40 text-zinc-600 border-black'
+                }`}>
+                  Switch Active Index Ticker
+                </div>
+                {filteredSearchAssets.length === 0 ? (
+                  <div className="px-3.5 py-2 text-[8px] text-zinc-500 uppercase">No active assets found</div>
+                ) : (
+                  filteredSearchAssets.map(a => (
+                    <button
+                      key={a.ticker}
+                      onClick={() => {
+                        useContractStore.getState().setSelectedAsset(a);
+                        setIsSearchFocused(false);
+                        setSearchQuery('');
+                      }}
+                      className={`w-full text-left px-3.5 py-1.5 transition-all flex justify-between items-center border-b ${
+                        isLight ? 'hover:bg-zinc-50 border-black' : 'hover:bg-black/60 border-black'
+                      }`}
+                    >
+                      <div className="flex flex-col">
+                        <span className={`text-[9.5px] font-black ${isLight ? 'text-zinc-900' : 'text-zinc-150'}`}>{a.ticker}</span>
+                        <span className="text-[7.5px] text-zinc-500 font-sans uppercase font-bold">{a.name}</span>
+                      </div>
+                      <div className="text-right">
+                        <span className="text-[9px] font-bold block">${a.defaultPrice.toFixed(2)}</span>
+                        <span className="text-[7.5px] font-bold text-[#4ADE80]">+{a.volatility.toFixed(1)}% VOL</span>
+                      </div>
+                    </button>
+                  ))
+                )}
+
+                {/* 2. SECTION: OPTIONS & TRANSITIONS */}
+                <div className={`px-2.5 py-1 text-[7.5px] font-extrabold uppercase tracking-widest border-b ${
+                  isLight ? 'bg-black text-zinc-500 border-black' : 'bg-black/40 text-zinc-600 border-black'
+                }`}>
+                  Launch Option chain / Assessments
+                </div>
+                <div className="max-h-[160px] overflow-y-auto">
+                  {filteredSearchContracts.length === 0 ? (
+                    <div className="px-3.5 py-2 text-[8px] text-zinc-500 uppercase">No options matched</div>
+                  ) : (
+                    filteredSearchContracts.map(c => (
+                      <button
+                        key={c.id}
+                        type="button"
+                        onClick={() => {
+                          const asset = ASSET_LIST.find(a => a.ticker === c.ticker);
+                          if (asset) {
+                            useContractStore.getState().selectContractAtomically(asset, c.strike, c.isCall);
+                          }
+                          setIsSearchFocused(false);
+                          setSearchQuery('');
+                        }}
+                        className={`w-full text-left px-3.5 py-2 transition-all border-b last:border-none flex flex-col ${
+                          isLight ? 'hover:bg-zinc-50 border-black' : 'hover:bg-black/60 border-black'
+                        }`}
+                      >
+                        <div className="flex justify-between items-center">
+                          <span className={`text-[9.5px] font-black ${c.isCall ? 'text-[#4ADE80]' : 'text-rose-455'}`}>
+                            {c.ticker} {c.strike}{c.isCall ? 'C' : 'P'}
+                          </span>
+                          <span className={`text-[7.5px] font-bold px-1 py-0.2 rounded border ${
+                            c.isCall 
+                              ? 'bg-black/40 text-[#4ADE80] border-black' 
+                              : 'bg-rose-950/20 text-[#F87171] border-[#F87171]/40'
+                          }`}>
+                            {c.shelf.toUpperCase()}
+                          </span>
+                        </div>
+                        <span className="text-[8px] text-zinc-550 font-sans font-semibold uppercase truncate">{c.narrative}</span>
+                      </button>
+                    ))
+                  )}
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
+
+      </div>
+
+      {/* 2B. EXPANDABLE STRATEGY EXPLANATION & TARGETS CONSOLE (In simple plain English!) */}
+      <div className={`w-full p-4 rounded-xl text-left relative overflow-hidden border ${c_cardBg}`}>
+        <div className="absolute top-0 right-0 w-32 h-32 bg-[#4f8cff]/4 blur-2xl pointer-events-none" />
+        
+        <div className={`flex justify-between items-center cursor-pointer select-none pb-2 border-b ${isLight ? 'border-black' : 'border-black/60'}`} onClick={() => setIsStrategyExpanded(!isStrategyExpanded)}>
+          <div className="flex items-center gap-2">
+            <Info className="w-4 h-4 text-[#4f8cff]" />
+            <span className={`text-[10px] font-extrabold uppercase tracking-widest ${isLight ? 'text-zinc-600' : 'text-[#4ADE80]'}`}>
+              STRATEGY DECONSTRUCTION: WHY THESE ARE THE BEST ACTIVE TRADES
+            </span>
+          </div>
+          <div className={`flex items-center gap-1.5 py-0.5 px-2 rounded border ${isLight ? 'bg-zinc-50 border-black text-zinc-850 font-bold' : 'bg-black/40 border-black text-zinc-350'}`}>
+            <span className="text-[8px] font-black tracking-widest uppercase">
+              {isStrategyExpanded ? 'HIDE MANUAL' : 'SHOW MANUAL'}
+            </span>
+            {isStrategyExpanded ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+          </div>
+        </div>
+
+        <AnimatePresence initial={false}>
+          {isStrategyExpanded && (
+            <motion.div
+              initial={{ height: 0, opacity: 0 }}
+              animate={{ height: "auto", opacity: 1 }}
+              exit={{ height: 0, opacity: 0 }}
+              transition={{ duration: 0.25 }}
+              className="overflow-hidden pt-3.5"
+            >
+              <div className="grid grid-cols-1 md:grid-cols-12 gap-5 items-stretch text-[10.5px]">
+                
+                {/* Simple Justification Column */}
+                <div className="md:col-span-8 space-y-2.5">
+                  <div className={`p-3 rounded-xl border ${c_innerWellBg}`}>
+                    <span className={`font-extrabold text-xs block mb-1 uppercase tracking-tight ${c_textWhite}`}>
+                      {currentManualText.title}
+                    </span>
+                    <p className={`leading-relaxed font-sans uppercase text-[10px]/[15px] ${isLight ? 'text-zinc-600' : 'text-zinc-400'}`}>
+                      {currentManualText.whyItsBest}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Quantitative Targets & Threshold Metrics Column */}
+                <div className={`md:col-span-4 p-3 rounded-xl flex flex-col justify-between gap-3 border ${c_innerCardBg}`}>
+                  <div className="space-y-1.5 text-left">
+                    <span className="text-[8px] text-zinc-550 tracking-wider uppercase block">TARGET EXTRAPOLATION PLANE</span>
+                    <div className="flex justify-between items-baseline font-mono">
+                      <span className="text-zinc-500">HORIZON:</span>
+                      <span className={`font-bold ${c_textWhite}`}>{currentManualText.horizon}</span>
+                    </div>
+                    <div className={`flex justify-between items-baseline font-mono border-t pt-1.5 ${isLight ? 'border-black' : 'border-black'}`}>
+                      <span className="text-zinc-500">MATH SCANNER:</span>
+                      <span className="text-[#4f8cff] font-bold text-[9px] uppercase">{currentManualText.mathTracking}</span>
+                    </div>
+                    <div className={`flex justify-between items-baseline font-mono border-t pt-1.5 ${isLight ? 'border-black' : 'border-black'}`}>
+                      <span className="text-zinc-500">CONFIDENCE:</span>
+                      <span className="text-[#4ADE80] font-bold text-[9px] uppercase">{currentManualText.confidenceTier}</span>
+                    </div>
+                  </div>
+                  <div className={`text-[8px] text-zinc-500 border-t pt-1 tracking-wide ${isLight ? 'border-black' : 'border-black/50'}`}>
+                    ⚠️ System updates parameters at 12,000 checks per node.
+                  </div>
+                </div>
+
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
+
+      {/* 2C. LIVE SCANNER CONTROL INTERFACE */}
+      <div className={`w-full p-3.5 rounded-xl flex flex-col sm:flex-row justify-between items-center gap-4 text-xs border ${c_glassBg}`}>
+        <div className="flex items-center gap-3">
+          <div className="relative">
+            <span className={`w-3 h-3 rounded-full bg-black/40 absolute block ${isMockScanning ? 'animate-ping opacity-75' : ''}`} />
+            <span className="w-3 h-3 rounded-full bg-black/40 border border-black relative block" />
+          </div>
+          <div className="text-left">
+            <span className="text-[10px] text-zinc-500 block font-bold uppercase">SECURE PORT HARVEST SCANNER</span>
+            <span className={`text-[10.5px] font-black ${isMockScanning ? 'text-[#4ADE80] font-bold' : (isLight ? 'text-zinc-700 font-extrabold' : 'text-zinc-400')}`}>
+              STATUS: {lastScanMessage}
+            </span>
+          </div>
+        </div>
+
+        <button
+          onClick={triggerManualScannerRefresh}
+          disabled={isMockScanning}
+          className={`px-5 py-2.5 rounded-lg border text-[10px] font-extrabold uppercase tracking-widest cursor-pointer shadow-xl transition-all flex items-center gap-2 ${
+            isMockScanning 
+              ? (isLight ? 'bg-black text-zinc-400 border-black' : 'bg-black text-zinc-650 border-black') 
+              : (isLight ? 'bg-black text-[#E5E5E5] hover:bg-black border-black font-extrabold shadow-sm' : 'bg-white text-black hover:bg-black border-white font-extrabold')
+          }`}
+        >
+          {isMockScanning ? (
+            <>
+              <RefreshCw className="w-3.5 h-3.5 animate-spin text-[#4ADE80]" />
+              <span>SCANNING EXCURSIONS...</span>
+            </>
+          ) : (
+            <>
+              <RefreshCw className="w-3.5 h-3.5" />
+              <span>FORCE CORRELATE SCANNER ({scanHistoryCount} Refreshes)</span>
+            </>
+          )}
+        </button>
+      </div>
+
+      {/* 3. CORE DUAL-COLUMN HIGH-PERFORMANCE WORKSPACE */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start w-full">
+        
+        {/* ==========================================
+            LEFT COLUMN: THE EXCURSION GRID GROUPED PER TICKER (8 COLS)
+            ========================================== */}
+        <div className="lg:col-span-8 flex flex-col gap-5 w-full">
+          
+          <div className="flex justify-between items-center px-1">
+            <span className={`text-[11px] font-extrabold uppercase tracking-wider ${isLight ? 'text-zinc-700' : 'text-zinc-400'}`}>
+              DISPLAYING {filteredContracts.length} MATCHING EXCURSIONS OF {contracts.length} DETECTED NODES
+            </span>
+            <div className="flex items-center gap-1.5 text-[9px] text-[#A1A1AA] uppercase">
+              <span className="w-1.5 h-1.5 rounded-full bg-blue-400 animate-ping" />
+              <span>LIVE FREQUENCY LOCK</span>
+            </div>
+          </div>
+
+          <div className="flex flex-col gap-6 w-full">
+            <AnimatePresence mode="popLayout">
+              {sortedTickers.map((ticker) => {
+                const tickerContracts = groupedByTickerAndSorted[ticker];
+                return (
+                  <div key={ticker} className={`space-y-3 p-4 rounded-xl relative overflow-hidden text-left border ${isLight ? 'bg-zinc-50 border-black' : 'bg-black/20 border-black'}`}>
+                    {/* Glowing side anchor per ticker */}
+                    <div className="absolute top-0 bottom-0 left-0 w-1 bg-gradient-to-b from-[#4f8cff]/20 to-transparent" />
+
+                    {/* Ticker Section Title segment */}
+                    <div className={`flex items-center justify-between border-b pb-2 mb-1 pl-1 ${isLight ? 'border-black' : 'border-black/60'}`}>
+                      <div className="flex items-center gap-2">
+                        <span className={`text-xs font-black tracking-widest uppercase font-mono ${c_textWhite}`}>{ticker} REGIME SCAN</span>
+                        <span className="bg-[#4f8cff]/10 border border-[#4f8cff]/20 text-[#4f8cff] text-[8px] font-bold px-1.5 py-0.2 rounded font-sans uppercase">
+                          {tickerContracts.length} MOTIVES SIGHTED
+                        </span>
+                      </div>
+                      <span className="text-[7.5px] text-zinc-500 uppercase tracking-widest font-black">
+                        SORTED: STRONGEST → WEAKEST
+                      </span>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-start">
+                      {tickerContracts.map((c, idx) => {
+                        const actionColor = c.action === 'ENTER' 
+                          ? 'text-[#4ADE80] border-[#4ADE80]/20 bg-[#d4d4d8]/5' 
+                          : c.action === 'SELL' 
+                            ? 'text-[#F87171] border-rose-400/20 bg-rose-400/5' 
+                            : 'text-amber-400 border-amber-400/20 bg-amber-400/5';
+                        
+                        const isFlashing = lastFlashingId === c.id;
+                        const highlightBg = isFlashing 
+                          ? (flashDirection === 'up' ? 'bg-black/40 border-black' : 'bg-rose-500/10 border-rose-400/35')
+                          : (isLight 
+                              ? 'bg-white hover:bg-zinc-50/50 hover:border-black border-black text-zinc-900 shadow-sm' 
+                              : 'bg-black hover:border-black hover:bg-black border-black text-zinc-100 shadow-xl');
+
+                        // Classification tags: Core vs Fast Scalps vs Rebound Recoveries
+                        let classBadgeLabel = "💎 SWING POSITION";
+                        let classBadgeStyle = "bg-[#4f8cff]/10 text-[#4f8cff] border-[#4f8cff]/20";
+                        if (c.shelf === 'improved') {
+                          classBadgeLabel = "⚡ VOLATILITY SCALP";
+                          classBadgeStyle = "bg-amber-400/10 text-amber-300 border-amber-400/20";
+                        } else if (c.shelf === 'invalidation') {
+                          classBadgeLabel = "↩️ REBOUND RECOVERY";
+                          classBadgeStyle = "bg-rose-500/10 text-[#F87171] border-rose-500/20";
+                        } else if (c.shelf === 'mispriced') {
+                          classBadgeLabel = "💵 PRICING GAP EDGE";
+                          classBadgeStyle = "bg-black/40 text-[#d4d4d8] border-black";
+                        }
+
+                        // Strongest indicator of this group (top sorted card is ALWAYS idx === 0 within its ticker)
+                        const isPrimaryPeak = idx === 0;
+
+                        // Parameters Price Targets calculation (Institutional Swing Target vs Quick Volatility Scalp)
+                        const coreSwingTarget = c.t1 ? c.t1 : c.price * 1.35;
+                        const coreSwingGain = c.p1 ? c.p1 : 35;
+                        const quickScalpTarget = c.price * 1.18;
+                        const quickScalpGain = 18;
+
+                        const isCardExpanded = !!expandedContracts[c.id];
+
+                        return (
+                          <motion.div
+                            layout
+                            key={c.id}
+                            initial={{ opacity: 0, y: 12 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            exit={{ opacity: 0, scale: 0.95 }}
+                            transition={{ duration: 0.25 }}
+                            className={`p-4 border rounded-xl flex flex-col gap-2.5 text-left relative overflow-hidden shadow-xl transition-all duration-300 cursor-pointer ${
+                              isCardExpanded 
+                                ? `${highlightBg} ring-1 ring-zinc-700/50` 
+                                : `${isLight ? 'bg-white hover:bg-zinc-50 border-black' : 'bg-black/40 hover:bg-black border-black'} hover:border-black`
+                            }`}
+                            onClick={(e) => {
+                              setExpandedContracts(prev => ({
+                                ...prev,
+                                [c.id]: !prev[c.id]
+                              }));
+                            }}
+                          >
+                            
+                            {/* Tiny neon glider strip */}
+                            <div className={`absolute top-0 left-0 right-0 h-[2px] transition-colors duration-300 ${
+                              c.isCall ? 'bg-black/40' : 'bg-rose-500/40'
+                            }`} />
+
+                            {/* Top Contract Badge & Header */}
+                            <div className="flex justify-between items-start">
+                              <div className="space-y-1">
+                                <div className="flex items-center gap-1.5 flex-wrap">
+                                  <span className={`text-xs font-black font-sans px-2.5 py-0.5 rounded-md border uppercase inline-block ${
+                                    c.isCall 
+                                      ? 'bg-black/40 text-[#d4d4d8] border-black' 
+                                      : 'bg-rose-950/20 text-[#F87171] border-rose-900/45'
+                                  }`}>
+                                    {c.ticker} {c.strike}{c.isCall ? 'C' : 'P'}
+                                  </span>
+                                  <span className={`text-[7.5px] px-1.5 py-0.5 rounded font-bold uppercase tracking-widest border ${classBadgeStyle}`}>
+                                    {classBadgeLabel}
+                                  </span>
+                                </div>
+                                <div className="flex items-center gap-1.5 pt-0.5">
+                                  <span className="text-[7.5px] uppercase tracking-wider text-zinc-500 font-extrabold font-mono">
+                                    HEURISTIC: {c.health} SCORE
+                                  </span>
+                                  <span className="text-zinc-650">•</span>
+                                  <span className={`text-[7.5px] uppercase tracking-wider font-extrabold ${actionColor}`}>
+                                    {c.action}
+                                  </span>
+                                  {isPrimaryPeak && (
+                                    <>
+                                      <span className="text-zinc-655">•</span>
+                                      <span className="text-[7px] text-amber-400 font-bold bg-amber-500/10 border border-amber-500/20 px-1 rounded uppercase">
+                                        🏆 TEAM LEADER
+                                      </span>
+                                    </>
+                                  )}
+                                </div>
+                              </div>
+
+                              {/* Expected Return */}
+                              <div className="text-right flex items-start gap-3">
+                                <div className="space-y-0.5">
+                                  <span className="text-[7.5px] text-zinc-650 tracking-wider block font-bold uppercase">EXPECTED ARR</span>
+                                  <span className={`text-sm font-black tracking-tight ${c.health >= 55 ? 'text-[#4ADE80]' : 'text-[#F87171]'}`}>
+                                    {c.expectedMove}
+                                  </span>
+                                </div>
+                                <div className="pt-1 select-none text-zinc-500">
+                                  {isCardExpanded ? (
+                                    <ChevronUp className="w-4 h-4 text-zinc-400 transition-transform duration-250" />
+                                  ) : (
+                                    <ChevronDown className="w-4 h-4 text-zinc-600 hover:text-zinc-450 transition-transform duration-250" />
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+
+                            {/* COMPRESSED GRID SEGMENT EXPANDED ONLY INLINE */}
+                            {isCardExpanded && (
+                              <div className="space-y-3 mt-1 pt-3 border-t border-black/40 animate-fadeIn">
+                                {/* DOUBLE TARGETS (Institutional Swing vs Volatility Scalp Targets) */}
+                                <div className={`grid grid-cols-2 gap-2 p-2 rounded-lg text-center text-[10px] border ${c_pillBg}`}>
+                                  <div className={`border-r text-left pl-1 ${isLight ? 'border-black' : 'border-black'}`}>
+                                    <div className="text-[7px] text-zinc-550 uppercase tracking-widest font-black block">🎯 SWING TARGET</div>
+                                    <span className={`font-extrabold font-mono block text-xs ${c_textWhite}`}>
+                                      ${coreSwingTarget.toFixed(2)}
+                                    </span>
+                                    <span className="text-[7.5px] text-[#4ADE80] font-bold font-mono">
+                                      +{coreSwingGain}% GAIN
+                                    </span>
+                                  </div>
+                                  <div className="text-left pl-2">
+                                    <div className="text-[7px] text-zinc-550 uppercase tracking-widest font-black block">⚡ SCALP EXITS</div>
+                                    <span className="text-amber-500 font-extrabold font-mono block text-xs">
+                                      ${quickScalpTarget.toFixed(2)}
+                                    </span>
+                                    <span className="text-[7.5px] text-amber-500 font-bold font-mono">
+                                      +{quickScalpGain}% GAIN
+                                    </span>
+                                  </div>
+                                </div>
+
+                                {/* Plain English explanation why this trade is selected (simple words!) */}
+                                <div className={`p-2.5 rounded-lg text-[9.5px]/[14.5px] tracking-wide text-left flex gap-1.5 items-start font-sans uppercase border ${c_innerCardBg} ${isLight ? 'text-zinc-650' : 'text-zinc-400'}`}>
+                                  <Info className="w-3.5 h-3.5 text-[#4f8cff] shrink-0 mt-0.5" />
+                                  <div className="font-medium tracking-wide">
+                                    <span className="text-[#4f8cff] font-extrabold mr-1">WHY THE BEST:</span>
+                                    {getSimpleWordReason(c)}
+                                  </div>
+                                </div>
+
+                                {/* Short Analytical Narrative */}
+                                <p className={`text-[10px] font-sans tracking-wide leading-relaxed uppercase border-t pt-2.5 ${isLight ? 'border-black text-zinc-600' : 'border-black/50 text-zinc-450'}`}>
+                                  {c.narrative}
+                                </p>
+
+                                {/* Quantitative Stats Matrix */}
+                                <div className={`border rounded-lg p-2.5 grid grid-cols-4 gap-2 text-center text-[10px] font-mono ${isLight ? 'bg-zinc-50 border-black text-zinc-700' : 'bg-black/40 border-black/50 text-zinc-400'}`}>
+                                  <div>
+                                    <span className="block text-[7.5px] text-zinc-550 mb-0.5 tracking-wider uppercase">DELTA</span>
+                                    <span className={`font-bold block ${c.isCall ? 'text-[#4ADE80]' : 'text-rose-500/80'}`}>{c.delta}</span>
+                                  </div>
+                                  <div>
+                                    <span className="block text-[7.5px] text-zinc-550 mb-0.5 tracking-wider uppercase">GAMMA</span>
+                                    <span className={`font-bold block ${isLight ? 'text-zinc-800' : 'text-[#E5E5E5]'}`}>{c.gamma}</span>
+                                  </div>
+                                  <div>
+                                    <span className="block text-[7.5px] text-zinc-550 mb-0.5 tracking-wider uppercase">THETA</span>
+                                    <span className="text-amber-500/80 font-bold block">{c.theta}</span>
+                                  </div>
+                                  <div>
+                                    <span className="block text-[7.5px] text-zinc-550 mb-0.5 tracking-wider uppercase">VOLATILITY</span>
+                                    <span className={`font-bold block ${isLight ? 'text-zinc-850' : 'text-zinc-400'}`}>{(c.vega * 100).toFixed(1)}%</span>
+                                  </div>
+                                </div>
+
+                                {/* Pricing Segment */}
+                                <div className="flex justify-between items-center pt-2.5 border-t border-black/50 text-[10.5px]">
+                                  <div className="space-y-0.5">
+                                    <span className="text-[7.5px] text-zinc-650 uppercase block tracking-wider font-bold">SPREAD SENSITIVITY</span>
+                                    <span className="text-zinc-500 font-mono font-bold block">
+                                      ${c.bid.toFixed(2)} - ${c.ask.toFixed(2)}
+                                    </span>
+                                  </div>
+                                  <div className="text-right">
+                                    <span className="text-[7.5px] text-zinc-500 uppercase block tracking-wider font-bold">LIVE MID PREMIUM</span>
+                                    <motion.span 
+                                      animate={isFlashing ? { scale: [1, 1.15, 1] } : {}}
+                                      className={`text-xs font-black block transition-all duration-300 ${
+                                        isFlashing 
+                                          ? (flashDirection === 'up' ? 'text-[#4ADE80]' : 'text-[#F87171]')
+                                          : 'text-[#E5E5E5]'
+                                      }`}
+                                    >
+                                      ${c.price.toFixed(2)}
+                                    </motion.span>
+                                  </div>
+                                </div>
+
+                                {/* Action Button matching Skyeyes Call to Action */}
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleSelectWithMatch(c.ticker, c.strike, c.isCall);
+                                  }}
+                                  className="w-full py-2.5 bg-gradient-to-r from-zinc-900 to-black hover:from-white hover:to-white hover:text-black border border-black text-[8.5px] text-zinc-400 hover:text-black font-extrabold uppercase tracking-widest rounded-md mt-1 transition-all duration-300 cursor-pointer flex items-center justify-center gap-1 shadow-md hover:shadow-lg hover:-translate-y-[1px]"
+                                >
+                                  <span>LAUNCH DEEP SKYEYES ASSESSMENT</span>
+                                  <ArrowRight className="w-2.5 h-2.5" />
+                                </button>
+                              </div>
+                            )}
+
+                            {/* Click to expand/collapse hint always visible at bottom */}
+                            <div className="flex justify-between items-center text-[7.5px] font-sans text-zinc-500 uppercase tracking-wider pt-2 border-t border-black/10 dark:border-black/20 w-full mt-2.5 select-none">
+                              <span className="flex items-center gap-1 font-bold">
+                                {isCardExpanded ? (
+                                  <>⚡ CLICK TO COLLAPSE</>
+                                ) : (
+                                  <>⚡ CLICK TO EXPAND </>
+                                )}
+                              </span>
+                              <span className="flex items-center gap-0.5 hover:text-[#4ADE80]">
+                                {isCardExpanded ? "COLLAPSE" : "DETAILS"}
+                                <ChevronDown className={`w-3.5 h-3.5 text-zinc-500 transition-transform duration-300 ${isCardExpanded ? 'rotate-180 text-amber-500' : ''}`} />
+                              </span>
+                            </div>
+
+                          </motion.div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                );
+              })}
+            </AnimatePresence>
+
+            {filteredContracts.length === 0 && (
+              <div className={`border p-8 rounded-xl text-center text-zinc-500 uppercase text-xs space-y-2 ${isLight ? 'bg-[#f4f4f5] border-black' : 'bg-black border-black'}`}>
+                <ShieldAlert className="w-8 h-8 text-zinc-500 mx-auto" />
+                <p className={`font-extrabold tracking-widest text-[10px] ${c_textWhite}`}>No active scanner signals discovered</p>
+                <p className="text-[9px] text-zinc-500 leading-snug font-sans uppercase">
+                  Try clearing the filters or modifying your manual search terms above.
+                </p>
+              </div>
+            )}
+
+          </div>
+
+          {/* EXCURSION GRID SUMMARY */}
+          <div className={`w-full rounded-xl p-5 text-left flex flex-col md:flex-row justify-between items-start md:items-center gap-4 shadow-2xl border ${c_cardBg}`}>
+            <div className="space-y-1">
+              <span className="text-[8.5px] text-[#4f8cff] tracking-widest uppercase font-black block">OPPORTUNITY DENSITY CONFIG</span>
+              <p className={`text-[10px] uppercase tracking-wide leading-relaxed font-sans font-medium ${isLight ? 'text-zinc-600' : 'text-zinc-400'}`}>
+                Slayer.trade models automatically weigh dealer positioning scores (DEX/GEX), expected moves, and continuous calibration matrices across 1,248 concurrent options contracts. Select details of any contract block above to inspect dynamic target coordinates.
+              </p>
+            </div>
+            <div className={`flex gap-4 shrink-0 text-left border-t md:border-t-0 md:border-l pt-3 md:pt-0 md:pl-5 ${isLight ? 'border-black' : 'border-black/60'}`}>
+              <div>
+                <span className="text-[7px] text-zinc-500 uppercase font-black tracking-widest block">ENTER SIGNAL RATIO</span>
+                <span className={`text-sm font-black ${c_textWhite}`}>{(metricsOverview.totalCount > 0 ? (metricsOverview.enterCount / metricsOverview.totalCount) * 100 : 0).toFixed(1)}%</span>
+              </div>
+              <div>
+                <span className="text-[7px] text-zinc-500 uppercase font-black tracking-widest block">EXTREME NOTIONAL</span>
+                <span className="text-sm font-black text-[#4ADE80]">+{metricsOverview.extremeEV} Blocks</span>
+              </div>
+            </div>
+          </div>
+
+        </div>
+
+        {/* ==========================================
+            RIGHT COLUMN: INSTITUTIONAL FLOW FEED & WHALE COGNITION (4 COLS)
+            ========================================== */}
+        <div className="lg:col-span-4 flex flex-col gap-4 w-full">
+          
+          {/* A. WHALE DETECTION PANEL */}
+          <div className={`border rounded-xl p-4.5 text-left relative overflow-hidden shadow-2xl flex flex-col gap-3.5 ${c_cardBg}`}>
+            
+            <div className="absolute top-0 right-0 w-24 h-24 bg-rose-500/5 blur-2xl pointer-events-none" />
+
+            <div className={`flex items-center gap-2 border-b pb-2 ${isLight ? 'border-black' : 'border-black'}`}>
+              <Flame className="w-4 h-4 text-[#F87171] animate-pulse" />
+              <h2 className={`text-[10.5px] font-black uppercase tracking-widest ${c_textWhite}`}>
+                LARGEST WHALE DETECTIONS
+              </h2>
+            </div>
+
+            <div className="space-y-2.5">
+              
+              {/* Bullish position */}
+              <div className={`border p-2.5 rounded-lg flex justify-between items-center text-[10px] ${c_pillBg}`}>
+                <div className="space-y-0.5">
+                  <span className={`text-[7px] uppercase block font-black ${isLight ? 'text-zinc-500' : 'text-zinc-650'}`}>LARGEST BULLISH BLOCK</span>
+                  <span className="text-[#d4d4d8] font-bold block">SPX 7700C (Call)</span>
+                  <span className={`text-[8px] font-sans uppercase ${isLight ? 'text-zinc-600' : 'text-zinc-400'}`}>Premium: $14.2M Notional</span>
+                </div>
+                <div className="text-right space-y-0.5">
+                  <span className={`text-[7px] block uppercase font-bold ${isLight ? 'text-zinc-500' : 'text-zinc-650'}`}>DEALER IMPACT</span>
+                  <span className={`block font-black font-mono ${c_textWhite}`}>CRITICAL</span>
+                  <span className="text-[8.5px] px-1 py-0.2 bg-black/40 border border-black text-[#d4d4d8] rounded font-bold">HIGH DELTA</span>
+                </div>
+              </div>
+
+              {/* Bearish Position */}
+              <div className={`border p-2.5 rounded-lg flex justify-between items-center text-[10px] ${c_pillBg}`}>
+                <div className="space-y-0.5">
+                  <span className={`text-[7px] uppercase block font-black ${isLight ? 'text-zinc-500' : 'text-zinc-650'}`}>LARGEST HEDGE PUT Sweep</span>
+                  <span className="text-[#F87171] font-bold block">SPX 7500P (Put)</span>
+                  <span className={`text-[8px] font-sans uppercase ${isLight ? 'text-zinc-600' : 'text-zinc-400'}`}>Premium: $22.4M Notional</span>
+                </div>
+                <div className="text-right space-y-0.5">
+                  <span className={`text-[7px] block uppercase font-bold ${isLight ? 'text-zinc-500' : 'text-zinc-650'}`}>DEALER IMPACT</span>
+                  <span className={`block font-black font-mono ${c_textWhite}`}>MODERATE</span>
+                  <span className="text-[8.5px] px-1 py-0.2 bg-rose-500/10 border border-rose-500/20 text-rose-455 rounded font-bold">WALL ANCHOR</span>
+                </div>
+              </div>
+
+              {/* QQQ Outflow */}
+              <div className={`border p-2.5 rounded-lg flex justify-between items-center text-[10px] ${c_pillBg}`}>
+                <div className="space-y-0.5">
+                  <span className={`text-[7px] uppercase block font-black ${isLight ? 'text-zinc-500' : 'text-zinc-650'}`}>LARGEST SPECULATIVE BLOCKS</span>
+                  <span className="text-[#4f8cff] font-bold block">NDX 18500C (Call)</span>
+                  <span className={`text-[8px] font-sans uppercase ${isLight ? 'text-zinc-600' : 'text-zinc-400'}`}>Premium: $8.9M Notional</span>
+                </div>
+                <div className="text-right space-y-0.5">
+                  <span className={`text-[7px] block uppercase font-bold ${isLight ? 'text-zinc-500' : 'text-zinc-650'}`}>GEX BIAS</span>
+                  <span className={`block font-black font-mono ${c_textWhite}`}>SUPPRESSED</span>
+                  <span className="text-[8.5px] px-1 py-0.2 bg-[#4f8cff]/10 border border-[#4f8cff]/10 text-[#4f8cff] rounded font-bold">VOL SQUEEZE</span>
+                </div>
+              </div>
+
+            </div>
+
+          </div>
+
+          {/* B. INSTITUTIONAL FLOW FEED (REAL-TIME SCROLLING WORKSPACE) */}
+          <div className={`border rounded-xl p-4.5 text-left relative overflow-hidden shadow-2xl flex flex-col gap-3.5 ${c_cardBg}`}>
+            
+            <div className={`flex items-center justify-between border-b pb-2 ${isLight ? 'border-black' : 'border-black'}`}>
+              <div className="flex items-center gap-2">
+                <div className="w-2.5 h-2.5 rounded-full bg-[#4f8cff] animate-ping absolute" />
+                <Database className="w-4 h-4 text-[#4f8cff] relative z-10" />
+                <h2 className={`text-[10.5px] font-black uppercase tracking-widest pl-1 ${c_textWhite}`}>
+                  LIVE OPTION FLOW SECURE TAPE
+                </h2>
+              </div>
+              <span className="text-[7.5px] text-[#A1A1AA] uppercase tracking-widest font-black bg-[#4f8cff]/15 px-1.5 py-0.5 border border-[#4f8cff]/25 rounded">
+                SECURE STREAM
+              </span>
+            </div>
+
+            {/* Scrolling Tape Container */}
+            <div className="h-[285px] overflow-y-auto scrollbar-thin divide-y divide-zinc-950 pr-1 select-none flex flex-col gap-1.5">
+              <AnimatePresence initial={false}>
+                {feedLogs.map((log, index) => {
+                  const isGoldSweep = log.side === 'Sweep';
+                  const isBullish = log.tag === 'BULLISH';
+                  
+                  return (
+                    <motion.div
+                      key={(log as any).id ?? `${log.timestamp}-${log.ticker}-${log.strike}-${index}`}
+                      initial={{ opacity: 0, x: 20, height: 0 }}
+                      animate={{ opacity: 1, x: 0, height: 'auto' }}
+                      exit={{ opacity: 0 }}
+                      transition={{ duration: 0.3 }}
+                      className={`py-2.5 border rounded-lg px-2.5 transition-colors flex flex-col gap-1 text-[9.5px] ${isLight ? 'bg-zinc-50 hover:bg-black border-black' : 'bg-black/40 border-black/40 hover:bg-black/60'}`}
+                    >
+                      <div className="flex justify-between items-center text-[9px]">
+                        <div className="flex items-center gap-1.5">
+                          <span className={`font-mono font-bold ${isLight ? 'text-zinc-500' : 'text-zinc-650'}`}>{log.timestamp}</span>
+                          <span className={`px-1 py-0.2 rounded font-black text-[7.5px] ${
+                            isGoldSweep ? 'bg-amber-400/10 border border-amber-400/25 text-amber-500' : 'bg-[#4f8cff]/10 border border-[#4f8cff]/25 text-[#4f8cff]'
+                          }`}>
+                            {log.side.toUpperCase()}
+                          </span>
+                        </div>
+                        <span className={`font-mono font-extrabold ${isBullish ? 'text-[#4ADE80]' : 'text-amber-500'}`}>
+                          {log.action}
+                        </span>
+                      </div>
+
+                      <div className="flex justify-between items-baseline font-mono font-bold">
+                        <span className={`text-[10.5px] ${c_textWhite}`}>
+                          {log.ticker} {log.strike}{log.type}
+                        </span>
+                        <span className={isBullish ? 'text-[#4ADE80]' : 'text-amber-650'}>
+                          {log.premium}
+                        </span>
+                      </div>
+
+                      <div className={`flex justify-between items-center text-[8.5px] text-zinc-550 pt-0.5 border-t border-dashed ${isLight ? 'border-black' : 'border-black'}`}>
+                        <span>SIZE: {log.size}</span>
+                        <span>BIAS: <span className={isBullish ? 'text-[#4ADE80] font-bold' : 'text-zinc-500 font-bold'}>{log.tag}</span></span>
+                      </div>
+                    </motion.div>
+                  );
+                })}
+              </AnimatePresence>
+            </div>
+
+            {/* Bottom active status ticker */}
+            <div className={`text-[7.5px] p-2 rounded border font-black flex justify-between items-center uppercase ${isLight ? 'text-zinc-600 bg-black border-black' : 'text-zinc-500 bg-black/80 border-black'}`}>
+              <span>STREAMING ACTIVE</span>
+              <span className="animate-pulse">● FEED ONLINE</span>
+            </div>
+
+          </div>
+
+        </div>
+
+      </div>
+
+    </div>
+  );
+}

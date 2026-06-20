@@ -1,0 +1,67 @@
+# Render Blueprint — one-click deploy of Slayer Terminal (app + Postgres).
+# Spec: https://render.com/docs/blueprint-spec
+#
+# How to use:
+#   1. Push this repo to GitHub (done).
+#   2. Render Dashboard -> New -> Blueprint -> pick this repo. Render reads this file.
+#   3. It prompts for the `sync: false` values below (your secrets/keys). Fill them in.
+#   4. Deploy. The DB schema self-creates on first boot (see src/db ensureSchema).
+#   5. Add your domain + set APP_URL (see DEPLOY.md).
+#
+# Plans default to FREE so you can launch at $0. Free web services sleep after
+# ~15 min idle and free Postgres expires after 90 days — bump to a paid plan for
+# always-on production (one-line change below).
+
+databases:
+  - name: slayer-db
+    databaseName: slayer
+    user: slayer
+    plan: free            # -> 'basic' (or higher) for durable production data
+
+services:
+  - type: web
+    name: slayer-terminal
+    runtime: node
+    plan: free            # -> 'starter' for always-on (no cold-start sleep)
+    region: oregon
+    buildCommand: npm install && npm run build
+    startCommand: npm start
+    healthCheckPath: /api/health
+    autoDeploy: true
+    envVars:
+      - key: NODE_ENV
+        value: production
+
+      # --- Database: wired automatically from the managed Postgres above ---
+      - key: SQL_HOST
+        fromDatabase: { name: slayer-db, property: host }
+      - key: SQL_USER
+        fromDatabase: { name: slayer-db, property: user }
+      - key: SQL_PASSWORD
+        fromDatabase: { name: slayer-db, property: password }
+      - key: SQL_DB_NAME
+        fromDatabase: { name: slayer-db, property: database }
+
+      # --- Session signing: auto-generated, stays stable across restarts ---
+      - key: COOKIE_SECRET
+        generateValue: true
+
+      # --- Set these in the Render dashboard (secrets / per-deploy values) ---
+      - key: APP_URL
+        sync: false        # e.g. https://slayerterminal.com (set after domain connect)
+      - key: STRIPE_SECRET_KEY
+        sync: false        # sk_live_... / sk_test_...  (REQUIRED to charge)
+      - key: STRIPE_WEBHOOK_SECRET
+        sync: false        # whsec_...  (from the Stripe Dashboard webhook)
+      - key: VITE_STRIPE_PUBLISHABLE_KEY
+        sync: false        # pk_live_... / pk_test_...  (read at BUILD time)
+      - key: GEMINI_API_KEY
+        sync: false        # optional: AI commentary (degrades gracefully if unset)
+      - key: POLYGON_API_KEY
+        sync: false        # optional: live market data (else simulated)
+      - key: TRADIER_API_KEY
+        sync: false        # optional: live market data (else simulated)
+      - key: TRADIER_ENV
+        sync: false        # 'sandbox' or 'production'
+      - key: ADMIN_EMAILS
+        sync: false        # comma-separated admin emails
