@@ -16,7 +16,7 @@ export function InstitutionalDashboard() {
   const [simulatorStrike, setSimulatorStrike] = useState(Math.round(spot / 25) * 25);
   
   // Simulated output matching the institutional needs
-  const dealerBias = profile?.netGex >= 0 ? 'LONG GAMMA' : 'SHORT GAMMA';
+  const dealerBias = profile == null ? 'LOADING' : (profile.netGex >= 0 ? 'LONG GAMMA' : 'SHORT GAMMA');
   
   return (
     <div className="w-full space-y-4 font-mono antialiased" id="institutional-dashboard-root">

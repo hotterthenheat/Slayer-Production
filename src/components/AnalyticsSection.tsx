@@ -46,7 +46,8 @@ export function AnalyticsSection({
   const prevCandle = candles[candles.length - 2] || currentCandle;
 
   // 1. CALCULATE CORES ON DISPLACEMENT
-  const bodyMultiple = Number((Math.abs(currentCandle.close - currentCandle.open) / (prevCandle.close * selectedAsset.volatility * 0.001) || 1.1).toFixed(2));
+  const bodyDenom = prevCandle.close * selectedAsset.volatility * 0.001;
+  const bodyMultiple = Number(((bodyDenom > 0 ? Math.abs(currentCandle.close - currentCandle.open) / bodyDenom : 0) || 1.1).toFixed(2));
   const rangeMultiple = Number(((currentCandle.high - currentCandle.low) / (prevCandle.high - prevCandle.low || 1)).toFixed(2));
   const ATRRatio = Number((rangeMultiple * 0.85).toFixed(2));
   const displacementVelocity = Number((bodyMultiple * 1.4).toFixed(1));

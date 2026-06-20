@@ -352,7 +352,7 @@ export function AlertsView() {
                     <div>
                       <span className="text-zinc-500 text-[8.5px] block uppercase">MISPRICING</span>
                       <span className="text-indigo-400 font-black text-sm">
-                        +{(((activeTrade.modelValue - activeTrade.marketPrice) / activeTrade.marketPrice) * 100).toFixed(0)}%
+                        {activeTrade.marketPrice ? `+${(((activeTrade.modelValue - activeTrade.marketPrice) / activeTrade.marketPrice) * 100).toFixed(0)}%` : '—'}
                       </span>
                     </div>
                   </div>

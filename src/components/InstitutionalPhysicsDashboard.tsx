@@ -276,7 +276,7 @@ export function InstitutionalPhysicsDashboard({ profile: externalProfile, ticker
       storeSetAsset(asset);
     }
     setTicker(selectedTk);
-    setProfile(TICKER_PROFILES[selectedTk]);
+    setProfile(TICKER_PROFILES[selectedTk] ?? TICKER_PROFILES.SPX);
     setSystemState('SYSTEM ACTIVE');
   };
 

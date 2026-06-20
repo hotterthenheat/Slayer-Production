@@ -937,7 +937,9 @@ export function DiscoveryView({
       setBrierScore(prev => Math.max(0.010, prev - 0.0004));
       setScanRate(prev => 15.0 + Math.random() * 2);
 
+      let scannedCount = 0;
       setContracts(prev => {
+        scannedCount = prev.length;
         return prev.map(c => {
           const shiftPercent = 1 + (Math.random() * 0.04 - 0.02); // +/-2%
           const newPrice = Math.max(0.15, Number((c.price * shiftPercent).toFixed(2)));
@@ -974,7 +976,7 @@ export function DiscoveryView({
       setFeedLogs(prev => [newLog, ...prev.slice(0, 11)]);
       setIsMockScanning(false);
       setScanHistoryCount(prev => prev + 1);
-      setLastScanMessage(`Done! Scanned ${contracts.length} options. 3 new setups added.`);
+      setLastScanMessage(`Done! Scanned ${scannedCount} options. 3 new setups added.`);
     }, 1000);
   };
 
