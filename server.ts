@@ -9,6 +9,7 @@ dotenv.config();
 import Stripe from 'stripe';
 import path from 'path';
 import crypto from 'node:crypto';
+import helmet from 'helmet';
 import { createServer as createViteServer } from 'vite';
 import { ASSET_LIST } from './src/data';
 import {
@@ -37,13 +38,29 @@ import {
   dbGetUser, dbSetUser, persistUser, dbDeleteUser, dbGetAllUsers, dbHasUser,
   getSessionFromCookies, setSessionCookie,
   verifyTOTP, totpLockRemainingMs, registerTotpFailure, clearTotpAttempts,
+  loginLockRemainingMs, registerLoginFailure, clearLoginAttempts,
   generateReferralCode,
 } from './src/server/auth';
 import { db, sse, type SSEClient, type SSEDiscoveryClient } from './src/server/state';
 import { constructPayload, broadcastSSE, broadcastDiscoverySSE } from './src/server/marketEngine';
 
 const app = express();
-app.set('trust proxy', true);
+// Trust only the configured number of proxy hops (Render/most PaaS = 1) rather
+// than `true`, which trusts ALL X-Forwarded-For entries and lets a client spoof
+// req.ip by injecting forged hops to evade the per-IP rate limiter.
+app.set('trust proxy', Number(process.env.TRUST_PROXY_HOPS || 1));
+
+// Security headers (clickjacking, MIME-sniffing, HSTS, referrer policy, etc.).
+// CSP is left off (a strict policy for this SPA + SSE + Tailwind needs dedicated
+// tuning) and the cross-origin resource policy is relaxed because the frontend and
+// API are deployed on separate origins.
+app.use(helmet({
+  contentSecurityPolicy: false,
+  crossOriginEmbedderPolicy: false,
+  crossOriginOpenerPolicy: false,
+  crossOriginResourcePolicy: { policy: 'cross-origin' },
+}));
+
 // API middleware
 // The Stripe webhook must receive the *raw* request body so its HMAC signature
 // can be verified (constructEvent). The global JSON parser would consume and
@@ -188,9 +205,11 @@ app.use((req, res, next) => {
     } else if (req.headers['sec-fetch-site'] === 'same-origin') {
       // Browser-enforced metadata: a cross-site page cannot forge this value.
       isValid = true;
-    } else if (!origin && !referer) {
-      // Non-browser clients (Stripe webhook, server-to-server, health checks)
-      // send no Origin/Referer and are not CSRF vectors (they hold no victim cookies).
+    } else if (!origin && !referer && !(req.headers.cookie || '').includes('slayer_session')) {
+      // Non-browser clients (Stripe webhook, server-to-server, health checks) send
+      // no Origin/Referer AND carry no session cookie — not CSRF vectors. A request
+      // with our auth cookie but no Origin/Referer/sec-fetch-site is suspicious (a
+      // real same-origin browser request always sets sec-fetch-site) and is rejected.
       isValid = true;
     }
 
@@ -371,6 +390,13 @@ app.post('/api/auth/clerk-login', express.json(), async (req, res) => {
   }
 
   const userEmail = email.toLowerCase().trim();
+
+  // Brute-force lockout (per-account, survives X-Forwarded-For rotation).
+  const loginLock = loginLockRemainingMs(userEmail);
+  if (loginLock > 0) {
+    return res.status(429).json({ error: `Too many failed attempts. Try again in ${Math.ceil(loginLock / 60000)} minute(s).` });
+  }
+
   let user = await dbGetUser(userEmail);
 
   if (user && user.deleted_at) {
@@ -383,6 +409,7 @@ app.post('/api/auth/clerk-login', express.json(), async (req, res) => {
     }
     const match = bcrypt.compareSync(password, user.passwordHash);
     if (!match) {
+      registerLoginFailure(userEmail);
       return res.status(400).json({ error: 'Incorrect credentials. Please verify password.' });
     }
   }
@@ -454,6 +481,7 @@ app.post('/api/auth/clerk-login', express.json(), async (req, res) => {
     cover_photo: user.cover_photo || ''
   };
 
+  clearLoginAttempts(userEmail); // reset throttle on successful auth
   await setSessionCookie(res, userSession, req);
   res.json({ success: true, user: sanitizeUser(user) });
 });
@@ -1056,6 +1084,9 @@ app.delete('/api/users/delete-account', async (req, res) => {
 // GDPR Data Export & S3 Compliance Storage Systems (Module 3)
 const s3ComplianceStorage = new Map<string, { email: string; payload: string; expiresAt: number; fileName: string }>();
 
+// Stripe webhook idempotency: ids of events already processed (replay protection).
+const processedWebhookEvents = new Set<string>();
+
 app.get('/api/users/profile/:username', async (req, res) => {
   const usernameParam = String(req.params.username || '').toLowerCase().trim();
   if (!usernameParam) {
@@ -1349,14 +1380,31 @@ app.post('/api/billing/webhook', express.raw({ type: 'application/json' }), asyn
   if (!stripeClient) {
     return res.status(503).json({ error: 'Payments are not configured yet.' });
   }
+  const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
+  if (!webhookSecret) {
+    // Fail loud rather than silently rejecting every (signature-less) event: this
+    // means subscriptions/cancellations would never be applied. 503 surfaces it.
+    console.error('[STRIPE WEBHOOK] STRIPE_WEBHOOK_SECRET is not set — cannot verify events.');
+    return res.status(503).send('Webhook secret not configured');
+  }
 
   const sig = req.headers['stripe-signature'];
   let event: Stripe.Event;
   try {
-    event = stripeClient.webhooks.constructEvent(req.body, sig as string, process.env.STRIPE_WEBHOOK_SECRET!);
+    event = stripeClient.webhooks.constructEvent(req.body, sig as string, webhookSecret);
   } catch (e: any) {
     console.error('[STRIPE WEBHOOK] Signature verification failed:', e?.message);
     return res.status(400).send('Webhook signature verification failed');
+  }
+
+  // Idempotency / replay protection: skip events we've already processed.
+  if (processedWebhookEvents.has(event.id)) {
+    return res.json({ received: true, duplicate: true });
+  }
+  processedWebhookEvents.add(event.id);
+  if (processedWebhookEvents.size > 5000) {
+    // Bound memory: drop the oldest ~1000 ids (insertion order preserved by Set).
+    for (const id of Array.from(processedWebhookEvents).slice(0, 1000)) processedWebhookEvents.delete(id);
   }
 
   try {
@@ -1785,7 +1833,7 @@ app.patch('/api/users/workspace', express.json({ limit: '5mb' }), async (req, re
   res.status(400).json({ error: 'A layout array is required.' });
 });
 
-app.patch('/api/users/preferences', express.json({ limit: '50mb' }), async (req, res) => {
+app.patch('/api/users/preferences', express.json({ limit: process.env.PREFS_BODY_LIMIT || '8mb' }), async (req, res) => {
   const session = await getSessionFromCookies(req.headers.cookie);
   if (!session || !session.email) {
     return res.status(401).json({ error: 'Settings access denied. Unauthorized.' });
@@ -1842,10 +1890,16 @@ app.patch('/api/users/preferences', express.json({ limit: '50mb' }), async (req,
     user.cover_photo = cover_photo;
   }
 
-  if (notification_preferences !== undefined) {
+  if (notification_preferences !== undefined && notification_preferences && typeof notification_preferences === 'object') {
+    // Whitelist only the four known boolean flags. Spreading arbitrary client JSON
+    // here (later re-parsed and spread elsewhere) is a prototype-pollution sink
+    // (e.g. a "__proto__" key); coercing to explicit booleans neutralizes it.
+    const prev = user.notification_preferences || {};
     user.notification_preferences = {
-      ...user.notification_preferences,
-      ...notification_preferences
+      email_enabled: typeof notification_preferences.email_enabled === 'boolean' ? notification_preferences.email_enabled : prev.email_enabled,
+      sms_enabled: typeof notification_preferences.sms_enabled === 'boolean' ? notification_preferences.sms_enabled : prev.sms_enabled,
+      discord_enabled: typeof notification_preferences.discord_enabled === 'boolean' ? notification_preferences.discord_enabled : prev.discord_enabled,
+      options_flow_alerts: typeof notification_preferences.options_flow_alerts === 'boolean' ? notification_preferences.options_flow_alerts : prev.options_flow_alerts,
     };
   }
 

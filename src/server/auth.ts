@@ -558,6 +558,36 @@ export function clearTotpAttempts(email: string): void {
   totpAttempts.delete(email.toLowerCase().trim());
 }
 
+// --- Per-account login throttling (brute-force defense) ---------------------
+// In-memory so a wrong password doesn't write to the DB on every attempt. Mirrors
+// the TOTP lockout: N misses → temporary lock. Keyed by email so it can't be
+// bypassed by rotating X-Forwarded-For (which the per-IP limiter is vulnerable to).
+const loginAttempts = new Map<string, { count: number; lockedUntil: number }>();
+const LOGIN_MAX_ATTEMPTS = 8;
+const LOGIN_LOCK_MS = 10 * 60 * 1000;
+
+/** Remaining login lockout in ms (0 when not locked). */
+export function loginLockRemainingMs(email: string): number {
+  const rec = loginAttempts.get(email.toLowerCase().trim());
+  if (rec && rec.lockedUntil > Date.now()) return rec.lockedUntil - Date.now();
+  return 0;
+}
+
+export function registerLoginFailure(email: string): void {
+  const key = email.toLowerCase().trim();
+  const rec = loginAttempts.get(key) || { count: 0, lockedUntil: 0 };
+  rec.count += 1;
+  if (rec.count >= LOGIN_MAX_ATTEMPTS) {
+    rec.lockedUntil = Date.now() + LOGIN_LOCK_MS;
+    rec.count = 0;
+  }
+  loginAttempts.set(key, rec);
+}
+
+export function clearLoginAttempts(email: string): void {
+  loginAttempts.delete(email.toLowerCase().trim());
+}
+
 // ============================================================
 // Referral codes (strict [PREFIX]10OFF format, collision-checked)
 // ============================================================
