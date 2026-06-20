@@ -399,10 +399,15 @@ function testZeroDte() {
   assert.ok(Math.abs(eod.movePct - iv * Math.sqrt(hoursToYearFraction(6.5))) < 1e-9, 'EM% = iv·√T');
   assert.ok(eod.upper1 > spot && eod.lower1 < spot && eod.upper2 > eod.upper1, 'EM bands ordered');
 
-  // Master bundle: settlement risk = 2·N(-1) ≈ 0.3173; finite outputs.
+  // Master bundle: settlement risk is gamma-regime-adjusted around the 2·N(−1)≈0.317
+  // baseline — net-long gamma tightens the close (below baseline), net-short widens it
+  // (above baseline). Both must stay finite and in [0,1].
   const z = compute0DTE({ spot, atmIv: iv, hoursToClose: 6.5, netGex: 1e9, magnet: 6000,
     strikes: [{ strike: 5950, netGex: 2e8 }, { strike: 6000, netGex: 9e8 }, { strike: 6050, netGex: 3e8 }] });
-  assert.ok(Math.abs(z.settlementRiskPct - 0.3173) < 0.005, `settlement risk ≈ 0.317, got ${z.settlementRiskPct.toFixed(4)}`);
+  assert.ok(z.settlementRiskPct >= 0 && z.settlementRiskPct < 0.3173, `long-gamma settlement risk below baseline, got ${z.settlementRiskPct.toFixed(4)}`);
+  const zShort = compute0DTE({ spot, atmIv: iv, hoursToClose: 6.5, netGex: -1e9, magnet: 6000,
+    strikes: [{ strike: 5950, netGex: -2e8 }, { strike: 6000, netGex: -9e8 }, { strike: 6050, netGex: -3e8 }] });
+  assert.ok(zShort.settlementRiskPct > 0.3173 && zShort.settlementRiskPct <= 1, `short-gamma settlement risk above baseline, got ${zShort.settlementRiskPct.toFixed(4)}`);
   assert.ok(z.pin.pinProbability >= 0 && z.pin.pinProbability <= 1, 'pin prob in [0,1]');
   assert.ok(z.eodMagnet > 5950 && z.eodMagnet < 6050, 'EOD magnet (positive-GEX CoM) near 6000');
   console.log(`✔ 0DTE passed (ATM ITM=${(atmCall * 100).toFixed(0)}%, POT(6080)=${(pot * 100).toFixed(0)}%, EOD EM=±${eod.movePts.toFixed(0)}, pin=${(z.pin.pinProbability * 100).toFixed(0)}%).`);

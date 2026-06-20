@@ -234,7 +234,15 @@ export function isLocalDevEnv(): boolean {
   return h === 'localhost' || h === '127.0.0.1' || h === '0.0.0.0' || h.endsWith('.local');
 }
 
-/** Single source of truth: map a server access_tier string to its numeric level. */
+/**
+ * Single source of truth: map a server access_tier string to its numeric level.
+ * The real values persisted by billing (see TIER_PRICING.accessTier) are
+ * 'discord' | 'intraday' | 'quant' | 'enterprise' | 'lifetime' | 'guest'. The
+ * plan-key aliases ('skyvision' → intraday level, 'pinpoint' → quant level) are kept
+ * as defensive normalization so a plan key accidentally stored as a tier still
+ * resolves to the right level instead of silently locking the user out (→ 0).
+ * NOTE: the server mirrors this mapping in marketEngine.accessTierToLevel — keep in sync.
+ */
 export function accessTierToNumber(accessTier?: string | null): number {
   switch (accessTier) {
     case 'discord': return 1;

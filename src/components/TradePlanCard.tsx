@@ -72,9 +72,9 @@ export function TradePlanCard() {
           <span className="text-[10px] tabular-nums text-zinc-300">{fmt(plan.entryZone[0])} – {fmt(plan.entryZone[1])}</span>
           <span className="text-[8px] uppercase tracking-widest text-zinc-600">current zone</span>
           {plan.targets.map((tg, i) => (
-            <React.Fragment key={i}>
+            <React.Fragment key={tg.reason}>
               <span className="text-[10px] font-bold tabular-nums" style={{ color: reasonTone[tg.reason] || '#E5E5E5' }}>TP{i + 1} {fmt(tg.price)}</span>
-              <div className="h-1.5 rounded-sm bg-black/40 overflow-hidden"><div className="h-full rounded-sm" style={{ width: `${Math.min(100, Math.abs(tg.distancePct) * 100 / 0.02 * 25)}%`, background: reasonTone[tg.reason] || '#888' }} /></div>
+              <div className="h-1.5 rounded-sm bg-black/40 overflow-hidden"><div className="h-full rounded-sm" style={{ width: `${Math.min(100, Math.max(6, Math.abs(tg.distancePct) / 0.015 * 100))}%`, background: reasonTone[tg.reason] || '#888' }} /></div>
               <span className="text-[8px] uppercase tracking-widest" style={{ color: reasonTone[tg.reason] || '#A1A1AA' }}>{tg.reason}</span>
             </React.Fragment>
           ))}

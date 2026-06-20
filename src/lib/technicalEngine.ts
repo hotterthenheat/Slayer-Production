@@ -40,10 +40,23 @@ const clamp = (v: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, v
 const last = <T>(a: T[]): T | undefined => (a.length ? a[a.length - 1] : undefined);
 
 function emaSeries(values: number[], period: number): number[] {
-  if (!values.length) return [];
+  const n = values.length;
+  if (!n) return [];
   const k = 2 / (period + 1);
+  // With a full lookback, seed the EMA with the SMA of the first `period` prints at
+  // index period−1 (the textbook seed) so the average is properly anchored instead of
+  // dragging the very first raw print forward — which left long EMAs under-converged.
+  if (n >= period && period > 1) {
+    const out = new Array<number>(n);
+    let s = 0; for (let i = 0; i < period; i++) s += values[i];
+    const seed = s / period;
+    for (let i = 0; i < period; i++) out[i] = seed;
+    for (let i = period; i < n; i++) out[i] = values[i] * k + out[i - 1] * (1 - k);
+    return out;
+  }
+  // Not enough data for a real seed — running EMA from the first print.
   const out = [values[0]];
-  for (let i = 1; i < values.length; i++) out.push(values[i] * k + out[i - 1] * (1 - k));
+  for (let i = 1; i < n; i++) out.push(values[i] * k + out[i - 1] * (1 - k));
   return out;
 }
 function emaLast(values: number[], period: number): number {
@@ -161,7 +174,11 @@ export function computeTechnicalRead(params: {
   // EMA alignment (8/21/50/200).
   const e8 = emaLast(closes, 8), e21 = emaLast(closes, 21), e50 = emaLast(closes, 50), e200 = emaLast(closes, 200);
   let bull = 0, bear = 0;
-  const pairs: [number, number][] = [[e8, e21], [e21, e50], [e50, e200], [spot, e8]];
+  // The 50/200 cross is only meaningful with a full 200-bar lookback; with fewer bars
+  // EMA200 is under-converged, so drop that pair from the alignment rather than let a
+  // noisy long EMA tilt the read (it's still reported in emaTargets for display).
+  const pairs: [number, number][] = [[e8, e21], [e21, e50], [spot, e8]];
+  if (closes.length >= 200) pairs.push([e50, e200]);
   for (const [a, b] of pairs) { if (a > b) bull++; else if (a < b) bear++; }
   const emaDir = (bull - bear) / pairs.length; // -1..1
   const emaAlignment: TechnicalRead['emaAlignment'] = emaDir > 0.4 ? 'BULLISH' : emaDir < -0.4 ? 'BEARISH' : 'MIXED';

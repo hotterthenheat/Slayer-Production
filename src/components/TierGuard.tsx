@@ -90,8 +90,10 @@ export default function TierGuard({
     return <>{children}</>;
   }
 
-  // Specialized Discord Active subscriber portal gate
-  if (purchasedTier === 1) {
+  // Specialized Discord Active subscriber portal gate — only when the locked tab is the
+  // immediate next step up (Tier 2 / SkyVision). For higher-tier tabs a Tier-1 user
+  // falls through to the generic upgrade card, which shows the correct required level.
+  if (purchasedTier === 1 && requiredTier === 2) {
     return (
       <motion.div 
         initial={{ opacity: 0, y: 12 }}

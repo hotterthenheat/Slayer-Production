@@ -490,11 +490,65 @@ export async function runTickerCycle() {
 // Start central telemetry clock
 setInterval(runTickerCycle, TICK_INTERVAL);
 
+/**
+ * Map a server access_tier string to its numeric level. Mirrors the client's
+ * accessTierToNumber (src/lib/store.ts) so server-side data gating and client-side
+ * tab gating agree exactly — keep the two in sync.
+ */
+export function accessTierToLevel(accessTier?: string | null): number {
+  switch (accessTier) {
+    case 'discord': return 1;
+    case 'skyvision':
+    case 'intraday': return 2;
+    case 'pinpoint':
+    case 'quant': return 3;
+    case 'enterprise': return 4;
+    case 'lifetime': return 5;
+    default: return 0;
+  }
+}
+
+/**
+ * Minimum access level required to receive each premium payload block over the stream.
+ * The level for a block is the LOWEST requiredTier among the tabs whose components
+ * consume it, so a paying user who can open a tab always gets its data:
+ *   • trade_plan / strike_gravity  → SkyVision (tier 2)
+ *   • quant_edge                   → Community/Arbor physics dash (tier 2) + Dealer Flow
+ *   • gex_profile / zerodte / dealer_dynamics → Dealer Flow (tier 3)
+ *   • option_chain                 → Quant Lab (tier 3)
+ * Blocks NOT listed here (deep_intelligence, system_score, candles, discovery, …) are
+ * free — they drive the public home tab and the always-on alert hub.
+ */
+const PREMIUM_BLOCK_TIERS: Record<string, number> = {
+  trade_plan: 2,
+  strike_gravity: 2,
+  quant_edge: 2,
+  gex_profile: 3,
+  zerodte: 3,
+  dealer_dynamics: 3,
+  option_chain: 3,
+};
+
+/**
+ * Strip premium blocks the viewer's tier doesn't reach (sets them to null so existing
+ * client guards fall back to their "computing…" state). Mutates and returns `payload`
+ * (a fresh per-call object from constructPayload, so this is safe). Tier 5 = full.
+ */
+export function gatePayloadByTier<T extends Record<string, any>>(payload: T, tier: number): T {
+  if (tier >= 5) return payload;
+  for (const block in PREMIUM_BLOCK_TIERS) {
+    if (tier < PREMIUM_BLOCK_TIERS[block] && block in payload) {
+      (payload as any)[block] = null;
+    }
+  }
+  return payload;
+}
+
 export const broadcastSSE = () => {
   for (const client of sse.clients) {
     if (client.userEmail) { updateRedisPresence(client.userEmail.toLowerCase().trim()); }
     try {
-      const payload = constructPayload(client.params);
+      const payload = gatePayloadByTier(constructPayload(client.params), client.tier ?? 0);
       client.res.write(`data: ${JSON.stringify(payload)}\n\n`);
     } catch (e) {
       console.error("Error writing SSE to client", client.id, e);
