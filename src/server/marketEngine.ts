@@ -27,6 +27,7 @@ import {
 } from '../lib/providerAbstraction';
 import { buildGexProfile, computeDealerFlowGauge } from '../lib/gexEngine';
 import { computeAssetEdge, computeContractEdge, type AssetEdge, type EdgeHistory } from '../lib/quantEdge';
+import { computeStrikeGravity } from '../lib/strikeGravity';
 import { pcaResidualZScores } from '../lib/crossAsset';
 import { marketLeader } from '../lib/infoTheory';
 import { computeDisplacementIntelligence } from '../lib/displacementEngine';
@@ -1171,6 +1172,11 @@ export const constructPayload = (params: {
     strikes: Object.values(strikesMap)
   };
 
+  // Strike Gravity Engine — score every strike (GEX / OI / volume / proximity),
+  // rank them, and build dealer support/resistance zones from the same per-strike
+  // data the GEX profile was built on. Feeds Sky's Vision level/target logic.
+  const strike_gravity = computeStrikeGravity(gex_profile.strikes, lastPrice, 10);
+
   const pressureVal = Math.round((dealerScore / 100 - 0.5) * 200);
   const gexNorm = Math.tanh(metricsV11.dealer.netGex / 2e9);
   const dexNorm = Math.tanh(metricsV11.dealer.netDex / 5e9);
@@ -1383,6 +1389,7 @@ export const constructPayload = (params: {
     data_source: db.dataSource,
     api_status_message: db.apiStatusMessage,
     gex_profile,
+    strike_gravity,
     dealer_flow,
     displacement,
     candle_feed: feedLabel,

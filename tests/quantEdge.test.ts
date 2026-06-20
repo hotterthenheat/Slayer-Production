@@ -19,6 +19,8 @@ import { computeVPIN, computeKylesLambda } from '../src/lib/microstructure';
 import { pcaResidualZScores } from '../src/lib/crossAsset';
 import { hawkesIntensity, netDeltaAggression } from '../src/lib/pointProcess';
 import { transferEntropy, marketLeader, fisherDivergence } from '../src/lib/infoTheory';
+import { computeStrikeGravity } from '../src/lib/strikeGravity';
+import { GexStrikeDetail } from '../src/types';
 
 console.log('--- RUNNING QUANT EDGE TEST SUITE ---');
 
@@ -257,6 +259,54 @@ function testPointProcessAndInfo() {
   console.log(`✔ Point-process + info-theory passed (Hawkes=${hk.cascadeProbability}, netΔ=${nd.netDelta}, TE=${teXY}, leader=${lead?.leader}, Fisher=${fd.divergence}).`);
 }
 
+function testStrikeGravity() {
+  console.log('Testing Strike Gravity Engine (ranking / zones / walls)...');
+  const spot = 6205;
+  // A clustered dealer wall 6200-6220 (support side, below/at spot) plus a lone
+  // resistance strike up at 6300, and some far low-gravity strikes.
+  const strikes: GexStrikeDetail[] = [
+    { strike: 6100, callGex: 0, putGex: 0, netGex: 1.0e8, callOi: 4000, putOi: 6000, callVolume: 800, putVolume: 900 },
+    { strike: 6200, callGex: 0, putGex: 0, netGex: 8.0e8, callOi: 30000, putOi: 22000, callVolume: 9000, putVolume: 8000 },
+    { strike: 6210, callGex: 0, putGex: 0, netGex: 7.5e8, callOi: 28000, putOi: 20000, callVolume: 8500, putVolume: 7000 },
+    { strike: 6220, callGex: 0, putGex: 0, netGex: 7.0e8, callOi: 26000, putOi: 18000, callVolume: 8000, putVolume: 6500 },
+    { strike: 6300, callGex: 0, putGex: 0, netGex: -4.0e8, callOi: 12000, putOi: 9000, callVolume: 3000, putVolume: 2500 },
+    { strike: 6500, callGex: 0, putGex: 0, netGex: 5.0e7, callOi: 2000, putOi: 1500, callVolume: 200, putVolume: 150 },
+  ];
+  const g = computeStrikeGravity(strikes, spot, 10);
+
+  // Composite scores must be a valid [0,1] blend and the weights must renormalize to 1.
+  for (const s of g.ranked) {
+    assert.ok(s.gravityScore >= 0 && s.gravityScore <= 1, `gravity in [0,1] for ${s.strike}`);
+    assert.ok(isFinite(s.gexWeight) && isFinite(s.proximityWeight), 'weights finite');
+  }
+  const wSum = g.weightsUsed.gex + g.weightsUsed.oi + g.weightsUsed.volume + g.weightsUsed.proximity;
+  assert.ok(Math.abs(wSum - 1) < 1e-9, 'effective weights renormalize to 1');
+
+  // Ranked must be sorted by gravity descending.
+  for (let i = 1; i < g.ranked.length; i++) {
+    assert.ok(g.ranked[i - 1].gravityScore >= g.ranked[i].gravityScore, 'ranked sorted desc');
+  }
+
+  // The 6200-6220 cluster (huge GEX/OI/volume + near spot) must be the primary magnet.
+  assert.ok(g.primary && g.primary.strike >= 6200 && g.primary.strike <= 6220, `primary in dealer wall, got ${g.primary?.strike}`);
+
+  // 6200-6220 must collapse into ONE support/straddle zone (not three separate levels).
+  const wallZone = g.zones.find((z) => z.lo <= 6200 && z.hi >= 6220);
+  assert.ok(!!wallZone, 'adjacent 6200/6210/6220 strikes cluster into one zone');
+  assert.ok(wallZone!.strikes.length === 3, 'zone holds all three wall strikes');
+
+  // Neighbors resolve on the correct side of spot.
+  assert.ok(!g.upperNeighbor || g.upperNeighbor.strike > spot, 'upper neighbor above spot');
+  assert.ok(!g.lowerNeighbor || g.lowerNeighbor.strike < spot, 'lower neighbor below spot');
+  assert.ok(g.clusterScore >= 0 && g.clusterScore <= 1, 'cluster score in [0,1]');
+
+  // Empty input must not throw.
+  const e = computeStrikeGravity([], spot, 10);
+  assert.ok(e.ranked.length === 0 && e.primary === null, 'empty chain handled gracefully');
+
+  console.log(`✔ Strike Gravity passed (primary=${g.primary?.strike}, zone=${wallZone!.lo}-${wallZone!.hi}, cluster=${g.clusterScore.toFixed(2)}, wSum=${wSum.toFixed(2)}).`);
+}
+
 try {
   testRealizedVol();
   testRiskNeutral();
@@ -267,6 +317,7 @@ try {
   testRegime();
   testMicrostructure();
   testPointProcessAndInfo();
+  testStrikeGravity();
   console.log('\n=============================================');
   console.log('🎉 ALL QUANT EDGE TESTS PASSED! 🎉');
   console.log('=============================================\n');

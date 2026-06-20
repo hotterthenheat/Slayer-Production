@@ -399,6 +399,9 @@ export interface ServerStatePayload {
     charm: number;
   }>;
   chain_live?: boolean;
+  // Strike Gravity Engine map (dealer-pressure ranking, zones, support/resistance
+  // walls) — type-only import keeps types.ts free of a runtime circular dependency.
+  strike_gravity?: import('./lib/strikeGravity').StrikeGravityResult;
   expected_move?: ExpectedMoveData;
   targets?: any[];
   candles?: Candle[];

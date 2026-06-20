@@ -2,6 +2,7 @@ import React, { useMemo, useState } from 'react';
 import { motion } from 'motion/react';
 import { useContractStore, ContractState } from '../lib/store';
 import { InteractiveChart } from './InteractiveChart';
+import { StrikeGravityPanel } from './StrikeGravityPanel';
 import { ASSET_LIST } from '../data';
 import { Zap, Percent, HelpCircle, FileText, CheckCircle2, Bot, Search, Maximize2, Minimize2 } from 'lucide-react';
 import { DiscoveryView } from './DiscoveryView';
@@ -586,6 +587,9 @@ export function SkyVisionView() {
               </div>
             </div>
           </div>
+
+          {/* STAGE 2.75: STRIKE GRAVITY MAP — dealer-pressure ranking & zones */}
+          <StrikeGravityPanel />
 
           {/* STAGE 3: ANALYSIS SUMMARY SECTION */}
           <div className="w-full bg-black border border-black p-5 rounded-2xl text-left space-y-3">
