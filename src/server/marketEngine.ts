@@ -29,6 +29,8 @@ import { buildGexProfile, computeDealerFlowGauge } from '../lib/gexEngine';
 import { computeAssetEdge, computeContractEdge, type AssetEdge, type EdgeHistory } from '../lib/quantEdge';
 import { computeStrikeGravity } from '../lib/strikeGravity';
 import { computeDealerDynamics, type DealerSnapshot, type DealerDynamics } from '../lib/dealerDynamics';
+import { compute0DTE } from '../lib/zeroDte';
+import { buildTradePlan } from '../lib/tradePlan';
 import { pcaResidualZScores } from '../lib/crossAsset';
 import { marketLeader } from '../lib/infoTheory';
 import { computeDisplacementIntelligence } from '../lib/displacementEngine';
@@ -87,6 +89,24 @@ const chainCache: Record<string, ChainContract[]> = {};
 // Rolling per-asset dealer snapshots (one per tick) + the latest computed dynamics.
 const dealerDynHistory: Record<string, DealerSnapshot[]> = {};
 const dealerDynCache: Record<string, DealerDynamics> = {};
+
+/** Hours remaining until the 16:00 ET cash-equity close (full session if outside RTH). */
+function getHoursToClose(now = new Date()): number {
+  try {
+    const parts = new Intl.DateTimeFormat('en-US', {
+      timeZone: 'America/New_York', hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false,
+    }).formatToParts(now);
+    const get = (t: string) => Number(parts.find((p) => p.type === t)?.value || 0);
+    let h = get('hour'); if (h === 24) h = 0;
+    const nowSec = h * 3600 + get('minute') * 60 + get('second');
+    const openSec = 9.5 * 3600;
+    const closeSec = 16 * 3600;
+    if (nowSec >= closeSec || nowSec < openSec) return 6.5; // outside RTH → assume a full session ahead
+    return Math.max(0, (closeSec - nowSec) / 3600);
+  } catch {
+    return 6.5;
+  }
+}
 
 /**
  * Trim a (potentially huge, real) option chain to a window of the nearest N
@@ -1346,6 +1366,39 @@ export const constructPayload = (params: {
     }),
   } : null;
 
+  // ===== 0DTE PROBABILITY ENGINE + SKY'S VISION TRADE PLAN =====
+  const atmIv0 = assetEdge?.skew?.atmIv ?? asset.volatility;
+  const hoursToClose = getHoursToClose();
+  const zerodte = compute0DTE({
+    spot: lastPrice,
+    atmIv: atmIv0,
+    hoursToClose,
+    netGex: metricsV11.dealer.netGex,
+    magnet: magnetStrike,
+    strikes: gex_profile.strikes.map((s: any) => ({ strike: s.strike, netGex: s.netGex })),
+  });
+  // Directional momentum: recent candle drift blended with dealer strike migration.
+  const momCandles = candles.slice(-12);
+  const momRet = momCandles.length > 1 ? (momCandles[momCandles.length - 1].close - momCandles[0].close) / (momCandles[0].close || 1) : 0;
+  const migScore = dealerDynCache[asset.ticker]?.migration?.score ?? 0;
+  const momentumBias = Math.max(-1, Math.min(1, 0.6 * Math.tanh(momRet / (atmIv0 * 0.03)) + 0.4 * migScore));
+  const emEodPts = zerodte.expectedMove.find((b) => b.horizon === 'EOD')?.movePts || (lastPrice * atmIv0 * 0.02);
+  const trade_plan = buildTradePlan({
+    ticker: asset.ticker,
+    spot: lastPrice,
+    step,
+    atmIv: atmIv0,
+    netGex: metricsV11.dealer.netGex,
+    gammaFlip: metricsV11.dealer.gammaFlipPrice,
+    callWall: metricsV11.dealer.callWall,
+    putWall: metricsV11.dealer.putWall,
+    emPts: emEodPts,
+    regimeState: assetEdge?.regime?.state || 'BALANCED',
+    winRate: metricsV11.posteriorWinRate,
+    momentumBias,
+    hoursToClose,
+  });
+
   return {
     contract: `${asset.ticker} ${optionStrike}${isCall ? 'C' : 'P'}`,
     recommendation: finalDecision, //ENTER, HOLD, REDUCE, EXIT
@@ -1411,6 +1464,8 @@ export const constructPayload = (params: {
     gex_profile,
     strike_gravity,
     dealer_dynamics: dealerDynCache[asset.ticker] || null,
+    zerodte,
+    trade_plan,
     dealer_flow,
     displacement,
     candle_feed: feedLabel,

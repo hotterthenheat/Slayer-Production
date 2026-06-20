@@ -3,6 +3,7 @@ import { motion } from 'motion/react';
 import { useContractStore, ContractState } from '../lib/store';
 import { InteractiveChart } from './InteractiveChart';
 import { StrikeGravityPanel } from './StrikeGravityPanel';
+import { TradePlanCard } from './TradePlanCard';
 import { ASSET_LIST } from '../data';
 import { Zap, Percent, HelpCircle, FileText, CheckCircle2, Bot, Search, Maximize2, Minimize2 } from 'lucide-react';
 import { DiscoveryView } from './DiscoveryView';
@@ -367,13 +368,16 @@ export function SkyVisionView() {
         </div>
       </div>
 
+      {/* SKY'S VISION TRADE PLAN — structured, actionable 0DTE synthesis (headline) */}
+      <TradePlanCard />
+
       {/* =====================================================================
           BUG #5: SKYVISION SCREEN HIERARCHY - REORGANIZED FOR PARALLEL GRID
           Left: Provenance Evaluation Matrix, Profit Targets & Summary
           Right: Options Cards Selection
           Bottom: Full-Width High-Precision Chart View
           ===================================================================== */}
-      
+
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start w-full">
         
         {/* LEFT COLUMN: PROVENANCE EVALUATION MATRIX & METRICS */}

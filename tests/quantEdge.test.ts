@@ -21,6 +21,8 @@ import { hawkesIntensity, netDeltaAggression } from '../src/lib/pointProcess';
 import { transferEntropy, marketLeader, fisherDivergence } from '../src/lib/infoTheory';
 import { computeStrikeGravity } from '../src/lib/strikeGravity';
 import { computeDealerDynamics, type DealerSnapshot } from '../src/lib/dealerDynamics';
+import { probExpireITM, probabilityOfTouch, expectedMoveBands, compute0DTE, hoursToYearFraction } from '../src/lib/zeroDte';
+import { buildTradePlan } from '../src/lib/tradePlan';
 import { GexStrikeDetail } from '../src/types';
 
 console.log('--- RUNNING QUANT EDGE TEST SUITE ---');
@@ -365,6 +367,72 @@ function testDealerDynamics() {
   console.log(`✔ Dealer Dynamics passed (vanna=${d2.vanna.trend}/${d2.vanna.hedgeFlow}, migration=${d2.migration.direction}, gamma=${d2.gamma.state}, supportWall=${d2.walls.support?.score}, vacuums=${d2.vacuums.zones.length}).`);
 }
 
+function testZeroDte() {
+  console.log('Testing 0DTE Probability Engine (ITM / touch / EM bands / settlement)...');
+  const spot = 6000, iv = 0.20, T = hoursToYearFraction(6.5); // a full session
+
+  // P(expire ITM): ATM ≈ 0.5; deep ITM call ≈ 1; deep OTM ≈ 0; call+put at same K = 1.
+  const atmCall = probExpireITM(spot, spot, T, iv, true);
+  assert.ok(Math.abs(atmCall - 0.5) < 0.05, `ATM call P(ITM) ≈ 0.5, got ${atmCall.toFixed(3)}`);
+  assert.ok(probExpireITM(spot, spot * 0.8, T, iv, true) > 0.99, 'deep ITM call ≈ 1');
+  assert.ok(probExpireITM(spot, spot * 1.2, T, iv, true) < 0.01, 'deep OTM call ≈ 0');
+  const K = 6050;
+  const sumITM = probExpireITM(spot, K, T, iv, true) + probExpireITM(spot, K, T, iv, false);
+  assert.ok(Math.abs(sumITM - 1) < 1e-9, `N(d2)+N(-d2) = 1 (got ${sumITM})`);
+
+  // Probability of touch: barrier=spot ⇒ 1; touch ≥ finishing beyond the barrier.
+  assert.ok(Math.abs(probabilityOfTouch(spot, spot, T, iv) - 1) < 1e-9, 'POT at spot = 1');
+  const B = 6080;
+  const pot = probabilityOfTouch(spot, B, T, iv);
+  const pBeyond = probExpireITM(spot, B, T, iv, true);
+  assert.ok(pot >= pBeyond - 1e-9, `POT(${B}) ≥ P(expire>${B}) [${pot.toFixed(3)} ≥ ${pBeyond.toFixed(3)}]`);
+  assert.ok(pot >= 0 && pot <= 1, 'POT in [0,1]');
+  // Closer barrier is easier to touch.
+  assert.ok(probabilityOfTouch(spot, 6020, T, iv) > probabilityOfTouch(spot, 6120, T, iv), 'closer barrier easier to touch');
+
+  // Expected-move bands: EOD ≥ 1H; movePct = iv·√T.
+  const bands = expectedMoveBands(spot, iv, 6.5);
+  const eod = bands.find((b) => b.horizon === 'EOD')!;
+  const oneH = bands.find((b) => b.horizon === '1H')!;
+  assert.ok(eod.movePts >= oneH.movePts, 'EOD EM ≥ 1H EM');
+  assert.ok(Math.abs(eod.movePct - iv * Math.sqrt(hoursToYearFraction(6.5))) < 1e-9, 'EM% = iv·√T');
+  assert.ok(eod.upper1 > spot && eod.lower1 < spot && eod.upper2 > eod.upper1, 'EM bands ordered');
+
+  // Master bundle: settlement risk = 2·N(-1) ≈ 0.3173; finite outputs.
+  const z = compute0DTE({ spot, atmIv: iv, hoursToClose: 6.5, netGex: 1e9, magnet: 6000,
+    strikes: [{ strike: 5950, netGex: 2e8 }, { strike: 6000, netGex: 9e8 }, { strike: 6050, netGex: 3e8 }] });
+  assert.ok(Math.abs(z.settlementRiskPct - 0.3173) < 0.005, `settlement risk ≈ 0.317, got ${z.settlementRiskPct.toFixed(4)}`);
+  assert.ok(z.pin.pinProbability >= 0 && z.pin.pinProbability <= 1, 'pin prob in [0,1]');
+  assert.ok(z.eodMagnet > 5950 && z.eodMagnet < 6050, 'EOD magnet (positive-GEX CoM) near 6000');
+  console.log(`✔ 0DTE passed (ATM ITM=${(atmCall * 100).toFixed(0)}%, POT(6080)=${(pot * 100).toFixed(0)}%, EOD EM=±${eod.movePts.toFixed(0)}, pin=${(z.pin.pinProbability * 100).toFixed(0)}%).`);
+}
+
+function testTradePlan() {
+  console.log('Testing Sky\'s Vision Trade Plan (direction / targets / structure)...');
+  const base = { ticker: 'SPX', spot: 6000, step: 25, atmIv: 0.18, netGex: 1.2e9,
+    gammaFlip: 5950, callWall: 6075, putWall: 5920, emPts: 48, regimeState: 'TREND_EXPANSION', winRate: 71, hoursToClose: 4 };
+
+  // Bullish momentum + above flip ⇒ BULLISH call plan with ordered targets.
+  const bull = buildTradePlan({ ...base, momentumBias: 0.6 });
+  assert.ok(bull.direction === 'BULLISH' && bull.isCall, 'bullish momentum ⇒ BULLISH calls');
+  assert.ok(bull.tp2 > bull.tp1 && bull.tp1 > 6000 && bull.stop < 6000, 'calls: stop < spot < TP1 < TP2');
+  assert.ok(bull.tp2 <= base.callWall + 1e-9, 'TP2 capped at call wall');
+  assert.ok(bull.confidence >= 5 && bull.confidence <= 97, 'confidence in [5,97]');
+  assert.ok(/C$/.test(bull.contract) && bull.targetStrike % base.step === 0, 'call contract on a valid strike');
+  assert.ok(bull.dealerFlow === 'Positive Gamma' && bull.flowConfirmation, 'positive gamma + flow confirmed');
+
+  // Bearish momentum + below flip ⇒ BEARISH put plan, mirrored ordering.
+  const bear = buildTradePlan({ ...base, spot: 5900, momentumBias: -0.6 });
+  assert.ok(bear.direction === 'BEARISH' && !bear.isCall, 'bearish momentum ⇒ BEARISH puts');
+  assert.ok(bear.tp2 < bear.tp1 && bear.tp1 < 5900 && bear.stop > 5900, 'puts: stop > spot > TP1 > TP2');
+  assert.ok(/P$/.test(bear.contract), 'put contract');
+
+  // Neutral momentum ⇒ NEUTRAL (no strong lean).
+  const neutral = buildTradePlan({ ...base, gammaFlip: 6000, momentumBias: 0.0 });
+  assert.ok(neutral.direction === 'NEUTRAL', 'flat momentum + at flip ⇒ NEUTRAL');
+  console.log(`✔ Trade Plan passed (bull ${bull.contract} conf ${bull.confidence}% TP1 ${bull.tp1}/TP2 ${bull.tp2} stop ${bull.stop} hold ${bull.expectedHoldMin}m).`);
+}
+
 try {
   testRealizedVol();
   testRiskNeutral();
@@ -377,6 +445,8 @@ try {
   testPointProcessAndInfo();
   testStrikeGravity();
   testDealerDynamics();
+  testZeroDte();
+  testTradePlan();
   console.log('\n=============================================');
   console.log('🎉 ALL QUANT EDGE TESTS PASSED! 🎉');
   console.log('=============================================\n');

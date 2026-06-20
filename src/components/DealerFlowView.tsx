@@ -20,6 +20,7 @@ import { AiIntelligenceLayer } from './AiIntelligenceLayer';
 import { QuantEdgePanel } from './QuantEdgePanel';
 import { RegimeMatrixPanel } from './RegimeMatrixPanel';
 import { DealerDynamicsPanel } from './DealerDynamicsPanel';
+import { ZeroDtePanel } from './ZeroDtePanel';
 import { MicrostructureLabView } from './MicrostructureLabView';
 import { DealerFlowMap } from './DealerFlowMap';
 import {
@@ -778,6 +779,10 @@ export function DealerFlowView() {
       {/* DEALER DYNAMICS — vanna/charm flow, strike migration, gamma velocity,
           liquidity vacuums, wall strength */}
       <DealerDynamicsPanel />
+
+      {/* 0DTE PROBABILITIES — expected-move bands, pin probability, EOD magnet,
+          probability-of-touch to walls, settlement risk */}
+      <ZeroDtePanel />
 
       {/* ============== SUB-TABS SELECTOR SEAMLESS GRIDS ============== */}
       <div className="flex flex-wrap gap-2.5 justify-start items-center" id="dealerflow-subtabs-bar">
