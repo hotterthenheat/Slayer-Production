@@ -77,6 +77,32 @@ const sandboxMomentum: Record<string, number> = {}; // per-asset AR(1) momentum 
 const RND_DTE_DAYS = 5;
 const edgeCache: Record<string, AssetEdge> = {};
 const edgeHistory: Record<string, EdgeHistory> = {};
+// The exact ChainContract[] the edge engine computed on this tick, cached per
+// asset so the SSE broadcast can ship the SAME inputs to the client Quant Lab —
+// guaranteeing the Lab's RND/greeks/skew match the server's numbers. Real chain
+// when API keys are connected, high-fidelity mock when keyless.
+const chainCache: Record<string, ChainContract[]> = {};
+
+/**
+ * Trim a (potentially huge, real) option chain to a window of the nearest N
+ * strikes either side of spot before broadcasting. The client Quant Lab only
+ * needs near-the-money strikes, and this keeps the SSE payload lean.
+ */
+function windowChainAroundSpot(chain: ChainContract[], spot: number, perSide = 24): ChainContract[] {
+  if (!chain || chain.length === 0) return [];
+  const strikes = Array.from(new Set(chain.map((c) => c.strike))).sort((a, b) => a - b);
+  if (strikes.length <= perSide * 2) return chain;
+  // Index of the strike closest to spot.
+  let atmIdx = 0;
+  let best = Infinity;
+  for (let i = 0; i < strikes.length; i++) {
+    const d = Math.abs(strikes[i] - spot);
+    if (d < best) { best = d; atmIdx = i; }
+  }
+  const lo = strikes[Math.max(0, atmIdx - perSide)];
+  const hi = strikes[Math.min(strikes.length - 1, atmIdx + perSide)];
+  return chain.filter((c) => c.strike >= lo && c.strike <= hi);
+}
 
 function liveChainToContracts(live: any[], fallbackIv: number): ChainContract[] {
   return live.map((c: any) => ({
@@ -102,6 +128,7 @@ function refreshEdgeCache() {
       const chain: ChainContract[] = (live && live.length > 0)
         ? liveChainToContracts(live, asset.volatility)
         : generateMockOptionsChain(spot, asset.volatility);
+      chainCache[asset.ticker] = chain;
       const candles = db.candles[`${asset.ticker}-5m`] || [];
       const dealerInv = computeDealerInventory(chain, spot, 1);
       if (!edgeHistory[asset.ticker]) edgeHistory[asset.ticker] = { rr: [], bf: [] };
@@ -1348,6 +1375,11 @@ export const constructPayload = (params: {
     optionPremiumFloat,
     optionStrike,
     liveSpotPrices: { ...db.liveSpotPrices },
+    // The exact near-the-money chain the server's edge engine computed on, so the
+    // client Quant Lab renders real (or high-fidelity mock) inputs consistent with
+    // the server — and automatically goes live the moment API keys are connected.
+    option_chain: windowChainAroundSpot(chainCache[asset.ticker] || [], lastPrice),
+    chain_live: !!isChainLive,
     data_source: db.dataSource,
     api_status_message: db.apiStatusMessage,
     gex_profile,

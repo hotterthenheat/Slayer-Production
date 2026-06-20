@@ -100,7 +100,16 @@ const SCENARIOS: Record<string, MockScenario> = {
 
 export function MicrostructureLabView() {
   const selectedAsset = useContractStore(s => s.selectedAsset);
-  
+  const serverState = useContractStore(s => s.serverState);
+  // Live spot for the asset in view (falls back to the static default keyless).
+  const liveSpot = serverState?.liveSpotPrices?.[selectedAsset.ticker] || selectedAsset.defaultPrice;
+  // Real microstructure toxicity from the server edge engine (VPIN / Kyle's λ),
+  // so the headline metrics are authentic even though the per-level book is a
+  // model (this app has no true L2/L3 feed). Falls back to neutral when absent.
+  const edgeVpinPct = typeof serverState?.quant_edge?.vpin?.vpin === 'number'
+    ? Math.max(0, Math.min(100, serverState.quant_edge.vpin.vpin * 100))
+    : null;
+
   // 1. Core Simulation State variables
   const [spot, setSpot] = useState<number>(selectedAsset.defaultPrice);
   const [timeMin, setTimeMin] = useState<number>(600); 
@@ -138,9 +147,15 @@ export function MicrostructureLabView() {
   const [orderBookBids, setOrderBookBids] = useState<any[]>([]);
   const [microstructureFeeds, setMicrostructureFeeds] = useState<any[]>([]);
 
+  // Keep the displayed VPIN toxicity synced to the real server edge value (no
+  // interval reset — just mirrors the authentic metric as it streams in).
+  useEffect(() => {
+    if (edgeVpinPct !== null) setVpinToxicity(edgeVpinPct);
+  }, [edgeVpinPct]);
+
   // Seed and update orderbook data dynamically
   useEffect(() => {
-    const spot = selectedAsset.defaultPrice || 5000;
+    const spot = liveSpot || 5000;
     const tick = selectedAsset.ticker === 'SPX' || selectedAsset.ticker === 'NDX' ? 0.5 : 0.05;
     
     // Generator for initial lines
@@ -1337,6 +1352,12 @@ export function MicrostructureLabView() {
                     <Table className="w-4 h-4 text-[#4ADE80]" />
                     <span className="font-mono text-[9.5px] font-black text-zinc-100 uppercase tracking-widest">
                       {selectedAsset.ticker} Level 2 Deep Ledger (DOM)
+                    </span>
+                    <span
+                      className="text-[7px] font-black uppercase tracking-widest px-1 py-0.5 rounded-sm border text-amber-400 border-amber-500/40 bg-amber-500/10"
+                      title="Reconstructed depth-of-market model anchored to live spot and real VPIN toxicity. This app does not ingest a raw L2/L3 exchange feed."
+                    >
+                      MODEL
                     </span>
                   </div>
                   <div className="flex items-center gap-1.5">

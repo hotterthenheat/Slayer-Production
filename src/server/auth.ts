@@ -39,7 +39,12 @@ function loadFallbackUsers(): FallbackUser[] {
 
 function saveFallbackUsers(usersList: FallbackUser[]) {
   try {
-    fs.writeFileSync(FALLBACK_FILE, JSON.stringify(usersList, null, 2), 'utf8');
+    // Atomic write: serialize to a temp file then rename over the target. rename(2)
+    // is atomic on POSIX, so a crash mid-write can never leave a truncated/corrupt
+    // users file — readers always see either the old or the fully-written new file.
+    const tmp = `${FALLBACK_FILE}.${process.pid}.tmp`;
+    fs.writeFileSync(tmp, JSON.stringify(usersList, null, 2), 'utf8');
+    fs.renameSync(tmp, FALLBACK_FILE);
   } catch (e) {
     console.error('Error saving fallback users:', e);
   }

@@ -186,6 +186,14 @@ interface DashboardProps {
 export function InstitutionalPhysicsDashboard({ profile: externalProfile, ticker: externalTicker, decimals: externalDecimals }: DashboardProps) {
   const storeSelectedAsset = useContractStore(s => s.selectedAsset);
   const storeSetAsset = useContractStore(s => s.setSelectedAsset);
+  const serverState = useContractStore(s => s.serverState);
+  // Real annualized realized vol (Yang-Zhang) from the server edge engine, used
+  // as the historical-density baseline so the implied-vs-historical divergence on
+  // the surface reflects live market vol. Falls back to the model default keyless.
+  const liveRealizedVol = useMemo(() => {
+    const rv = serverState?.quant_edge?.realizedVol?.primary;
+    return typeof rv === 'number' && isFinite(rv) && rv > 0.01 && rv < 3 ? rv : undefined;
+  }, [serverState]);
 
   // Active state ticker
   const activeTicker = storeSelectedAsset?.ticker || externalTicker || 'SPX';
@@ -281,8 +289,8 @@ export function InstitutionalPhysicsDashboard({ profile: externalProfile, ticker
 
   // Solves the Breeden-Litzenberger Risk Neutral Density Profile
   const rndAnalysis = useMemo(() => {
-    return computeRndProfile(activeSpot, ticker, 30);
-  }, [activeSpot, ticker]);
+    return computeRndProfile(activeSpot, ticker, 30, 0.05, liveRealizedVol);
+  }, [activeSpot, ticker, liveRealizedVol]);
 
   // Compute strikes table with completed call and put details (Real-time dynamic data binding)
   const impliedStrikes = useMemo(() => {
@@ -370,6 +378,7 @@ export function InstitutionalPhysicsDashboard({ profile: externalProfile, ticker
   const showRndRef = useRef(showRnd);
   const tickerRef = useRef(ticker);
   const spotRef = useRef(profile.spot);
+  const liveRvRef = useRef(liveRealizedVol);
 
   useEffect(() => {
     surfaceModeRef.current = surfaceMode;
@@ -378,7 +387,8 @@ export function InstitutionalPhysicsDashboard({ profile: externalProfile, ticker
     showRndRef.current = showRnd;
     tickerRef.current = ticker;
     spotRef.current = profile.spot;
-  }, [surfaceMode, impliedStrikes, isStreaming, showRnd, ticker, profile.spot]);
+    liveRvRef.current = liveRealizedVol;
+  }, [surfaceMode, impliedStrikes, isStreaming, showRnd, ticker, profile.spot, liveRealizedVol]);
 
   // Interactive High-Performance Continuous 3D WebGL Surface and Wireframe Loop via Three.js
   useEffect(() => {
@@ -651,7 +661,7 @@ export function InstitutionalPhysicsDashboard({ profile: externalProfile, ticker
         const priceTickFluctuation = isStreamingRef.current ? Math.sin(time * 0.5) * (currentSpot * 0.0016) : 0;
         const activeSpot = currentSpot + priceTickFluctuation;
 
-        const analysis = computeRndProfile(activeSpot, currentTicker, 30);
+        const analysis = computeRndProfile(activeSpot, currentTicker, 30, 0.05, liveRvRef.current);
         const nodes = analysis.nodes;
 
         const impliedPosAttr = rndImpliedGeometry.attributes.position as THREE.BufferAttribute;

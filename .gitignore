@@ -8,3 +8,4 @@ coverage/
 !.env.example
 # Keyless-mode user store (file-based fallback when SQL_HOST is unset). Never commit user data.
 users-fallback.json
+users-fallback.json*

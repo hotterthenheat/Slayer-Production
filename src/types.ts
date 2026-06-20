@@ -381,6 +381,24 @@ export interface ServerStatePayload {
   api_status_message?: string;
   trade_health: number;
   liveSpotPrices?: Record<string, number>;
+  // Near-the-money option chain the server's edge engine computed on this tick.
+  // Real when API keys are connected, high-fidelity mock when keyless. Shape
+  // mirrors ChainContract (kept structural here to avoid a circular import).
+  option_chain?: Array<{
+    strike: number;
+    type: 'call' | 'put';
+    openInterest: number;
+    iv: number;
+    bid: number;
+    ask: number;
+    delta: number;
+    gamma: number;
+    vega: number;
+    theta: number;
+    vanna: number;
+    charm: number;
+  }>;
+  chain_live?: boolean;
   expected_move?: ExpectedMoveData;
   targets?: any[];
   candles?: Candle[];

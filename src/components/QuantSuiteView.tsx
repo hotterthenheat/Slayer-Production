@@ -82,12 +82,30 @@ export default function QuantSuiteView() {
     return serverState?.liveSpotPrices?.[activeTicker] || activeAsset.defaultPrice;
   }, [serverState, activeTicker, activeAsset]);
 
-  const defaultIv = useMemo(() => {
-    return activeAsset.volatility;
-  }, [activeAsset]);
+  // The server streams the SAME near-the-money chain its edge engine computed on
+  // (real when API keys are connected, high-fidelity mock when keyless). Using it
+  // makes the Lab's RND/greeks/skew match the server and go live automatically.
+  const liveChain = serverState?.option_chain as ChainContract[] | undefined;
+  const hasLiveChain = Array.isArray(liveChain) && liveChain.length > 0;
+  const isLiveData = !!serverState?.chain_live && hasLiveChain;
 
-  // Construct conforming mock chain of options for computing everything locally
+  const defaultIv = useMemo(() => {
+    if (hasLiveChain) {
+      // ATM implied vol = the contract whose strike sits closest to spot.
+      let best = Infinity;
+      let iv = activeAsset.volatility;
+      for (const c of liveChain!) {
+        const d = Math.abs(c.strike - spotPrice);
+        if (d < best && isFinite(c.iv) && c.iv > 0) { best = d; iv = c.iv; }
+      }
+      return iv;
+    }
+    return activeAsset.volatility;
+  }, [hasLiveChain, liveChain, spotPrice, activeAsset]);
+
+  // Real chain when available; otherwise a conforming high-fidelity mock chain.
   const optionChain = useMemo(() => {
+    if (hasLiveChain) return liveChain!;
     const chain: ChainContract[] = [];
     const base = spotPrice;
     const spacing = activeTicker === 'SPX' ? 25 : activeTicker === 'NDX' ? 100 : 5;
@@ -132,10 +150,22 @@ export default function QuantSuiteView() {
       });
     }
     return chain;
-  }, [spotPrice, defaultIv, activeTicker]);
+  }, [hasLiveChain, liveChain, spotPrice, defaultIv, activeTicker]);
 
-  // Simulated daily historical candles (20 bars) for Realized Vol Suite
+  // Real streamed candles when available (mapped from the server Candle shape);
+  // otherwise a synthetic 20-bar series so the Realized Vol Suite still renders.
   const candles: Candle[] = useMemo(() => {
+    const live = serverState?.candles as Array<{ timestamp?: number; time?: number; open: number; high: number; low: number; close: number; volume: number }> | undefined;
+    if (Array.isArray(live) && live.length >= 10) {
+      return live.slice(-90).map((c, i) => ({
+        time: c.timestamp ?? c.time ?? i + 1,
+        open: c.open,
+        high: c.high,
+        low: c.low,
+        close: c.close,
+        volume: c.volume,
+      }));
+    }
     const list: Candle[] = [];
     const base = spotPrice;
     let curr = base * 0.96;
@@ -156,7 +186,7 @@ export default function QuantSuiteView() {
       curr = close;
     }
     return list;
-  }, [spotPrice]);
+  }, [serverState, spotPrice]);
 
   // ===================================
   // 1. RISK-NEUTRAL DENSITY & FAT TAILS
@@ -488,8 +518,20 @@ export default function QuantSuiteView() {
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center border-b border-[#2A2A2F] pb-4 mb-2 gap-4">
         <div>
           <h2 className="text-sm font-black tracking-widest text-[#FFF] uppercase flex items-center gap-2">
-            <Calculator className="w-4 h-4 text-[#D9A15C]" /> 
+            <Calculator className="w-4 h-4 text-[#D9A15C]" />
             Advanced Options Quantitative Lab & Intelligence Corridor
+            <span
+              className={`text-[8px] font-black uppercase tracking-widest px-1.5 py-0.5 rounded-sm border ${
+                isLiveData
+                  ? 'text-emerald-400 border-emerald-500/40 bg-emerald-500/10'
+                  : 'text-amber-400 border-amber-500/40 bg-amber-500/10'
+              }`}
+              title={isLiveData
+                ? 'Computing on the live option chain streamed from the server.'
+                : 'No live chain connected — computing on a high-fidelity simulated chain. Connect a data API key to go live.'}
+            >
+              {isLiveData ? '● LIVE CHAIN' : '○ SIMULATED'}
+            </span>
           </h2>
           <p className="text-[10px] text-zinc-500 mt-1 uppercase tracking-wider">
             SVI Interpolation Engine • Risk-Neutral Distributions • Multi-Leg Risk Matrix
