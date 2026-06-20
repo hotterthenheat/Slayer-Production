@@ -9,27 +9,22 @@ dotenv.config();
 import Stripe from 'stripe';
 import path from 'path';
 import { createServer as createViteServer } from 'vite';
-import { ASSET_LIST, generateInitialCandles, TIMEFRAMES, INITIAL_DISCOVERY_CONTRACTS, buildInitialDiscoveryFeedLogs, calculateFVGs, calculateLiquidityEvents } from './src/data';
-import { 
-  calculateSystemScoreFromCandles, 
-  calculateV11Metrics, 
-  calculateV10Metrics,
+import { ASSET_LIST } from './src/data';
+import {
+  calculateSystemScoreFromCandles,
+  calculateV11Metrics,
   computeDealerInventory,
   generateMockOptionsChain,
-  calculateAnalyticGreeks,
-  ChainContract
+  ChainContract,
 } from './src/lib/v11Math';
-import { Candle, V8TradeRecord, AssetInfo, TimeframeVal } from './src/types';
+import { V8TradeRecord, TimeframeVal } from './src/types';
 import {
   getDataSourceType,
   getProviderStatusMessage,
-  getUnifiedSpotPrice,
   getUnifiedOptionChain,
-  collectUnifiedFlows,
-  getUnifiedCandles
+  getUnifiedCandles,
 } from './src/lib/providerAbstraction';
 import { buildGexProfile, computeDealerFlowGauge } from './src/lib/gexEngine';
-import { computeDisplacementIntelligence } from './src/lib/displacementEngine';
 import { getLastTradierError } from './src/lib/tradierProvider';
 import bcrypt from 'bcryptjs';
 import { PORT, stripeClient, TIER_PRICING, ADMIN_EMAILS, roleForEmail, type AdminRole } from './src/server/config';
