@@ -420,9 +420,21 @@ export function SkyVisionView() {
 
             {/* Top Line label */}
             <div className="flex justify-between items-start border-b border-black/40 pb-4 relative z-10">
-              <div className="text-left space-y-1">
-                <span className="text-[8.5px] text-zinc-500 tracking-widest uppercase font-black block text-left">YOUR TRADE</span>
-                <h1 className="text-xl md:text-2xl font-black text-[#E5E5E5] font-sans tracking-tight uppercase leading-none">
+              <div className="text-left space-y-2">
+                <span className="text-[10px] font-mono font-black uppercase tracking-[0.2em] text-zinc-500 block">YOUR TRADE</span>
+                {/* Recommendation verdict — primary visual anchor */}
+                <div className={`inline-flex items-center px-3 py-1.5 rounded-lg border font-mono font-black text-2xl md:text-3xl uppercase tracking-tight leading-none ${
+                  activeRecommendation === 'ENTER'
+                    ? 'bg-[#4ADE80]/12 border-[#4ADE80]/40 text-[#4ADE80]'
+                    : activeRecommendation === 'SELL'
+                    ? 'bg-[#F87171]/12 border-[#F87171]/40 text-[#F87171]'
+                    : activeRecommendation === 'REDUCE'
+                    ? 'bg-[#FBBF24]/12 border-[#FBBF24]/40 text-[#FBBF24]'
+                    : 'bg-[#60A5FA]/12 border-[#60A5FA]/40 text-[#60A5FA]'
+                }`}>
+                  {activeRecommendation}
+                </div>
+                <h1 className="text-base md:text-lg font-black text-zinc-400 font-sans tracking-tight uppercase leading-none">
                   {selectedAsset.ticker} {activeStrike}{selectedOptionType}
                 </h1>
               </div>
@@ -566,7 +578,7 @@ export function SkyVisionView() {
             className="w-full bg-black border border-black p-4 rounded-md text-left flex flex-col gap-3 relative overflow-hidden"
           >
             <div className="flex justify-between items-center border-b border-black/50 pb-2">
-              <span className="text-[9.5px] text-zinc-500 uppercase tracking-widest font-black">Contract Greeks & Volume Info</span>
+              <span className="text-[10px] font-mono font-black uppercase tracking-[0.2em] text-zinc-500">Contract Greeks {'&'} Volume Info</span>
             </div>
             <div className="grid grid-cols-5 gap-2 text-[10px] font-mono">
               <div>
@@ -599,9 +611,9 @@ export function SkyVisionView() {
           <div className="w-full bg-black border border-black p-5 rounded-2xl text-left space-y-3">
             <div className="flex items-center gap-2 border-b border-black pb-2">
               <FileText className="w-3.5 h-3.5 text-zinc-500" />
-              <h4 className="text-[10.5px] font-black text-[#E5E5E5] uppercase tracking-wider block">
-                Analysis Summary & Market Outlook
-              </h4>
+              <span className="text-[10px] font-mono font-black uppercase tracking-[0.2em] text-zinc-500">
+                Analysis Summary {'&'} Market Outlook
+              </span>
             </div>
             <div className="text-[11px] leading-relaxed text-zinc-400 font-mono space-y-2 uppercase tracking-wide bg-black/50 p-3 rounded border border-black/50">
               <p>
@@ -637,7 +649,7 @@ export function SkyVisionView() {
           {/* NEW LIVE ORDER BOOK FEED LOCATION */}
           <div className="w-full bg-black border border-black p-4 rounded-2xl flex flex-col text-left mb-2">
              <div className="border-b border-black pb-2 mb-3">
-                <span className="text-[9.5px] text-zinc-400 font-black uppercase flex items-center gap-2">
+                <span className="text-[10px] font-mono font-black uppercase tracking-[0.2em] text-zinc-500 flex items-center gap-2">
                   <span className="w-1.5 h-1.5 bg-[#4f8cff] rounded-full animate-pulse"></span> Live Order Book Feed (Filtered: {selectedAsset.ticker} {activeStrike}{selectedOptionType})
                 </span>
              </div>
@@ -683,11 +695,11 @@ export function SkyVisionView() {
         <div className="lg:col-span-6 w-full bg-black border border-black p-5 rounded-2xl flex flex-col justify-between" style={{ minHeight: '520px' }}>
           
           <div className="border-b border-black pb-3 text-left">
-            <h3 className="text-xs font-black text-[#E5E5E5] uppercase tracking-wider relative inline-flex items-center gap-2">
-              <span className="w-2 h-2 rounded-full bg-[#4ADE80] text-black animate-pulse"></span>
+            <span className="text-[10px] font-mono font-black uppercase tracking-[0.2em] text-zinc-500 inline-flex items-center gap-2">
+              <span className="w-2 h-2 rounded-full bg-[#4ADE80] animate-pulse"></span>
               LIVE CONTRACT FEED
-            </h3>
-            <p className="text-[8.5px] text-zinc-500 uppercase font-mono tracking-wider">
+            </span>
+            <p className="text-[8.5px] text-zinc-500 uppercase font-mono tracking-wider mt-1">
               Real-time changes, risk scores, momentum, and premium estimation.
             </p>
           </div>
@@ -788,7 +800,38 @@ export function SkyVisionView() {
                       Live Gamma Ranking 
                     </span>
                   </div>
-                  <div className="overflow-x-auto">
+                  {/* Mobile card list — md and below */}
+                  <div className="md:hidden flex flex-col gap-2">
+                    {(serverState.deep_intelligence.impact_contracts || []).map((c: any) => (
+                      <div key={c.contract} className="bg-black/40 border border-zinc-900 rounded-lg p-3 flex flex-col gap-1.5 font-mono">
+                        <div className="flex items-center justify-between">
+                          <span className={`text-[10px] font-black ${c.rank === 1 ? 'text-[#ff4545]' : c.rank === 2 ? 'text-[#4f8cff]' : 'text-zinc-500'}`}>
+                            #{c.rank}
+                          </span>
+                          <span className="text-[11px] font-black text-[#E5E5E5]">{c.contract}</span>
+                        </div>
+                        <div className="grid grid-cols-3 gap-1 text-[9px]">
+                          <div>
+                            <span className="block text-zinc-600 uppercase tracking-wider text-[7px]">OI</span>
+                            <span className="text-[#4ADE80] font-bold">{c.oi != null ? c.oi.toLocaleString() : '--'}</span>
+                          </div>
+                          <div>
+                            <span className="block text-zinc-600 uppercase tracking-wider text-[7px]">Volume</span>
+                            <span className="text-[#4ADE80] font-bold">{c.volume != null ? c.volume.toLocaleString() : '--'}</span>
+                          </div>
+                          <div>
+                            <span className="block text-zinc-600 uppercase tracking-wider text-[7px]">Gamma</span>
+                            <span className="text-[#d4d4d8] font-bold">{c.gammaContribution ?? '--'}</span>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                    {(serverState.deep_intelligence.impact_contracts?.length ?? 0) === 0 && (
+                      <div className="text-zinc-600 text-[9px] font-mono italic py-2 text-center">No impact contracts available.</div>
+                    )}
+                  </div>
+                  {/* Full table — md and up */}
+                  <div className="hidden md:block overflow-x-auto">
                     <table className="w-full text-left text-[9px] font-mono text-zinc-400">
                       <thead>
                         <tr className="border-b border-black text-zinc-500 uppercase tracking-widest">

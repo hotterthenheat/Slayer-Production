@@ -571,46 +571,83 @@ export default function QuantSuiteView() {
       </div>
 
       {/* Primary Sub-Tabs Controller */}
-      <div className="flex flex-wrap items-center gap-1.5 border-b border-[#1f1f1f] pb-3" id="quant-suite-sub-tabs">
-        <button 
+      <div className="flex flex-nowrap overflow-x-auto scrollbar-none items-center gap-1 border-b border-[#1f1f1f] pb-0" id="quant-suite-sub-tabs">
+        {/* RND tab — default starting point, slightly emphasized */}
+        <button
           onClick={() => setActiveSubTab('rnd')}
-          className={`px-3 py-1.5 text-[9px] font-bold uppercase tracking-wider transition-all border rounded-xs cursor-pointer ${activeSubTab === 'rnd' ? 'bg-[#111] text-white border-zinc-700/50' : 'border-transparent text-zinc-500 hover:text-zinc-300'}`}
+          className={`shrink-0 px-3.5 py-2.5 min-h-[36px] text-[9px] font-black uppercase tracking-wider transition-all rounded-lg cursor-pointer relative ${
+            activeSubTab === 'rnd'
+              ? 'bg-white/5 text-[#E5E5E5] border-b-2 border-[#4ADE80]'
+              : 'text-zinc-400 hover:text-[#E5E5E5] border-b-2 border-transparent'
+          }`}
         >
-          Price Distribution (RND)
+          <span className={activeSubTab !== 'rnd' ? 'text-[#4ADE80]/80' : ''}>Price Distribution</span>
+          {activeSubTab !== 'rnd' && (
+            <span className="ml-1 text-[7px] font-black text-[#4ADE80]/60 normal-case tracking-normal">(start here)</span>
+          )}
         </button>
-        <button 
+        <button
           onClick={() => setActiveSubTab('vol')}
-          className={`px-3 py-1.5 text-[9px] font-bold uppercase tracking-wider transition-all border rounded-xs cursor-pointer ${activeSubTab === 'vol' ? 'bg-[#111] text-white border-zinc-700/50' : 'border-transparent text-zinc-500 hover:text-zinc-300'}`}
+          className={`shrink-0 px-3.5 py-2.5 min-h-[36px] text-[9px] font-bold uppercase tracking-wider transition-all rounded-lg cursor-pointer border-b-2 ${
+            activeSubTab === 'vol'
+              ? 'bg-white/5 text-[#E5E5E5] border-[#4ADE80]'
+              : 'text-zinc-400 hover:text-[#E5E5E5] border-transparent'
+          }`}
         >
-          Realized Vol & VRP
+          Realized Vol
         </button>
-        <button 
+        <button
           onClick={() => setActiveSubTab('builder')}
-          className={`px-3 py-1.5 text-[9px] font-bold uppercase tracking-wider transition-all border rounded-xs cursor-pointer ${activeSubTab === 'builder' ? 'bg-[#111] text-white border-zinc-700/50' : 'border-transparent text-zinc-500 hover:text-zinc-300'}`}
+          className={`shrink-0 px-3.5 py-2.5 min-h-[36px] text-[9px] font-bold uppercase tracking-wider transition-all rounded-lg cursor-pointer border-b-2 ${
+            activeSubTab === 'builder'
+              ? 'bg-white/5 text-[#E5E5E5] border-[#4ADE80]'
+              : 'text-zinc-400 hover:text-[#E5E5E5] border-transparent'
+          }`}
         >
-          Strategy Payoff Builder
+          Strategy Builder
         </button>
-        <button 
+        <button
           onClick={() => setActiveSubTab('scenarios')}
-          className={`px-3 py-1.5 text-[9px] font-bold uppercase tracking-wider transition-all border rounded-xs cursor-pointer ${activeSubTab === 'scenarios' ? 'bg-[#111] text-white border-zinc-700/50' : 'border-transparent text-zinc-500 hover:text-zinc-300'}`}
+          className={`shrink-0 px-3.5 py-2.5 min-h-[36px] text-[9px] font-bold uppercase tracking-wider transition-all rounded-lg cursor-pointer border-b-2 ${
+            activeSubTab === 'scenarios'
+              ? 'bg-white/5 text-[#E5E5E5] border-[#4ADE80]'
+              : 'text-zinc-400 hover:text-[#E5E5E5] border-transparent'
+          }`}
         >
-          Scenario Stress Test
+          Scenarios
         </button>
-        <button 
+        <button
           onClick={() => setActiveSubTab('portfolio')}
-          className={`px-3 py-1.5 text-[9px] font-bold uppercase tracking-wider transition-all border rounded-xs cursor-pointer ${activeSubTab === 'portfolio' ? 'bg-[#111] text-white border-zinc-700/50' : 'border-transparent text-zinc-500 hover:text-zinc-300'}`}
+          className={`shrink-0 px-3.5 py-2.5 min-h-[36px] text-[9px] font-bold uppercase tracking-wider transition-all rounded-lg cursor-pointer border-b-2 ${
+            activeSubTab === 'portfolio'
+              ? 'bg-white/5 text-[#E5E5E5] border-[#4ADE80]'
+              : 'text-zinc-400 hover:text-[#E5E5E5] border-transparent'
+          }`}
         >
           Book Greeks
         </button>
-        <button 
+        <button
           onClick={() => setActiveSubTab('alerts')}
-          className={`px-3 py-1.5 text-[9px] font-bold uppercase tracking-wider transition-all border rounded-xs cursor-pointer ${activeSubTab === 'alerts' ? 'bg-[#111] text-white border-zinc-700/50' : 'border-transparent text-zinc-500 hover:text-zinc-300'}`}
+          className={`shrink-0 px-3.5 py-2.5 min-h-[36px] text-[9px] font-bold uppercase tracking-wider transition-all rounded-lg cursor-pointer border-b-2 flex items-center gap-1.5 ${
+            activeSubTab === 'alerts'
+              ? 'bg-white/5 text-[#E5E5E5] border-[#4ADE80]'
+              : 'text-zinc-400 hover:text-[#E5E5E5] border-transparent'
+          }`}
         >
           Alerts
+          {alertsLog.length > 0 && (
+            <span className="rounded-full bg-[#4ADE80]/15 text-[#4ADE80] text-[9px] font-black px-1.5 leading-4 tabular-nums">
+              {alertsLog.length}
+            </span>
+          )}
         </button>
-        <button 
+        <button
           onClick={() => setActiveSubTab('calibration')}
-          className={`px-3 py-1.5 text-[9px] font-bold uppercase tracking-wider transition-all border rounded-xs cursor-pointer ${activeSubTab === 'calibration' ? 'bg-[#111] text-white border-zinc-700/50' : 'border-transparent text-zinc-500 hover:text-zinc-300'}`}
+          className={`shrink-0 px-3.5 py-2.5 min-h-[36px] text-[9px] font-bold uppercase tracking-wider transition-all rounded-lg cursor-pointer border-b-2 ${
+            activeSubTab === 'calibration'
+              ? 'bg-white/5 text-[#E5E5E5] border-[#4ADE80]'
+              : 'text-zinc-400 hover:text-[#E5E5E5] border-transparent'
+          }`}
         >
           Trade Journal
         </button>

@@ -31,6 +31,7 @@ interface AppShellProps {
   tierInfo: any;
   onUpgradeClick: () => void;
   setShowAuthModal: (open: boolean) => void;
+  feedStatus?: 'connecting' | 'live' | 'offline';
 }
 
 // Dynamic nav context. NavItem is hoisted to module scope (a stable component
@@ -77,7 +78,27 @@ function NavItem({ id, label, icon: Icon, adminOnly = false, activeColor = 'text
   );
 }
 
-export function AppShell({ children, session, onLogout, tierInfo, onUpgradeClick, setShowAuthModal }: AppShellProps) {
+// Live data-feed status indicator (driven by the SSE connection state).
+function FeedPill({ status, compact = false }: { status?: 'connecting' | 'live' | 'offline'; compact?: boolean }) {
+  const s = status || 'connecting';
+  const map = {
+    live: { c: '#4ADE80', t: 'LIVE' },
+    connecting: { c: '#FBBF24', t: 'CONNECTING' },
+    offline: { c: '#F87171', t: 'OFFLINE' },
+  } as const;
+  const cfg = map[s];
+  return (
+    <div className="flex items-center gap-1.5" title={`Data feed: ${cfg.t}`}>
+      <span className="relative flex h-1.5 w-1.5 shrink-0">
+        {s === 'live' && <span className="animate-ping absolute inline-flex h-full w-full rounded-full opacity-75" style={{ background: cfg.c }} />}
+        <span className="relative inline-flex rounded-full h-1.5 w-1.5" style={{ background: cfg.c }} />
+      </span>
+      {!compact && <span className="text-[8px] font-black uppercase tracking-widest" style={{ color: cfg.c }}>{cfg.t}</span>}
+    </div>
+  );
+}
+
+export function AppShell({ children, session, onLogout, tierInfo, onUpgradeClick, setShowAuthModal, feedStatus }: AppShellProps) {
   const activeTab = useContractStore(s => s.activeTab);
   const setActiveTab = useContractStore(s => s.setActiveTab);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -135,6 +156,9 @@ export function AppShell({ children, session, onLogout, tierInfo, onUpgradeClick
         </div>
 
         <div className={`p-4 border-t border-[#1F1F1F] bg-[#020202] overflow-hidden whitespace-nowrap transition-[padding] duration-300 ${isSidebarExpanded ? 'px-4' : 'px-2'}`}>
+           <div className={`flex mb-3 ${isSidebarExpanded ? 'justify-start px-1' : 'justify-center'}`}>
+             <FeedPill status={feedStatus} compact={!isSidebarExpanded} />
+           </div>
            {/* Tier Info */}
            <div 
              onClick={onUpgradeClick}
@@ -182,9 +206,12 @@ export function AppShell({ children, session, onLogout, tierInfo, onUpgradeClick
          <div className="cursor-pointer scale-[0.85] origin-left" onClick={() => setActiveTab('home')}>
              <BrandHeader />
          </div>
-         <button onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)} className="text-zinc-400 p-2">
+         <div className="flex items-center gap-3">
+           <FeedPill status={feedStatus} />
+           <button onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)} className="text-zinc-400 p-2">
              {isMobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
-         </button>
+           </button>
+         </div>
       </div>
 
       {/* Mobile Menu Dropdown */}

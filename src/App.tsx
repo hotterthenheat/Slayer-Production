@@ -56,23 +56,25 @@ import {
 } from 'lucide-react';
 
 const TickerTape = memo(() => {
-  const staticTickers = [
-    { ticker: 'SPX', name: 'S&P 500 Index', price: 7623.00, change: '+0.88%', isUp: true, vol: '14.2%' },
-    { ticker: 'NDX', name: 'NASDAQ 100 Index', price: 18250.00, change: '+1.42%', isUp: true, vol: '21.0%' },
-    { ticker: 'QQQ', name: 'NASDAQ ETF', price: 445.50, change: '+1.24%', isUp: true, vol: '18.5%' },
-    { ticker: 'SPY', name: 'S&P 505 ETF', price: 512.30, change: '+0.65%', isUp: true, vol: '12.8%' },
-    { ticker: 'RUT', name: 'Russell 2000 Index', price: 2025.00, change: '+0.92%', isUp: true, vol: '16.4%' },
-    { ticker: 'SPX', name: 'S&P 500 Index', price: 7623.00, change: '+0.88%', isUp: true, vol: '14.2%' },
-    { ticker: 'NDX', name: 'NASDAQ 100 Index', price: 18250.00, change: '+1.42%', isUp: true, vol: '21.0%' },
-    { ticker: 'QQQ', name: 'NASDAQ ETF', price: 445.50, change: '+1.24%', isUp: true, vol: '18.5%' },
-    { ticker: 'SPY', name: 'S&P 505 ETF', price: 512.30, change: '+0.65%', isUp: true, vol: '12.8%' },
-    { ticker: 'RUT', name: 'Russell 2000 Index', price: 2025.00, change: '+0.92%', isUp: true, vol: '16.4%' },
-    { ticker: 'SPX', name: 'S&P 500 Index', price: 7623.00, change: '+0.88%', isUp: true, vol: '14.2%' },
-    { ticker: 'NDX', name: 'NASDAQ 100 Index', price: 18250.00, change: '+1.42%', isUp: true, vol: '21.0%' },
-    { ticker: 'QQQ', name: 'NASDAQ ETF', price: 445.50, change: '+1.24%', isUp: true, vol: '18.5%' },
-    { ticker: 'SPY', name: 'S&P 505 ETF', price: 512.30, change: '+0.65%', isUp: true, vol: '12.8%' },
-    { ticker: 'RUT', name: 'Russell 2000 Index', price: 2025.00, change: '+0.92%', isUp: true, vol: '16.4%' }
+  const liveSpot = useContractStore((s) => s.serverState?.liveSpotPrices) as Record<string, number> | undefined;
+  const prevRef = React.useRef<Record<string, number>>({});
+  const meta = [
+    { ticker: 'SPX', name: 'S&P 500 Index', fallback: 7623 },
+    { ticker: 'NDX', name: 'NASDAQ 100 Index', fallback: 18250 },
+    { ticker: 'QQQ', name: 'NASDAQ 100 ETF', fallback: 445.5 },
+    { ticker: 'SPY', name: 'S&P 500 ETF', fallback: 512.3 },
+    { ticker: 'RUT', name: 'Russell 2000 Index', fallback: 2025 },
   ];
+  const items = meta.map((m) => {
+    const v = liveSpot ? liveSpot[m.ticker] : undefined;
+    const live = typeof v === 'number' && v > 0;
+    const price = live ? (v as number) : m.fallback;
+    const prev = prevRef.current[m.ticker];
+    const isUp = prev === undefined ? true : price >= prev;
+    return { ...m, price, isUp, live };
+  });
+  React.useEffect(() => { items.forEach((it) => { prevRef.current[it.ticker] = it.price; }); });
+  const staticTickers = [...items, ...items, ...items];
 
   return (
     <div className="w-full bg-black/75 border-b border-black/50 backdrop-blur-xl overflow-hidden py-1.5 relative z-40 select-none">
@@ -86,12 +88,9 @@ const TickerTape = memo(() => {
               >
                 <span className="font-black text-[#E5E5E5] tracking-widest">{t.ticker}</span>
                 <span className="text-zinc-500 text-[8.5px] uppercase">{t.name}</span>
-                <span className="font-extrabold text-[#f4f4f5]">${t.price.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
-                <span className={`font-bold flex items-center gap-0.5 ${t.isUp ? 'text-[#4ADE80]' : 'text-[#F87171]'}`}>
-                  {t.isUp ? '' : ''}{t.change}
-                </span>
-                <span className="text-zinc-650 text-[8px] font-black border border-black bg-black/60 px-1 rounded-xs uppercase">
-                  VOL: {t.vol}
+                <span className={`font-extrabold tabular-nums ${t.isUp ? 'text-[#4ADE80]' : 'text-[#F87171]'}`}>${t.price.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                <span className={`text-[8px] font-black ${t.isUp ? 'text-[#4ADE80]' : 'text-[#F87171]'}`}>
+                  {t.isUp ? '▲' : '▼'}
                 </span>
               </div>
             ))}
@@ -197,6 +196,7 @@ export default function App() {
   // INJECT: VIEWPORT SIMULATION STATE
   const [originalAdminSession, setOriginalAdminSession] = useState<any | null>(null);
   const [isSimulating, setIsSimulating] = useState(false);
+  const [feedStatus, setFeedStatus] = useState<'connecting' | 'live' | 'offline'>('connecting');
 
   const handleSimulateTier = (targetTier: string, targetTierNum: number) => {
     // Save the real admin session in the background before overriding
@@ -678,6 +678,8 @@ export default function App() {
     const url = `/api/stream?asset=${assetParam}&timeframe=${tfParam}&isCall=${isCall}${strikeParam}${posParam}`;
     
     const eventSource = new EventSource(url);
+    setFeedStatus('connecting');
+    eventSource.onopen = () => setFeedStatus('live');
     let latestPayload: any = null;
     let flushInterval: any = null;
 
@@ -716,6 +718,7 @@ export default function App() {
 
     eventSource.onerror = (err) => {
       console.error('[SkyVision Client] Stream Connection Error', err);
+      setFeedStatus('offline');
     };
 
     return () => {
@@ -891,6 +894,7 @@ export default function App() {
       session={session} 
       onLogout={handleLogout}
       tierInfo={tierInfo}
+      feedStatus={feedStatus}
       onUpgradeClick={handleUpgradeClick}
       setShowAuthModal={setShowAuthModal}
     >

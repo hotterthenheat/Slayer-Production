@@ -140,20 +140,24 @@ function KeybindRow({ bindId, label }: { bindId: keyof ContractStore['keybinds']
   return (
     <div className={`flex items-center justify-between p-3 bg-black/40 border ${isDisabled ? 'border-black/50 opacity-50' : 'border-black'} rounded-lg transition-all`}>
       <div className="flex items-center gap-3">
-        <button 
+        {/* 36px minimum tap target wrapping the 16px checkbox visual */}
+        <button
           onClick={() => setDisabledKeybinds({ [bindId]: !isDisabled })}
-          className={`w-4 h-4 rounded flex items-center justify-center border ${isDisabled ? 'bg-transparent border-black' : 'bg-indigo-500 border-indigo-500 text-[#E5E5E5]'}`}
+          className="flex items-center justify-center min-w-[36px] min-h-[36px] rounded-lg cursor-pointer"
+          aria-label={isDisabled ? 'Enable keybind' : 'Disable keybind'}
         >
-          {!isDisabled && <svg viewBox="0 0 24 24" fill="none" className="w-3 h-3 stroke-current stroke-[3]"><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>}
+          <span className={`w-4 h-4 rounded flex items-center justify-center border ${isDisabled ? 'bg-transparent border-black' : 'bg-indigo-500 border-indigo-500 text-[#E5E5E5]'}`}>
+            {!isDisabled && <svg viewBox="0 0 24 24" fill="none" className="w-3 h-3 stroke-current stroke-[3]"><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>}
+          </span>
         </button>
-        <span className={`text-sm font-bold ${isDisabled ? 'text-zinc-500 line-through' : 'text-[#4ADE80]'}`}>{label}</span>
+        <span className={`text-sm font-mono font-bold ${isDisabled ? 'text-zinc-500 line-through' : 'text-[#4ADE80]'}`}>{label}</span>
       </div>
       <button
         onClick={() => {
           if (!isDisabled) setIsRecording(true);
         }}
         disabled={isDisabled}
-        className={`px-3 py-1.5 text-xs font-mono font-bold rounded flex items-center justify-center min-w-[80px] transition-all border
+        className={`px-3 min-h-[36px] text-xs font-mono font-bold rounded-lg flex items-center justify-center min-w-[80px] transition-all border
           ${isDisabled ? 'bg-black text-zinc-600 border-black cursor-not-allowed' : isRecording ? 'bg-indigo-500/20 text-indigo-400 border-indigo-500/50 shadow-[0_0_10px_rgba(99,102,241,0.3)]' : 'bg-black text-zinc-400 border-black hover:border-black hover:text-[#E5E5E5]'}`}
       >
         {isRecording ? 'Listening...' : displayKey.toUpperCase()}
@@ -613,37 +617,40 @@ export function SettingsPanel({ session, onUpdateSession }: SettingsPanelProps) 
 
   const tabs = [
     { id: 'profile', label: 'Public Profile', icon: User },
+    { id: 'billing', label: 'Billing', icon: Receipt },
     { id: 'security', label: 'Account & Security', icon: Lock },
     { id: 'privacy', label: 'Privacy & Alerts', icon: ShieldAlert },
     { id: 'preferences', label: 'Preferences', icon: Settings },
     { id: 'keybinds', label: 'Keyboard Shortcuts', icon: Type },
     { id: 'referrals', label: 'Referrals', icon: Coins },
-    { id: 'billing', label: 'Billing', icon: Receipt },
   ] as const;
 
   return (
-    <div id="slayer-settings-panel" className="w-full flex flex-col md:flex-row gap-8 text-left font-sans max-w-[800px] mx-auto">
-      
-      {/* Sidebar Navigation */}
-      <div className="w-full md:w-56 shrink-0 space-y-1">
-        {tabs.map((tab) => {
-          const Icon = tab.icon;
-          const isActive = activeTab === tab.id;
-          return (
-            <button
-              key={tab.id}
-              onClick={() => setActiveTab(tab.id)}
-              className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-[13px] font-bold transition-all cursor-pointer ${
-                isActive 
-                  ? 'bg-black text-[#E5E5E5] border border-black' 
-                  : 'text-zinc-400 hover:text-[#E5E5E5] hover:bg-black/50 border border-transparent'
-              }`}
-            >
-              <Icon className={`w-4 h-4 ${isActive ? 'text-indigo-400' : 'text-zinc-500'}`} />
-              <span>{tab.label}</span>
-            </button>
-          );
-        })}
+    <div id="slayer-settings-panel" className="w-full flex flex-col gap-4 text-left font-mono max-w-[860px] mx-auto">
+
+      {/* Tab Navigation — horizontal scroll on mobile, wraps on md+ */}
+      <div className="w-full">
+        <div className="flex flex-nowrap overflow-x-auto gap-1 pb-1 md:flex-wrap md:overflow-x-visible scrollbar-none">
+          {tabs.map((tab) => {
+            const Icon = tab.icon;
+            const isActive = activeTab === tab.id;
+            return (
+              <button
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id)}
+                className={`shrink-0 flex items-center gap-2 px-4 rounded-lg text-[11px] font-mono font-black uppercase tracking-[0.15em] transition-all cursor-pointer min-h-[36px] whitespace-nowrap ${
+                  isActive
+                    ? 'bg-black text-[#4ADE80] border border-black shadow-inner'
+                    : 'text-zinc-400 hover:text-[#E5E5E5] hover:bg-black/50 border border-transparent'
+                }`}
+              >
+                <Icon className={`w-3.5 h-3.5 shrink-0 ${isActive ? 'text-[#4ADE80]' : 'text-zinc-500'}`} />
+                <span>{tab.label}</span>
+              </button>
+            );
+          })}
+        </div>
+        <div className="mt-1 h-px bg-black/40" />
       </div>
 
       {/* Content Area */}
@@ -658,21 +665,21 @@ export function SettingsPanel({ session, onUpdateSession }: SettingsPanelProps) 
           <div className="space-y-6 animate-fadeIn pb-12">
             
             {/* MFA Container */}
-            <div className="bg-black/20 border border-black rounded-xl p-6 space-y-4 relative shadow-lg">
+            <div className="bg-black/20 border border-black rounded-xl p-5 space-y-4 relative shadow-lg">
               <div className="flex items-center gap-2.5 border-b border-black pb-3">
-                <Lock className="w-5 h-5 text-indigo-400" />
-                <h2 className="text-lg font-black tracking-tight text-[#E5E5E5] uppercase">Account Security</h2>
+                <Lock className="w-4 h-4 text-indigo-400" />
+                <span className="text-[10px] font-mono font-black uppercase tracking-[0.2em] text-zinc-500">Account Security</span>
               </div>
-              <p className="text-xs text-zinc-400">Manage two-factor authentication, passwords, and account deletion.</p>
+              <p className="text-xs font-mono text-zinc-400">Manage two-factor authentication, passwords, and account deletion.</p>
               
               <TwoFactorFlow />
             </div>
 
             {/* Email Transition Container */}
-            <div className="bg-black/20 border border-black rounded-xl p-6 space-y-4 relative shadow-lg">
+            <div className="bg-black/20 border border-black rounded-xl p-5 space-y-4 relative shadow-lg">
               <div className="flex items-center gap-2.5 border-b border-black pb-3">
-                <svg viewBox="0 0 24 24" fill="none" className="w-5 h-5 text-indigo-400 stroke-current stroke-2"><path strokeLinecap="round" strokeLinejoin="round" d="M3 19.5h18M3 4.5h18M3 9.5h18M3 14.5h18" /></svg>
-                <h2 className="text-sm font-bold tracking-wider text-[#E5E5E5] uppercase">Primary Email & Two-Step OTP</h2>
+                <svg viewBox="0 0 24 24" fill="none" className="w-4 h-4 text-indigo-400 stroke-current stroke-2"><path strokeLinecap="round" strokeLinejoin="round" d="M3 19.5h18M3 4.5h18M3 9.5h18M3 14.5h18" /></svg>
+                <span className="text-[10px] font-mono font-black uppercase tracking-[0.2em] text-zinc-500">Primary Email &amp; Two-Step OTP</span>
               </div>
               
               <div className="space-y-3">
@@ -751,10 +758,10 @@ export function SettingsPanel({ session, onUpdateSession }: SettingsPanelProps) 
             </div>
 
             {/* Password Mutation Container */}
-            <div className="bg-black/20 border border-black rounded-xl p-6 space-y-4 relative shadow-lg">
+            <div className="bg-black/20 border border-black rounded-xl p-5 space-y-4 relative shadow-lg">
               <div className="flex items-center gap-2.5 border-b border-black pb-3">
-                <svg viewBox="0 0 24 24" fill="none" className="w-5 h-5 text-indigo-400 stroke-current stroke-2"><path strokeLinecap="round" strokeLinejoin="round" d="M15.75 5.25a3 3 0 013 3m3 0a6 6 0 01-7.029 5.912c-.563-.097-1.159.026-1.563.43L10.5 17.25H8.25v2.25H6v2.25H2.25v-2.818c0-.597.237-1.17.659-1.591l6.499-6.499c.404-.404.527-1 .43-1.563A6 6 0 1121.75 8.25z" /></svg>
-                <h2 className="text-sm font-bold tracking-wider text-[#E5E5E5] uppercase">Change Password</h2>
+                <svg viewBox="0 0 24 24" fill="none" className="w-4 h-4 text-indigo-400 stroke-current stroke-2"><path strokeLinecap="round" strokeLinejoin="round" d="M15.75 5.25a3 3 0 013 3m3 0a6 6 0 01-7.029 5.912c-.563-.097-1.159.026-1.563.43L10.5 17.25H8.25v2.25H6v2.25H2.25v-2.818c0-.597.237-1.17.659-1.591l6.499-6.499c.404-.404.527-1 .43-1.563A6 6 0 1121.75 8.25z" /></svg>
+                <span className="text-[10px] font-mono font-black uppercase tracking-[0.2em] text-zinc-500">Change Password</span>
               </div>
               
               <form onSubmit={handleChangePasswordSubmit} className="space-y-4">
@@ -802,11 +809,11 @@ export function SettingsPanel({ session, onUpdateSession }: SettingsPanelProps) 
             </div>
 
             {/* Active Sessions & SSO Container */}
-            <div className="bg-black/20 border border-black rounded-xl p-6 space-y-4 relative shadow-lg animate-fadeIn">
+            <div className="bg-black/20 border border-black rounded-xl p-5 space-y-4 relative shadow-lg animate-fadeIn">
               <div className="flex items-center justify-between border-b border-black pb-3">
                 <div className="flex items-center gap-2.5">
-                  <svg viewBox="0 0 24 24" fill="none" className="w-5 h-5 text-indigo-400 stroke-current stroke-2"><path strokeLinecap="round" strokeLinejoin="round" d="M9 17.25v1.007a3 3 0 01-.879 2.122L7.5 21h9l-.621-.621A3 3 0 0115 18.257V17.25m6-12V15a2.25 2.25 0 01-2.25 2.25H5.25A2.25 2.25 0 013 15V5.25m18 0A2.25 2.25 0 0018.75 3H5.25A2.25 2.25 0 003 5.25m18 0V12a2.25 2.25 0 01-2.25 2.25H5.25A2.25 2.25 0 013 12V5.25" /></svg>
-                  <h2 className="text-sm font-bold tracking-wider text-[#E5E5E5] uppercase">Active Sessions</h2>
+                  <svg viewBox="0 0 24 24" fill="none" className="w-4 h-4 text-indigo-400 stroke-current stroke-2"><path strokeLinecap="round" strokeLinejoin="round" d="M9 17.25v1.007a3 3 0 01-.879 2.122L7.5 21h9l-.621-.621A3 3 0 0115 18.257V17.25m6-12V15a2.25 2.25 0 01-2.25 2.25H5.25A2.25 2.25 0 013 15V5.25m18 0A2.25 2.25 0 0018.75 3H5.25A2.25 2.25 0 003 5.25m18 0V12a2.25 2.25 0 01-2.25 2.25H5.25A2.25 2.25 0 013 12V5.25" /></svg>
+                  <span className="text-[10px] font-mono font-black uppercase tracking-[0.2em] text-zinc-500">Active Sessions</span>
                 </div>
                 <button
                   onClick={handleRevokeAllSessions}
@@ -853,10 +860,10 @@ export function SettingsPanel({ session, onUpdateSession }: SettingsPanelProps) 
             </div>
 
             {/* GDPR Deactivation & Account Purge Container */}
-            <div className="bg-rose-950/10 border border-rose-500/20 rounded-xl p-6 space-y-4 relative shadow-lg">
+            <div className="bg-rose-950/10 border border-rose-500/20 rounded-xl p-5 space-y-4 relative shadow-lg">
               <div className="flex items-center gap-2.5 border-b border-rose-500/20 pb-3">
-                <svg viewBox="0 0 24 24" fill="none" className="w-5 h-5 text-[#F87171] stroke-current stroke-2"><path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
-                <h2 className="text-sm font-bold tracking-wider text-[#F87171] uppercase">Delete Account</h2>
+                <svg viewBox="0 0 24 24" fill="none" className="w-4 h-4 text-[#F87171] stroke-current stroke-2"><path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
+                <span className="text-[10px] font-mono font-black uppercase tracking-[0.2em] text-[#F87171]">Delete Account</span>
               </div>
               <p className="text-xs text-zinc-400 leading-normal">
                 Under GDPR you can request account deletion. Your account will be deactivated immediately and permanently removed after 30 days.
@@ -902,21 +909,21 @@ export function SettingsPanel({ session, onUpdateSession }: SettingsPanelProps) 
           <div className="space-y-6 animate-fadeIn pb-12">
             
             {/* Header Description Card */}
-            <div className="bg-black/20 border border-black rounded-xl p-6 space-y-4 relative shadow-lg">
+            <div className="bg-black/20 border border-black rounded-xl p-5 space-y-4 relative shadow-lg">
               <div className="flex items-center gap-2.5 border-b border-black pb-3">
-                <ShieldAlert className="w-5 h-5 text-indigo-400" />
-                <h2 className="text-sm font-bold tracking-wider text-[#E5E5E5] uppercase">Privacy & Notifications</h2>
+                <ShieldAlert className="w-4 h-4 text-indigo-400" />
+                <span className="text-[10px] font-mono font-black uppercase tracking-[0.2em] text-zinc-500">Privacy &amp; Notifications</span>
               </div>
-              <p className="text-xs text-zinc-400 leading-normal">
+              <p className="text-xs font-mono text-zinc-400 leading-normal">
                 Control who can view your profile, toggle alerts, and download your data.
               </p>
             </div>
 
             {/* Notification preferences JSONB manager */}
-            <div className="bg-black/20 border border-black rounded-xl p-6 space-y-5 relative shadow-lg">
+            <div className="bg-black/20 border border-black rounded-xl p-5 space-y-5 relative shadow-lg">
               <div className="flex items-center gap-2.5 border-b border-black pb-3">
-                <svg viewBox="0 0 24 24" fill="none" className="w-5 h-5 text-indigo-400 stroke-current stroke-2"><path strokeLinecap="round" strokeLinejoin="round" d="M14.828 14.828a4 4 0 01-5.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-                <h2 className="text-xs font-bold tracking-wider text-[#E5E5E5] uppercase">Notification Preferences</h2>
+                <svg viewBox="0 0 24 24" fill="none" className="w-4 h-4 text-indigo-400 stroke-current stroke-2"><path strokeLinecap="round" strokeLinejoin="round" d="M14.828 14.828a4 4 0 01-5.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                <span className="text-[10px] font-mono font-black uppercase tracking-[0.2em] text-zinc-500">Notification Preferences</span>
               </div>
               <p className="text-xs text-zinc-500">
                 Choose which alert channels are active. Alerts are only sent through channels you have turned on.
@@ -1010,10 +1017,10 @@ export function SettingsPanel({ session, onUpdateSession }: SettingsPanelProps) 
             </div>
 
             {/* Profile Visibility Enums & Search Indexing */}
-            <div className="bg-black/20 border border-black rounded-xl p-6 space-y-4 relative shadow-lg">
+            <div className="bg-black/20 border border-black rounded-xl p-5 space-y-4 relative shadow-lg">
               <div className="flex items-center gap-2.5 border-b border-black pb-3">
-                <svg viewBox="0 0 24 24" fill="none" className="w-5 h-5 text-indigo-400 stroke-current stroke-2"><path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path strokeLinecap="round" strokeLinejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
-                <h2 className="text-xs font-bold tracking-wider text-[#E5E5E5] uppercase">Profile Visibility & Search</h2>
+                <svg viewBox="0 0 24 24" fill="none" className="w-4 h-4 text-indigo-400 stroke-current stroke-2"><path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path strokeLinecap="round" strokeLinejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
+                <span className="text-[10px] font-mono font-black uppercase tracking-[0.2em] text-zinc-500">Profile Visibility &amp; Search</span>
               </div>
               
               <div className="space-y-4">
@@ -1021,7 +1028,7 @@ export function SettingsPanel({ session, onUpdateSession }: SettingsPanelProps) 
                   <span className="text-xs font-bold text-[#E5E5E5] block">Profile Visibility Setting</span>
                   <p className="text-[11px] text-zinc-500 leading-normal">Controls who can find and view your profile.</p>
                   
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 pt-1 font-sans">
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 pt-1 font-mono">
                     {[
                       { value: 'public', label: 'Public (Everyone)', desc: 'Anyone can view your profile' },
                       { value: 'logged_in', label: 'Subscribers Only', desc: 'Only logged-in users' },
@@ -1073,10 +1080,10 @@ export function SettingsPanel({ session, onUpdateSession }: SettingsPanelProps) 
             </div>
 
             {/* GDPR Compliance Data Export (S3 Storage) */}
-            <div className="bg-black/20 border border-black rounded-xl p-6 space-y-4 relative shadow-lg">
+            <div className="bg-black/20 border border-black rounded-xl p-5 space-y-4 relative shadow-lg">
               <div className="flex items-center gap-2.5 border-b border-black pb-3">
-                <FolderSync className="w-5 h-5 text-indigo-400 font-bold" />
-                <h2 className="text-xs font-bold tracking-wider text-[#E5E5E5] uppercase">Download Your Data (GDPR)</h2>
+                <FolderSync className="w-4 h-4 text-indigo-400" />
+                <span className="text-[10px] font-mono font-black uppercase tracking-[0.2em] text-zinc-500">Download Your Data (GDPR)</span>
               </div>
               <p className="text-xs text-zinc-400 leading-normal">
                 Export all your account data - logs, preferences, and payment records - as a single download. The file is available for 24 hours, then deleted.
@@ -1155,16 +1162,10 @@ export function SettingsPanel({ session, onUpdateSession }: SettingsPanelProps) 
         {activeTab === 'preferences' && (
           <div className="space-y-6 animate-fadeIn">
             {/* Module 6: Appearance customization option box */}
-            <div className="bg-black/20 border border-black rounded-xl p-6 space-y-5 relative shadow-lg">
-              <div className="absolute top-0 right-0 p-3 text-[10px] text-zinc-600 font-bold uppercase tracking-widest font-mono">
-                System Display
-              </div>
-
+            <div className="bg-black/20 border border-black rounded-xl p-5 space-y-5 relative shadow-lg">
               <div className="flex items-center gap-2.5 border-b border-black pb-3">
-                <Settings className="w-5 h-5 text-indigo-400" />
-                <h2 className="text-lg font-black tracking-tight text-[#E5E5E5]">
-                  Display Preferences
-                </h2>
+                <Settings className="w-4 h-4 text-indigo-400" />
+                <span className="text-[10px] font-mono font-black uppercase tracking-[0.2em] text-zinc-500">Display Preferences</span>
               </div>
 
               {/* Option A: Font Size Scaling (STANDARD vs ENHANCED) */}
@@ -1336,10 +1337,10 @@ export function SettingsPanel({ session, onUpdateSession }: SettingsPanelProps) 
 
         {activeTab === 'keybinds' && (
           <div className="space-y-6 animate-fadeIn">
-            <div className="bg-black/20 border border-black rounded-xl p-6 space-y-5 relative shadow-lg">
+            <div className="bg-black/20 border border-black rounded-xl p-5 space-y-5 relative shadow-lg">
               <div className="flex items-center gap-2.5 border-b border-black pb-3">
-                <Type className="w-5 h-5 text-indigo-400" />
-                <h2 className="text-lg font-black tracking-tight text-[#E5E5E5]">Keyboard Shortcuts & Hotkeys</h2>
+                <Type className="w-4 h-4 text-indigo-400" />
+                <span className="text-[10px] font-mono font-black uppercase tracking-[0.2em] text-zinc-500">Keyboard Shortcuts &amp; Hotkeys</span>
               </div>
               <div className="flex justify-between items-start border-b border-black pb-4 mb-4">
                 <p className="text-sm text-zinc-400 max-w-md">
@@ -1408,16 +1409,10 @@ export function SettingsPanel({ session, onUpdateSession }: SettingsPanelProps) 
         {activeTab === 'referrals' && (
           <div className="space-y-6 animate-fadeIn">
             {/* Module 5: Referrals token stats */}
-            <div className="bg-black/20 border border-black rounded-xl p-6 space-y-5 relative shadow-lg">
-              <div className="absolute top-0 right-0 p-3 text-[10px] text-zinc-600 font-bold uppercase tracking-widest font-mono">
-                Referrals
-              </div>
-
+            <div className="bg-black/20 border border-black rounded-xl p-5 space-y-5 relative shadow-lg">
               <div className="flex items-center gap-2.5 border-b border-black pb-3">
-                <Coins className="w-5 h-5 text-[#4ADE80]" />
-                <h2 className="text-lg font-black tracking-tight text-[#E5E5E5]">
-                  Referral Rewards Token Pool
-                </h2>
+                <Coins className="w-4 h-4 text-[#4ADE80]" />
+                <span className="text-[10px] font-mono font-black uppercase tracking-[0.2em] text-zinc-500">Referral Rewards</span>
               </div>
 
               <ReferralCodeBox />
@@ -1486,11 +1481,11 @@ export function SettingsPanel({ session, onUpdateSession }: SettingsPanelProps) 
 
         {activeTab === 'billing' && (
           <div className="space-y-6 animate-fadeIn">
-            <div className="bg-black/20 border border-black rounded-xl p-6 relative shadow-lg space-y-4">
+            <div className="bg-black/20 border border-black rounded-xl p-5 relative shadow-lg space-y-4">
               <div className="flex justify-between items-center border-b border-black pb-3">
                 <div className="flex items-center gap-2.5">
-                  <Receipt className="w-5 h-5 text-indigo-400" />
-                  <h2 className="text-lg font-black tracking-tight text-[#E5E5E5]">Subscription & Tier</h2>
+                  <Receipt className="w-4 h-4 text-indigo-400" />
+                  <span className="text-[10px] font-mono font-black uppercase tracking-[0.2em] text-zinc-500">Subscription &amp; Tier</span>
                 </div>
                 {session?.customer_id && (
                   <span className="text-[8px] tracking-widest uppercase bg-indigo-950/40 px-2 py-0.5 border border-indigo-900/30 rounded text-indigo-400 font-mono">
@@ -1600,11 +1595,11 @@ export function SettingsPanel({ session, onUpdateSession }: SettingsPanelProps) 
             </div>
 
             {/* Invoice simulation box */}
-            <div className="bg-black/20 border border-black rounded-xl p-6 space-y-5 relative shadow-lg">
+            <div className="bg-black/20 border border-black rounded-xl p-5 space-y-5 relative shadow-lg">
               <div className="flex justify-between items-center border-b border-black pb-3">
                 <div className="flex items-center gap-2.5">
-                  <Receipt className="w-5 h-5 text-indigo-400" />
-                  <h2 className="text-lg font-black tracking-tight text-[#E5E5E5]">Billing & Invoices</h2>
+                  <Receipt className="w-4 h-4 text-indigo-400" />
+                  <span className="text-[10px] font-mono font-black uppercase tracking-[0.2em] text-zinc-500">Billing &amp; Invoices</span>
                 </div>
                 <span className="text-[8px] bg-black px-2 py-0.5 border border-black rounded text-zinc-400">Sandbox</span>
               </div>
