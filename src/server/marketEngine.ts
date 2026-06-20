@@ -31,9 +31,10 @@ import { computeStrikeGravity } from '../lib/strikeGravity';
 import { computeDealerDynamics, type DealerSnapshot, type DealerDynamics } from '../lib/dealerDynamics';
 import { compute0DTE } from '../lib/zeroDte';
 import { buildTradePlan } from '../lib/tradePlan';
+import { computeTechnicalRead } from '../lib/technicalEngine';
 import { pcaResidualZScores } from '../lib/crossAsset';
 import { marketLeader } from '../lib/infoTheory';
-import { computeDisplacementIntelligence } from '../lib/displacementEngine';
+import { computeDisplacementIntelligence, analyzeMarketStructure } from '../lib/displacementEngine';
 import { getLastTradierError } from '../lib/tradierProvider';
 import { db, sse } from './state';
 import { updateRedisPresence } from './auth';
@@ -89,6 +90,27 @@ const chainCache: Record<string, ChainContract[]> = {};
 // Rolling per-asset dealer snapshots (one per tick) + the latest computed dynamics.
 const dealerDynHistory: Record<string, DealerSnapshot[]> = {};
 const dealerDynCache: Record<string, DealerDynamics> = {};
+
+/**
+ * Contract-quality sub-score (0..100) for the ATM±1 strike in the trade direction:
+ * blends spread tightness (40%), open-interest depth (30%) and delta sweet-spot
+ * (30% — ~0.45Δ is the directional 0DTE sweet spot). The "Contract Selection" layer.
+ */
+function computeContractScore(chain: ChainContract[], spot: number, step: number, isCall: boolean): number {
+  if (!chain || chain.length === 0) return 50;
+  const atm = Math.round(spot / step) * step;
+  const targetStrike = isCall ? atm + step : atm - step;
+  const type = isCall ? 'call' : 'put';
+  const c = chain.find((x) => x.strike === targetStrike && x.type === type)
+    || chain.filter((x) => x.type === type).sort((a, b) => Math.abs(a.strike - targetStrike) - Math.abs(b.strike - targetStrike))[0];
+  if (!c) return 50;
+  const maxOi = Math.max(...chain.map((x) => x.openInterest || 0)) || 1;
+  const mid = ((c.bid || 0) + (c.ask || 0)) / 2;
+  const spreadQ = mid > 0 ? Math.max(0, 1 - (Math.max(0, (c.ask || 0) - (c.bid || 0)) / mid)) : 0.3;
+  const oiQ = Math.min(1, (c.openInterest || 0) / maxOi);
+  const deltaQ = Math.max(0, 1 - Math.abs(Math.abs(c.delta || 0) - 0.45) / 0.45);
+  return Math.round(100 * (0.4 * spreadQ + 0.3 * oiQ + 0.3 * deltaQ));
+}
 
 /** Hours remaining until the 16:00 ET cash-equity close (full session if outside RTH). */
 function getHoursToClose(now = new Date()): number {
@@ -1377,26 +1399,37 @@ export const constructPayload = (params: {
     magnet: magnetStrike,
     strikes: gex_profile.strikes.map((s: any) => ({ strike: s.strike, netGex: s.netGex })),
   });
-  // Directional momentum: recent candle drift blended with dealer strike migration.
-  const momCandles = candles.slice(-12);
-  const momRet = momCandles.length > 1 ? (momCandles[momCandles.length - 1].close - momCandles[0].close) / (momCandles[0].close || 1) : 0;
-  const migScore = dealerDynCache[asset.ticker]?.migration?.score ?? 0;
-  const momentumBias = Math.max(-1, Math.min(1, 0.6 * Math.tanh(momRet / (atmIv0 * 0.03)) + 0.4 * migScore));
   const emEodPts = zerodte.expectedMove.find((b) => b.horizon === 'EOD')?.movePts || (lastPrice * atmIv0 * 0.02);
+
+  // Composite Sky's Vision plan: 40% technical / 30% dealer / 20% contract / 10% learning.
+  const tfCandles1m = db.candles[`${asset.ticker}-1m`] || candles;
+  const tfCandles5m = db.candles[`${asset.ticker}-5m`] || candles;
+  const tfCandles15m = db.candles[`${asset.ticker}-15m`] || candles;
+  const structureRead = analyzeMarketStructure(tfCandles5m);
+  const technicalRead = computeTechnicalRead({
+    candles1m: tfCandles1m, candles5m: tfCandles5m, candles15m: tfCandles15m,
+    spot: lastPrice, systemScoreTotal: systemScore.total, structureTrend: structureRead.trend,
+  });
+  const contractScore = computeContractScore(chainCache[asset.ticker] || [], lastPrice, step, technicalRead.direction >= 0);
   const trade_plan = buildTradePlan({
     ticker: asset.ticker,
     spot: lastPrice,
     step,
-    atmIv: atmIv0,
-    netGex: metricsV11.dealer.netGex,
-    gammaFlip: metricsV11.dealer.gammaFlipPrice,
-    callWall: metricsV11.dealer.callWall,
-    putWall: metricsV11.dealer.putWall,
     emPts: emEodPts,
-    regimeState: assetEdge?.regime?.state || 'BALANCED',
-    winRate: metricsV11.posteriorWinRate,
-    momentumBias,
     hoursToClose,
+    regimeState: assetEdge?.regime?.state || 'BALANCED',
+    technical: technicalRead,
+    dealer: {
+      netGex: metricsV11.dealer.netGex,
+      gammaFlip: metricsV11.dealer.gammaFlipPrice,
+      callWall: metricsV11.dealer.callWall,
+      putWall: metricsV11.dealer.putWall,
+    },
+    contractScore,
+    winRate: metricsV11.posteriorWinRate,
+    loadedStrike: strike_gravity.primary?.strike ?? null,
+    liquidityHigh: structureRead.rangeHigh,
+    liquidityLow: structureRead.rangeLow,
   });
 
   return {

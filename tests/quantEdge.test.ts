@@ -23,6 +23,7 @@ import { computeStrikeGravity } from '../src/lib/strikeGravity';
 import { computeDealerDynamics, type DealerSnapshot } from '../src/lib/dealerDynamics';
 import { probExpireITM, probabilityOfTouch, expectedMoveBands, compute0DTE, hoursToYearFraction } from '../src/lib/zeroDte';
 import { buildTradePlan } from '../src/lib/tradePlan';
+import { computeTechnicalRead, type TechnicalRead } from '../src/lib/technicalEngine';
 import { GexStrikeDetail } from '../src/types';
 
 console.log('--- RUNNING QUANT EDGE TEST SUITE ---');
@@ -407,30 +408,83 @@ function testZeroDte() {
   console.log(`✔ 0DTE passed (ATM ITM=${(atmCall * 100).toFixed(0)}%, POT(6080)=${(pot * 100).toFixed(0)}%, EOD EM=±${eod.movePts.toFixed(0)}, pin=${(z.pin.pinProbability * 100).toFixed(0)}%).`);
 }
 
+function makeTech(direction: number, score = 75): TechnicalRead {
+  return {
+    direction, score,
+    emaAlignment: direction > 0 ? 'BULLISH' : direction < 0 ? 'BEARISH' : 'MIXED',
+    emaTargets: direction >= 0
+      ? { ema8: 6010, ema21: 6030, ema50: 6055, ema200: 6090 }
+      : { ema8: 5990, ema21: 5970, ema50: 5945, ema200: 5910 },
+    rsi: { m1: direction > 0 ? 58 : 42, m5: direction > 0 ? 56 : 44, m15: direction > 0 ? 61 : 39, allRising: direction > 0, cascadeDir: direction },
+    vwap: 6000, vwapPosition: direction > 0 ? 'ABOVE' : direction < 0 ? 'BELOW' : 'AT',
+    squeeze: { squeezeOn: false, firing: direction !== 0, momentum: direction, momentumRising: true },
+    structureTrend: direction > 0 ? 'bullish' : direction < 0 ? 'bearish' : 'neutral',
+  };
+}
+
 function testTradePlan() {
-  console.log('Testing Sky\'s Vision Trade Plan (direction / targets / structure)...');
-  const base = { ticker: 'SPX', spot: 6000, step: 25, atmIv: 0.18, netGex: 1.2e9,
-    gammaFlip: 5950, callWall: 6075, putWall: 5920, emPts: 48, regimeState: 'TREND_EXPANSION', winRate: 71, hoursToClose: 4 };
+  console.log('Testing Sky\'s Vision composite Trade Plan (40/30/20/10 + labeled targets)...');
+  const base = {
+    ticker: 'SPX', spot: 6000, step: 25, emPts: 48, hoursToClose: 4, regimeState: 'TREND_EXPANSION',
+    dealer: { netGex: 1.2e9, gammaFlip: 5950, callWall: 6075, putWall: 5920 },
+    contractScore: 80, winRate: 71, loadedStrike: 6050, liquidityHigh: 6040, liquidityLow: 5960,
+  };
 
-  // Bullish momentum + above flip ⇒ BULLISH call plan with ordered targets.
-  const bull = buildTradePlan({ ...base, momentumBias: 0.6 });
-  assert.ok(bull.direction === 'BULLISH' && bull.isCall, 'bullish momentum ⇒ BULLISH calls');
-  assert.ok(bull.tp2 > bull.tp1 && bull.tp1 > 6000 && bull.stop < 6000, 'calls: stop < spot < TP1 < TP2');
-  assert.ok(bull.tp2 <= base.callWall + 1e-9, 'TP2 capped at call wall');
+  // Bullish technical + above flip ⇒ BULLISH call plan with labeled, ordered targets.
+  const bull = buildTradePlan({ ...base, technical: makeTech(0.6) });
+  assert.ok(bull.direction === 'BULLISH' && bull.isCall, 'bullish technical ⇒ BULLISH calls');
   assert.ok(bull.confidence >= 5 && bull.confidence <= 97, 'confidence in [5,97]');
+  // Composite weighting is exact: 0.4·tech + 0.3·dealer + 0.2·contract + 0.1·learn.
+  const e = bull.engineScores;
+  assert.strictEqual(e.composite, Math.round(0.4 * e.technical + 0.3 * e.dealer + 0.2 * e.contract + 0.1 * e.learning), 'composite = 40/30/20/10 blend');
+  assert.strictEqual(bull.confidence, e.composite, 'confidence == composite');
+  // Labeled targets: all reasons valid, strictly above spot, ascending for calls.
+  assert.ok(bull.targets.length >= 2, 'multiple labeled targets');
+  for (const t of bull.targets) {
+    assert.ok(t.price > 6000, `call target ${t.reason} above spot`);
+    assert.ok(['EMA Projection', 'Liquidity Sweep', 'Loaded Strike', 'GEX Wall'].includes(t.reason), 'valid target reason');
+  }
+  for (let i = 1; i < bull.targets.length; i++) assert.ok(bull.targets[i].price > bull.targets[i - 1].price, 'call targets ascending');
+  assert.ok(bull.targets.some((t) => t.reason === 'GEX Wall' && Math.abs(t.price - 6075) < 1e-9), 'call wall present as a target');
+  assert.ok(bull.targets.some((t) => t.reason === 'Loaded Strike'), 'loaded strike present as a target');
   assert.ok(/C$/.test(bull.contract) && bull.targetStrike % base.step === 0, 'call contract on a valid strike');
-  assert.ok(bull.dealerFlow === 'Positive Gamma' && bull.flowConfirmation, 'positive gamma + flow confirmed');
 
-  // Bearish momentum + below flip ⇒ BEARISH put plan, mirrored ordering.
-  const bear = buildTradePlan({ ...base, spot: 5900, momentumBias: -0.6 });
-  assert.ok(bear.direction === 'BEARISH' && !bear.isCall, 'bearish momentum ⇒ BEARISH puts');
-  assert.ok(bear.tp2 < bear.tp1 && bear.tp1 < 5900 && bear.stop > 5900, 'puts: stop > spot > TP1 > TP2');
+  // Bearish technical + below flip ⇒ BEARISH put plan, targets below spot descending.
+  const bear = buildTradePlan({ ...base, spot: 5900, technical: makeTech(-0.6),
+    dealer: { netGex: -8e8, gammaFlip: 5950, callWall: 6075, putWall: 5840 }, liquidityLow: 5860, loadedStrike: 5870 });
+  assert.ok(bear.direction === 'BEARISH' && !bear.isCall, 'bearish technical ⇒ BEARISH puts');
+  for (const t of bear.targets) assert.ok(t.price < 5900, `put target ${t.reason} below spot`);
+  for (let i = 1; i < bear.targets.length; i++) assert.ok(bear.targets[i].price < bear.targets[i - 1].price, 'put targets descending');
   assert.ok(/P$/.test(bear.contract), 'put contract');
+  assert.ok(bear.dealerFlow === 'Negative Gamma', 'short-gamma flagged');
 
-  // Neutral momentum ⇒ NEUTRAL (no strong lean).
-  const neutral = buildTradePlan({ ...base, gammaFlip: 6000, momentumBias: 0.0 });
-  assert.ok(neutral.direction === 'NEUTRAL', 'flat momentum + at flip ⇒ NEUTRAL');
-  console.log(`✔ Trade Plan passed (bull ${bull.contract} conf ${bull.confidence}% TP1 ${bull.tp1}/TP2 ${bull.tp2} stop ${bull.stop} hold ${bull.expectedHoldMin}m).`);
+  // Flat technical + at flip ⇒ NEUTRAL.
+  const neutral = buildTradePlan({ ...base, technical: makeTech(0.0), dealer: { ...base.dealer, gammaFlip: 6000 } });
+  assert.ok(neutral.direction === 'NEUTRAL', 'flat technical + at flip ⇒ NEUTRAL');
+
+  console.log(`✔ Trade Plan passed (bull ${bull.contract} conf ${bull.confidence}% [T${e.technical}/D${e.dealer}/C${e.contract}/L${e.learning}] targets: ${bull.targets.map((t) => `${t.price}=${t.reason}`).join(', ')}).`);
+}
+
+function testTechnicalEngine() {
+  console.log('Testing Technical Engine (EMA alignment / multi-TF RSI / TTM squeeze)...');
+  // Build a clean uptrend across timeframes so EMAs stack bullishly and RSI rises.
+  const mk = (n: number, drift: number, base = 6000) => {
+    const out: any[] = []; let px = base;
+    for (let i = 0; i < n; i++) { const o = px; px = px * (1 + drift); out.push({ time: i, open: o, high: Math.max(o, px) * 1.001, low: Math.min(o, px) * 0.999, close: px, volume: 1000 }); }
+    return out;
+  };
+  const up5 = mk(220, 0.0008), up1 = mk(220, 0.0006), up15 = mk(220, 0.001);
+  const t = computeTechnicalRead({ candles1m: up1, candles5m: up5, candles15m: up15, spot: up5[up5.length - 1].close, systemScoreTotal: 70, structureTrend: 'bullish' });
+  assert.ok(t.direction > 0.3, `uptrend ⇒ positive technical direction (${t.direction})`);
+  assert.ok(t.emaAlignment === 'BULLISH', 'stacked EMAs ⇒ BULLISH alignment');
+  assert.ok(t.emaTargets.ema8 > t.emaTargets.ema200, 'fast EMA above slow EMA in an uptrend');
+  assert.ok(t.rsi.m5 > 50, 'RSI above 50 in an uptrend');
+  assert.ok(t.score >= 0 && t.score <= 100, 'technical score in [0,100]');
+
+  const down5 = mk(220, -0.0008), down1 = mk(220, -0.0006), down15 = mk(220, -0.001);
+  const td = computeTechnicalRead({ candles1m: down1, candles5m: down5, candles15m: down15, spot: down5[down5.length - 1].close, systemScoreTotal: 70, structureTrend: 'bearish' });
+  assert.ok(td.direction < -0.3 && td.emaAlignment === 'BEARISH', 'downtrend ⇒ BEARISH');
+  console.log(`✔ Technical Engine passed (up dir=${t.direction} EMA=${t.emaAlignment} RSI5=${t.rsi.m5}; down dir=${td.direction}).`);
 }
 
 try {
@@ -446,6 +500,7 @@ try {
   testStrikeGravity();
   testDealerDynamics();
   testZeroDte();
+  testTechnicalEngine();
   testTradePlan();
   console.log('\n=============================================');
   console.log('🎉 ALL QUANT EDGE TESTS PASSED! 🎉');
