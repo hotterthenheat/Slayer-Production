@@ -56,6 +56,10 @@ export function WorkspaceView({ isSuperAdmin }: Props) {
 
   const commit = useCallback((next: PaneLayout[]) => { setLayout(next); persist(next); }, [persist]);
 
+  // Cancel a pending debounced save on unmount so we don't fire a PATCH from a
+  // component that no longer exists.
+  useEffect(() => () => { if (saveTimer.current) clearTimeout(saveTimer.current); }, []);
+
   // Hydrate: API -> localStorage -> Template A (never render an empty terminal).
   useEffect(() => {
     let cancelled = false;

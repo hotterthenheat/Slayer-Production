@@ -19,6 +19,7 @@ import { InstitutionalDashboard } from './InstitutionalDashboard';
 import { AiIntelligenceLayer } from './AiIntelligenceLayer';
 import { QuantEdgePanel } from './QuantEdgePanel';
 import { RegimeMatrixPanel } from './RegimeMatrixPanel';
+import { DealerDynamicsPanel } from './DealerDynamicsPanel';
 import { MicrostructureLabView } from './MicrostructureLabView';
 import { DealerFlowMap } from './DealerFlowMap';
 import {
@@ -773,6 +774,10 @@ export function DealerFlowView() {
 
       {/* REGIME MATRIX — HMM / Hurst / OU / vol regimes / VPIN / Kyle / PCA */}
       <RegimeMatrixPanel />
+
+      {/* DEALER DYNAMICS — vanna/charm flow, strike migration, gamma velocity,
+          liquidity vacuums, wall strength */}
+      <DealerDynamicsPanel />
 
       {/* ============== SUB-TABS SELECTOR SEAMLESS GRIDS ============== */}
       <div className="flex flex-wrap gap-2.5 justify-start items-center" id="dealerflow-subtabs-bar">

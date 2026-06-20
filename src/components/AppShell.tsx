@@ -33,6 +33,50 @@ interface AppShellProps {
   setShowAuthModal: (open: boolean) => void;
 }
 
+// Dynamic nav context. NavItem is hoisted to module scope (a stable component
+// identity) and reads live values from here, so AppShell re-renders re-render the
+// nav buttons instead of unmounting + remounting them (which restarted their
+// transitions/focus every time the active tab changed).
+interface NavCtxValue {
+  activeTab: string;
+  setActiveTab: (id: any) => void;
+  isSidebarExpanded: boolean;
+  closeMobile: () => void;
+  session: any;
+}
+const NavCtx = React.createContext<NavCtxValue>({
+  activeTab: 'home', setActiveTab: () => {}, isSidebarExpanded: false, closeMobile: () => {}, session: null,
+});
+
+function NavItem({ id, label, icon: Icon, adminOnly = false, activeColor = 'text-white', isMobile = false }: any) {
+  const { activeTab, setActiveTab, isSidebarExpanded, closeMobile, session } = React.useContext(NavCtx);
+  if (adminOnly && !(session?.is_super_admin || ['super_admin', 'owner', 'admin'].includes(session?.admin_role || ''))) {
+    return null;
+  }
+
+  const isActive = activeTab === id;
+
+  return (
+    <button
+      onClick={() => {
+        setActiveTab(id);
+        closeMobile();
+      }}
+      className={`w-full flex items-center gap-3 px-3 py-2 rounded-sm text-[10px] font-bold uppercase tracking-wider transition-colors border ${
+        isActive
+          ? adminOnly
+            ? 'bg-rose-950/40 text-[#E5E5E5] border-rose-500/50'
+            : 'bg-[#111] text-[#E5E5E5] border-zinc-700/50 shadow-[0_0_15px_rgba(255,255,255,0.03)]'
+          : 'border-transparent text-zinc-500 hover:bg-[#111] hover:text-[#E5E5E5]'
+      }`}
+    >
+      <Icon className={`w-4 h-4 shrink-0 ${isActive ? (adminOnly ? 'text-rose-500' : activeColor) : ''}`} />
+      <span className={`flex-1 text-left whitespace-nowrap overflow-hidden transition-all duration-300 ${isSidebarExpanded || isMobile ? 'opacity-100 max-w-[200px]' : 'opacity-0 max-w-0'}`}>{label}</span>
+      {isActive && (isSidebarExpanded || isMobile) && <ChevronRight className="w-3 h-3 opacity-50 shrink-0" />}
+    </button>
+  );
+}
+
 export function AppShell({ children, session, onLogout, tierInfo, onUpgradeClick, setShowAuthModal }: AppShellProps) {
   const activeTab = useContractStore(s => s.activeTab);
   const setActiveTab = useContractStore(s => s.setActiveTab);
@@ -40,35 +84,16 @@ export function AppShell({ children, session, onLogout, tierInfo, onUpgradeClick
 
   const [isSidebarExpanded, setIsSidebarExpanded] = useState(false);
 
-  const NavItem = ({ id, label, icon: Icon, adminOnly = false, activeColor = 'text-white', isMobile = false }: any) => {
-    if (adminOnly && !(session?.is_super_admin || ['super_admin', 'owner', 'admin'].includes(session?.admin_role || ''))) {
-      return null;
-    }
-
-    const isActive = activeTab === id;
-    
-    return (
-      <button
-        onClick={() => {
-          setActiveTab(id);
-          setIsMobileMenuOpen(false);
-        }}
-        className={`w-full flex items-center gap-3 px-3 py-2 rounded-sm text-[10px] font-bold uppercase tracking-wider transition-colors border ${
-          isActive
-            ? adminOnly 
-              ? 'bg-rose-950/40 text-[#E5E5E5] border-rose-500/50' 
-              : 'bg-[#111] text-[#E5E5E5] border-zinc-700/50 shadow-[0_0_15px_rgba(255,255,255,0.03)]'
-            : 'border-transparent text-zinc-500 hover:bg-[#111] hover:text-[#E5E5E5]'
-        }`}
-      >
-        <Icon className={`w-4 h-4 shrink-0 ${isActive ? (adminOnly ? 'text-rose-500' : activeColor) : ''}`} />
-        <span className={`flex-1 text-left whitespace-nowrap overflow-hidden transition-all duration-300 ${isSidebarExpanded || isMobile ? 'opacity-100 max-w-[200px]' : 'opacity-0 max-w-0'}`}>{label}</span>
-        {isActive && (isSidebarExpanded || isMobile) && <ChevronRight className="w-3 h-3 opacity-50 shrink-0" />}
-      </button>
-    );
-  };
+  const navCtxValue = React.useMemo<NavCtxValue>(() => ({
+    activeTab,
+    setActiveTab,
+    isSidebarExpanded,
+    closeMobile: () => setIsMobileMenuOpen(false),
+    session,
+  }), [activeTab, setActiveTab, isSidebarExpanded, session]);
 
   return (
+    <NavCtx.Provider value={navCtxValue}>
     <div className="flex w-full h-full min-h-screen font-mono text-[#E5E5E5] bg-[#000000] overflow-hidden select-none antialiased">
       {/* Desktop Sidebar */}
       <aside 
@@ -211,5 +236,6 @@ export function AppShell({ children, session, onLogout, tierInfo, onUpgradeClick
         {children}
       </div>
     </div>
+    </NavCtx.Provider>
   );
 }

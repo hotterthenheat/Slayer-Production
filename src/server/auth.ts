@@ -280,7 +280,10 @@ export const dbSetUser = async (email: string, userObj: any, expectedVersion?: n
         fullProfile: fp,
         version: 1,
       }).onConflictDoUpdate({
-        target: users.uid,
+        // Conflict on email (the business key lookups use). Conflicting on uid let
+        // two records with the same email but different uid create duplicate rows
+        // that dbGetUser-by-email would never reconcile.
+        target: users.email,
         set: { fullProfile: fp, tokens, version: sql`users.version + 1` },
       });
     }

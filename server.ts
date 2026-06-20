@@ -760,6 +760,16 @@ app.post('/api/auth/generate-2fa', express.json(), async (req, res) => {
     return res.status(404).json({ error: 'User record not found.' });
   }
 
+  // Step-up re-auth: require the current password before enabling 2FA so a
+  // hijacked session can't silently bind an attacker's authenticator (and lock
+  // the real owner out). Accounts with no password set this up via verify-password.
+  if (user.passwordHash) {
+    const { currentPassword } = req.body || {};
+    if (!currentPassword || !bcrypt.compareSync(String(currentPassword), user.passwordHash)) {
+      return res.status(403).json({ error: 'Re-enter your current password to enable two-factor authentication.' });
+    }
+  }
+
   // CSPRNG-backed TOTP secret. 26 base-32 chars ≈ 130 bits (RFC 4226 recommends
   // ≥128). crypto.randomInt is unbiased over [0,32); Math.random() is predictable.
   const base32Chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
@@ -919,10 +929,11 @@ app.post('/api/auth/request-email-update', express.json(), async (req, res) => {
 
   console.log(`\n--- [EMAIL SECURITY VERIFICATION TRIGGERS] ---`);
   console.log(`Initiator User: ${user.name}`);
-  console.log(`Current Email: ${user.email}`);
-  console.log(`Requested Email: ${cleanEmail}`);
-  console.log(`One-Time Code (OTP): ${otp}`);
-  console.log(`Expiry: 15 Minutes`);
+  // SECURITY: never log the OTP in production (a log reader could hijack the email
+  // change). Dev keeps it for local testing convenience.
+  if (process.env.NODE_ENV !== 'production') {
+    console.log(`[dev] email-change OTP for ${cleanEmail}: ${otp} (expires 15m)`);
+  }
   console.log(`------------------------------------\n`);
 
   res.json({ 
@@ -1670,7 +1681,9 @@ app.post('/api/billing/process', express.json(), async (req, res) => {
   // Stripe events; it requires a signed payload, so there is no internal
   // server-to-server call to make here.)
 
-  console.log(`[AUDIT LOG] PAYMENT RECEIVED AND CRYPTOGRAPHICALLY TOKENIZED. User: ${userEmail}. CustomerID: ${user.customer_id}. PaymentMethodID: ${user.payment_method_id}. Referral Action: ${referralCreditLogs}`);
+  // Audit log without the sensitive billing identifiers (customer_id / payment_
+  // method_id must not land in plaintext logs).
+  console.log(`[AUDIT LOG] PAYMENT RECEIVED AND TOKENIZED. User: ${userEmail}. Tier: ${user.access_tier}. Referral Action: ${referralCreditLogs}`);
   
   const freshSession = {
     authenticated: true,

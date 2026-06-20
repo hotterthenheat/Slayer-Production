@@ -831,28 +831,34 @@ export default function App() {
   }
 
   // Pre-calculated components mappings with zero client math
-  const topMispriced = serverState?.discovery?.mispricedCalls?.[0];
-  const bestOpportunity = {
-    asset: topMispriced?.asset || ASSET_LIST[0],
-    ticker: `${topMispriced?.asset?.ticker || 'SPX'} ${topMispriced?.strike || 7640}C`,
-    confidence: topMispriced?.health || 91,
-    isCall: true,
-    currentPrice: `$${(topMispriced?.marketPrice || 4.2).toFixed(2)}`,
-    fairValue: `$${(topMispriced?.modelValue || 6.8).toFixed(2)}`,
-    entryZone: `$${((topMispriced?.marketPrice || 4.2) * 0.92).toFixed(2)} - $${((topMispriced?.marketPrice || 4.2) * 0.98).toFixed(2)}`
-  };
+  // Memoize these derived props keyed on the discovery slice so they keep a stable
+  // reference across SSE frames — otherwise new literals every ~7fps re-render
+  // SlayerIntro (and any memoized child) on every tick.
+  const discovery = serverState?.discovery;
+  const bestOpportunity = useMemo(() => {
+    const topMispriced = discovery?.mispricedCalls?.[0];
+    return {
+      asset: topMispriced?.asset || ASSET_LIST[0],
+      ticker: `${topMispriced?.asset?.ticker || 'SPX'} ${topMispriced?.strike || 7640}C`,
+      confidence: topMispriced?.health || 91,
+      isCall: true,
+      currentPrice: `$${(topMispriced?.marketPrice || 4.2).toFixed(2)}`,
+      fairValue: `$${(topMispriced?.modelValue || 6.8).toFixed(2)}`,
+      entryZone: `$${((topMispriced?.marketPrice || 4.2) * 0.92).toFixed(2)} - $${((topMispriced?.marketPrice || 4.2) * 0.98).toFixed(2)}`
+    };
+  }, [discovery]);
 
-  const topSub10Calls = (serverState?.discovery?.mispricedCalls || []).map((c: any) => ({
+  const topSub10Calls = useMemo(() => (discovery?.mispricedCalls || []).map((c: any) => ({
     asset: c.asset,
     ticker: `${c.asset.ticker} ${c.strike}C`,
     confidence: c.health
-  }));
+  })), [discovery]);
 
-  const topSub10Puts = (serverState?.discovery?.mispricedPuts || []).map((p: any) => ({
+  const topSub10Puts = useMemo(() => (discovery?.mispricedPuts || []).map((p: any) => ({
     asset: p.asset,
     ticker: `${p.asset.ticker} ${p.strike}P`,
     confidence: p.health
-  }));
+  })), [discovery]);
 
   const isCall = selectedOptionType === 'C';
 

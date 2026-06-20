@@ -402,6 +402,9 @@ export interface ServerStatePayload {
   // Strike Gravity Engine map (dealer-pressure ranking, zones, support/resistance
   // walls) — type-only import keeps types.ts free of a runtime circular dependency.
   strike_gravity?: import('./lib/strikeGravity').StrikeGravityResult;
+  // Dealer Dynamics: vanna/charm trend, strike migration, gamma velocity,
+  // liquidity vacuums, wall strength (type-only import avoids a circular dep).
+  dealer_dynamics?: import('./lib/dealerDynamics').DealerDynamics | null;
   expected_move?: ExpectedMoveData;
   targets?: any[];
   candles?: Candle[];

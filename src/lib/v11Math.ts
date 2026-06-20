@@ -525,6 +525,7 @@ export interface ChainContract {
   theta: number;
   vanna: number;
   charm: number;
+  volume?: number; // session contract volume (when the feed provides it)
 }
 
 export interface DealerPosEngineResult {
@@ -747,10 +748,15 @@ export function generateMockOptionsChain(spot: number, ivBase: number): ChainCon
     const bidC = Math.max(0.05, bsPriceC * 0.97);
     const askC = Math.max(0.10, bsPriceC * 1.03);
 
+    const oiCall = Math.round((1500 * callMoneyness + 120) * roundFactor);
+    // Volume concentrates near the money (ATM trades far more than its OI implies,
+    // wings far less) so volume is NOT just a rescale of OI — the dynamics engine
+    // can then distinguish "loaded but quiet" strikes from "loaded and active" ones.
+    const volNear = 0.25 + 0.6 * Math.exp(-strikeDistance * 12);
     chain.push({
       strike,
       type: 'call',
-      openInterest: Math.round((1500 * callMoneyness + 120) * roundFactor),
+      openInterest: oiCall,
       iv: skewVolCall,
       bid: Number(bidC.toFixed(2)),
       ask: Number(askC.toFixed(2)),
@@ -759,7 +765,8 @@ export function generateMockOptionsChain(spot: number, ivBase: number): ChainCon
       vega: greeksC.vega,
       theta: greeksC.theta,
       vanna: greeksC.vanna,
-      charm: greeksC.charm
+      charm: greeksC.charm,
+      volume: Math.round(oiCall * volNear),
     });
 
     // Put Contract
@@ -768,10 +775,11 @@ export function generateMockOptionsChain(spot: number, ivBase: number): ChainCon
     const bidP = Math.max(0.05, bsPriceP * 0.97);
     const askP = Math.max(0.10, bsPriceP * 1.03);
 
+    const oiPut = Math.round((1800 * putMoneyness + 140) * roundFactor);
     chain.push({
       strike,
       type: 'put',
-      openInterest: Math.round((1800 * putMoneyness + 140) * roundFactor),
+      openInterest: oiPut,
       iv: skewVolPut,
       bid: Number(bidP.toFixed(2)),
       ask: Number(askP.toFixed(2)),
@@ -780,7 +788,8 @@ export function generateMockOptionsChain(spot: number, ivBase: number): ChainCon
       vega: greeksP.vega,
       theta: greeksP.theta,
       vanna: greeksP.vanna,
-      charm: greeksP.charm
+      charm: greeksP.charm,
+      volume: Math.round(oiPut * volNear),
     });
   }
 

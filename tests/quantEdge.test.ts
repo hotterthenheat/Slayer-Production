@@ -20,6 +20,7 @@ import { pcaResidualZScores } from '../src/lib/crossAsset';
 import { hawkesIntensity, netDeltaAggression } from '../src/lib/pointProcess';
 import { transferEntropy, marketLeader, fisherDivergence } from '../src/lib/infoTheory';
 import { computeStrikeGravity } from '../src/lib/strikeGravity';
+import { computeDealerDynamics, type DealerSnapshot } from '../src/lib/dealerDynamics';
 import { GexStrikeDetail } from '../src/types';
 
 console.log('--- RUNNING QUANT EDGE TEST SUITE ---');
@@ -307,6 +308,63 @@ function testStrikeGravity() {
   console.log(`✔ Strike Gravity passed (primary=${g.primary?.strike}, zone=${wallZone!.lo}-${wallZone!.hi}, cluster=${g.clusterScore.toFixed(2)}, wSum=${wSum.toFixed(2)}).`);
 }
 
+function testDealerDynamics() {
+  console.log('Testing Dealer Dynamics Engine (vanna/charm/migration/gamma/vacuums/walls)...');
+  const history: DealerSnapshot[] = [];
+
+  // Tick 1: positioning centered at 6000.
+  const chain1 = generateMockOptionsChain(6000, 0.18);
+  const inv1 = { netGex: 1.0e9, netVanna: 5.0e7, netCharm: -2.0e5 };
+  computeDealerDynamics(chain1, 6000, inv1, history); // tick 1 seeds history
+  assert.strictEqual(history.length, 1, 'first snapshot appended');
+
+  // Tick 2: dealer positioning has migrated UP to 6100 (bullish), GEX grew, IV-vanna rose.
+  const chain2 = generateMockOptionsChain(6100, 0.18);
+  const inv2 = { netGex: 1.4e9, netVanna: 8.0e7, netCharm: -2.0e5 };
+  const d2 = computeDealerDynamics(chain2, 6100, inv2, history);
+  assert.strictEqual(history.length, 2, 'second snapshot appended');
+
+  // Vanna
+  assert.ok(isFinite(d2.vanna.net) && isFinite(d2.vanna.velocity), 'vanna finite');
+  assert.ok(d2.vanna.velocity > 0 && d2.vanna.trend === 'RISING', 'vanna rose tick→tick');
+  assert.ok(d2.vanna.hedgeFlow === 'SUPPORTIVE', 'positive net vanna ⇒ supportive hedge flow');
+
+  // Charm
+  assert.ok(isFinite(d2.charm.netPerDay) && d2.charm.intensity >= 0 && d2.charm.intensity <= 1, 'charm intensity in [0,1]');
+  assert.ok(d2.charm.bias === 'BEARISH', 'negative charm ⇒ bearish decay flow');
+
+  // Migration — center of mass moved up ⇒ bullish.
+  assert.ok(d2.migration.comCurrent > d2.migration.comPrevious, 'CoM migrated up');
+  assert.ok(d2.migration.direction === 'BULLISH', 'upward strike migration ⇒ bullish');
+  assert.ok(d2.migration.score > 0 && d2.migration.score <= 1, 'migration score in (0,1]');
+
+  // Gamma velocity/acceleration
+  assert.ok(d2.gamma.velocity > 0 && d2.gamma.state === 'ADDING_HEDGES', 'rising netGex ⇒ adding hedges');
+  assert.ok(isFinite(d2.gamma.acceleration), 'gamma acceleration finite');
+
+  // Wall strength 0-100, on the correct sides of spot.
+  if (d2.walls.support) {
+    assert.ok(d2.walls.support.score >= 0 && d2.walls.support.score <= 100, 'support wall strength in [0,100]');
+    assert.ok(d2.walls.support.strike < 6100, 'support wall below spot');
+  }
+  if (d2.walls.resistance) {
+    assert.ok(d2.walls.resistance.score >= 0 && d2.walls.resistance.score <= 100, 'resistance wall strength in [0,100]');
+    assert.ok(d2.walls.resistance.strike > 6100, 'resistance wall above spot');
+  }
+
+  // Liquidity vacuums — scores valid; lo<hi.
+  for (const z of d2.vacuums.zones) {
+    assert.ok(z.score >= 0 && z.score <= 1, 'vacuum score in [0,1]');
+    assert.ok(z.hi > z.lo, 'vacuum zone has positive width');
+  }
+
+  // Empty chain must not throw.
+  const e = computeDealerDynamics([], 6000, { netGex: 0, netVanna: 0, netCharm: 0 }, []);
+  assert.ok(e.walls.support === null && e.vacuums.zones.length === 0, 'empty chain handled gracefully');
+
+  console.log(`✔ Dealer Dynamics passed (vanna=${d2.vanna.trend}/${d2.vanna.hedgeFlow}, migration=${d2.migration.direction}, gamma=${d2.gamma.state}, supportWall=${d2.walls.support?.score}, vacuums=${d2.vacuums.zones.length}).`);
+}
+
 try {
   testRealizedVol();
   testRiskNeutral();
@@ -318,6 +376,7 @@ try {
   testMicrostructure();
   testPointProcessAndInfo();
   testStrikeGravity();
+  testDealerDynamics();
   console.log('\n=============================================');
   console.log('🎉 ALL QUANT EDGE TESTS PASSED! 🎉');
   console.log('=============================================\n');

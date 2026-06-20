@@ -222,13 +222,16 @@ export function SettingsPanel({ session, onUpdateSession }: SettingsPanelProps) 
 
   const [toastText, setToastText] = useState<string | null>(null);
   const [toastType, setToastType] = useState<'success' | 'error'>('success');
+  const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const showToast = (text: string, type: 'success' | 'error' = 'success') => {
     setToastText(text);
     setToastType(type);
-    setTimeout(() => {
+    if (toastTimer.current) clearTimeout(toastTimer.current);
+    toastTimer.current = setTimeout(() => {
       setToastText(null);
     }, 4000);
   };
+  useEffect(() => () => { if (toastTimer.current) clearTimeout(toastTimer.current); }, []);
 
   // Subscription Cancellation Flow attributes (Module 4)
   const [showCancelConfirm, setShowCancelConfirm] = useState(false);

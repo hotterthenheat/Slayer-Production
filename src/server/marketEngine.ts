@@ -28,6 +28,7 @@ import {
 import { buildGexProfile, computeDealerFlowGauge } from '../lib/gexEngine';
 import { computeAssetEdge, computeContractEdge, type AssetEdge, type EdgeHistory } from '../lib/quantEdge';
 import { computeStrikeGravity } from '../lib/strikeGravity';
+import { computeDealerDynamics, type DealerSnapshot, type DealerDynamics } from '../lib/dealerDynamics';
 import { pcaResidualZScores } from '../lib/crossAsset';
 import { marketLeader } from '../lib/infoTheory';
 import { computeDisplacementIntelligence } from '../lib/displacementEngine';
@@ -83,6 +84,9 @@ const edgeHistory: Record<string, EdgeHistory> = {};
 // guaranteeing the Lab's RND/greeks/skew match the server's numbers. Real chain
 // when API keys are connected, high-fidelity mock when keyless.
 const chainCache: Record<string, ChainContract[]> = {};
+// Rolling per-asset dealer snapshots (one per tick) + the latest computed dynamics.
+const dealerDynHistory: Record<string, DealerSnapshot[]> = {};
+const dealerDynCache: Record<string, DealerDynamics> = {};
 
 /**
  * Trim a (potentially huge, real) option chain to a window of the nearest N
@@ -118,6 +122,7 @@ function liveChainToContracts(live: any[], fallbackIv: number): ChainContract[] 
     theta: c.greeks?.theta ?? c.theta ?? 0,
     vanna: c.greeks?.vanna ?? c.vanna ?? 0,
     charm: c.greeks?.charm ?? c.charm ?? 0,
+    volume: c.volume ?? c.vol ?? c.day?.volume ?? 0,
   }));
 }
 
@@ -139,6 +144,21 @@ function refreshEdgeCache() {
         history: edgeHistory[asset.ticker],
         ticker: asset.ticker, flow: db.globalFlowFeed,
       });
+
+      // Dealer Dynamics (Vanna/Charm trend, strike migration, gamma velocity,
+      // liquidity vacuums, wall strength). Computed once per tick per asset so the
+      // time-derivative history isn't corrupted by per-client SSE rebuilds.
+      let netVanna = 0;
+      for (const c of chain) {
+        const sign = c.type === 'call' ? 1 : -1;
+        netVanna += (c.vanna || 0) * (c.openInterest || 0) * 100 * sign;
+      }
+      if (!dealerDynHistory[asset.ticker]) dealerDynHistory[asset.ticker] = [];
+      dealerDynCache[asset.ticker] = computeDealerDynamics(
+        chain, spot,
+        { netGex: dealerInv.netGex, netVanna, netCharm: dealerInv.netCharm },
+        dealerDynHistory[asset.ticker],
+      );
     } catch (e) {
       // Never let an edge-calc error break the tick.
     }
@@ -1390,6 +1410,7 @@ export const constructPayload = (params: {
     api_status_message: db.apiStatusMessage,
     gex_profile,
     strike_gravity,
+    dealer_dynamics: dealerDynCache[asset.ticker] || null,
     dealer_flow,
     displacement,
     candle_feed: feedLabel,

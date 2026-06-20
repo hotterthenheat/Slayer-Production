@@ -47,6 +47,22 @@ export async function ensureSchema(): Promise<void> {
       );
     `);
     await db.execute(sql`CREATE INDEX IF NOT EXISTS users_email_idx ON users (email);`);
+    // Ensure email is UNIQUE so user upserts can conflict-on email (the business
+    // key) instead of uid. Idempotent; isolated try-catch so a pre-existing dup
+    // (from the old uid-based upsert) doesn't abort the rest of schema bootstrap.
+    try {
+      await db.execute(sql`
+        DO $$ BEGIN
+          IF NOT EXISTS (
+            SELECT 1 FROM pg_constraint WHERE conname = 'users_email_unique'
+          ) THEN
+            ALTER TABLE users ADD CONSTRAINT users_email_unique UNIQUE (email);
+          END IF;
+        END $$;
+      `);
+    } catch (ce) {
+      console.error('[db] could not add users_email_unique (duplicate emails?):', ce);
+    }
     console.log('[db] schema ready (users table verified).');
   } catch (e) {
     console.error('[db] ensureSchema failed (DB-backed features may not work):', e);
