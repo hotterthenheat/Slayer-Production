@@ -775,51 +775,51 @@ export function DiscoveryView({
   // Strategy Manual & target logic reasons dictionary (explanations in simple words why they are the best)
   const [isStrategyExpanded, setIsStrategyExpanded] = useState(true);
   const [isMockScanning, setIsMockScanning] = useState(false);
-  const [lastScanMessage, setLastScanMessage] = useState('Models calibrated. Ready to scalp.');
+  const [lastScanMessage, setLastScanMessage] = useState('Ready. Scan complete.');
   const [scanHistoryCount, setScanHistoryCount] = useState(0);
 
   const SHELF_EXPLANATIONS = {
     conviction: {
       title: "🎯 Core Conviction Setups (High Probability Positions)",
       whyItsBest: "These are our absolute highest-quality trades backed by massive institutional dealer buy walls. They are 'the best' because market makers are heavily committed at these levels and are forced to buy stock to defend their positions, creating an exceptionally strong and reliable price floor with almost zero downside risk.",
-      horizon: "1 TO 3 DAYS (SWING REGIME)",
-      mathTracking: "Dealer GEX Support Level + Concentrated Gamma Buy Wall Clusters",
-      confidenceTier: "ULTRA ACTIVE MODEL CONFIDENCE (94% - 98%)"
+      horizon: "1 TO 3 DAYS (SWING)",
+      mathTracking: "Strong dealer buy-walls sitting under price",
+      confidenceTier: "VERY HIGH (94–98%)"
     },
     improved: {
       title: "📈 High Velocity Breakouts (Quick Scalp Trades)",
       whyItsBest: "These are fast-moving momentum trades with explosive volume speed. They are 'the best' for quick day trading (scalping) because derivative volumes are speeding up rapidly in the last 15 minutes, showing that buyers are sweeping options at the ask, which forces dealers to cover their shorts, driving price up fast.",
-      horizon: "15 MINS TO 3 HOURS (MOMENTUM SCALP)",
-      mathTracking: "Delta Acceleration Speed + Localized Volume Sweep Density",
-      confidenceTier: "EXPLOSIVE SCALPER RATE (86% - 92%)"
+      horizon: "15 MIN TO 3 HOURS (SCALP)",
+      mathTracking: "Fast volume and momentum building",
+      confidenceTier: "HIGH (86–92%)"
     },
     mispriced: {
       title: "💎 Mathematical Arbitrage (Option Premium Discounts)",
       whyItsBest: "These are deep value opportunities where options are priced exceptionally cheap. They are 'the best' because temporary implied volatility drops have created a price mismatch: active brokers are selling these contracts at a -15% discount compared to their true mathematical value. Enter cheap, exit under normal curves.",
-      horizon: "2 HOURS TO 1 DAY POSITION (VALUE ACCUMULATOR)",
-      mathTracking: "Theoretical Fair Pricing Curves vs Broker Market Value",
-      confidenceTier: "HIGH RATIO STATS CONFUSED EDGE (80% - 85%)"
+      horizon: "2 HOURS TO 1 DAY (VALUE)",
+      mathTracking: "Option priced below fair value",
+      confidenceTier: "SOLID (80–85%)"
     },
     invalidation: {
       title: "⚠️ Support Rebounds & Boundaries (Trades Coming Back)",
       whyItsBest: "These are options hovering right at critical line-in-the-sand support thresholds. They are 'the best' for reversals because they are 'coming back' to key support lines (put walls), offering a highly defined bounce-back entry with tight, predefined stop-losses.",
-      horizon: "30 MINS TO 2 HOURS EDGE (REBOUND CAPTURE)",
-      mathTracking: "Dealer Put Wall Cushioning + Boundary Gamma Flip Target Pivot",
-      confidenceTier: "VOLATILITY DENSITY GAP REBOUNDS (40% - 55%)"
+      horizon: "30 MIN TO 2 HOURS (BOUNCE)",
+      mathTracking: "Bouncing off dealer put-wall support",
+      confidenceTier: "SPECULATIVE (40–55%)"
     },
     whale: {
       title: "🐳 Smart Money Whale Sweeps (Institutional Tape Follower)",
       whyItsBest: "These represent trades where ultra-wealthy institutional players are sweeping multi-million dollar cash blocks directly at the ask price. They are 'the best' because you are alignment-trading with the largest forces in the market, riding their powerful directional tailwinds.",
-      horizon: "1 HOUR TO 2 DAYS TRAILING (MOMENTUM SWING)",
-      mathTracking: "On-Tape Notional Premium Volume Sweeps ($5M+ Blocks)",
-      confidenceTier: "MASTER INSTITUTIONAL CONVICTION SCALE (85%+)"
+      horizon: "1 HOUR TO 2 DAYS (SWING)",
+      mathTracking: "$5M+ block trades hitting the tape",
+      confidenceTier: "HIGH (85%+)"
     },
     all: {
       title: "📂 All Discovered Signals (Unified Market Catalog)",
       whyItsBest: "A unified look across the entire option spectrum under scanning supervision. Use this tab to compare all categories side-by-side, sorted from the absolute strongest active model ratings to the weakest.",
       horizon: "Dependent on Selection",
-      mathTracking: "Slayer Multi-Agent Co-processing Index (DEX/GEX Integrated)",
-      confidenceTier: "COMPREHENSIVE INSTITUTIONAL REGISTRY"
+      mathTracking: "All signals combined",
+      confidenceTier: "ALL SETUPS"
     }
   };
 
@@ -929,7 +929,7 @@ export function DiscoveryView({
   const triggerManualScannerRefresh = () => {
     if (isMockScanning) return;
     setIsMockScanning(true);
-    setLastScanMessage('Initiating institutional deep-regime memory scan...');
+    setLastScanMessage('Running a fresh scan...');
 
     setTimeout(() => {
       // Slightly randomize values
@@ -974,7 +974,7 @@ export function DiscoveryView({
       setFeedLogs(prev => [newLog, ...prev.slice(0, 11)]);
       setIsMockScanning(false);
       setScanHistoryCount(prev => prev + 1);
-      setLastScanMessage(`Calibrated! Scanned ${contracts.length} options. 3 new core scalps prioritized.`);
+      setLastScanMessage(`Done! Scanned ${contracts.length} options. 3 new setups added.`);
     }, 1000);
   };
 
@@ -1078,10 +1078,10 @@ export function DiscoveryView({
           </div>
           <div>
             <h1 className={`text-xs font-black tracking-widest uppercase ${c_textWhite}`}>
-              SLAYER DISCOVERY COCKPIT <span className="text-zinc-500">/ EXCURSION MATRIX v1.3</span>
+              TRADE FINDER <span className="text-zinc-500">/ LIVE OPTIONS SCANNER</span>
             </h1>
             <p className="text-[9.5px] text-zinc-500 mt-0.5 uppercase tracking-wide">
-              REAL-TIME POSITIONING • STREAMING EXCURSIONS ACTIVE
+              LIVE SETUPS • UPDATING IN REAL TIME
             </p>
           </div>
         </div>
@@ -1089,19 +1089,19 @@ export function DiscoveryView({
         {/* Live Cockpit Statistics Panel */}
         <div className={`flex items-center gap-4 flex-wrap text-left text-[10px] md:border-l md:pl-5 ${isLight ? 'border-black' : 'border-black'}`}>
           <div className="space-y-0.5">
-            <span className="text-[7.5px] text-zinc-500 uppercase block tracking-wider font-extrabold">GLOBAL GEX SUPPORT</span>
+            <span className="text-[7.5px] text-zinc-500 uppercase block tracking-wider font-extrabold">DEALER SUPPORT</span>
             <span className="text-[#4ADE80] font-bold block transition-all duration-300">
               +{globalGex.toFixed(1)}M
             </span>
           </div>
           <div className="space-y-0.5">
-            <span className="text-[7.5px] text-zinc-500 uppercase block tracking-wider font-extrabold">SYSTEM BRIER FIT</span>
+            <span className="text-[7.5px] text-zinc-500 uppercase block tracking-wider font-extrabold">MODEL ACCURACY</span>
             <span className={`font-mono font-bold block transition-all duration-300 ${c_textWhite}`}>
               {brierScore.toFixed(4)}
             </span>
           </div>
           <div className="space-y-0.5">
-            <span className="text-[7.5px] text-zinc-500 uppercase block tracking-wider font-extrabold">SCANNING RATE</span>
+            <span className="text-[7.5px] text-zinc-500 uppercase block tracking-wider font-extrabold">SCAN SPEED</span>
             <span className={`text-[#4f8cff] font-bold block transition-all duration-300 ${isMockScanning || metricsPulse ? 'animate-bounce text-[#4ADE80]' : ''}`}>
               {scanRate.toFixed(1)}/s
             </span>
@@ -1341,13 +1341,13 @@ export function DiscoveryView({
                 {/* Quantitative Targets & Threshold Metrics Column */}
                 <div className={`md:col-span-4 p-3 rounded-xl flex flex-col justify-between gap-3 border ${c_innerCardBg}`}>
                   <div className="space-y-1.5 text-left">
-                    <span className="text-[8px] text-zinc-550 tracking-wider uppercase block">TARGET EXTRAPOLATION PLANE</span>
+                    <span className="text-[8px] text-zinc-550 tracking-wider uppercase block">PRICE TARGETS</span>
                     <div className="flex justify-between items-baseline font-mono">
                       <span className="text-zinc-500">HORIZON:</span>
                       <span className={`font-bold ${c_textWhite}`}>{currentManualText.horizon}</span>
                     </div>
                     <div className={`flex justify-between items-baseline font-mono border-t pt-1.5 ${isLight ? 'border-black' : 'border-black'}`}>
-                      <span className="text-zinc-500">MATH SCANNER:</span>
+                      <span className="text-zinc-500">SIGNAL:</span>
                       <span className="text-[#4f8cff] font-bold text-[9px] uppercase">{currentManualText.mathTracking}</span>
                     </div>
                     <div className={`flex justify-between items-baseline font-mono border-t pt-1.5 ${isLight ? 'border-black' : 'border-black'}`}>
@@ -1356,7 +1356,7 @@ export function DiscoveryView({
                     </div>
                   </div>
                   <div className={`text-[8px] text-zinc-500 border-t pt-1 tracking-wide ${isLight ? 'border-black' : 'border-black/50'}`}>
-                    ⚠️ System updates parameters at 12,000 checks per node.
+                    ⚠️ Updates automatically in real time.
                   </div>
                 </div>
 
@@ -1374,7 +1374,7 @@ export function DiscoveryView({
             <span className="w-3 h-3 rounded-full bg-black/40 border border-black relative block" />
           </div>
           <div className="text-left">
-            <span className="text-[10px] text-zinc-500 block font-bold uppercase">SECURE PORT HARVEST SCANNER</span>
+            <span className="text-[10px] text-zinc-500 block font-bold uppercase">LIVE SCANNER</span>
             <span className={`text-[10.5px] font-black ${isMockScanning ? 'text-[#4ADE80] font-bold' : (isLight ? 'text-zinc-700 font-extrabold' : 'text-zinc-400')}`}>
               STATUS: {lastScanMessage}
             </span>
@@ -1393,12 +1393,12 @@ export function DiscoveryView({
           {isMockScanning ? (
             <>
               <RefreshCw className="w-3.5 h-3.5 animate-spin text-[#4ADE80]" />
-              <span>SCANNING EXCURSIONS...</span>
+              <span>SCANNING...</span>
             </>
           ) : (
             <>
               <RefreshCw className="w-3.5 h-3.5" />
-              <span>FORCE CORRELATE SCANNER ({scanHistoryCount} Refreshes)</span>
+              <span>REFRESH SCAN ({scanHistoryCount})</span>
             </>
           )}
         </button>
@@ -1414,7 +1414,7 @@ export function DiscoveryView({
           
           <div className="flex justify-between items-center px-1">
             <span className={`text-[11px] font-extrabold uppercase tracking-wider ${isLight ? 'text-zinc-700' : 'text-zinc-400'}`}>
-              DISPLAYING {filteredContracts.length} MATCHING EXCURSIONS OF {contracts.length} DETECTED NODES
+              SHOWING {filteredContracts.length} OF {contracts.length} SETUPS
             </span>
             <div className="flex items-center gap-1.5 text-[9px] text-[#A1A1AA] uppercase">
               <span className="w-1.5 h-1.5 rounded-full bg-blue-400 animate-ping" />
@@ -1434,9 +1434,9 @@ export function DiscoveryView({
                     {/* Ticker Section Title segment */}
                     <div className={`flex items-center justify-between border-b pb-2 mb-1 pl-1 ${isLight ? 'border-black' : 'border-black/60'}`}>
                       <div className="flex items-center gap-2">
-                        <span className={`text-xs font-black tracking-widest uppercase font-mono ${c_textWhite}`}>{ticker} REGIME SCAN</span>
+                        <span className={`text-xs font-black tracking-widest uppercase font-mono ${c_textWhite}`}>{ticker} SETUPS</span>
                         <span className="bg-[#4f8cff]/10 border border-[#4f8cff]/20 text-[#4f8cff] text-[8px] font-bold px-1.5 py-0.2 rounded font-sans uppercase">
-                          {tickerContracts.length} MOTIVES SIGHTED
+                          {tickerContracts.length} SETUPS FOUND
                         </span>
                       </div>
                       <span className="text-[7.5px] text-zinc-500 uppercase tracking-widest font-black">
@@ -1698,18 +1698,18 @@ export function DiscoveryView({
           {/* EXCURSION GRID SUMMARY */}
           <div className={`w-full rounded-xl p-5 text-left flex flex-col md:flex-row justify-between items-start md:items-center gap-4 shadow-2xl border ${c_cardBg}`}>
             <div className="space-y-1">
-              <span className="text-[8.5px] text-[#4f8cff] tracking-widest uppercase font-black block">OPPORTUNITY DENSITY CONFIG</span>
+              <span className="text-[8.5px] text-[#4f8cff] tracking-widest uppercase font-black block">HOW THIS WORKS</span>
               <p className={`text-[10px] uppercase tracking-wide leading-relaxed font-sans font-medium ${isLight ? 'text-zinc-600' : 'text-zinc-400'}`}>
-                Slayer.trade models automatically weigh dealer positioning scores (DEX/GEX), expected moves, and continuous calibration matrices across 1,248 concurrent options contracts. Select details of any contract block above to inspect dynamic target coordinates.
+                We scan dealer positioning, expected moves, and option pricing across thousands of contracts in real time. Tap any contract above to see its price targets.
               </p>
             </div>
             <div className={`flex gap-4 shrink-0 text-left border-t md:border-t-0 md:border-l pt-3 md:pt-0 md:pl-5 ${isLight ? 'border-black' : 'border-black/60'}`}>
               <div>
-                <span className="text-[7px] text-zinc-500 uppercase font-black tracking-widest block">ENTER SIGNAL RATIO</span>
+                <span className="text-[7px] text-zinc-500 uppercase font-black tracking-widest block">BUY SIGNALS</span>
                 <span className={`text-sm font-black ${c_textWhite}`}>{(metricsOverview.totalCount > 0 ? (metricsOverview.enterCount / metricsOverview.totalCount) * 100 : 0).toFixed(1)}%</span>
               </div>
               <div>
-                <span className="text-[7px] text-zinc-500 uppercase font-black tracking-widest block">EXTREME NOTIONAL</span>
+                <span className="text-[7px] text-zinc-500 uppercase font-black tracking-widest block">BIGGEST TRADES</span>
                 <span className="text-sm font-black text-[#4ADE80]">+{metricsOverview.extremeEV} Blocks</span>
               </div>
             </div>
@@ -1730,7 +1730,7 @@ export function DiscoveryView({
             <div className={`flex items-center gap-2 border-b pb-2 ${isLight ? 'border-black' : 'border-black'}`}>
               <Flame className="w-4 h-4 text-[#F87171] animate-pulse" />
               <h2 className={`text-[10.5px] font-black uppercase tracking-widest ${c_textWhite}`}>
-                LARGEST WHALE DETECTIONS
+                BIGGEST TRADES (SMART MONEY)
               </h2>
             </div>
 

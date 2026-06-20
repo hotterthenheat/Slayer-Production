@@ -248,32 +248,32 @@ export function SkyVisionView() {
     switch (activeRecommendation) {
       case 'ENTER':
         return {
-          title: selectedOptionType === 'C' ? 'GAMMA SQUEEZE BREAKOUT' : 'BEARISH ACCELERATION TRIGGER',
-          desc: 'Quant models identify significant volume clustering. Positive directional feedback creates imbalance. Position entry confirmed.',
+          title: selectedOptionType === 'C' ? 'STRONG BREAKOUT — BUYERS IN CONTROL' : 'STRONG BREAKDOWN — SELLERS IN CONTROL',
+          desc: 'Heavy volume is pushing price in your direction and the move is picking up speed. Good spot to enter.',
           color: 'text-[#d4d4d8]',
-          badges: ['GEX FLOW', 'VOL SPIKE', 'SPOT MOMENTUM']
+          badges: ['HEAVY VOLUME', 'PRICE MOVING', 'MOMENTUM']
         };
       case 'REDUCE':
         return {
-          title: 'THETA DOMINANCE / RANGE DRIFT',
-          desc: 'Slower momentum allows theta decay factor to eat premium boundary lines. Consider reduction to mitigate risk exposure footprint.',
+          title: 'LOSING STEAM — CONSIDER TRIMMING',
+          desc: 'The move is stalling and time decay is eating into the option price. Think about taking some off to lock in profit.',
           color: 'text-amber-400',
-          badges: ['THETA PENALTY', 'VOL COMPRESSION', 'DELTA BALANCE']
+          badges: ['TIME DECAY', 'LOW VOLATILITY', 'SLOWING DOWN']
         };
       case 'SELL':
         return {
-          title: 'LIQUIDITY SHELF BREACHED',
-          desc: 'Derivative support levels violated. Institutional sell volume triggers state-wise exit sequence. Limit downside risks.',
+          title: 'SUPPORT BROKEN — EXIT SIGNAL',
+          desc: 'Price broke a key support level and big sellers are stepping in. Cut the position to limit losses.',
           color: 'text-[#F87171]',
-          badges: ['HEDGE SHELF GAP', 'FORCE CLOSURE', 'OUT-OF-THE-MONEY']
+          badges: ['SUPPORT BROKEN', 'HEAVY SELLING', 'TIME TO EXIT']
         };
       case 'HOLD':
       default:
         return {
-          title: 'CONSOLIDATION / THETA NEUTRALITY',
-          desc: 'Delta/Theta Neutrality reached. Price consolidation keeps contract neutrally balanced. Accumulating flow; watch option boundaries.',
+          title: 'SIDEWAYS — WAIT FOR A MOVE',
+          desc: 'Price is chopping in a range with no clear direction yet. Hold and wait for a breakout before adding.',
           color: 'text-indigo-400',
-          badges: ['DEALER BIAS STABLE', 'THETA DOMINANT', 'IN RANGE VALUE']
+          badges: ['RANGE-BOUND', 'NO CLEAR TREND', 'WAIT IT OUT']
         };
     }
   }, [activeRecommendation, selectedOptionType]);
@@ -324,7 +324,7 @@ export function SkyVisionView() {
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center bg-black border border-black p-3.5 rounded-sm gap-2">
         <div className="flex gap-2 items-center">
           <Zap className="w-4 h-4 text-zinc-400 animate-pulse" />
-          <span className="text-[8.5px] text-zinc-550 uppercase tracking-widest font-black">SLAYER ACTIVE TERMINAL CORE</span>
+          <span className="text-[8.5px] text-zinc-550 uppercase tracking-widest font-black">LIVE TERMINAL</span>
         </div>
         
         <div className="flex items-center gap-2.5 flex-wrap">
@@ -421,7 +421,7 @@ export function SkyVisionView() {
             {/* Top Line label */}
             <div className="flex justify-between items-start border-b border-black/40 pb-4 relative z-10">
               <div className="text-left space-y-1">
-                <span className="text-[8.5px] text-zinc-500 tracking-widest uppercase font-black block text-left">OPTION DECISION ENGINE</span>
+                <span className="text-[8.5px] text-zinc-500 tracking-widest uppercase font-black block text-left">YOUR TRADE</span>
                 <h1 className="text-xl md:text-2xl font-black text-[#E5E5E5] font-sans tracking-tight uppercase leading-none">
                   {selectedAsset.ticker} {activeStrike}{selectedOptionType}
                 </h1>
@@ -438,7 +438,7 @@ export function SkyVisionView() {
               {/* Recommendation block (upgraded to Forensic Thesis statement) */}
               <div className="mirror-panel p-4.5 rounded-xl flex flex-col justify-between text-left gap-3">
                 <div className="space-y-1.5 text-left">
-                  <span className="text-[8px] text-zinc-500 tracking-wider uppercase block font-mono">FORENSIC EVALUATION THESIS</span>
+                  <span className="text-[8px] text-zinc-500 tracking-wider uppercase block font-mono">THE SETUP</span>
                   <span className={`text-[13px] md:text-sm font-black font-sans uppercase block tracking-tight leading-tight ${forensicThesis.color}`}>
                     {forensicThesis.title}
                   </span>
@@ -449,7 +449,7 @@ export function SkyVisionView() {
 
                 {/* Attribution pill-badges row (Tag Bar) */}
                 <div className="border-t border-black/30 pt-3 mt-1.5">
-                  <span className="text-[8px] text-zinc-550 uppercase tracking-widest font-black block mb-1">DECISION DRIVERS</span>
+                  <span className="text-[8px] text-zinc-550 uppercase tracking-widest font-black block mb-1">WHY</span>
                   <div className="flex flex-wrap gap-1">
                     {forensicThesis.badges.map((b, idx) => (
                       <span key={idx} className="px-1.5 py-0.5 bg-black/40 border border-black/80 rounded-sm text-[#4ADE80] font-bold text-[7px] tracking-wider uppercase">
@@ -466,7 +466,7 @@ export function SkyVisionView() {
                 {/* Score & Institutional confidence bar */}
                 <div className="space-y-1.5 text-left">
                   <div className="flex justify-between items-center text-xs">
-                    <span className="text-zinc-550 uppercase text-[8.5px] font-black font-mono">INSTITUTIONAL CONFIDENCE BAND</span>
+                    <span className="text-zinc-550 uppercase text-[8.5px] font-black font-mono">CONFIDENCE</span>
                     <span className="font-extrabold text-[#d4d4d8] text-[9.5px] font-mono">{tradeHealthValue}% CONFIDENCE</span>
                   </div>
                   {/* Linear Progress bar */}
@@ -506,7 +506,7 @@ export function SkyVisionView() {
                 {/* Expected move and Probability cone bell shape */}
                 <div className="flex justify-between items-center bg-black/40 border border-black/70 rounded p-2">
                   <div className="space-y-0.5 text-left">
-                    <span className="text-[8px] text-zinc-550 tracking-wider block font-black uppercase font-mono">PROBABILITY CONE</span>
+                    <span className="text-[8px] text-zinc-550 tracking-wider block font-black uppercase font-mono">EXPECTED MOVE</span>
                     <span className="font-extrabold text-[#4f8cff] text-[10px] block font-mono">+{expectedMoveField}% Expected</span>
                   </div>
                   {/* Minified Probability Gaussian Curve widget */}
@@ -530,7 +530,7 @@ export function SkyVisionView() {
 
             {/* Bottom regulatory action bar */}
             <div className="border-t border-black pt-4 flex flex-col sm:flex-row justify-between items-center text-[10px] text-[#A1A1AA] gap-2 relative z-10">
-              <span className="uppercase text-[8px] text-zinc-500 block">REAL-TIME GRID MODEL CALCULATION</span>
+              <span className="uppercase text-[8px] text-zinc-500 block">UPDATING LIVE</span>
               <div className="flex items-center gap-1">
                 <span className="w-1.5 h-1.5 bg-[#d4d4d8] rounded-full animate-ping" />
                 <span className="font-black text-[#E5E5E5] px-2 py-0.5 border border-black rounded-md uppercase text-[8px]">
@@ -630,7 +630,7 @@ export function SkyVisionView() {
             </div>
             <div className="pt-2 border-t border-black/60 flex items-center gap-1 text-[8.5px] text-zinc-500 uppercase font-black">
               <CheckCircle2 className="w-3 h-3 text-[#4ADE80]" />
-              <span>STATISTICAL ANALYTICS MODEL VERIFIED ON MULTI-TIMEFRAME</span>
+              <span>CHECKED ACROSS MULTIPLE TIMEFRAMES</span>
             </div>
           </div>
 
@@ -656,7 +656,7 @@ export function SkyVisionView() {
                     <span className={`${selectedOptionType === 'C' ? 'text-[#4ADE80]' : 'text-[#F87171]'} font-bold`}>+840K BLOCK {selectedOptionType === 'C' ? 'BUY' : 'SELL'}</span>
                     <span className="text-[#E5E5E5] font-black">{selectedAsset.ticker} {activeStrike}{selectedOptionType}</span>
                   </div>
-                  <span className="text-[8px] text-zinc-500 block">Derivative VWAP Setup • 12 Seconds Ago</span>
+                  <span className="text-[8px] text-zinc-500 block">VWAP Buy • 12 Seconds Ago</span>
                 </div>
 
                 <div className={`flex flex-col gap-1.5 bg-black/80 p-2 rounded border border-black/60 transition-colors hover:border-${selectedOptionType === 'C' ? 'rose-400' : 'zinc-300'}/30`}>
@@ -664,7 +664,7 @@ export function SkyVisionView() {
                     <span className={`${selectedOptionType === 'C' ? 'text-[#F87171]' : 'text-[#4ADE80]'} font-bold`}>-400K REJECT</span>
                     <span className="text-[#E5E5E5] font-black">{selectedAsset.ticker} {activeStrike}{selectedOptionType}</span>
                   </div>
-                  <span className="text-[8px] text-zinc-500 block">Dealer Liquidity Trap • 45 Seconds Ago</span>
+                  <span className="text-[8px] text-zinc-500 block">Dealer Fade • 45 Seconds Ago</span>
                 </div>
 
                 <div className={`flex flex-col gap-1.5 bg-black/80 p-2 rounded border border-black/60 transition-colors hover:border-${selectedOptionType === 'C' ? '[#4ADE80]' : 'rose-400'}/30`}>
@@ -672,7 +672,7 @@ export function SkyVisionView() {
                     <span className={`${selectedOptionType === 'C' ? 'text-[#4ADE80]' : 'text-[#F87171]'} font-bold`}>+3.5M SWEEP</span>
                     <span className="text-[#E5E5E5] font-black">{selectedAsset.ticker} {activeStrike}{selectedOptionType}</span>
                   </div>
-                  <span className="text-[8px] text-zinc-500 block">Institutional Volatility Leg • 1 Min Ago</span>
+                  <span className="text-[8px] text-zinc-500 block">Large Sweep • 1 Min Ago</span>
                 </div>
              </div>
           </div>
@@ -768,7 +768,7 @@ export function SkyVisionView() {
           onClick={() => setIsDeepSkyseyeExpanded(!isDeepSkyseyeExpanded)}
           className="w-full bg-black border border-black hover:border-black hover:bg-black/50 transition-colors p-3 rounded-lg flex items-center justify-center gap-2 text-xs font-black uppercase tracking-widest text-zinc-400"
         >
-          {isDeepSkyseyeExpanded ? '▽ Hide Deep Institutional Intelligence' : '▷ Expand Deep Institutional Intelligence'}
+          {isDeepSkyseyeExpanded ? '▽ Hide Advanced Details' : '▷ Show Advanced Details'}
         </button>
 
         {isDeepSkyseyeExpanded && serverState?.deep_intelligence && (
@@ -823,7 +823,7 @@ export function SkyVisionView() {
                   <div className="border-b border-black pb-2 mb-4">
                     <span className="text-[10px] text-[#4ADE80] font-black uppercase tracking-widest flex items-center gap-2">
                        <span className="w-1.5 h-1.5 bg-black/40 rounded-full animate-pulse"></span>
-                       Live Strike Intelligence: {(activeStrike ?? 0).toFixed(2)}
+                       Strike Details: {(activeStrike ?? 0).toFixed(2)}
                     </span>
                   </div>
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-xs font-mono">
@@ -873,7 +873,7 @@ export function SkyVisionView() {
                   <div className="border-b border-black pb-2 mb-3">
                     <span className="text-[10px] text-[#4ADE80] font-black uppercase tracking-widest flex items-center gap-2">
                       <span className="w-1.5 h-1.5 bg-[#4f8cff] rounded-full animate-pulse"></span>
-                      Dealer Positioning Briefing
+                      Dealer Notes
                     </span>
                   </div>
                   <div className="space-y-2.5">
@@ -894,7 +894,7 @@ export function SkyVisionView() {
                   <div className="border-b border-black pb-2 mb-3">
                     <span className="text-[10px] text-[#4ADE80] font-black uppercase tracking-widest flex items-center gap-2">
                       <span className="w-1.5 h-1.5 bg-rose-400 rounded-full animate-pulse"></span>
-                      Whale Detection Radar
+                      Biggest Trades
                     </span>
                   </div>
                   <div className="space-y-2 text-xs font-mono">
@@ -934,7 +934,7 @@ export function SkyVisionView() {
                   <div className="border-b border-black pb-2 mb-3 shrink-0 flex justify-between items-center">
                     <span className="text-[10px] text-[#4ADE80] font-black uppercase tracking-widest flex items-center gap-2">
                        <span className="w-1.5 h-1.5 bg-[#4f8cff] rounded-full animate-pulse"></span>
-                       Live Institutional Flow Feed
+                       Live Order Flow
                     </span>
                     <span className="text-[7.5px] text-zinc-500 font-black uppercase">LIVE</span>
                   </div>
@@ -963,9 +963,9 @@ export function SkyVisionView() {
         
         <div className="w-full bg-black border border-black p-5 rounded-sm space-y-3">
           <div className="flex justify-between items-center text-[8.5px] uppercase text-zinc-500 bg-black p-2.5 rounded border border-black">
-            <span>Continuous TradingView Liquidity Flow Integration</span>
+            <span>Live Chart</span>
             <div className="flex items-center gap-3">
-              <span className="text-zinc-650 font-bold">SLAYER WEBHOOK TUNNEL ACTIVE</span>
+              <span className="text-zinc-650 font-bold">LIVE</span>
               <button 
                 onClick={() => setIsChartExpanded(!isChartExpanded)}
                 className="text-zinc-400 hover:text-[#E5E5E5] transition-colors"
@@ -991,7 +991,7 @@ export function SkyVisionView() {
               showFVGs={true}
               showLiquiditySweeps={true}
               showDisplacementEvents={true}
-              watermarkText="CONTINUOUS TRADINGVIEW LIQUIDITY FLOW INTEGRATION"
+              watermarkText="LIVE CHART"
             />
           </motion.div>
         </div>
@@ -1003,9 +1003,9 @@ export function SkyVisionView() {
         <div className="flex items-center gap-3">
           <div className="flex items-center gap-1.5 px-2 py-1 bg-black/40 border border-black rounded text-[#4ADE80] font-bold uppercase">
             <span className="w-1.5 h-1.5 rounded-full bg-black/40 animate-pulse"></span>
-            TradingView Webhook Active
+            Chart Feed Active
           </div>
-          <span className="text-zinc-500 uppercase tracking-widest hidden md:inline-block">Connected to Slayer Labs Liquidity Engine • Port 3000 Secured</span>
+          <span className="text-zinc-500 uppercase tracking-widest hidden md:inline-block">Connected • Live data</span>
         </div>
         <div className="flex items-center gap-4 text-zinc-400">
           <div className="flex items-center gap-1">
