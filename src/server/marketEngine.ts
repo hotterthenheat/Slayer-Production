@@ -26,6 +26,7 @@ import {
   getUnifiedCandles,
 } from '../lib/providerAbstraction';
 import { buildGexProfile, computeDealerFlowGauge } from '../lib/gexEngine';
+import { computeAssetEdge, computeContractEdge, type AssetEdge, type EdgeHistory } from '../lib/quantEdge';
 import { computeDisplacementIntelligence } from '../lib/displacementEngine';
 import { getLastTradierError } from '../lib/tradierProvider';
 import { db, sse } from './state';
@@ -67,6 +68,51 @@ const bootstrappedAssets: Record<string, boolean> = {};
 
 let sandboxTimeShift = 0; // Accelerates time in sandbox mode
 const sandboxMomentum: Record<string, number> = {}; // per-asset AR(1) momentum for the synthetic walk
+
+// ---- Quant "edge" analytics cache (RND / VRP / skew / dealer clock) ----
+// Computed once per asset per tick and reused across all SSE clients (cheap
+// broadcast) rather than recomputed per client inside constructPayload.
+const RND_DTE_DAYS = 5;
+const edgeCache: Record<string, AssetEdge> = {};
+const edgeHistory: Record<string, EdgeHistory> = {};
+
+function liveChainToContracts(live: any[], fallbackIv: number): ChainContract[] {
+  return live.map((c: any) => ({
+    strike: c.strike,
+    type: (c.type === 'C' || c.type === 'call') ? 'call' : 'put',
+    openInterest: c.oi || c.openInterest || 0,
+    iv: c.impliedVolatility || c.iv || fallbackIv,
+    bid: c.bid || 0, ask: c.ask || 0,
+    delta: c.greeks?.delta ?? c.delta ?? 0,
+    gamma: c.greeks?.gamma ?? c.gamma ?? 0,
+    vega: c.greeks?.vega ?? c.vega ?? 0,
+    theta: c.greeks?.theta ?? c.theta ?? 0,
+    vanna: c.greeks?.vanna ?? c.vanna ?? 0,
+    charm: c.greeks?.charm ?? c.charm ?? 0,
+  }));
+}
+
+function refreshEdgeCache() {
+  for (const asset of ASSET_LIST) {
+    try {
+      const spot = db.liveSpotPrices[asset.ticker] || asset.defaultPrice;
+      const live = db.liveOptionChains[asset.ticker];
+      const chain: ChainContract[] = (live && live.length > 0)
+        ? liveChainToContracts(live, asset.volatility)
+        : generateMockOptionsChain(spot, asset.volatility);
+      const candles = db.candles[`${asset.ticker}-5m`] || [];
+      const dealerInv = computeDealerInventory(chain, spot, 1);
+      if (!edgeHistory[asset.ticker]) edgeHistory[asset.ticker] = { rr: [], bf: [] };
+      edgeCache[asset.ticker] = computeAssetEdge({
+        chain, candles, spot, rndDteDays: RND_DTE_DAYS,
+        netCharm: dealerInv.netCharm, netVanna: dealerInv.netVex,
+        history: edgeHistory[asset.ticker],
+      });
+    } catch (e) {
+      // Never let an edge-calc error break the tick.
+    }
+  }
+}
 
 // Simulation ticks run continuously server-side
 const TICK_INTERVAL = 1000; // 1s for fast real-time telemetry but stable chart
@@ -231,6 +277,10 @@ export async function runTickerCycle() {
     if (db.globalFlowFeed.length > 50) {
       db.globalFlowFeed = db.globalFlowFeed.slice(0, 50);
     }
+
+    // Refresh the per-asset edge analytics (RND / VRP / skew / dealer clock) once
+    // per tick so every SSE client reuses the same cached block.
+    refreshEdgeCache();
 
     // 2. Tick active trade logs outcomes
     db.v8Trades = db.v8Trades.map((t) => {
@@ -1208,6 +1258,23 @@ export const constructPayload = (params: {
   const active_volume = activeContract?.volume || 0;
   const active_oi = activeContract?.oi || activeContract?.openInterest || 0;
 
+  // Edge analytics: per-asset block (cached) + per-contract Kelly/scenario for the
+  // contract this client is viewing.
+  const assetEdge = edgeCache[asset.ticker] || null;
+  const quant_edge = assetEdge ? {
+    ...assetEdge,
+    ...computeContractEdge({
+      spot: liveSpot,
+      strike: optionStrike,
+      dteDays: RND_DTE_DAYS,
+      iv: assetEdge.skew?.atmIv ?? asset.volatility,
+      isCall,
+      entryPrice: optionPremiumFloat,
+      winPct: metricsV11.posteriorWinRate / 100,
+      riskReward: metricsV11.riskRewardRatio,
+    }),
+  } : null;
+
   return {
     contract: `${asset.ticker} ${optionStrike}${isCall ? 'C' : 'P'}`,
     recommendation: finalDecision, //ENTER, HOLD, REDUCE, EXIT
@@ -1215,6 +1282,7 @@ export const constructPayload = (params: {
     active_greeks,
     active_volume,
     active_oi,
+    quant_edge,
     provenance: {
       ...provenance,
       feed: feedLabel

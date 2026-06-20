@@ -17,6 +17,7 @@ import { InstitutionalPhysicsDashboard } from './InstitutionalPhysicsDashboard';
 import { IntradayTargetsView } from './IntradayTargetsView';
 import { InstitutionalDashboard } from './InstitutionalDashboard';
 import { AiIntelligenceLayer } from './AiIntelligenceLayer';
+import { QuantEdgePanel } from './QuantEdgePanel';
 import { DealerFlowMap } from './DealerFlowMap';
 import {
   Waves,
@@ -756,6 +757,9 @@ export function DealerFlowView() {
 
       {/* AI INTELLIGENCE LAYER */}
       <AiIntelligenceLayer />
+
+      {/* QUANT EDGE — RND / VRP / skew / scenario / Kelly / dealer clock */}
+      <QuantEdgePanel />
 
       {/* ============== SUB-TABS SELECTOR SEAMLESS GRIDS ============== */}
       <div className="flex flex-wrap gap-2.5 justify-start items-center" id="dealerflow-subtabs-bar">

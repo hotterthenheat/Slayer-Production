@@ -26,6 +26,7 @@ import {
 } from './src/lib/providerAbstraction';
 import { buildGexProfile, computeDealerFlowGauge } from './src/lib/gexEngine';
 import { getLastTradierError } from './src/lib/tradierProvider';
+import { ensureSchema } from './src/db/index.ts';
 import bcrypt from 'bcryptjs';
 import { PORT, stripeClient, TIER_PRICING, ADMIN_EMAILS, roleForEmail, type AdminRole } from './src/server/config';
 import {
@@ -1251,6 +1252,23 @@ app.post('/api/billing/create-checkout-session', express.json(), async (req, res
 // Stripe POSTs raw JSON here; the signature is verified against the raw body
 // (hence express.raw — express.json would mangle the bytes and break the HMAC).
 // ============================================================
+// Resolve the local user for a Stripe Subscription. metadata.email is only set on
+// the one checkout path and is NOT populated for dashboard/proration/dunning
+// events, so fall back to matching the stored customer_id (set on checkout).
+async function findUserForSubscription(sub: any): Promise<any | null> {
+  const email = (sub?.metadata?.email || '').toLowerCase().trim();
+  if (email) {
+    const u = await dbGetUser(email);
+    if (u) return u;
+  }
+  const customerId = typeof sub?.customer === 'string' ? sub.customer : sub?.customer?.id;
+  if (customerId) {
+    const all = await dbGetAllUsers();
+    return all.find((u: any) => u.customer_id === customerId) || null;
+  }
+  return null;
+}
+
 app.post('/api/billing/webhook', express.raw({ type: 'application/json' }), async (req, res) => {
   if (!stripeClient) {
     return res.status(503).json({ error: 'Payments are not configured yet.' });
@@ -1294,28 +1312,24 @@ app.post('/api/billing/webhook', express.raw({ type: 'application/json' }), asyn
 
       case 'customer.subscription.deleted': {
         const sub = event.data.object as Stripe.Subscription;
-        const email = (sub.metadata?.email || '').toLowerCase().trim();
-        if (email) {
-          const user = await dbGetUser(email);
-          if (user) {
-            user.access_tier = 'guest';
-            await persistUser(email, user);
-            console.log(`[STRIPE WEBHOOK] customer.subscription.deleted -> ${email} downgraded to guest`);
-          }
+        const user = await findUserForSubscription(sub);
+        if (user) {
+          user.access_tier = 'guest';
+          await persistUser(user.email, user);
+          console.log(`[STRIPE WEBHOOK] subscription.deleted -> ${user.email} downgraded to guest`);
+        } else {
+          console.warn('[STRIPE WEBHOOK] subscription.deleted: no user matched by metadata.email or customer id');
         }
         break;
       }
 
       case 'customer.subscription.updated': {
         const sub = event.data.object as Stripe.Subscription;
-        const email = (sub.metadata?.email || '').toLowerCase().trim();
-        if (email) {
-          const user = await dbGetUser(email);
-          if (user) {
-            user.cancels_at_period_end = !!sub.cancel_at_period_end;
-            await persistUser(email, user);
-            console.log(`[STRIPE WEBHOOK] customer.subscription.updated -> ${email} cancels_at_period_end=${user.cancels_at_period_end}`);
-          }
+        const user = await findUserForSubscription(sub);
+        if (user) {
+          user.cancels_at_period_end = !!sub.cancel_at_period_end;
+          await persistUser(user.email, user);
+          console.log(`[STRIPE WEBHOOK] subscription.updated -> ${user.email} cancels_at_period_end=${user.cancels_at_period_end}`);
         }
         break;
       }
@@ -1429,6 +1443,14 @@ app.post('/api/billing/process', express.json(), async (req, res) => {
   const session = await getSessionFromCookies(req.headers.cookie);
   if (!session || !session.email) {
     return res.status(401).json({ error: 'Billing access denied. Session expired.' });
+  }
+
+  // SECURITY: this simulated path grants a tier directly. In production with Stripe
+  // wired up, the ONLY way to grant paid access is the signed Stripe webhook —
+  // otherwise any logged-in user could self-upgrade for free. The simulated path
+  // stays available only for the keyless/sandbox demo (no live Stripe).
+  if (process.env.NODE_ENV === 'production' && stripeClient) {
+    return res.status(403).json({ error: 'Please complete payment via secure Stripe checkout to upgrade.' });
   }
 
   const { plan, address, zip, referralCode, noRefundAgreed, customer_id, payment_method_id } = req.body;
@@ -2395,7 +2417,9 @@ app.post('/api/admin/impersonate/:email', requireAdmin(['owner']), async (req: a
 
 async function startServer() {
   // Bootstrap the DB schema (idempotent) so a fresh Postgres works on first deploy.
-  // DB is managed by Drizzle migrations via RPC
+  // ensureSchema() no-ops when SQL_HOST is unset and swallows connection errors,
+  // so this is safe in keyless/sandbox mode too.
+  await ensureSchema();
 
 // ==========================================
 // QUANT CO-PILOT — local, deterministic options-structure analysis.

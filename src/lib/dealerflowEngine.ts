@@ -224,7 +224,10 @@ export class HedgingCascadeSimulator {
         );
 
         const dSpot = spot - runningPath[0];
-        const dTime = 1.0 / (365.0 * 6.5 * 60.0); // dt in terms of mini slots
+        // charm (greeks.charm) is already in PER-DAY units, so dt must be a
+        // fraction of a TRADING DAY (390 min), not a fraction of a year. The old
+        // 1/(365·390) under-scaled the charm contribution by ~365×.
+        const dTime = 1.0 / (6.5 * 60.0); // one mini-slot as a fraction of a trading day
 
         // Delta change formulation: (gamma * dS) + (charm * dT)
         const deltaChange = (greeks.gamma * dSpot) + (greeks.charm * dTime);

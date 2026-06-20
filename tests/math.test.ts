@@ -106,11 +106,16 @@ function testDealerInventoryGexDex() {
   const spot = 100;
   const DTE = 5;
 
-  const result = computeDealerInventory(mockOptionChain, spot, mockAsset.decimals, DTE);
+  // 3rd arg is `dir` (±1), not decimals — pass a proper directional sign.
+  const result = computeDealerInventory(mockOptionChain, spot, 1, DTE);
 
   assert.ok(result.gammaFlipPrice > 0, 'Gamma flip price should be a valid positive number');
   assert.ok(result.netGex !== 0, 'Net GEX should be successfully computed');
   assert.ok(result.netDex !== 0, 'Net DEX should be successfully computed');
+  assert.ok(result.dealer01 >= 0 && result.dealer01 <= 1, 'dealer01 inventory index stays in [0,1]');
+  // Flipping the directional sign must mirror the dealer-state index around 0.5.
+  const flipped = computeDealerInventory(mockOptionChain, spot, -1, DTE);
+  assert.ok(Math.abs((result.dealer01 - 0.5) + (flipped.dealer01 - 0.5)) < 1e-9, 'dealer01 is symmetric in dir');
 
   console.log('✔ Dealer GEX, DEX and Gamma Flip root-solver logic passed.');
 }
