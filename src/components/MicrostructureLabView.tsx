@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
 import { useContractStore } from '../lib/store';
+import { formatTime as globalFormatTime } from '../lib/timeUtils';
 import { ASSET_LIST } from '../data';
 import { 
   DealerFlowPhysics, 
@@ -124,9 +125,166 @@ export function MicrostructureLabView() {
   const [headlineRes, setHeadlineRes] = useState<'bullish' | 'bearish' | 'neutral'>('bearish');
 
   // Interactive View and AutoPlay States
-  const [labTab, setLabTab] = useState<'terminal' | 'gex_chart' | 'campaigns'>('terminal');
+  const [labTab, setLabTab] = useState<'terminal' | 'gex_chart' | 'campaigns' | 'orderbook'>('terminal');
   const [isPlaying, setIsPlaying] = useState<boolean>(false);
   const playTimerRef = useRef<any>(null);
+
+  // --- Real-time Microstructure Order Book States (Task 3) ---
+  const [bookFilter, setBookFilter] = useState<'all' | 'institutional' | 'all_alerts'>('all');
+  const [obiPercentage, setObiPercentage] = useState<number>(14.2);
+  const [vpinToxicity, setVpinToxicity] = useState<number>(38.5);
+  const [absorptionStrength, setAbsorptionStrength] = useState<number>(68.0);
+  const [orderBookAsks, setOrderBookAsks] = useState<any[]>([]);
+  const [orderBookBids, setOrderBookBids] = useState<any[]>([]);
+  const [microstructureFeeds, setMicrostructureFeeds] = useState<any[]>([]);
+
+  // Seed and update orderbook data dynamically
+  useEffect(() => {
+    const spot = selectedAsset.defaultPrice || 5000;
+    const tick = selectedAsset.ticker === 'SPX' || selectedAsset.ticker === 'NDX' ? 0.5 : 0.05;
+    
+    // Generator for initial lines
+    const genAsks = () => Array.from({ length: 8 }).map((_, i) => {
+      const dist = (i + 1) * tick;
+      const isWall = i === 4;
+      const isIceberg = i === 2;
+      const size = isWall ? Math.floor(Math.random() * 400 + 500) : isIceberg ? Math.floor(Math.random() * 50 + 40) : Math.floor(Math.random() * 80 + 10);
+      return {
+        price: spot + dist,
+        size,
+        type: isWall ? 'WALL' : isIceberg ? 'ICEBERG' : Math.random() > 0.85 ? 'SPOOF' : 'MM',
+        cumulative: 0
+      };
+    });
+
+    const genBids = () => Array.from({ length: 8 }).map((_, i) => {
+      const dist = (i + 1) * tick;
+      const isWall = i === 5;
+      const isIceberg = i === 1;
+      const size = isWall ? Math.floor(Math.random() * 350 + 600) : isIceberg ? Math.floor(Math.random() * 60 + 50) : Math.floor(Math.random() * 85 + 15);
+      return {
+        price: spot - dist,
+        size,
+        type: isWall ? 'WALL' : isIceberg ? 'ICEBERG' : Math.random() > 0.85 ? 'SPOOF' : 'MM',
+        cumulative: 0
+      };
+    });
+
+    // Populate initial
+    let currentAsks = genAsks();
+    let currentBids = genBids();
+    
+    const calculateCumulative = (arr: any[]) => {
+      let sum = 0;
+      return arr.map(item => {
+        sum += item.size;
+        return { ...item, cumulative: sum };
+      });
+    };
+
+    setOrderBookAsks(calculateCumulative(currentAsks));
+    setOrderBookBids(calculateCumulative(currentBids));
+
+    setMicrostructureFeeds([
+      { id: 'feed-1', time: '14:21:44', side: 'BID', price: (spot - tick * 1).toFixed(2), text: 'ICEBERG POSITION DETECTED: +480 lots sitting at limit', style: 'text-cyan-400' },
+      { id: 'feed-2', time: '14:21:40', side: 'ASK', price: (spot + tick * 5).toFixed(2), text: 'SPOOFING SCANNER: +950 lots canceled shortly after placement', style: 'text-amber-500 font-bold' },
+      { id: 'feed-3', time: '14:21:32', side: 'BID', price: (spot - tick * 2).toFixed(2), text: 'LIMIT WALL FORMED: Large institutional block supported', style: 'text-[#4ADE80] font-bold' }
+    ]);
+
+    // Active fluctuation socket simulation
+    const interval = setInterval(() => {
+      // Modify sizes slightly
+      currentAsks = currentAsks.map((item, idx) => {
+        const change = Math.floor(Math.random() * 15 - 7);
+        const newSize = Math.max(5, item.size + change);
+        return { ...item, size: newSize };
+      });
+
+      currentBids = currentBids.map((item, idx) => {
+        const change = Math.floor(Math.random() * 15 - 7);
+        const newSize = Math.max(5, item.size + change);
+        return { ...item, size: newSize };
+      });
+
+      // Sometimes random cancellations or spoof bids vanish
+      if (Math.random() > 0.70) {
+        const randIdx = Math.floor(Math.random() * 8);
+        if (Math.random() > 0.50) {
+          const spoofPrice = currentBids[randIdx].price.toFixed(2);
+          const legacySize = currentBids[randIdx].size;
+          currentBids[randIdx].size = Math.floor(Math.random() * 15 + 5);
+          currentBids[randIdx].type = 'SPOOF';
+          setMicrostructureFeeds(prev => [
+            {
+              id: `feed-${Date.now()}`,
+              time: globalFormatTime(new Date()),
+              side: 'BID',
+              price: spoofPrice,
+              text: `SPOOF ALERT: BID of ${legacySize} contracts rapidly withdrawn. Zero execution occurred.`,
+              style: 'text-rose-500 animate-pulse'
+            },
+            ...prev.slice(0, 25)
+          ]);
+        } else {
+          const spoofPrice = currentAsks[randIdx].price.toFixed(2);
+          const legacySize = currentAsks[randIdx].size;
+          currentAsks[randIdx].size = Math.floor(Math.random() * 15 + 5);
+          currentAsks[randIdx].type = 'SPOOF';
+          setMicrostructureFeeds(prev => [
+            {
+              id: `feed-${Date.now()}`,
+              time: globalFormatTime(new Date()),
+              side: 'ASK',
+              price: spoofPrice,
+              text: `SPOOF ALERT: ASK of ${legacySize} contracts pulled prior to trade collision.`,
+              style: 'text-rose-500 animate-pulse'
+            },
+            ...prev.slice(0, 25)
+          ]);
+        }
+      }
+
+      // Check for iceberg absorption executions
+      if (Math.random() > 0.8) {
+        const randIdx = Math.floor(Math.random() * 8);
+        const icebergPrice = currentBids[randIdx].price.toFixed(2);
+        currentBids[randIdx].type = 'ICEBERG';
+        currentBids[randIdx].size += Math.floor(Math.random() * 200 + 80);
+        setMicrostructureFeeds(prev => [
+          {
+            id: `feed-${Date.now()}`,
+            time: globalFormatTime(new Date()),
+            side: 'BID',
+            price: icebergPrice,
+            text: `HIDDEN LIQUIDITY EXECUTION: +150 contracts executed on iceberg limit absorption`,
+            style: 'text-cyan-400 font-black'
+          },
+          ...prev.slice(0, 25)
+        ]);
+      }
+
+      // Calculate Math-based OBI
+      const totalBidsVal = currentBids.reduce((a, b) => a + b.size, 0);
+      const totalAsksVal = currentAsks.reduce((a, b) => a + b.size, 0);
+      const computedObi = ((totalBidsVal - totalAsksVal) / (totalBidsVal + totalAsksVal)) * 100;
+      setObiPercentage(computedObi);
+
+      // Fluctuating VPIN based on volume imbalance severity
+      const skewFactor = Math.abs(totalBidsVal - totalAsksVal) / (totalBidsVal + totalAsksVal);
+      const newVpin = 20 + skewFactor * 60 + (Math.random() * 10 - 5);
+      setVpinToxicity(Math.max(10, Math.min(95, newVpin)));
+
+      // Limit Absorption speed metrics
+      const newAbsorption = 40 + Math.random() * 50;
+      setAbsorptionStrength(newAbsorption);
+
+      // Commit to component states
+      setOrderBookAsks(calculateCumulative(currentAsks));
+      setOrderBookBids(calculateCumulative(currentBids));
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [selectedAsset]);
 
   // Auto-initialize standard list relative to spot
   useEffect(() => {
@@ -741,6 +899,7 @@ export function MicrostructureLabView() {
           <div className="flex gap-2">
             {[
               { id: 'terminal', label: 'Tactical Terminal & Scenarios', icon: Terminal },
+              { id: 'orderbook', label: 'L2/L3 Order Book & Toxicity', icon: Layers },
               { id: 'gex_chart', label: 'GEX Sensitivity Curve', icon: GitBranch },
               { id: 'campaigns', label: 'Campaigns & Divergence', icon: Cpu },
             ].map(tab => {
@@ -1161,6 +1320,291 @@ export function MicrostructureLabView() {
               <div className="border-t border-black/60 pt-3 mt-4 text-[7px] text-zinc-550 font-mono text-right uppercase block">
                 STATE_ENGINES.py / Event Divergence Machine
               </div>
+            </div>
+
+          </div>
+        )}
+
+        {/* TAB 4: L2/L3 ORDER BOOK & TOXICITY ENGINE (Task 3) */}
+        {labTab === 'orderbook' && (
+          <div className="grid grid-cols-1 xl:grid-cols-12 gap-5 animate-fadeIn" id="microstructure-orderbook-container">
+            
+            {/* COLUMN 1: LEVEL 2 & 3 ORDER LADDER (Col span 7) */}
+            <div className="xl:col-span-7 bg-[#050505] p-4.5 rounded-lg border border-[#1A1A1A] text-left flex flex-col justify-between">
+              <div>
+                <div className="flex items-center justify-between border-b border-[#222] pb-2.5 mb-3.5">
+                  <div className="flex items-center gap-2">
+                    <Table className="w-4 h-4 text-[#4ADE80]" />
+                    <span className="font-mono text-[9.5px] font-black text-zinc-100 uppercase tracking-widest">
+                      {selectedAsset.ticker} Level 2 Deep Ledger (DOM)
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse" />
+                    <span className="text-[7.5px] font-mono text-rose-455 font-bold uppercase tracking-widest">
+                      HFT ENGAGEMENT RATIO: ACTIVE
+                    </span>
+                  </div>
+                </div>
+
+                {/* Filters */}
+                <div className="flex items-center gap-1.5 mb-4">
+                  <span className="text-[7.5px] text-zinc-500 font-extrabold uppercase tracking-widest mr-1">
+                    LEDGER FILTER:
+                  </span>
+                  {[
+                    { id: 'all', label: 'ALL DEPT' },
+                    { id: 'institutional', label: 'INSTITUTIONAL ONLY' },
+                    { id: 'all_alerts', label: 'DETECTORS ONLY' }
+                  ].map(btn => (
+                    <button
+                      key={btn.id}
+                      onClick={() => setBookFilter(btn.id as any)}
+                      className={`text-[8px] font-mono font-bold tracking-wider px-2 py-1 rounded cursor-pointer border transition-colors ${
+                        bookFilter === btn.id
+                          ? 'bg-[#1a1a1a] border-cyan-500/40 text-cyan-400'
+                          : 'bg-black border-zinc-800 text-zinc-500 hover:text-zinc-300'
+                      }`}
+                    >
+                      {btn.label}
+                    </button>
+                  ))}
+                </div>
+
+                {/* Order Ladder */}
+                <div className="space-y-0.5 font-mono text-[10px] select-none">
+                  {/* Ledger Headers */}
+                  <div className="grid grid-cols-4 pb-1.5 text-zinc-550 border-b border-[#1A1A1A] font-black text-[8px] uppercase tracking-wider text-right px-1">
+                    <div className="text-left">Price (${selectedAsset.ticker})</div>
+                    <div>Size (Contracts)</div>
+                    <div>Depth (Lots)</div>
+                    <div>Signature / State</div>
+                  </div>
+
+                  {/* ASKS (LADDER REVERSED SO HIGHEST IS ON TOP) */}
+                  <div className="space-y-0.5 pt-1 border-b border-rose-955/25 pb-1">
+                    {orderBookAsks
+                      .slice()
+                      .reverse()
+                      .filter(ask => {
+                        if (bookFilter === 'institutional') return ask.type === 'WALL' || ask.type === 'ICEBERG';
+                        if (bookFilter === 'all_alerts') return ask.type !== 'MM';
+                        return true;
+                      })
+                      .map((ask, i) => {
+                        const depthPct = Math.min(100, (ask.size / 800) * 100);
+                        return (
+                          <div
+                            key={`ask-${i}`}
+                            className="grid grid-cols-4 items-center text-right hover:bg-rose-950/5 py-1 px-1 transition-colors relative"
+                          >
+                            <div
+                              className="absolute inset-y-0 right-0 bg-rose-950/10 pointer-events-none transition-all"
+                              style={{ width: `${depthPct}%` }}
+                            />
+                            <div className="text-rose-500 font-bold text-left z-10">${ask.price.toFixed(2)}</div>
+                            <div className="text-zinc-250 z-10">{ask.size.toLocaleString()}</div>
+                            <div className="text-zinc-450 z-10">{ask.cumulative.toLocaleString()}</div>
+                            <div className="z-10">
+                              <span
+                                className={`text-[8px] font-black uppercase tracking-wider px-1 py-0.5 rounded ${
+                                  ask.type === 'WALL'
+                                    ? 'bg-red-500/15 text-red-100 border border-red-905/40'
+                                    : ask.type === 'ICEBERG'
+                                      ? 'bg-cyan-500/15 text-cyan-400 border border-cyan-900/40'
+                                      : ask.type === 'SPOOF'
+                                        ? 'bg-amber-500/15 text-amber-400 border border-amber-900/40 animate-pulse'
+                                        : 'text-zinc-650'
+                                }`}
+                              >
+                                {ask.type === 'WALL' ? '⚡ LIMIT WALL' : ask.type === 'ICEBERG' ? '🛡️ ICEBERG' : ask.type === 'SPOOF' ? '⚠️ SPOOF FLAG' : 'MM LIMIT'}
+                              </span>
+                            </div>
+                          </div>
+                        );
+                      })}
+                  </div>
+
+                  {/* SPREAD BAR (CLASSIC BOOK GAP) */}
+                  <div className="grid grid-cols-4 items-center bg-[#0d0d0e] border border-[#1f1f22] my-1.5 py-1.5 px-2 font-black tracking-wider text-[11px] text-zinc-350 relative">
+                    <div className="text-left font-mono font-black flex items-center gap-1.5">
+                      <span className="inline-block w-1.5 h-1.5 rounded-full bg-cyan-400 animate-pulse" />
+                      MID: ${selectedAsset.defaultPrice.toFixed(2)}
+                    </div>
+                    <div className="text-right text-[9px] text-zinc-500">
+                      GAP: ${(orderBookAsks[0]?.price - orderBookBids[0]?.price || 0.1).toFixed(2)} pts
+                    </div>
+                    <div className="text-right text-[10px] text-cyan-400">
+                      OBI: {obiPercentage > 0 ? '+' : ''}{obiPercentage.toFixed(1)}%
+                    </div>
+                    <div className="text-right font-sans font-black text-[9.5px]">
+                      SPREAD S0
+                    </div>
+                  </div>
+
+                  {/* BIDS */}
+                  <div className="space-y-0.5 pt-1">
+                    {orderBookBids
+                      .filter(bid => {
+                        if (bookFilter === 'institutional') return bid.type === 'WALL' || bid.type === 'ICEBERG';
+                        if (bookFilter === 'all_alerts') return bid.type !== 'MM';
+                        return true;
+                      })
+                      .map((bid, i) => {
+                        const depthPct = Math.min(100, (bid.size / 800) * 100);
+                        return (
+                          <div
+                            key={`bid-${i}`}
+                            className="grid grid-cols-4 items-center text-right hover:bg-emerald-950/5 py-1 px-1 transition-colors relative"
+                          >
+                            <div
+                              className="absolute inset-y-0 right-0 bg-emerald-950/10 pointer-events-none transition-all"
+                              style={{ width: `${depthPct}%` }}
+                            />
+                            <div className="text-emerald-500 font-bold text-left z-10">${bid.price.toFixed(2)}</div>
+                            <div className="text-zinc-250 z-10">{bid.size.toLocaleString()}</div>
+                            <div className="text-zinc-450 z-10">{bid.cumulative.toLocaleString()}</div>
+                            <div className="z-10">
+                              <span
+                                className={`text-[8px] font-black uppercase tracking-wider px-1 py-0.5 rounded ${
+                                  bid.type === 'WALL'
+                                    ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-950/40'
+                                    : bid.type === 'ICEBERG'
+                                      ? 'bg-cyan-500/15 text-cyan-400 border border-cyan-900/40'
+                                      : bid.type === 'SPOOF'
+                                        ? 'bg-amber-500/15 text-amber-400 border border-amber-900/40 animate-pulse'
+                                        : 'text-zinc-650'
+                                }`}
+                              >
+                                {bid.type === 'WALL' ? '⚡ LIMIT WALL' : bid.type === 'ICEBERG' ? '🛡️ ICEBERG' : bid.type === 'SPOOF' ? '⚠️ SPOOF FLAG' : 'MM LIMIT'}
+                              </span>
+                            </div>
+                          </div>
+                        );
+                      })}
+                  </div>
+
+                </div>
+              </div>
+
+              <div className="border-t border-[#1F1F1F] pt-3.5 mt-5 text-[7px] text-zinc-550 font-mono text-right uppercase block">
+                SKYSVISION ORDERBOOK ENGINE (V3.14) • SECURE STREAM
+              </div>
+            </div>
+
+            {/* COLUMN 2: ANALYTICAL METRICS HUD (Col span 5) */}
+            <div className="xl:col-span-5 flex flex-col gap-4">
+              
+              {/* Module A: Microstructure Ratios */}
+              <div className="bg-[#050505] p-4.5 rounded-lg border border-[#1A1A1A] text-left">
+                <div className="flex items-center gap-1.5 border-b border-[#222] pb-2 mb-3.5">
+                  <Gauge className="w-3.5 h-3.5 text-cyan-400" />
+                  <span className="font-mono text-[9px] font-black text-zinc-100 uppercase tracking-widest">
+                    Imbalance & Volatility Toxicity Meter
+                  </span>
+                </div>
+
+                <p className="text-[10px] text-zinc-400 font-sans leading-normal mb-4">
+                  OBI evaluates cumulative bid/ask ratio. VPIN captures flow toxicity (informed trading toxicity vs mm passive fills).
+                </p>
+
+                {/* Meter 1: OBI Gauge */}
+                <div className="mb-4">
+                  <div className="flex justify-between text-[8px] font-black uppercase text-zinc-400 tracking-wider mb-1.5">
+                    <span>ASK DOMINATED (-100%)</span>
+                    <span className="text-[#E5E5E5] font-black font-mono">
+                      OBI: {obiPercentage > 0 ? '+' : ''}{obiPercentage.toFixed(1)}%
+                    </span>
+                    <span>BID DOMINATED (+100%)</span>
+                  </div>
+                  <div className="h-2 bg-[#141414] rounded overflow-hidden relative border border-[#222]">
+                    <div className="absolute inset-y-0 left-1/2 w-[1px] bg-[#333] z-10" />
+                    <div
+                      className={`h-full transition-all duration-300 absolute ${
+                        obiPercentage > 0 ? 'bg-emerald-500 left-1/2' : 'bg-rose-500 right-1/2'
+                      }`}
+                      style={{
+                        width: `${Math.abs(obiPercentage) / 2}%`
+                      }}
+                    />
+                  </div>
+                </div>
+
+                {/* Meter 2: VPIN Volume Toxicity */}
+                <div className="mb-4">
+                  <div className="flex justify-between items-center text-[8px] font-black uppercase text-zinc-400 tracking-wider mb-1.5">
+                    <span>VPIN Volume Toxicity Coefficient</span>
+                    <span className={`font-mono text-[9.5px] font-bold ${vpinToxicity > 65 ? 'text-rose-500 animate-pulse font-black' : 'text-cyan-400'}`}>
+                      {vpinToxicity.toFixed(1)}% {vpinToxicity > 65 ? '[HIGH TOXICITY]' : '[NORMAL]'}
+                    </span>
+                  </div>
+                  <div className="h-1.5 bg-[#141414] rounded overflow-hidden relative border border-[#222]">
+                    <div
+                      className={`h-full transition-all duration-500 ${
+                        vpinToxicity > 65 ? 'bg-rose-500' : 'bg-cyan-500'
+                      }`}
+                      style={{ width: `${vpinToxicity}%` }}
+                    />
+                  </div>
+                </div>
+
+                {/* Meter 3: Absorption Strength */}
+                <div>
+                  <div className="flex justify-between items-center text-[8px] font-black uppercase text-zinc-400 tracking-wider mb-1.5">
+                    <span>MM Absorption Strength</span>
+                    <span className="font-mono text-[9.5px] font-bold text-emerald-400">
+                      {absorptionStrength.toFixed(1)}% [SECURE]
+                    </span>
+                  </div>
+                  <div className="h-1.5 bg-[#141414] rounded overflow-hidden relative border border-[#222]">
+                    <div
+                      className="h-full bg-emerald-500 transition-all duration-500"
+                      style={{ width: `${absorptionStrength}%` }}
+                    />
+                  </div>
+                </div>
+
+              </div>
+
+              {/* Module B: Custom Logging Activity Feed */}
+              <div className="bg-[#050505] p-4.5 rounded-lg border border-[#1A1A1A] text-left flex-1 flex flex-col justify-between">
+                <div>
+                  <div className="flex items-center gap-1.5 border-b border-[#222] pb-2 mb-3">
+                    <Activity className="w-3.5 h-3.5 text-rose-500" />
+                    <span className="font-mono text-[9px] font-black text-zinc-100 uppercase tracking-widest">
+                      Real-time Microstructure Alert Feed
+                    </span>
+                  </div>
+
+                  {/* Scrolling alerts list */}
+                  <div className="space-y-2 h-[220px] overflow-y-auto pr-1 select-none font-mono text-[9px]">
+                    {microstructureFeeds.map(feed => (
+                      <div
+                        key={feed.id}
+                        className="bg-black/30 border border-[#1A1A1A] p-2 rounded flex flex-col justify-between leading-snug animate-fadeIn"
+                      >
+                        <div className="flex items-center justify-between text-[8px] tracking-wider font-extrabold text-zinc-550 border-b border-zinc-900 pb-1 mb-1">
+                          <span>TIME: {feed.time}</span>
+                          <span className={feed.side === 'BID' ? 'text-emerald-500' : 'text-[#F87171]'}>
+                            TARGET: {feed.side} (${feed.price})
+                          </span>
+                        </div>
+                        <p className={feed.style}>{feed.text}</p>
+                      </div>
+                    ))}
+                    {microstructureFeeds.length === 0 && (
+                      <div className="text-center text-zinc-650 py-10 italic">
+                        Scanning incoming data streams...
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                <div className="border-t border-[#1F1F1F] pt-2.5 mt-4 text-[7px] text-zinc-550 font-mono text-right uppercase block">
+                  CANCELLATION_SOLVER.py • INSTANT COGNITIVE TRACKING
+                </div>
+              </div>
+
             </div>
 
           </div>

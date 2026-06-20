@@ -102,7 +102,13 @@ export function SkyVisionView() {
   const selectedTimeframe = useContractStore(s => s.selectedTimeframe);
   const selectedStrike = useContractStore(s => s.selectedStrike);
   const activeContract = useContractStore(s => s.activeContract);
-  const serverState = useContractStore(s => s.serverState);
+  const rawServerState = useContractStore(s => s.serverState);
+  const serverState = useMemo(() => {
+    if (!rawServerState) return null;
+    const ticker = rawServerState.contract?.replace('-', ' ').split(' ')[0];
+    if (ticker !== selectedAsset.ticker) return null;
+    return rawServerState;
+  }, [rawServerState, selectedAsset.ticker]);
   const isContractLocked = useContractStore(s => s.isContractLocked);
   
   const selectContract = useContractStore(s => s.selectContract);

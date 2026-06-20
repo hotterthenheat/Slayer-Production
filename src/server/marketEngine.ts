@@ -1347,6 +1347,7 @@ export const constructPayload = (params: {
     candles,
     optionPremiumFloat,
     optionStrike,
+    liveSpotPrices: { ...db.liveSpotPrices },
     data_source: db.dataSource,
     api_status_message: db.apiStatusMessage,
     gex_profile,

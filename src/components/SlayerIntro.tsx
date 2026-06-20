@@ -78,11 +78,18 @@ export default function SlayerIntro({
   session,
   onRequestAuth,
 }: SlayerIntroProps) {
-  const serverState = useContractStore(s => s.serverState);
+  const rawServerState = useContractStore(s => s.serverState);
   
   // State for active chosen index on landing hero
   const [activeHeroIdx, setActiveHeroIdx] = useState<'SPX' | 'NDX' | 'QQQ' | 'SPY' | 'RUT'>('SPX');
   const [billingCycle, setBillingCycle] = useState<'monthly' | 'annual'>('monthly');
+
+  const serverState = React.useMemo(() => {
+    if (!rawServerState) return null;
+    const ticker = rawServerState.contract?.replace('-', ' ').split(' ')[0];
+    if (ticker !== activeHeroIdx) return null;
+    return rawServerState;
+  }, [rawServerState, activeHeroIdx]);
 
   // Synchronize with external selectedAsset when it updates
   useEffect(() => {
@@ -391,7 +398,7 @@ export default function SlayerIntro({
           </div>
 
           {/* NEW HERO ENHANCEMENTS (Dealer Bias, Vol State, etc) */}
-          {serverState?.deep_intelligence?.dealer_metrics && (
+          {serverState?.deep_intelligence?.dealer_metrics ? (
             <div className="grid grid-cols-2 md:grid-cols-4 gap-2 bg-black border border-black/40 p-2.5 rounded-lg relative z-10 text-[9px] mb-4">
                <div className="border border-black/50 p-2 rounded-md bg-black/50">
                   <span className="text-zinc-500 uppercase font-black block tracking-widest text-[7px] mb-0.5">Dealer Bias</span>
@@ -431,6 +438,11 @@ export default function SlayerIntro({
                      <div className="bg-[#4f8cff] h-full transition-all duration-300" style={{ width: `${serverState.deep_intelligence.dealer_metrics.dealerScore}%` }} />
                   </div>
                </div>
+            </div>
+          ) : (
+            <div className="flex flex-col items-center justify-center p-6 border border-zinc-900 border-dashed rounded-lg bg-black/40 text-[9px] text-[#A3A3A3] uppercase tracking-widest animate-pulse mb-4 h-[116px]">
+              <span>Awaiting Dealer positioning flow for {activeHeroIdx}...</span>
+              <span className="text-[8px] text-zinc-650 mt-1 uppercase font-mono">Syncing real-time market data</span>
             </div>
           )}
 

@@ -10,6 +10,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Plus, LayoutGrid, ChevronDown, Rocket, Dna, Settings, Database, Activity, Target, Network, Sparkles, SlidersHorizontal } from 'lucide-react';
 import { Pane, renderWidget } from './WorkspaceWidgets';
+import { ErrorBoundary } from './ErrorBoundary';
 import {
   PaneLayout, WidgetType, WIDGETS, widgetMeta, paneId, TEMPLATES, cloneTemplate, GRID_COLS,
 } from '../lib/workspace';
@@ -253,7 +254,9 @@ export function WorkspaceView({ isSuperAdmin }: Props) {
                     onMaximize={() => setMaximized(p.i)}
                     onHeaderPointerDown={(e) => startInteraction(p.i, 'move', e)}
                   >
-                    {renderWidget(p.widget)}
+                    <ErrorBoundary label={meta.title}>
+                      {renderWidget(p.widget)}
+                    </ErrorBoundary>
                   </Pane>
                   <div
                     onPointerDown={(e) => startInteraction(p.i, 'resize', e)}
@@ -283,7 +286,9 @@ export function WorkspaceView({ isSuperAdmin }: Props) {
                 onMaximize={() => setMaximized(null)}
                 onClose={() => { closePane(p.i); setMaximized(null); }}
               >
-                {renderWidget(p.widget)}
+                <ErrorBoundary label={widgetMeta(p.widget).title}>
+                  {renderWidget(p.widget)}
+                </ErrorBoundary>
               </Pane>
             </div>
           );

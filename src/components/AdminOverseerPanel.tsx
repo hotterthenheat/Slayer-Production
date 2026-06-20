@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { formatDateTime } from '../lib/timeUtils';
 import {
   ShieldAlert, Users, Activity, Key, MonitorPlay, Radio, ScrollText,
   Ticket, Power, ToggleLeft, ToggleRight, Ban, UserX, LogOut, Eye, Search, RefreshCw, Zap
@@ -71,7 +72,7 @@ export function AdminOverseerPanel({ session, onSimulateTier }: AdminPanelProps)
             <Key className="w-4 h-4 text-rose-500" /> Overseer
           </h2>
           <p className="text-[10px] text-zinc-500 uppercase tracking-widest leading-relaxed">
-            Role: <span className="text-amber-400 font-bold">{overview?.admin_role || session.admin_role || 'super_admin'}</span><br/>
+            Role: <span className="text-amber-400 font-bold">{overview?.admin_role || session?.admin_role || 'super_admin'}</span><br/>
             STATUS: <span className="text-[#4ADE80] animate-pulse">● SECURE MFA</span>
           </p>
         </div>
@@ -308,7 +309,7 @@ function AuditTab() {
         <tbody>
           {entries.map((e) => (
             <tr key={e.id} className="border-b border-black">
-              <td className="p-3 text-zinc-500">{new Date(e.timestamp).toLocaleString()}</td>
+              <td className="p-3 text-zinc-500">{formatDateTime(e.timestamp)}</td>
               <td className="p-3 text-[#4ADE80]">{e.admin_email}</td>
               <td className="p-3 text-amber-400 font-bold">{e.action_taken}</td>
               <td className="p-3 text-zinc-400">{e.target_id}</td>

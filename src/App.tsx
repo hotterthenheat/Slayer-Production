@@ -4,6 +4,7 @@ import { useContractStore } from './lib/store';
 import { applyAllPreferences } from './lib/displayPrefs';
 import { ASSET_LIST } from './data';
 import { AssetInfo } from './types';
+import { formatTime } from './lib/timeUtils';
 
 // Import Workspace Modular Views — eager imports are the shell + landing path.
 import { DiscoveryView } from './components/DiscoveryView';
@@ -28,6 +29,7 @@ const ArborCapital = lazy(() => import('./components/ArborCapital'));
 const SettingsPanel = lazy(() => import('./components/SettingsPanel').then(m => ({ default: m.SettingsPanel })));
 const AdminOverseerPanel = lazy(() => import('./components/AdminOverseerPanel').then(m => ({ default: m.AdminOverseerPanel })));
 const WorkspaceView = lazy(() => import('./components/WorkspaceView').then(m => ({ default: m.WorkspaceView })));
+const QuantSuiteView = lazy(() => import('./components/QuantSuiteView'));
 import { AppShell } from './components/AppShell';
 
 import {
@@ -99,6 +101,22 @@ const TickerTape = memo(() => {
     </div>
   );
 });
+
+// Live footer clock that respects the user's global timezone/format preferences.
+const FooterClock: React.FC = () => {
+  const [time, setTime] = useState<string>('');
+
+  useEffect(() => {
+    const tick = () => setTime(formatTime(new Date(), 'EST', '12H'));
+    tick();
+    const interval = setInterval(tick, 1000);
+    return () => clearInterval(interval);
+  }, []);
+
+  return (
+    <span className="text-[#fbbf24] font-black tabular-nums">{time}</span>
+  );
+};
 
 export default function App() {
   // Navigation & configuration subscribing to global useContractStore Zustand store
@@ -534,7 +552,7 @@ export default function App() {
             });
           } else if (item.id === 'vpin-tracker') {
             useContractStore.setState({
-              activeTab: 'dealerflow',
+              activeTab: 'pinpoint',
               auditSearchQuery: '',
               expandedAuditId: null
             });
@@ -892,7 +910,22 @@ export default function App() {
             className={`flex-1 flex flex-col w-full max-w-full justify-start overflow-y-auto overflow-x-hidden scroll-smooth touch-pan-y ${['workspace', 'home'].includes(activeTab) ? 'p-0 gap-0' : 'p-2 sm:p-4 md:p-6 gap-4 md:gap-6'}`}
             style={{ WebkitOverflowScrolling: 'touch' }}
           >
-            <ErrorBoundary label="Workspace" key={activeTab}>
+            <ErrorBoundary
+              label={
+                activeTab === 'home' ? 'Home' :
+                activeTab === 'subscription' ? 'Subscriptions' :
+                activeTab === 'skyvision' ? 'SkyVision Cockpit' :
+                activeTab === 'pinpoint' ? 'Pinpoint AI Tracker' :
+                activeTab === 'quant' ? 'Institutional Quant Lab' :
+                activeTab === 'auditor' ? 'Trust Registry' :
+                activeTab === 'community' ? 'Arbor Capital' :
+                activeTab === 'settings' ? 'System Personalization' :
+                activeTab === 'workspace' ? 'Workstation Editor' :
+                activeTab === 'admin' ? 'Admin Overseer' :
+                'Workspace'
+              }
+              key={activeTab}
+            >
             <Suspense fallback={<div className="w-full min-h-[300px] flex items-center justify-center text-zinc-600 font-mono text-[11px] uppercase tracking-[0.25em] animate-pulse">Loading module…</div>}>
             {/* TAB 1: HOME */}
             {activeTab === 'home' && (
@@ -953,6 +986,15 @@ export default function App() {
               <div className="view-enter border border-black bg-black/80 rounded-md p-1 drop-shadow-2xl">
                 <TierGuard requiredTier={3} tabKey="pinpoint" planKey="pinpoint" planName="Pinpoint AI Tracker" planPrice="$500">
                   <DealerFlowView />
+                </TierGuard>
+              </div>
+            )}
+
+            {/* TAB: INSTITUTIONAL QUANT LAB */}
+            {activeTab === 'quant' && (
+              <div className="view-enter border border-black bg-black/80 rounded-md p-1 drop-shadow-2xl">
+                <TierGuard requiredTier={3} tabKey="quant" planKey="quant" planName="Institutional Quant Lab" planPrice="$800">
+                  <QuantSuiteView />
                 </TierGuard>
               </div>
             )}
@@ -1055,12 +1097,14 @@ export default function App() {
       {/* Terminal Footer Status Bar */}
       {activeTab !== 'workspace' && (
         <footer className="mt-auto border-t border-black bg-black px-6 py-3.5 flex flex-col sm:flex-row items-center justify-between text-[9px] text-zinc-550 font-mono tracking-widest uppercase gap-2">
-        <div className="flex flex-wrap gap-4 sm:gap-6 justify-center sm:justify-start">
+        <div className="flex flex-wrap gap-4 sm:gap-6 justify-center sm:justify-start items-center">
           <span>SYSTEM STATUS: OPTIMAL</span>
           <span className="text-zinc-850">|</span>
           <span>LATENCY: ACTIVE (SSE SYNC)</span>
           <span className="text-zinc-850">|</span>
           <span>FEED: CME GROUP DIRECT FEED</span>
+          <span className="text-zinc-850">|</span>
+          <span className="flex items-center gap-1"><span className="text-zinc-600">CLOCK (NY):</span> <FooterClock /></span>
           <span className="text-zinc-850">|</span>
           <span>PROVENANCE TRAIL ACTIVE</span>
           <span className="text-zinc-850">|</span>
@@ -1182,7 +1226,7 @@ export default function App() {
                               });
                             } else if (tickerItem.id === 'vpin-tracker') {
                               useContractStore.setState({
-                                activeTab: 'dealerflow',
+                                activeTab: 'pinpoint',
                                 auditSearchQuery: '',
                                 expandedAuditId: null
                               });

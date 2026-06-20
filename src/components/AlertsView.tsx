@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 import { useContractStore } from '../lib/store';
 import { ASSET_LIST } from '../data';
+import { formatTime } from '../lib/timeUtils';
 
 interface AlertItem {
   id: string;
@@ -136,7 +137,7 @@ export function AlertsView() {
   ]);
 
   const addSimulatedAlert = (priority: 'CRITICAL' | 'HIGH' | 'MEDIUM' | 'LOW') => {
-    const time = new Date().toLocaleTimeString();
+    const time = formatTime(new Date());
     let newAlert: AlertItem;
 
     if (priority === 'CRITICAL') {

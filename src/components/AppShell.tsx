@@ -93,6 +93,7 @@ export function AppShell({ children, session, onLogout, tierInfo, onUpgradeClick
           <NavItem id="home" label="Ecosystem" icon={Home} activeColor="text-[#F4F5F6]" />
           <NavItem id="skyvision" label="SkysVision" icon={Sparkles} activeColor="text-[#6A93B5]" />
           <NavItem id="pinpoint" label="Pinpoint AI" icon={Dna} activeColor="text-[#C79350]" />
+          <NavItem id="quant" label="Quant Lab" icon={LineChart} activeColor="text-[#D9A15C]" />
           <NavItem id="auditor" label="Trust Archive" icon={Database} />
           
           <div className={`text-[8px] text-zinc-600 font-black tracking-widest px-2 py-1 uppercase mt-4 mb-1 whitespace-nowrap overflow-hidden transition-all duration-300 ${isSidebarExpanded ? 'opacity-100' : 'opacity-0 h-0 py-0 mb-0 mt-0 pointer-events-none'}`}>
@@ -174,6 +175,7 @@ export function AppShell({ children, session, onLogout, tierInfo, onUpgradeClick
             <NavItem id="home" label="Ecosystem" icon={Home} activeColor="text-[#F4F5F6]" isMobile />
             <NavItem id="skyvision" label="SkysVision" icon={Sparkles} activeColor="text-[#6A93B5]" isMobile />
             <NavItem id="pinpoint" label="Pinpoint AI" icon={Dna} activeColor="text-[#C79350]" isMobile />
+            <NavItem id="quant" label="Quant Lab" icon={LineChart} activeColor="text-[#D9A15C]" isMobile />
             <NavItem id="auditor" label="Trust Archive" icon={Database} isMobile />
             
             <div className="text-[8px] text-zinc-600 font-black tracking-widest px-2 py-1 uppercase mt-6 mb-2">

@@ -5,6 +5,7 @@
 
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
+import * as THREE from 'three';
 import { 
   Compass, 
   Layers, 
@@ -21,6 +22,8 @@ import {
 import { GexProfileData, GexStrikeDetail } from '../types';
 import { useContractStore } from '../lib/store';
 import { ASSET_LIST } from '../data';
+import { computeRndProfile } from '../lib/rndEngine';
+import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Tooltip, Legend, CartesianGrid } from 'recharts';
 
 // ============================================================
 // MATHEMATICAL CORE (BLACK-SCHOLES-MERTON ENGINE)
@@ -197,9 +200,25 @@ export function InstitutionalPhysicsDashboard({ profile: externalProfile, ticker
   // Control over surface topography model setting: 'call' | 'put' | 'neutral'
   const [surfaceMode, setSurfaceMode] = useState<'call' | 'put' | 'neutral'>('neutral');
 
+  // Dynamic Breeden-Litzenberger RND Layer state
+  const [showRnd, setShowRnd] = useState<boolean>(false);
+
+  // Live options stream simulation control (Slayer Terminal Standard)
+  const [isStreaming, setIsStreaming] = useState<boolean>(true);
+  const [streamTick, setStreamTick] = useState<number>(0);
+
   // Fullscreen expansion and resize coordination
   const [isExpanded, setIsExpanded] = useState<boolean>(false);
   const [resizeKey, setResizeKey] = useState<number>(0);
+
+  // High frequency simulation ticking loop
+  useEffect(() => {
+    if (!isStreaming) return;
+    const interval = setInterval(() => {
+      setStreamTick(prev => prev + 1);
+    }, 450);
+    return () => clearInterval(interval);
+  }, [isStreaming]);
 
   // Esc keyboard shortcut to exit fullscreen mode
   useEffect(() => {
@@ -219,9 +238,9 @@ export function InstitutionalPhysicsDashboard({ profile: externalProfile, ticker
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
-  // 3D Matrix states
-  const [rot, setRot] = useState<number>(35);
-  const [elev, setElev] = useState<number>(45);
+  // 3D Matrix states - Ref based for 60 FPS non-blocking rotation dragging
+  const targetRotRef = useRef<number>(35);
+  const targetElevRef = useRef<number>(45);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const mouseRef = useRef({ x: 0, y: 0, isDown: false });
 
@@ -254,10 +273,24 @@ export function InstitutionalPhysicsDashboard({ profile: externalProfile, ticker
     setSystemState('SYSTEM ACTIVE');
   };
 
-  // Compute strikes table with completed call and put details
+  // Synchronized active spot fluctuation price matching standard stream ticks
+  const activeSpot = useMemo(() => {
+    const priceTickFluctuation = isStreaming ? Math.sin(streamTick * 0.12) * (profile.spot * 0.0016) : 0;
+    return profile.spot + priceTickFluctuation;
+  }, [profile.spot, isStreaming, streamTick]);
+
+  // Solves the Breeden-Litzenberger Risk Neutral Density Profile
+  const rndAnalysis = useMemo(() => {
+    return computeRndProfile(activeSpot, ticker, 30);
+  }, [activeSpot, ticker]);
+
+  // Compute strikes table with completed call and put details (Real-time dynamic data binding)
   const impliedStrikes = useMemo(() => {
     const list: GexStrikeDetail[] = [];
-    const basePrice = profile.spot;
+    
+    // Infuse high frequency real-time pricing ticks if active
+    const priceTickFluctuation = isStreaming ? Math.sin(streamTick * 0.12) * (profile.spot * 0.0016) : 0;
+    const basePrice = profile.spot + priceTickFluctuation;
     const spacing = ticker === 'SPX' ? 25 : ticker === 'NDX' ? 100 : ticker === 'RUT' ? 10 : 5;
 
     // Use a clean, explicitly bounded iterator from -7 to 7 (exactly 15 strikes)
@@ -279,8 +312,10 @@ export function InstitutionalPhysicsDashboard({ profile: externalProfile, ticker
       
       const callOi = Math.round(18400 * probabilitySpread * callBias);
       const putOi = Math.round(18400 * probabilitySpread * putBias);
-      const callVolume = Math.round(callOi * 0.15 * (1 + Math.random() * 0.05));
-      const putVolume = Math.round(putOi * 0.15 * (1 + Math.random() * 0.05));
+      
+      // Fast pacing high-frequency volume ticks matching the flow ripple
+      const callVolume = Math.round(callOi * 0.15 * (1 + Math.abs(Math.sin(streamTick * 0.2 + i)) * 0.4));
+      const putVolume = Math.round(putOi * 0.15 * (1 + Math.abs(Math.cos(streamTick * 0.2 - i)) * 0.4));
 
       list.push({
         strike: strikePrice,
@@ -296,7 +331,7 @@ export function InstitutionalPhysicsDashboard({ profile: externalProfile, ticker
     }
 
     return list.sort((a, b) => b.strike - a.strike);
-  }, [ticker, profile]);
+  }, [ticker, profile, streamTick, isStreaming]);
 
   // Compute final Black-Scholes Greeks at active ATM zone
   const calculatedGreeks = useMemo(() => {
@@ -306,7 +341,7 @@ export function InstitutionalPhysicsDashboard({ profile: externalProfile, ticker
     return calculateBSMGreeks(S, K, maturity, profile.expectedMovePct * 10, 0.05, 0.012, 'call');
   }, [profile, ticker]);
 
-  // Handle manual canvas mouse rotation and drag controls
+  // Handle manual canvas mouse rotation and drag controls using momentum ref targets
   const handleMouseDown = (e: React.MouseEvent) => {
     mouseRef.current.isDown = true;
     mouseRef.current.x = e.clientX;
@@ -320,238 +355,421 @@ export function InstitutionalPhysicsDashboard({ profile: externalProfile, ticker
     mouseRef.current.x = e.clientX;
     mouseRef.current.y = e.clientY;
 
-    setRot(prev => (prev - dx * 0.45 + 360) % 360);
-    setElev(prev => Math.max(15, Math.min(85, prev + dy * 0.45)));
+    targetRotRef.current = (targetRotRef.current - dx * 0.45 + 360) % 360;
+    targetElevRef.current = Math.max(15, Math.min(85, targetElevRef.current + dy * 0.45));
   };
 
   const handleMouseUpOrLeave = () => {
     mouseRef.current.isDown = false;
   };
 
-  // Interactive 3D Wireframe Drawing loop
+  // Sync references for the rendering loop to completely avoid React stale closure re-renders
+  const surfaceModeRef = useRef(surfaceMode);
+  const impliedStrikesRef = useRef(impliedStrikes);
+  const isStreamingRef = useRef(isStreaming);
+  const showRndRef = useRef(showRnd);
+  const tickerRef = useRef(ticker);
+  const spotRef = useRef(profile.spot);
+
+  useEffect(() => {
+    surfaceModeRef.current = surfaceMode;
+    impliedStrikesRef.current = impliedStrikes;
+    isStreamingRef.current = isStreaming;
+    showRndRef.current = showRnd;
+    tickerRef.current = ticker;
+    spotRef.current = profile.spot;
+  }, [surfaceMode, impliedStrikes, isStreaming, showRnd, ticker, profile.spot]);
+
+  // Interactive High-Performance Continuous 3D WebGL Surface and Wireframe Loop via Three.js
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
 
-    // Retina DPR adaptation
-    const dpr = window.devicePixelRatio || 1;
+    // Retina & container adaptations size parameters
     const rect = canvas.getBoundingClientRect();
-    canvas.width = rect.width * dpr;
-    canvas.height = rect.height * dpr;
-    ctx.scale(dpr, dpr);
+    const w = rect.width || 480;
+    const h = rect.height || 360;
 
-    const w = rect.width;
-    const h = rect.height;
-    const cx = w / 2;
-    const cy = h / 2;
+    // Create GPU-accelerated WebGLRenderer on the target canvas
+    const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
+    renderer.setPixelRatio(window.devicePixelRatio || 1);
+    renderer.setSize(w, h, false);
 
-    // Clean canvas with deep sterile backdrop
-    ctx.fillStyle = '#101012';
-    ctx.fillRect(0, 0, w, h);
+    // Initial Scene setup
+    const scene = new THREE.Scene();
 
-    // Subtle center light gradient
-    const fillLight = ctx.createRadialGradient(cx, cy, 20, cx, cy, Math.max(w, h) * 0.7);
-    fillLight.addColorStop(0, 'rgba(255, 255, 255, 0.045)');
-    fillLight.addColorStop(0.5, 'rgba(255, 255, 255, 0.01)');
-    fillLight.addColorStop(1, 'rgba(255, 255, 255, 0)');
-    ctx.fillStyle = fillLight;
-    ctx.fillRect(0, 0, w, h);
+    // Perspective Camera setup
+    const camera = new THREE.PerspectiveCamera(42, w / h, 1, 1000);
 
-    // Render mesh grid coordinates
-    const scale = 1.35;
-    const size = 18; // 18x18 nodes
-    const maxVal = 180;
-    const points: { x2d: number; y2d: number; zVal: number }[][] = [];
+    // Add cinematic soft lighting
+    const ambientLight = new THREE.AmbientLight(0x1a1a1f, 1.8);
+    scene.add(ambientLight);
 
-    // Map strikes peak parameters onto the mesh
-    const strikePeaks = impliedStrikes.map(s => ({
-      offset: (((s.index ?? 0) / 7)) * 140, // Perfectly spread from -140 to +140
-      netGex: s.netGex,
-      callGex: s.callGex,
-      putGex: s.putGex
-    }));
+    const dirLight1 = new THREE.DirectionalLight(0xffffff, 1.5);
+    dirLight1.position.set(200, 300, 100);
+    scene.add(dirLight1);
 
-    for (let i = 0; i < size; i++) {
-      const u = (i / (size - 1) - 0.5) * 2; // -1 to 1
-      const x3d = u * maxVal;
-      points[i] = [];
+    const dirLight2 = new THREE.DirectionalLight(0x71717a, 1.0);
+    dirLight2.position.set(-200, -100, -100);
+    scene.add(dirLight2);
 
-      for (let j = 0; j < size; j++) {
-        const v = (j / (size - 1) - 0.5) * 2; // -1 to 1
-        const y3d = v * maxVal;
+    // Displace Plane Geometry representing options strike-vol matrix landscape (21 rows x 21 cols)
+    const gridSize = 21;
+    const geometry = new THREE.PlaneGeometry(160, 160, gridSize - 1, gridSize - 1);
+    geometry.rotateX(-Math.PI / 2); // align flat to horizontal ground plane
 
-        // Base saddle topography equation
-        let z3d = 8 * Math.sin(u * Math.PI) * Math.cos(v * Math.PI);
+    // Allocate initial custom vertex colors attribute buffer
+    const colorAttribute = new THREE.BufferAttribute(new Float32Array(gridSize * gridSize * 3), 3);
+    geometry.setAttribute('color', colorAttribute);
 
-        // Map GEX surface deformations based on Call, Put, or Neutral selection
-        if (surfaceMode === 'call') {
-          strikePeaks.forEach(pk => {
-            const range = Math.abs(x3d - pk.offset);
-            if (range < 30) {
-              const weight = Math.cos((range / 30) * Math.PI / 2);
-              z3d += (Math.abs(pk.callGex) / 1e6) * 0.28 * weight * (1 - Math.abs(v) * 0.45);
+    // Solid Volumetric Shaded Mesh Material
+    const surfaceMaterial = new THREE.MeshStandardMaterial({
+      vertexColors: true,
+      roughness: 0.20,
+      metalness: 0.30,
+      side: THREE.DoubleSide
+    });
+    const surfaceMesh = new THREE.Mesh(geometry, surfaceMaterial);
+    scene.add(surfaceMesh);
+
+    // Glowing wireframe outlines overlay (sharing the EXACT SAME geometry!)
+    const wireframeMaterial = new THREE.MeshBasicMaterial({
+      color: 0x5a5a65,
+      wireframe: true,
+      transparent: true,
+      opacity: 0.20
+    });
+    const wireMesh = new THREE.Mesh(geometry, wireframeMaterial);
+    scene.add(wireMesh);
+
+    // Render a vertical golden spot price indicator axis pole in the center
+    const spotBarPoints = [new THREE.Vector3(0, -35, 0), new THREE.Vector3(0, 35, 0)];
+    const spotBarGeom = new THREE.BufferGeometry().setFromPoints(spotBarPoints);
+    const spotBarMaterial = new THREE.LineDashedMaterial({
+      color: 0xfbbf24,
+      dashSize: 4,
+      gapSize: 3
+    });
+    const spotBarLine = new THREE.Line(spotBarGeom, spotBarMaterial);
+    spotBarLine.computeLineDistances();
+    scene.add(spotBarLine);
+
+    // Sleek glowing golden floating spot orb
+    const spotOrbGeom = new THREE.SphereGeometry(3.5, 16, 16);
+    const spotOrbMaterial = new THREE.MeshBasicMaterial({
+      color: 0xfbbf24,
+      transparent: true,
+      opacity: 0.95
+    });
+    const spotOrbMesh = new THREE.Mesh(spotOrbGeom, spotOrbMaterial);
+    spotOrbMesh.position.set(0, 0, 0); // At center intersection
+    scene.add(spotOrbMesh);
+
+    // Dynamic pre-allocated buffer geometry structures for Breeden-Litzenberger Layer
+    const RND_STEPS = 120;
+    const rndImpliedGeometry = new THREE.BufferGeometry();
+    const rndImpliedPositions = new Float32Array(RND_STEPS * 6 * 3);
+    rndImpliedGeometry.setAttribute('position', new THREE.BufferAttribute(rndImpliedPositions, 3));
+
+    const rndHistGeometry = new THREE.BufferGeometry();
+    const rndHistPositions = new Float32Array(RND_STEPS * 6 * 3);
+    rndHistGeometry.setAttribute('position', new THREE.BufferAttribute(rndHistPositions, 3));
+
+    const rndImpliedMaterial = new THREE.MeshBasicMaterial({
+      color: 0x10b981,
+      side: THREE.DoubleSide,
+      transparent: true,
+      opacity: 0.22,
+      depthWrite: false
+    });
+    const rndImpliedMesh = new THREE.Mesh(rndImpliedGeometry, rndImpliedMaterial);
+    scene.add(rndImpliedMesh);
+
+    const rndHistMaterial = new THREE.MeshBasicMaterial({
+      color: 0xf43f5e,
+      side: THREE.DoubleSide,
+      transparent: true,
+      opacity: 0.18,
+      depthWrite: false
+    });
+    const rndHistMesh = new THREE.Mesh(rndHistGeometry, rndHistMaterial);
+    scene.add(rndHistMesh);
+
+    const rndImpliedLinePositions = new Float32Array((RND_STEPS + 1) * 3);
+    const rndImpliedLineGeometry = new THREE.BufferGeometry();
+    rndImpliedLineGeometry.setAttribute('position', new THREE.BufferAttribute(rndImpliedLinePositions, 3));
+    const rndImpliedLineMaterial = new THREE.LineBasicMaterial({
+      color: 0x34d399,
+      linewidth: 3
+    });
+    const rndImpliedLine = new THREE.Line(rndImpliedLineGeometry, rndImpliedLineMaterial);
+    scene.add(rndImpliedLine);
+
+    const rndHistLinePositions = new Float32Array((RND_STEPS + 1) * 3);
+    const rndHistLineGeometry = new THREE.BufferGeometry();
+    rndHistLineGeometry.setAttribute('position', new THREE.BufferAttribute(rndHistLinePositions, 3));
+    const rndHistLineMaterial = new THREE.LineBasicMaterial({
+      color: 0xfb7185,
+      linewidth: 3
+    });
+    const rndHistLine = new THREE.Line(rndHistLineGeometry, rndHistLineMaterial);
+    scene.add(rndHistLine);
+
+    // Render GPU-offloaded ground axes grid for structural bounds
+    const gridHelper = new THREE.GridHelper(160, 10, 0x27272a, 0x18181b);
+    gridHelper.position.y = -35;
+    scene.add(gridHelper);
+
+    // Active camera rotation parameters (with momentum)
+    let curRot = 35;
+    let curElev = 45;
+
+    // Timing clock for volumetric waves and rippling motion simulation
+    const clock = new THREE.Clock();
+
+    let animId: number;
+    const animate = () => {
+      animId = requestAnimationFrame(animate);
+
+      const time = clock.getElapsedTime();
+
+      // Smooth camera interpolation (dampened momentum rotation controls)
+      curRot += (targetRotRef.current - curRot) * 0.12;
+      curElev += (targetElevRef.current - curElev) * 0.12;
+
+      // Translate polar angles to cartesian camera location
+      const radius = 220;
+      const phi = ((90 - curElev) * Math.PI) / 180;
+      const theta = (curRot * Math.PI) / 180;
+
+      camera.position.x = radius * Math.sin(phi) * Math.sin(theta);
+      camera.position.y = radius * Math.cos(phi);
+      camera.position.z = radius * Math.sin(phi) * Math.cos(theta);
+      camera.lookAt(0, -10, 0);
+
+      // Re-map colors of wire contour overlay match active modes
+      const currentMode = surfaceModeRef.current;
+      if (currentMode === 'call') {
+        wireframeMaterial.color.setHex(0x10b981);
+      } else if (currentMode === 'put') {
+        wireframeMaterial.color.setHex(0xef4444);
+      } else {
+        wireframeMaterial.color.setHex(0x5a5a65);
+      }
+
+      // Read current strikes data frame
+      const currentStrikes = impliedStrikesRef.current;
+      const positions = geometry.attributes.position;
+      const colors = geometry.attributes.color;
+      const maxBoundVal = 80;
+
+      const strikePeaks = currentStrikes.map(s => ({
+        offset: (((s.index ?? 0) / 7)) * maxBoundVal,
+        netGex: s.netGex,
+        callGex: s.callGex,
+        putGex: s.putGex
+      }));
+
+      // Non-blocking vertex displacement buffer modifications (Slayer standard)
+      for (let idx = 0; idx < positions.count; idx++) {
+        const xVal = positions.getX(idx);
+        const zVal = positions.getZ(idx);
+
+        const uNorm = xVal / maxBoundVal;
+        const vNorm = zVal / maxBoundVal;
+
+        // Mathematical saddle surface foundation
+        let yVal = 4.0 * Math.sin(uNorm * Math.PI) * Math.cos(vNorm * Math.PI);
+
+        // Volatility peak deformations
+        strikePeaks.forEach(pk => {
+          const distanceRange = Math.abs(xVal - pk.offset);
+          if (distanceRange < 24) {
+            const weight = Math.cos((distanceRange / 24) * Math.PI / 2);
+            const edgeFadeDiscounts = (1.0 - Math.abs(vNorm) * 0.45);
+            
+            if (currentMode === 'call') {
+              yVal += (Math.abs(pk.callGex) / 1e6) * 12.0 * weight * edgeFadeDiscounts;
+            } else if (currentMode === 'put') {
+              yVal -= (Math.abs(pk.putGex) / 1e6) * 12.0 * weight * edgeFadeDiscounts;
+            } else {
+              yVal += (pk.netGex / 1e6) * 10.0 * weight * edgeFadeDiscounts;
             }
-          });
-        } else if (surfaceMode === 'put') {
-          strikePeaks.forEach(pk => {
-            const range = Math.abs(x3d - pk.offset);
-            if (range < 30) {
-              const weight = Math.cos((range / 30) * Math.PI / 2);
-              z3d -= (Math.abs(pk.putGex) / 1e6) * 0.28 * weight * (1 - Math.abs(v) * 0.45);
-            }
-          });
-        } else {
-          // Symmetrical balance waves representing short/long hedging grids
-          strikePeaks.forEach(pk => {
-            const range = Math.abs(x3d - pk.offset);
-            if (range < 30) {
-              const weight = Math.cos((range / 30) * Math.PI / 2);
-              const val = (pk.netGex / 1e6) * 0.24;
-              z3d += val * weight * (1 - Math.abs(v) * 0.45);
-            }
-          });
+          }
+        });
+
+        // Structural saddle variance offsets
+        yVal += (uNorm * uNorm - vNorm * vNorm) * 14.0;
+        yVal = Math.max(-50, Math.min(50, yVal)); // Safe clipping constraints
+
+        // Superimpose active fluid flow ripple if data stream is active
+        if (isStreamingRef.current) {
+          const waveRipple = 1.6 * Math.sin(uNorm * Math.PI * 2.5 + time * 3.5) * Math.cos(vNorm * Math.PI * 1.5 + time * 2.2);
+          yVal += waveRipple;
         }
 
-        // Saddle variance adjustments
-        z3d += (u * u - v * v) * 10;
-        z3d = Math.max(-90, Math.min(90, z3d));
+        positions.setY(idx, yVal);
 
-        // 3D Pitch and Yaw Projection System
-        const radRot = (rot * Math.PI) / 180;
-        const radElev = (elev * Math.PI) / 180;
+        // Real-time vertex colors calculation
+        let r = 0.4, g = 0.4, b = 0.4;
+        const hPct = (yVal + 50) / 100;
 
-        // Yaw Rotation (around Z axis)
-        const rx1 = x3d * Math.cos(radRot) - y3d * Math.sin(radRot);
-        const ry1 = x3d * Math.sin(radRot) + y3d * Math.cos(radRot);
-
-        // Pitch rotation (around X axis)
-        const rx2 = rx1;
-        const ry2 = ry1 * Math.cos(radElev) - z3d * Math.sin(radElev);
-        const rz2 = ry1 * Math.sin(radElev) + z3d * Math.cos(radElev);
-
-        points[i][j] = {
-          x2d: cx + rx2 * scale,
-          y2d: cy + ry2 * scale - 10,
-          zVal: z3d
-        };
-      }
-    }
-
-    // Step-by-step rendering with exact line opacity parameters
-    ctx.lineWidth = 0.85;
-    for (let i = 0; i < size - 1; i++) {
-      for (let j = 0; j < size - 1; j++) {
-        const p0 = points[i][j];
-        const p1 = points[i + 1][j];
-        const p2 = points[i + 1][j + 1];
-        const p3 = points[i][j + 1];
-
-        const middleZ = (p0.zVal + p1.zVal + p2.zVal + p3.zVal) / 4;
-        const pctHeight = (middleZ + 90) / 180;
-
-        // Base wireframe colors matching options surface mode
-        let strokeStyle = 'rgba(113, 113, 122, 0.2)';
-        let fillStyle = 'rgba(113, 113, 122, 0.015)';
-
-        if (surfaceMode === 'call') {
-          strokeStyle = `rgba(16, 185, 129, ${0.12 + pctHeight * 0.35})`;
-          fillStyle = `rgba(16, 185, 129, ${0.005 + pctHeight * 0.04})`;
-        } else if (surfaceMode === 'put') {
-          strokeStyle = `rgba(239, 68, 68, ${0.12 + pctHeight * 0.35})`;
-          fillStyle = `rgba(239, 68, 68, ${0.005 + pctHeight * 0.04})`;
+        if (currentMode === 'call') {
+          r = 0.05 + hPct * 0.15;
+          g = 0.35 + hPct * 0.65;
+          b = 0.25 + hPct * 0.25;
+        } else if (currentMode === 'put') {
+          r = 0.35 + hPct * 0.65;
+          g = 0.05 + hPct * 0.15;
+          b = 0.11 + hPct * 0.19;
         } else {
-          strokeStyle = `rgba(161, 161, 170, ${0.1 + pctHeight * 0.28})`;
-          fillStyle = `rgba(161, 161, 170, ${0.005 + pctHeight * 0.03})`;
+          r = 0.20 + hPct * 0.50;
+          g = 0.22 + hPct * 0.48;
+          b = 0.26 + hPct * 0.44;
         }
 
-        ctx.strokeStyle = strokeStyle;
-        ctx.fillStyle = fillStyle;
-
-        ctx.beginPath();
-        ctx.moveTo(p0.x2d, p0.y2d);
-        ctx.lineTo(p1.x2d, p1.y2d);
-        ctx.lineTo(p2.x2d, p2.y2d);
-        ctx.lineTo(p3.x2d, p3.y2d);
-        ctx.closePath();
-        ctx.fill();
-        ctx.stroke();
+        colors.setXYZ(idx, r, g, b);
       }
-    }
 
-    // Centered axis crosshairs indicator lines
-    ctx.strokeStyle = 'rgba(255, 255, 255, 0.12)';
-    ctx.setLineDash([2, 3]);
-    ctx.lineWidth = 1;
+      // Signal WebGL engine to transfer modified vertex heights and colors to GPU
+      positions.needsUpdate = true;
+      colors.needsUpdate = true;
+      geometry.computeVertexNormals();
 
-    const latS = points[0][Math.floor(size / 2)];
-    const latE = points[size - 1][Math.floor(size / 2)];
-    ctx.beginPath();
-    ctx.moveTo(latS.x2d, latS.y2d);
-    ctx.lineTo(latE.x2d, latE.y2d);
-    ctx.stroke();
+      // -----------------------------------------------------------------
+      // RND DISTRIBUTION OVERLAY CURTAINS
+      // -----------------------------------------------------------------
+      const isRndActive = showRndRef.current;
+      rndImpliedMesh.visible = isRndActive;
+      rndHistMesh.visible = isRndActive;
+      rndImpliedLine.visible = isRndActive;
+      rndHistLine.visible = isRndActive;
 
-    const lonS = points[Math.floor(size / 2)][0];
-    const lonE = points[Math.floor(size / 2)][size - 1];
-    ctx.beginPath();
-    ctx.moveTo(lonS.x2d, lonS.y2d);
-    ctx.lineTo(lonE.x2d, lonE.y2d);
-    ctx.stroke();
-    
-    ctx.setLineDash([]);
+      if (isRndActive) {
+        const currentTicker = tickerRef.current;
+        const currentSpot = spotRef.current;
+        const priceTickFluctuation = isStreamingRef.current ? Math.sin(time * 0.5) * (currentSpot * 0.0016) : 0;
+        const activeSpot = currentSpot + priceTickFluctuation;
 
-    // Anchor text tags inside canvas bounds
-    ctx.font = 'bold 8px monospace';
-    ctx.fillStyle = 'rgba(255, 255, 255, 0.45)';
-    
-    const maxBound = points[size - 1][Math.floor(size / 2)];
-    ctx.fillText('+SPOT', maxBound.x2d + 6, maxBound.y2d + 3);
+        const analysis = computeRndProfile(activeSpot, currentTicker, 30);
+        const nodes = analysis.nodes;
 
-    const minBound = points[0][Math.floor(size / 2)];
-    ctx.fillText('-SPOT', minBound.x2d - 38, minBound.y2d + 3);
+        const impliedPosAttr = rndImpliedGeometry.attributes.position as THREE.BufferAttribute;
+        const histPosAttr = rndHistGeometry.attributes.position as THREE.BufferAttribute;
+        const impliedLinePosAttr = rndImpliedLineGeometry.attributes.position as THREE.BufferAttribute;
+        const histLinePosAttr = rndHistLineGeometry.attributes.position as THREE.BufferAttribute;
 
-    const topVolBound = points[Math.floor(size / 2)][size - 1];
-    ctx.fillText('+IV VARIANCE', topVolBound.x2d - 32, topVolBound.y2d + 12);
+        const floorY = -35;
+        const zImplied = 20; // slice along forward edge
+        const zHist = -20;   // slice along backward edge
 
-    // Dynamic spot coordinate tracker (Current Reality Anchor)
-    const centerPoint = points[Math.floor(size / 2)][Math.floor(size / 2)];
-    
-    // Pulse glow
-    ctx.beginPath();
-    ctx.arc(centerPoint.x2d, centerPoint.y2d, 18, 0, 2 * Math.PI);
-    ctx.fillStyle = 'rgba(234, 179, 8, 0.15)'; // amber-500 glow
-    ctx.fill();
-    
-    // Core dot
-    ctx.beginPath();
-    ctx.arc(centerPoint.x2d, centerPoint.y2d, 3, 0, 2 * Math.PI);
-    ctx.fillStyle = '#fbbf24'; // amber-400
-    ctx.fill();
-    ctx.strokeStyle = '#fff';
-    ctx.lineWidth = 1;
-    ctx.stroke();
+        let maxDens = 0.001;
+        nodes.forEach(n => {
+          if (n.impliedDensity > maxDens) maxDens = n.impliedDensity;
+          if (n.historicalDensity > maxDens) maxDens = n.historicalDensity;
+        });
 
-    // Slicing lines originating from the center
-    ctx.strokeStyle = 'rgba(251, 191, 36, 0.6)';
-    ctx.lineDashOffset = Date.now() / 20; // moving dash effect
-    ctx.setLineDash([4, 4]);
-    ctx.beginPath();
-    ctx.moveTo(centerPoint.x2d, centerPoint.y2d - 40);
-    ctx.lineTo(centerPoint.x2d, centerPoint.y2d + 40);
-    ctx.stroke();
+        const heightScaling = 45 / maxDens;
 
-    // Coordinate Label
-    ctx.fillStyle = '#fcd34d'; // amber-300
-    ctx.font = 'bold 9px monospace';
-    ctx.fillText(`SPOT ${profile.spot.toFixed(2)}`, centerPoint.x2d + 8, centerPoint.y2d - 12);
-    ctx.fillStyle = 'rgba(251, 191, 36, 0.7)';
-    ctx.font = '7px monospace';
-    ctx.fillText(`IV LOCAL SKEW`, centerPoint.x2d + 8, centerPoint.y2d - 4);
-    
-    ctx.setLineDash([]);
+        for (let i = 0; i < RND_STEPS; i++) {
+          const nodeA = nodes[i];
+          const nodeB = nodes[i + 1];
 
-  }, [rot, elev, profile, ticker, impliedStrikes, surfaceMode, isExpanded, resizeKey]);
+          // Map strike range surrounding spotSurfaces (+/-30% moneyness)
+          const xA = ((nodeA.strike - activeSpot) / (activeSpot * 0.30)) * 80;
+          const xB = ((nodeB.strike - activeSpot) / (activeSpot * 0.30)) * 80;
+
+          const yImpliedH = floorY + nodeA.impliedDensity * heightScaling;
+          const yImpliedHNext = floorY + nodeB.impliedDensity * heightScaling;
+
+          const yHistH = floorY + nodeA.historicalDensity * heightScaling;
+          const yHistHNext = floorY + nodeB.historicalDensity * heightScaling;
+
+          // Quad 1: Implied Mesh vertex triangles
+          impliedPosAttr.setXYZ(i * 6 + 0, xA, floorY, zImplied);
+          impliedPosAttr.setXYZ(i * 6 + 1, xA, yImpliedH, zImplied);
+          impliedPosAttr.setXYZ(i * 6 + 2, xB, floorY, zImplied);
+
+          impliedPosAttr.setXYZ(i * 6 + 3, xA, yImpliedH, zImplied);
+          impliedPosAttr.setXYZ(i * 6 + 4, xB, yImpliedHNext, zImplied);
+          impliedPosAttr.setXYZ(i * 6 + 5, xB, floorY, zImplied);
+
+          // Quad 2: Historical Mesh vertex triangles
+          histPosAttr.setXYZ(i * 6 + 0, xA, floorY, zHist);
+          histPosAttr.setXYZ(i * 6 + 1, xA, yHistH, zHist);
+          histPosAttr.setXYZ(i * 6 + 2, xB, floorY, zHist);
+
+          histPosAttr.setXYZ(i * 6 + 3, xA, yHistH, zHist);
+          histPosAttr.setXYZ(i * 6 + 4, xB, yHistHNext, zHist);
+          histPosAttr.setXYZ(i * 6 + 5, xB, floorY, zHist);
+
+          // Boundaries Lines
+          impliedLinePosAttr.setXYZ(i, xA, yImpliedH, zImplied);
+          histLinePosAttr.setXYZ(i, xA, yHistH, zHist);
+        }
+
+        // Set last line elements
+        const lastIndex = RND_STEPS;
+        const lastNode = nodes[lastIndex];
+        const lastX = ((lastNode.strike - activeSpot) / (activeSpot * 0.30)) * 80;
+        impliedLinePosAttr.setXYZ(lastIndex, lastX, floorY + lastNode.impliedDensity * heightScaling, zImplied);
+        histLinePosAttr.setXYZ(lastIndex, lastX, floorY + lastNode.historicalDensity * heightScaling, zHist);
+
+        impliedPosAttr.needsUpdate = true;
+        histPosAttr.needsUpdate = true;
+        impliedLinePosAttr.needsUpdate = true;
+        histLinePosAttr.needsUpdate = true;
+      }
+
+      // Keep glowing price indicator orb perfectly attached to active matrix center height
+      if (spotOrbMesh) {
+        const centerIdx = Math.floor(positions.count / 2);
+        spotOrbMesh.position.y = positions.getY(centerIdx);
+      }
+
+      // Draw the frame
+      renderer.render(scene, camera);
+    };
+
+    // Initialize animation routine
+    animate();
+
+    const handleResize = () => {
+      if (!canvas || !renderer || !camera) return;
+      const b = canvas.getBoundingClientRect();
+      const currentW = b.width || w;
+      const currentH = b.height || h;
+      renderer.setSize(currentW, currentH, false);
+      camera.aspect = currentW / currentH;
+      camera.updateProjectionMatrix();
+    };
+
+    window.addEventListener('resize', handleResize);
+
+    // Complete cleanup cycle to guarantee zero GPU memory or context leaks
+    return () => {
+      cancelAnimationFrame(animId);
+      window.removeEventListener('resize', handleResize);
+      renderer.dispose();
+      geometry.dispose();
+      surfaceMaterial.dispose();
+      wireframeMaterial.dispose();
+      spotBarGeom.dispose();
+      spotBarMaterial.dispose();
+      spotOrbGeom.dispose();
+      spotOrbMaterial.dispose();
+
+      // Dispose RND resources safely
+      rndImpliedGeometry.dispose();
+      rndImpliedMaterial.dispose();
+      rndHistGeometry.dispose();
+      rndHistMaterial.dispose();
+      rndImpliedLineGeometry.dispose();
+      rndImpliedLineMaterial.dispose();
+      rndHistLineGeometry.dispose();
+      rndHistLineMaterial.dispose();
+    };
+  }, [resizeKey]);
 
 
 
@@ -846,6 +1064,30 @@ export function InstitutionalPhysicsDashboard({ profile: externalProfile, ticker
                 >
                   PUT WALL Topography
                 </button>
+                <button
+                  type="button"
+                  onClick={() => setShowRnd(!showRnd)}
+                  className={`px-3 py-1 text-[8.5px] uppercase font-extrabold tracking-wider rounded-xs focus:outline-none transition-all ${showRnd ? 'bg-emerald-950/60 border border-emerald-900/50 text-[#4ADE80]' : 'text-zinc-500 hover:text-zinc-400'}`}
+                  title="Toggle Implied RND Breeden-Litzenberger Layer"
+                >
+                  {showRnd ? '● SHIELD RND' : '○ EXPOSE RND'}
+                </button>
+              </div>
+
+              {/* Quantum Live Telemetry Stream Indicator and Controls */}
+              <div 
+                onClick={() => setIsStreaming(!isStreaming)} 
+                className={`flex items-center gap-2 px-2.5 py-1 rounded-xs border cursor-pointer select-none transition-all ${
+                  isStreaming 
+                    ? 'bg-emerald-950/20 border-emerald-900/50 text-[#4ADE80] hover:bg-emerald-950/30' 
+                    : 'bg-[#120808]/40 border-rose-950/70 text-rose-500 hover:bg-rose-950/20'
+                }`}
+                title="Click to toggle high frequency options stream feed"
+              >
+                <span className={`w-1.5 h-1.5 rounded-full ${isStreaming ? 'bg-[#4ADE80] animate-pulse' : 'bg-rose-500'}`} />
+                <span className="text-[7.5px] font-black tracking-widest uppercase font-mono">
+                  FEED: {isStreaming ? 'ACTIVE [60Hz]' : 'INACTIVE'}
+                </span>
               </div>
             </div>
 
@@ -865,7 +1107,7 @@ export function InstitutionalPhysicsDashboard({ profile: externalProfile, ticker
           </div>
 
           {/* Interactive 3D Canvas Box */}
-          <div className="flex-1 relative bg-black border border-black rounded-sm overflow-hidden" id="canvas-stage-wrapper">
+          <div className="flex-1 relative bg-black border border-black rounded-sm overflow-hidden animate-fade-in" id="canvas-stage-wrapper">
             <canvas
               ref={canvasRef}
               onMouseDown={handleMouseDown}
@@ -875,6 +1117,151 @@ export function InstitutionalPhysicsDashboard({ profile: externalProfile, ticker
               className="w-full h-full cursor-grab active:cursor-grabbing block"
             />
           </div>
+
+          {/* Breeden-Litzenberger Risk-Neutral Density Analysis Console Panel */}
+          {showRnd && (
+            <motion.div 
+              initial={{ opacity: 0, y: 15 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 15 }}
+              className="mt-3 bg-neutral-950/70 border border-emerald-950/40 p-4 rounded-sm flex flex-col md:flex-row gap-4 font-mono select-none"
+              id="rnd-analytics-console"
+            >
+              <div className="w-full md:w-5/12 flex flex-col justify-between gap-3 text-left">
+                <div>
+                  <div className="text-[10px] font-black tracking-widest text-[#4ADE80] uppercase mb-2 flex items-center gap-1.5 border-b border-emerald-950 pb-1">
+                    <Layers className="w-3.5 h-3.5" />
+                    <span>BREEDEN-LITZENBERGER RND INTEGRALS</span>
+                  </div>
+                  <p className="text-[7.5px] text-zinc-500 leading-normal mb-3">
+                    Solves the risk-neutral probability density function (RND) by double finite-differentiation of SVI surface call expectations: 
+                    <span className="text-zinc-400 font-bold"> f(K) = e^(rT) ∂²C/∂K²</span>.
+                  </p>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="bg-black/60 p-2.5 border border-[#1e293b]/30 rounded-sm">
+                    <div className="text-[7px] text-zinc-500 uppercase tracking-widest font-black">Implied GEX Peak</div>
+                    <div className="text-[11px] font-black text-[#4ADE80] mt-0.5">
+                      {rndAnalysis.gexConcentrationPeak.toFixed(1)} <span className="text-[7.5px] text-zinc-500 font-normal">pts</span>
+                    </div>
+                  </div>
+
+                  <div className="bg-black/60 p-2.5 border border-[#1e293b]/30 rounded-sm">
+                    <div className="text-[7px] text-[#f43f5e] uppercase tracking-widest font-black">Relative Entropy</div>
+                    <div className="text-[11px] font-black text-[#f43f5e] mt-0.5">
+                      {rndAnalysis.entropyDivergence.toFixed(4)} <span className="text-[7.5px] text-zinc-500 font-normal">nats</span>
+                    </div>
+                  </div>
+
+                  <div className="bg-black/60 p-2.5 border border-[#1e293b]/30 rounded-sm">
+                    <div className="text-[7px] text-zinc-550 uppercase tracking-widest font-black">RND Expectation (Mean)</div>
+                    <div className="text-[10.5px] font-bold text-zinc-200 mt-0.5">
+                      {rndAnalysis.impliedMean.toFixed(2)} <span className="text-[7.5px] text-zinc-500 font-normal">avg</span>
+                    </div>
+                  </div>
+
+                  <div className="bg-[#1c1917]/20 p-2.5 border border-stone-800 rounded-sm">
+                    <div className="text-[7px] text-zinc-550 uppercase tracking-widest font-black">Hist Lognormal Exp</div>
+                    <div className="text-[10.5px] font-bold text-zinc-300 mt-0.5">
+                      {rndAnalysis.historicalMean.toFixed(2)} <span className="text-[7.5px] text-zinc-500 font-normal">avg</span>
+                    </div>
+                  </div>
+
+                  <div className="bg-black/60 p-2.5 border border-[#1e293b]/30 rounded-sm col-span-2">
+                    <div className="text-[7px] text-zinc-550 uppercase tracking-widest font-black">Implied Risk Dispersion (Risk Width σ)</div>
+                    <div className="flex justify-between items-baseline mt-0.5">
+                      <span className="text-[11px] font-black text-[#4ADE80]">
+                        ±{rndAnalysis.impliedStdDev.toFixed(1)} <span className="text-[7.5px] text-zinc-500 font-normal">pts</span>
+                      </span>
+                      <span className="text-[8px] text-rose-450 text-right">
+                        Realized Vol Spread: ±{rndAnalysis.historicalStdDev.toFixed(1)}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="text-[7.5px] leading-relaxed text-zinc-400 border-l-2 border-emerald-500 pl-2 bg-emerald-950/10 py-1.5">
+                  <span className="font-extrabold text-[#4ADE80] text-[8px] uppercase block tracking-wider mb-0.5">Dealer Hedging Feedback Loop:</span>
+                  {rndAnalysis.entropyDivergence > 0.04
+                    ? "Substantial implied volatility skew. Under the risk-neutral measure, traders are paying a heavy premium for down-side crash security relative to historical normal drift dynamics."
+                    : "Volatility expectations are symmetric and compressed. Relative entropy suggests tail pricing matches physical realized records with low premium expansion."
+                  }
+                </div>
+              </div>
+
+              {/* Graphical distribution density comparator block */}
+              <div className="flex-1 min-h-[180px] bg-black/40 border border-[#1e293b]/30 p-2 rounded-sm flex flex-col">
+                <div className="text-[8px] font-black tracking-widest text-zinc-400 uppercase mb-2 flex justify-between items-center px-1 border-b border-black/80 pb-1.5">
+                  <span>DENSITY CURVES COMPARATIVE PORTRAIT (x: STRIKE / y: PROBABILITY)</span>
+                  <div className="flex gap-3">
+                    <span className="flex items-center gap-1 text-[8px] font-black uppercase"><span className="w-1.5 h-1.5 rounded-full bg-[#10b981]" /> SVI IMPLIED RND</span>
+                    <span className="flex items-center gap-1 text-[8px] font-black uppercase"><span className="w-1.5 h-1.5 rounded-full bg-[#f43f5e]" /> LOG-NORMAL HIST</span>
+                  </div>
+                </div>
+                <div className="flex-1 relative min-h-[160px]">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <AreaChart data={rndAnalysis.nodes} margin={{ top: 5, right: 3, left: -25, bottom: 0 }}>
+                      <CartesianGrid strokeDasharray="1 3" stroke="#222" />
+                      <XAxis 
+                        dataKey="strike" 
+                        domain={['auto', 'auto']}
+                        tickFormatter={(v) => Math.round(v).toString()}
+                        tick={{ fill: '#71717a', fontSize: '7.5px', fontFamily: 'monospace' }}
+                        stroke="#111"
+                      />
+                      <YAxis 
+                        tick={{ fill: '#71717a', fontSize: '7.5px', fontFamily: 'monospace' }}
+                        stroke="#111"
+                      />
+                      <Tooltip 
+                        content={({ active, payload }) => {
+                          if (active && payload && payload.length) {
+                            const data = payload[0].payload;
+                            return (
+                              <div className="bg-[#09090b] border border-[#1e293b] p-2 text-mono text-[7.5px] space-y-1 rounded-sm shadow-xl">
+                                <div className="text-zinc-200 font-bold border-b border-[#27272a] pb-0.5 mb-1 text-[8.5px]">Strike: {Math.round(data.strike)}</div>
+                                <div className="text-[#10b981] flex justify-between gap-4"><span>Implied RND:</span> <span>{(data.impliedDensity * 100).toFixed(4)}%</span></div>
+                                <div className="text-[#f43f5e] flex justify-between gap-4"><span>Hist log-norm:</span> <span>{(data.historicalDensity * 100).toFixed(4)}%</span></div>
+                                <div className="text-sky-400 flex justify-between gap-4"><span>Implied SVI Vol:</span> <span>{(data.impliedVol * 100).toFixed(2)}%</span></div>
+                              </div>
+                            );
+                          }
+                          return null;
+                        }}
+                      />
+                      <Area 
+                        type="monotone" 
+                        dataKey="impliedDensity" 
+                        stroke="#10b981" 
+                        strokeWidth={1.5}
+                        fill="url(#colorImplied)" 
+                        fillOpacity={0.15}
+                      />
+                      <Area 
+                        type="monotone" 
+                        dataKey="historicalDensity" 
+                        stroke="#f43f5e" 
+                        strokeWidth={1.5}
+                        fill="url(#colorHist)" 
+                        fillOpacity={0.10}
+                      />
+                      <defs>
+                        <linearGradient id="colorImplied" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="5%" stopColor="#10b981" stopOpacity={0.2}/>
+                          <stop offset="95%" stopColor="#10b981" stopOpacity={0}/>
+                        </linearGradient>
+                        <linearGradient id="colorHist" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="5%" stopColor="#f43f5e" stopOpacity={0.15}/>
+                          <stop offset="95%" stopColor="#f43f5e" stopOpacity={0}/>
+                        </linearGradient>
+                      </defs>
+                    </AreaChart>
+                  </ResponsiveContainer>
+                </div>
+              </div>
+            </motion.div>
+          )}
         </main>
 
         {/* ------------------------------------------------------------

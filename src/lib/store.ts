@@ -34,8 +34,8 @@ interface MarketState {
 
 export interface ContractStore {
   // Navigation & View Tabs
-  activeTab: 'home' | 'skyvision' | 'pinpoint' | 'auditor' | 'dealerflow' | 'community' | 'settings' | 'admin' | 'subscription' | 'workspace';
-  setActiveTab: (tab: 'home' | 'skyvision' | 'pinpoint' | 'auditor' | 'dealerflow' | 'community' | 'settings' | 'admin' | 'subscription' | 'workspace', keepContract?: boolean) => void;
+  activeTab: 'home' | 'skyvision' | 'pinpoint' | 'quant' | 'auditor' | 'dealerflow' | 'community' | 'settings' | 'admin' | 'subscription' | 'workspace';
+  setActiveTab: (tab: 'home' | 'skyvision' | 'pinpoint' | 'quant' | 'auditor' | 'dealerflow' | 'community' | 'settings' | 'admin' | 'subscription' | 'workspace', keepContract?: boolean) => void;
 
   // Theme settings
   themeMode: 'light' | 'dark';
@@ -44,6 +44,12 @@ export interface ContractStore {
   // Smooth scroll settings
   smoothScroll: boolean;
   toggleSmoothScroll: () => void;
+
+  // Time display settings (used by quant suite / timeUtils.formatTime)
+  timeZone: 'EST' | 'UTC' | 'LOCAL';
+  setTimeZone: (tz: 'EST' | 'UTC' | 'LOCAL') => void;
+  timeFormat: '12H' | '24H';
+  setTimeFormat: (fmt: '12H' | '24H') => void;
 
   // Selected parameters
   selectedAsset: AssetInfo;
@@ -234,20 +240,24 @@ export function useTierValidation() {
 }
 
 export const useContractStore = create<ContractStore>((set, get) => ({
-  activeTab: (localStorage.getItem('lastActiveTab') as 'home' | 'skyvision' | 'pinpoint' | 'auditor' | 'dealerflow' | 'community' | 'settings' | 'admin' | 'subscription' | 'workspace') || 'home',
+  activeTab: (localStorage.getItem('lastActiveTab') as 'home' | 'skyvision' | 'pinpoint' | 'quant' | 'auditor' | 'dealerflow' | 'community' | 'settings' | 'admin' | 'subscription' | 'workspace') || 'home',
   setActiveTab: (tab, keepContract = false) => {
-    localStorage.setItem('lastActiveTab', tab);
-    if (tab === 'skyvision' && !keepContract) {
-      set({ activeTab: tab, selectedStrike: null, isContractLocked: false, auditSearchQuery: '', expandedAuditId: null });
+    // The legacy 'dealerflow' tab was consolidated into 'pinpoint' (which renders
+    // DealerFlowView). Normalize so any lingering 'dealerflow' navigation resolves
+    // to a real, rendered view instead of a blank screen.
+    const normalizedTab = tab === 'dealerflow' ? 'pinpoint' : tab;
+    localStorage.setItem('lastActiveTab', normalizedTab);
+    if (normalizedTab === 'skyvision' && !keepContract) {
+      set({ activeTab: normalizedTab, selectedStrike: null, isContractLocked: false, auditSearchQuery: '', expandedAuditId: null });
     } else {
-      if (tab === 'auditor' && get().activeTab === 'auditor') {
+      if (normalizedTab === 'auditor' && get().activeTab === 'auditor') {
         // Clear active query and expand states when re-clicking the Auditor tab
         set({ auditSearchQuery: '', expandedAuditId: null });
-      } else if (tab !== 'auditor') {
+      } else if (normalizedTab !== 'auditor') {
         // Reset query and expand states when navigating away from Auditor to other tabs
-        set({ activeTab: tab, auditSearchQuery: '', expandedAuditId: null });
+        set({ activeTab: normalizedTab, auditSearchQuery: '', expandedAuditId: null });
       } else {
-        set({ activeTab: tab });
+        set({ activeTab: normalizedTab });
       }
     }
   },
@@ -263,6 +273,17 @@ export const useContractStore = create<ContractStore>((set, get) => ({
     }
     return { smoothScroll: newVal };
   }),
+
+  timeZone: (typeof window !== 'undefined' ? localStorage.getItem('slayer_timezone') as 'EST' | 'UTC' | 'LOCAL' : 'EST') || 'EST',
+  setTimeZone: (tz) => {
+    if (typeof window !== 'undefined') localStorage.setItem('slayer_timezone', tz);
+    set({ timeZone: tz });
+  },
+  timeFormat: (typeof window !== 'undefined' ? localStorage.getItem('slayer_timeformat') as '12H' | '24H' : '12H') || '12H',
+  setTimeFormat: (fmt) => {
+    if (typeof window !== 'undefined') localStorage.setItem('slayer_timeformat', fmt);
+    set({ timeFormat: fmt });
+  },
 
   selectedAsset: ASSET_LIST[0],
   selectedTimeframe: '5m',

@@ -26,6 +26,7 @@ import {
 import { AssetInfo } from '../types';
 import { ASSET_LIST } from '../data';
 import { useContractStore } from '../lib/store';
+import { formatTime } from '../lib/timeUtils';
 
 interface DiscoveryViewProps {
   systemScore: any;
@@ -718,14 +719,14 @@ let _feedLogSeq = 0;
 const nextFeedLogId = () => `feedlog-${++_feedLogSeq}`;
 
 const INITIAL_FEED_LOGS = [
-  { id: nextFeedLogId(), timestamp: '01:34:25', ticker: 'SPX', strike: 7620, type: 'C', side: 'Sweep', size: '280 cons', premium: '$151,200', tag: 'BULLISH', action: 'SWEPT @ ASK' },
-  { id: nextFeedLogId(), timestamp: '01:34:10', ticker: 'QQQ', strike: 448, type: 'C', side: 'Block', size: '1,200 cons', premium: '$504,000', tag: 'BULLISH', action: 'AT ASK' },
-  { id: nextFeedLogId(), timestamp: '01:33:48', ticker: 'NDX', strike: 18350, type: 'C', side: 'Block', size: '150 cons', premium: '$232,500', tag: 'BULLISH', action: 'ABOVE ASK' },
-  { id: nextFeedLogId(), timestamp: '01:33:02', ticker: 'SPY', strike: 508, type: 'P', side: 'Sweep', size: '2,500 cons', premium: '$337,500', tag: 'BEARISH', action: 'SWEPT @ ASK' },
-  { id: nextFeedLogId(), timestamp: '01:31:55', ticker: 'SPX', strike: 7700, type: 'C', side: 'Block', size: '3,000 cons', premium: '$735,000', tag: 'BULLISH', action: 'OFF-EXCHANGE' },
-  { id: nextFeedLogId(), timestamp: '01:30:22', ticker: 'NDX', strike: 17800, type: 'P', side: 'Sweep', size: '400 cons', premium: '$496,000', tag: 'HEDGE', action: 'SWEPT @ ASK' },
-  { id: nextFeedLogId(), timestamp: '01:29:15', ticker: 'SPY', strike: 515, type: 'C', side: 'Sweep', size: '1,800 cons', premium: '$576,000', tag: 'BULLISH', action: 'SWEPT @ ASK' },
-  { id: nextFeedLogId(), timestamp: '01:28:40', ticker: 'QQQ', strike: 455, type: 'C', side: 'Sweep', size: '2,400 cons', premium: '$348,000', tag: 'BULLISH', action: 'ABOVE ASK' }
+  { id: nextFeedLogId(), timestamp: '01:34:25 PM', ticker: 'SPX', strike: 7620, type: 'C', side: 'Sweep', size: '280 cons', premium: '$151,200', tag: 'BULLISH', action: 'SWEPT @ ASK' },
+  { id: nextFeedLogId(), timestamp: '01:34:10 PM', ticker: 'QQQ', strike: 448, type: 'C', side: 'Block', size: '1,200 cons', premium: '$504,000', tag: 'BULLISH', action: 'AT ASK' },
+  { id: nextFeedLogId(), timestamp: '01:33:48 PM', ticker: 'NDX', strike: 18350, type: 'C', side: 'Block', size: '150 cons', premium: '$232,500', tag: 'BULLISH', action: 'ABOVE ASK' },
+  { id: nextFeedLogId(), timestamp: '01:33:02 PM', ticker: 'SPY', strike: 508, type: 'P', side: 'Sweep', size: '2,500 cons', premium: '$337,500', tag: 'BEARISH', action: 'SWEPT @ ASK' },
+  { id: nextFeedLogId(), timestamp: '01:31:55 PM', ticker: 'SPX', strike: 7700, type: 'C', side: 'Block', size: '3,000 cons', premium: '$735,000', tag: 'BULLISH', action: 'OFF-EXCHANGE' },
+  { id: nextFeedLogId(), timestamp: '01:30:22 PM', ticker: 'NDX', strike: 17800, type: 'P', side: 'Sweep', size: '400 cons', premium: '$496,000', tag: 'HEDGE', action: 'SWEPT @ ASK' },
+  { id: nextFeedLogId(), timestamp: '01:29:15 PM', ticker: 'SPY', strike: 515, type: 'C', side: 'Sweep', size: '1,800 cons', premium: '$576,000', tag: 'BULLISH', action: 'SWEPT @ ASK' },
+  { id: nextFeedLogId(), timestamp: '01:28:40 PM', ticker: 'QQQ', strike: 455, type: 'C', side: 'Sweep', size: '2,400 cons', premium: '$348,000', tag: 'BULLISH', action: 'ABOVE ASK' }
 ];
 
 export function DiscoveryView({
@@ -955,7 +956,7 @@ export function DiscoveryView({
       const randomTicker = tickers[Math.floor(Math.random() * tickers.length)];
       const randomStrike = strikes[Math.floor(Math.random() * strikes.length)];
       const randomIsBullish = Math.random() > 0.4;
-      const timestampLabel = new Date().toTimeString().split(' ')[0];
+      const timestampLabel = formatTime(new Date());
 
       const newLog = {
         id: nextFeedLogId(),

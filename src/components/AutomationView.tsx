@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { motion } from 'motion/react';
 import { Smartphone, RefreshCw, Send, AlertCircle, Cpu, Wifi, Database, Layers } from 'lucide-react';
 import { useContractStore } from '../lib/store';
+import { formatTime } from '../lib/timeUtils';
 
 export function AutomationView() {
   const selectedAsset = useContractStore((s) => s.selectedAsset);
@@ -57,12 +58,12 @@ export function AutomationView() {
 
     steps.forEach((step, idx) => {
       const timer = setTimeout(() => {
-        setDispatchLogs((prev) => [...prev, `[${new Date().toLocaleTimeString()}] ${step}`]);
+        setDispatchLogs((prev) => [...prev, `[${formatTime(new Date())}] ${step}`]);
         if (idx === steps.length - 1) {
           setIsDispatching(false);
           const alertMsg = `Slayer Private Terminal: ${selectedAsset.ticker} ${decisionStrategy} signal triggered! Expected target premium movement +${expectedValuePct}%. Execute at $${activePrice.toFixed(2)}. GEX bounds consolidated.`;
           setSentAlerts((prev) => [
-            { message: alertMsg, timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) },
+            { message: alertMsg, timestamp: formatTime(new Date()) },
             ...prev
           ]);
         }

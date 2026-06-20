@@ -19,6 +19,7 @@ import { InstitutionalDashboard } from './InstitutionalDashboard';
 import { AiIntelligenceLayer } from './AiIntelligenceLayer';
 import { QuantEdgePanel } from './QuantEdgePanel';
 import { RegimeMatrixPanel } from './RegimeMatrixPanel';
+import { MicrostructureLabView } from './MicrostructureLabView';
 import { DealerFlowMap } from './DealerFlowMap';
 import {
   Waves,
@@ -429,11 +430,19 @@ function calculateGreeksTS(
 // Main view
 // ----------------------------------------------------------------
 export function DealerFlowView() {
-  const serverState = useContractStore(s => s.serverState);
   const selectedAsset = useContractStore(s => s.selectedAsset);
   const setSelectedAsset = useContractStore(s => s.setSelectedAsset);
   const selectedTimeframe = useContractStore(s => s.selectedTimeframe);
-  const [activeEngineView, setActiveEngineView] = useState<'profile' | 'physics' | 'targets' | 'institutional'>('institutional');
+  // Gate the streamed server state to the asset currently in view so switching
+  // tickers doesn't briefly render the previous ticker's dealer data.
+  const rawServerState = useContractStore(s => s.serverState);
+  const serverState = useMemo(() => {
+    if (!rawServerState) return null;
+    const ticker = rawServerState.contract?.replace('-', ' ').split(' ')[0];
+    if (ticker !== selectedAsset.ticker) return null;
+    return rawServerState;
+  }, [rawServerState, selectedAsset.ticker]);
+  const [activeEngineView, setActiveEngineView] = useState<'profile' | 'physics' | 'targets' | 'institutional' | 'microstructure'>('institutional');
   const [mocDirection, setMocDirection] = useState<'BUY' | 'SELL' | 'NEUTRAL'>('BUY');
   const [mocValue, setMocValue] = useState<number>(1.24 * 1e9);
 
@@ -811,6 +820,17 @@ export function DealerFlowView() {
           <Activity className="w-3.5 h-3.5 text-fuchsia-400" />
           INSTITUTIONAL METRICS HUD
         </button>
+        <button
+          onClick={() => setActiveEngineView('microstructure')}
+          className={`flex items-center gap-2 px-4.5 py-2.5 font-mono text-[9px] font-black uppercase tracking-wider border rounded transition-all cursor-pointer ${
+            activeEngineView === 'microstructure'
+              ? 'bg-cyan-500/10 border-cyan-500 text-[#E5E5E5] shadow-[0_0_12px_rgba(6,182,212,0.12)]'
+              : 'bg-black/45 border-black text-zinc-500 hover:text-[#4ADE80] hover:border-black'
+          }`}
+        >
+          <Waves className="w-3.5 h-3.5 text-cyan-400" />
+          L2/L3 ORDER FLOW & MICROSTRUCTURE
+        </button>
       </div>
 
       {activeEngineView === 'profile' ? (
@@ -961,6 +981,8 @@ export function DealerFlowView() {
         <IntradayTargetsView profile={profile} ticker={selectedAsset.ticker} decimals={selectedAsset.decimals} />
       ) : activeEngineView === 'institutional' ? (
         <InstitutionalDashboard />
+      ) : activeEngineView === 'microstructure' ? (
+        <MicrostructureLabView />
       ) : (
         <div id="institutional-physics-dash-wrapper">
           <InstitutionalPhysicsDashboard

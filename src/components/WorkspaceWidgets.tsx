@@ -7,6 +7,7 @@ import React, { useEffect, useState } from 'react';
 import { Maximize2, Minimize2, X } from 'lucide-react';
 import { useContractStore } from '../lib/store';
 import type { WidgetType } from '../lib/workspace';
+import { formatTime } from '../lib/timeUtils';
 
 interface PaneProps {
   title: string;
@@ -92,7 +93,7 @@ const LiveOptionsFlow = React.memo(() => {
       const size = '$' + (Math.random() * 2 + 0.1).toFixed(1) + 'M';
       const d = new Date();
       d.setMinutes(d.getMinutes() - i * 2 - Math.floor(Math.random() * 5));
-      const time = d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+      const time = formatTime(d);
       return { id: `flow-${liveFlowRowSeq++}`, time, size, ticker, strike, type, isBullish: isCall };
     });
   };
@@ -110,7 +111,7 @@ const LiveOptionsFlow = React.memo(() => {
         const ticker = tickers[Math.floor(Math.random() * tickers.length)];
         const strike = Math.floor(Math.random() * 1000 + 4000) + (isCall ? 'C' : 'P');
         const size = '$' + (Math.random() * 2 + 0.1).toFixed(1) + 'M';
-        const time = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+        const time = formatTime(new Date());
         next.unshift({ id: `flow-${liveFlowRowSeq++}`, time, size, ticker, strike, type, isBullish: isCall });
         return next.slice(0, 50);
       });

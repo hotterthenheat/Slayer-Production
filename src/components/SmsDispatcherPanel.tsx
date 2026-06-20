@@ -7,6 +7,7 @@ import { useState, useEffect, useRef, ChangeEvent } from 'react';
 import { Smartphone, Send, ShieldCheck, Zap, RefreshCw, Layers, CheckCircle2, AlertCircle } from 'lucide-react';
 import { AssetInfo, SystemScore } from '../types';
 import { calculateV10Metrics } from '../lib/v10Math';
+import { formatTime } from '../lib/timeUtils';
 
 interface SmsDispatcherPanelProps {
   selectedAsset: AssetInfo;
@@ -69,7 +70,7 @@ export function SmsDispatcherPanel({
     let stage = 0;
     const interval = setInterval(() => {
       if (stage < mockTwilioSequence.length) {
-        setDispatchLogs((prev) => [...prev, `[${new Date().toLocaleTimeString()}] ${mockTwilioSequence[stage]}`]);
+        setDispatchLogs((prev) => [...prev, `[${formatTime(new Date())}] ${mockTwilioSequence[stage]}`]);
         setDispatchStage(stage + 1);
         stage++;
       } else {
@@ -83,7 +84,7 @@ export function SmsDispatcherPanel({
           {
             phone: phoneNumber,
             message: alertMsg,
-            timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+            timestamp: formatTime(new Date()),
           },
           ...prev,
         ]);

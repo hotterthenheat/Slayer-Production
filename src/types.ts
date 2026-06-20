@@ -380,6 +380,7 @@ export interface ServerStatePayload {
   data_source: string;
   api_status_message?: string;
   trade_health: number;
+  liveSpotPrices?: Record<string, number>;
   expected_move?: ExpectedMoveData;
   targets?: any[];
   candles?: Candle[];

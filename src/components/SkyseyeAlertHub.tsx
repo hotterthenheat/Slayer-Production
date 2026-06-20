@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useContractStore } from '../lib/store';
 import { ASSET_LIST } from '../data';
+import { formatTime } from '../lib/timeUtils';
 import { 
   CheckCircle, 
   Info, 
@@ -221,7 +222,7 @@ export function SkyseyeAlertHub() {
         }
 
         const now = new Date();
-        const timestamp = now.toLocaleTimeString('en-US', { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' });
+        const timestamp = formatTime(now);
 
         candidates.push({
           id: flow.id || Math.random().toString(36).substring(2, 9),
@@ -254,7 +255,7 @@ export function SkyseyeAlertHub() {
       } else if (optimalCandidates.length > 1) {
         // Multiple trades found -> state multiple trades found
         const now = new Date();
-        const timestamp = now.toLocaleTimeString('en-US', { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' });
+        const timestamp = formatTime(now);
         
         const textSummary = `Optimal flows parsed: ${optimalCandidates.map(c => `${c.ticker} ${c.strike}${c.type}`).join(', ')}`;
         

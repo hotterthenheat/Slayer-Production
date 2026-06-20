@@ -18,12 +18,14 @@ import {
   Lock,
   RotateCcw,
   Monitor,
-  Check
+  Check,
+  Clock
 } from 'lucide-react';
 import { UserProfile } from './UserProfile';
 import { TwoFactorFlow } from './TwoFactorFlow';
 import { useContractStore, ContractStore } from '../lib/store';
 import { THEMES, applyTheme, applyTextSize, applyCompact, applyUltrawide } from '../lib/displayPrefs';
+import { formatTime, formatDateTime } from '../lib/timeUtils';
 
 interface SettingsPanelProps {
   session: any;
@@ -170,6 +172,11 @@ export function SettingsPanel({ session, onUpdateSession }: SettingsPanelProps) 
 
   const globalKeybindsEnabled = useContractStore(state => state.globalKeybindsEnabled);
   const setGlobalKeybindsEnabled = useContractStore(state => state.setGlobalKeybindsEnabled);
+
+  const timeZone = useContractStore(state => state.timeZone);
+  const setTimeZone = useContractStore(state => state.setTimeZone);
+  const timeFormat = useContractStore(state => state.timeFormat);
+  const setTimeFormat = useContractStore(state => state.setTimeFormat);
 
   const [isUpdating, setIsUpdating] = useState(false);
   const [isSimulatingInvoice, setIsSimulatingInvoice] = useState(false);
@@ -833,7 +840,7 @@ export function SettingsPanel({ session, onUpdateSession }: SettingsPanelProps) 
                           {sess.user_agent}
                         </div>
                         <div className="text-[10px] text-zinc-400 font-mono">
-                          Created: {new Date(sess.created_at).toLocaleString()} | Activity: {new Date(sess.last_active).toLocaleTimeString()}
+                          Created: {formatDateTime(sess.created_at)} | Activity: {formatTime(sess.last_active)}
                         </div>
                       </div>
                     </div>
@@ -1181,6 +1188,63 @@ export function SettingsPanel({ session, onUpdateSession }: SettingsPanelProps) 
                     <option value="STANDARD">Standard</option>
                     <option value="ENHANCED">Large</option>
                     <option value="ENHANCED_XL">Extra Large</option>
+                  </select>
+                </div>
+              </div>
+
+              {/* Option Hour Format */}
+              <div className="pt-4 border-t border-black/60 space-y-2">
+                <div className="flex items-center gap-2 text-sm font-bold text-[#E5E5E5]">
+                  <Clock className="w-4 h-4 text-zinc-550 shrink-0" />
+                  <span>Clock Format</span>
+                </div>
+                <p className="text-xs text-[#8e8e93] leading-relaxed">
+                  Choose your preferred global clock display format. Private Institutional default is 12-hour AM/PM.
+                </p>
+                <div className="mt-2 flex gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setTimeFormat('12H')}
+                    className={`flex-1 p-2.5 rounded-lg border text-xs font-black uppercase tracking-wider transition-all ${
+                      timeFormat === '12H'
+                        ? 'bg-indigo-600/20 border-indigo-500 text-[#E5E5E5] shadow-[0_0_12px_rgba(99,102,241,0.25)]'
+                        : 'bg-black border-black/60 text-zinc-550 hover:text-zinc-350 hover:border-zinc-800'
+                    }`}
+                  >
+                    12-Hour Clock
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setTimeFormat('24H')}
+                    className={`flex-1 p-2.5 rounded-lg border text-xs font-black uppercase tracking-wider transition-all ${
+                      timeFormat === '24H'
+                        ? 'bg-indigo-600/20 border-indigo-500 text-[#E5E5E5] shadow-[0_0_12px_rgba(99,102,241,0.25)]'
+                        : 'bg-black border-black/60 text-zinc-550 hover:text-zinc-350 hover:border-zinc-800'
+                    }`}
+                  >
+                    24-Hour Clock
+                  </button>
+                </div>
+              </div>
+
+              {/* Option Display Time Zone */}
+              <div className="pt-4 border-t border-black/60 space-y-2">
+                <div className="flex items-center gap-2 text-sm font-bold text-[#E5E5E5]">
+                  <Monitor className="w-4 h-4 text-zinc-550 shrink-0" />
+                  <span>Display Time Zone</span>
+                </div>
+                <p className="text-xs text-[#8e8e93] leading-relaxed">
+                  Select the underlying timezone overlay. Standard market view aligns directly to New York Exchange Hours.
+                </p>
+                <div className="mt-2">
+                  <select
+                    value={timeZone}
+                    onChange={(e) => setTimeZone(e.target.value as 'EST' | 'UTC' | 'LOCAL')}
+                    className="w-full bg-black border border-black text-[#E5E5E5] rounded-lg p-3 text-sm focus:outline-none focus:border-indigo-500 transition-colors cursor-pointer appearance-none"
+                  >
+                    <option value="EST">New York Time (EST / EDT)</option>
+                    <option value="UTC">Coordinated Universal Time (UTC)</option>
+                    <option value="LOCAL">Local System Time (User Device Zone)</option>
                   </select>
                 </div>
               </div>

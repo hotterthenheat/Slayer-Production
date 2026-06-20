@@ -8,9 +8,42 @@
  * small auth helper utilities. No external auth provider or API key required.
  */
 import crypto from 'crypto';
+import fs from 'fs';
+import path from 'path';
 import { db as pgDb } from '../db/index.ts';
 import { users } from '../db/schema.ts';
 import { eq, sql } from 'drizzle-orm';
+
+const FALLBACK_FILE = path.join(process.cwd(), 'users-fallback.json');
+const useFallbackDb = !process.env.SQL_HOST;
+
+interface FallbackUser {
+  id: number;
+  uid: string;
+  email: string;
+  version: number;
+  tokens: number;
+  fullProfile: string;
+}
+
+function loadFallbackUsers(): FallbackUser[] {
+  try {
+    if (fs.existsSync(FALLBACK_FILE)) {
+      return JSON.parse(fs.readFileSync(FALLBACK_FILE, 'utf8'));
+    }
+  } catch (e) {
+    console.error('Error loading fallback users:', e);
+  }
+  return [];
+}
+
+function saveFallbackUsers(usersList: FallbackUser[]) {
+  try {
+    fs.writeFileSync(FALLBACK_FILE, JSON.stringify(usersList, null, 2), 'utf8');
+  } catch (e) {
+    console.error('Error saving fallback users:', e);
+  }
+}
 
 // ============================================================
 // Signed session cookies (HMAC-SHA256, timing-safe verify)
@@ -165,11 +198,26 @@ export function sanitizeUser(user: any) {
 }
 
 // ============================================================
-// Postgres-backed user CRUD (Drizzle)
+// Postgres-backed user CRUD (Drizzle with local JSON fallback)
 // ============================================================
 export const dbGetUser = async (email: string) => {
+  const emailClean = email.toLowerCase().trim();
+  if (useFallbackDb) {
+    const fallbackUsersList = loadFallbackUsers();
+    const found = fallbackUsersList.find(u => u.email === emailClean);
+    if (found) {
+      try {
+        const u = JSON.parse(found.fullProfile || '{}');
+        u.version = found.version;
+        return u;
+      } catch (e) {
+        console.error('dbGetUser fallback parsing error:', e);
+      }
+    }
+    return undefined;
+  }
   try {
-    const res = await pgDb.select().from(users).where(eq(users.email, email.toLowerCase().trim()));
+    const res = await pgDb.select().from(users).where(eq(users.email, emailClean));
     if (res.length > 0) {
       const u = JSON.parse(res[0].fullProfile || '{}');
       u.version = res[0].version; // inject DB version here
@@ -185,6 +233,32 @@ export const dbSetUser = async (email: string, userObj: any, expectedVersion?: n
   const e = email.toLowerCase().trim();
   const tokens = userObj.referral_tokens_pool || 0;
   const fp = JSON.stringify(userObj);
+
+  if (useFallbackDb) {
+    const fallbackUsersList = loadFallbackUsers();
+    const index = fallbackUsersList.findIndex(u => u.email === e);
+    if (index >= 0) {
+      const current = fallbackUsersList[index];
+      if (typeof expectedVersion === 'number' && current.version !== expectedVersion) {
+        throw new Error('OCC Conflict: Version mismatch');
+      }
+      current.fullProfile = fp;
+      current.tokens = tokens;
+      current.version = current.version + 1;
+    } else {
+      fallbackUsersList.push({
+        id: Math.floor(Math.random() * 1000000) + 1,
+        uid: userObj.id || e,
+        email: e,
+        tokens,
+        fullProfile: fp,
+        version: 1
+      });
+    }
+    saveFallbackUsers(fallbackUsersList);
+    return;
+  }
+
   try {
     if (typeof expectedVersion === 'number') {
       const res = await pgDb.execute(sql`
@@ -236,10 +310,27 @@ export async function persistUser(email: string, user: any): Promise<boolean> {
 }
 
 export const dbDeleteUser = async (email: string) => {
-  await pgDb.delete(users).where(eq(users.email, email.toLowerCase().trim()));
+  const e = email.toLowerCase().trim();
+  if (useFallbackDb) {
+    const fallbackUsersList = loadFallbackUsers();
+    const filtered = fallbackUsersList.filter(u => u.email !== e);
+    saveFallbackUsers(filtered);
+    return;
+  }
+  await pgDb.delete(users).where(eq(users.email, e));
 };
 
 export const dbGetAllUsers = async () => {
+  if (useFallbackDb) {
+    const fallbackUsersList = loadFallbackUsers();
+    return fallbackUsersList.map(r => {
+      try {
+        return JSON.parse(r.fullProfile || '{}');
+      } catch {
+        return {};
+      }
+    });
+  }
   try {
     const res = await pgDb.select().from(users);
     const out: any[] = [];
@@ -259,8 +350,13 @@ export const dbGetAllUsers = async () => {
 };
 
 export const dbHasUser = async (email: string) => {
+  const e = email.toLowerCase().trim();
+  if (useFallbackDb) {
+    const fallbackUsersList = loadFallbackUsers();
+    return fallbackUsersList.some(u => u.email === e);
+  }
   try {
-    const res = await pgDb.select({ id: users.id }).from(users).where(eq(users.email, email.toLowerCase().trim()));
+    const res = await pgDb.select({ id: users.id }).from(users).where(eq(users.email, e));
     return res.length > 0;
   } catch (e) {
     console.error('dbHasUser error:', e);
