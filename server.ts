@@ -7,7 +7,6 @@ import express from 'express';
 import dotenv from 'dotenv';
 dotenv.config();
 import Stripe from 'stripe';
-import { GoogleGenAI } from '@google/genai';
 import path from 'path';
 import { createServer as createViteServer } from 'vite';
 import { ASSET_LIST, generateInitialCandles, TIMEFRAMES, INITIAL_DISCOVERY_CONTRACTS, buildInitialDiscoveryFeedLogs, calculateFVGs, calculateLiquidityEvents } from './src/data';
@@ -36,25 +35,6 @@ import { getLastTradierError } from './src/lib/tradierProvider';
 const app = express();
 app.set('trust proxy', true);
 const PORT = 3000;
-
-// Lazy-loaded Gemini AI client helper with built-in telemetry header
-let aiClient: any = null;
-function getGeminiClient() {
-  if (!aiClient) {
-    const key = process.env.GEMINI_API_KEY;
-    if (key && key !== 'MY_GEMINI_API_KEY' && key.trim() !== '') {
-      aiClient = new GoogleGenAI({
-        apiKey: key,
-        httpOptions: {
-          headers: {
-            'User-Agent': 'aistudio-build',
-          }
-        }
-      });
-    }
-  }
-  return aiClient;
-}
 
 // ============================================================
 // STRIPE BILLING CONFIG
@@ -3504,100 +3484,6 @@ app.post('/api/upload', express.json({ limit: '10mb' }), async (req, res) => {
   res.json({ cdnUrl });
 });
 
-// Real-Time Options Market Analyst Commentary Endpoint (Gemini Co-Pilot)
-app.post('/api/gemini/commentary', express.json(), async (req, res) => {
-  const session = await getSessionFromCookies(req.headers.cookie);
-  if (!session || !session.email) return res.status(401).json({ error: 'Unauthorized' });
-
-  const { ticker, spotPrice, callWall, putWall, magnetStrike, flipLevel, bias, ivRank } = req.body;
-  
-  try {
-    const ai = getGeminiClient();
-    if (!ai) {
-      console.log("[GEMINI ADAPTER] No valid API KEY found. Serving high-fidelity static analysis.");
-      return res.json({
-        success: true,
-        isFallback: true,
-        commentary: [
-          `● Dealers remain positioned in a ${bias || 'STABLE'} regime, with key options boundaries outlining a critical stabilization channel.`,
-          `● The primary upside barrier (Call Wall) sits strong at $${Number(callWall || 0).toFixed(2)}, while robust floor safety exists at the Put Wall ($${Number(putWall || 0).toFixed(2)}).`,
-          `● The dominant Magnet Strike of $${Number(magnetStrike || 0).toFixed(2)} acts as a high-density spot attractor as option settlement approaches.`,
-          `● Volatility analysis shows IV Rank of ${Number(ivRank || 0).toFixed(0)}%, presenting clear opportunities for strategic position mapping.`
-        ]
-      });
-    }
-
-    const prompt = `You are the lead quantitative options market maker and chief institutional analyst for the options intelligence platform "Slayer Terminal".
-Provide an elite, highly concise, institutional-grade market hedging and positioning analysis based on the following real-time options positioning attributes:
-- Ticker: ${ticker}
-- Spot Price: ${spotPrice}
-- Call Wall (Resistance Ceiling): ${callWall}
-- Put Wall (Support Floor): ${putWall}
-- Magnet Strike (Concentration Center): ${magnetStrike}
-- Gamma Flip Crossover Level: ${flipLevel}
-- Dealer Bias: ${bias}
-- Implied Volatility Rank: ${ivRank}%
-
-Structure your response as a professional commentary with 4 distinct, punchy bullet points (1-2 sentences each). Focus strictly on dealer hedging behavior, delta-hedging feedback loops, vanna/charm gravity, and expected near-term price pinning. 
-Do NOT output any markdown headers, conversational filler, or self-praise. Just output 4 elegant, clean lines representing the points, starting with a '●' bullet.`;
-
-    const { ThinkingLevel } = require("@google/genai");
-
-    const response = await ai.models.generateContent({
-      model: "gemini-3.1-pro-preview",
-      contents: prompt,
-      config: {
-        thinkingConfig: {
-          thinkingLevel: ThinkingLevel.HIGH
-        }
-      }
-    });
-
-    const text = response.text || "";
-    const lines = text
-      .split('\n')
-      .map(line => line.trim())
-      .filter(line => line.length > 0 && (line.startsWith('●') || line.startsWith('*') || line.startsWith('-') || line.match(/^\d+\./)));
-
-    // Parse the returned bullet points and format properly with standard bullet character
-    let formattedPoints = lines.map(line => {
-      const cleaned = line.replace(/^[●\*\-\d\.\s]+/g, '').trim();
-      return `● ${cleaned}`;
-    });
-
-    if (formattedPoints.length < 3) {
-      formattedPoints = text
-        .split('\n')
-        .map(line => line.trim())
-        .filter(line => line.length > 10)
-        .slice(0, 4)
-        .map(line => `● ${line.replace(/^[●\*\-\d\.\s]+/g, '').trim()}`);
-    }
-
-    if (formattedPoints.length === 0) {
-      throw new Error("Empty commentary returned from model");
-    }
-
-    res.json({
-      success: true,
-      isFallback: false,
-      commentary: formattedPoints
-    });
-
-  } catch (error: any) {
-    console.error("[GEMINI ADAPTER ERROR]", error);
-    res.json({
-      success: true,
-      isFallback: true,
-      commentary: [
-        `● Dealers remain positioned in a ${bias || 'STABLE'} regime, with key options boundaries outlining a critical stabilization channel.`,
-        `● The primary upside barrier (Call Wall) sits strong at $${Number(callWall || 0).toFixed(2)}, while robust floor safety exists at the Put Wall ($${Number(putWall || 0).toFixed(2)}).`,
-        `● The dominant Magnet Strike of $${Number(magnetStrike || 0).toFixed(2)} acts as a high-density spot attractor as option settlement approaches.`,
-        `● Volatility analysis shows IV Rank of ${Number(ivRank || 0).toFixed(0)}%, presenting clear opportunities for strategic position mapping.`
-      ]
-    });
-  }
-});
 
 // ============================================================
 // WORKSPACE LAYOUT PERSISTENCE (resizable grid engine — spec Group 4/5)
@@ -4368,34 +4254,76 @@ async function startServer() {
   // DB is managed by Drizzle migrations via RPC
 
 // ==========================================
-// AI THINKING ENDPOINT (Deep Research Mode)
+// QUANT CO-PILOT — local, deterministic options-structure analysis.
+// Generates an institutional-grade narrative purely from the live quant engine
+// (dealer GEX/DEX, walls, gamma flip, expected move). No external LLM/API key.
 // ==========================================
 app.post('/api/ai/analyze', async (req, res) => {
   try {
-    const { prompt } = req.body;
-    if (!prompt) return res.status(400).json({ error: 'Prompt is required' });
+    const ticker = String(req.body?.ticker || 'SPX').toUpperCase();
+    const query = String(req.body?.query || '').trim().slice(0, 280);
+    const asset = ASSET_LIST.find(a => a.ticker === ticker) || ASSET_LIST[0];
+    const spot = db.liveSpotPrices[asset.ticker] || asset.defaultPrice;
 
-    const client = getGeminiClient();
-    if (!client) {
-      return res.status(503).json({ error: 'AI integration is disabled. Set GEMINI_API_KEY to enable.' });
-    }
+    const liveChain = db.liveOptionChains[asset.ticker];
+    const chain: ChainContract[] = (liveChain && liveChain.length > 0)
+      ? liveChain.map((c: any) => ({
+          strike: c.strike,
+          type: (c.type === 'C' || c.type === 'call') ? 'call' : 'put',
+          openInterest: c.oi || c.openInterest || 0,
+          iv: c.impliedVolatility || c.iv || asset.volatility,
+          bid: c.bid || 0, ask: c.ask || 0,
+          delta: c.greeks?.delta ?? c.delta ?? 0,
+          gamma: c.greeks?.gamma ?? c.gamma ?? 0,
+          vega: c.greeks?.vega ?? c.vega ?? 0,
+          theta: c.greeks?.theta ?? c.theta ?? 0,
+          vanna: c.greeks?.vanna ?? c.vanna ?? 0,
+          charm: c.greeks?.charm ?? c.charm ?? 0,
+        }))
+      : generateMockOptionsChain(spot, asset.volatility);
 
-    const { ThinkingLevel } = require("@google/genai");
+    const dealer = computeDealerInventory(chain, spot, 1);
+    const fmt = (n: number) => Number(n).toLocaleString(undefined, { maximumFractionDigits: asset.decimals });
+    const netGexBn = (dealer.netGex / 1e9).toFixed(2);
+    const aboveFlip = spot >= dealer.gammaFlipPrice;
+    const bias = dealer.netGex >= 0 ? 'LONG GAMMA (mean-reverting / pinning)' : 'SHORT GAMMA (trend-amplifying)';
+    const emPct = (dealer.expectedMovePct * 100).toFixed(2);
+    const emPts = (spot * dealer.expectedMovePct).toFixed(asset.decimals);
+    const distFlipPct = (((spot - dealer.gammaFlipPrice) / spot) * 100).toFixed(2);
 
-    const response = await client.models.generateContent({
-      model: 'gemini-3.1-pro-preview',
-      contents: prompt,
-      config: {
-        thinkingConfig: {
-          thinkingLevel: ThinkingLevel.HIGH,
-        },
-      }
-    });
-    
-    return res.json({ result: response.text });
+    const regimeRead = dealer.netGex >= 0
+      ? `Dealers are **net long gamma**, so their hedging is *stabilising*: rallies are sold and dips are bought, compressing realised vol toward the magnet. Expect mean-reversion and pinning unless spot breaks the flip.`
+      : `Dealers are **net short gamma**, so their hedging is *destabilising*: they buy strength and sell weakness, amplifying moves. Expect trend continuation and vol expansion, especially on a break of the key walls.`;
+
+    const flipRead = aboveFlip
+      ? `Spot ($${fmt(spot)}) is **above** the gamma flip ($${fmt(dealer.gammaFlipPrice)}, ${distFlipPct}% away) — the positive-gamma stabilising regime. A close back below the flip would turn dealers short-gamma and unlock faster two-way movement.`
+      : `Spot ($${fmt(spot)}) is **below** the gamma flip ($${fmt(dealer.gammaFlipPrice)}, ${distFlipPct}% away) — the negative-gamma accelerative regime. Reclaiming the flip would hand stabilising flows back to dealers.`;
+
+    const md = `## ${asset.ticker} Dealer-Positioning Read
+
+**Spot $${fmt(spot)} · Net GEX ${netGexBn}B · ${bias}**
+
+- **Call Wall (resistance):** $${fmt(dealer.callWall)} — the heaviest positive-gamma strike; rallies into it tend to stall as dealers sell to hedge.
+- **Put Wall (support):** $${fmt(dealer.putWall)} — the heaviest downside-gamma strike; a magnet and floor on pullbacks.
+- **Gamma Flip:** $${fmt(dealer.gammaFlipPrice)} — the regime pivot between stabilising and accelerative hedging.
+- **Expected 1-session move:** ±${emPct}% (≈ ±${emPts} pts), from the at-the-money implied vol.
+
+### Regime
+${regimeRead}
+
+### Tactical Read
+${flipRead}
+
+The defined channel is **$${fmt(dealer.putWall)} → $${fmt(dealer.callWall)}**. ${aboveFlip
+  ? `While above the flip, fading extremes back toward the walls is favoured; a decisive break of the call wall opens a gamma-squeeze leg higher.`
+  : `While below the flip, breakouts carry further; reclaiming the put wall and then the flip would be the first sign of stabilisation.`}${query
+  ? `\n\n### On your question\n> _${query}_\n\nRelative to the structure above, watch how price behaves at the **${aboveFlip ? 'call wall ($' + fmt(dealer.callWall) + ')' : 'put wall ($' + fmt(dealer.putWall) + ')'}** and the **gamma flip ($${fmt(dealer.gammaFlipPrice)})** — those two levels govern the near-term path far more than the spot print itself.`
+  : ''}`;
+
+    return res.json({ result: md });
   } catch (error: any) {
-    console.error('AI Generation Error:', error);
-    return res.status(500).json({ error: error.message || 'Internal server error' });
+    console.error('Quant Co-Pilot error:', error);
+    return res.status(500).json({ error: 'Could not generate analysis.' });
   }
 });
 

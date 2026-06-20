@@ -34,7 +34,6 @@ Recommended:
 - `APP_URL` — set to your final URL (e.g. `https://slayerterminal.com`) so Stripe
   redirects land back on your site
 - `ADMIN_EMAILS` — your email(s), comma-separated, for admin access
-- `GEMINI_API_KEY` — enables AI commentary (optional; degrades gracefully)
 - `POLYGON_API_KEY` and/or `TRADIER_API_KEY` + `TRADIER_ENV` — **live market data**
   (without these the engine runs on simulated data)
 

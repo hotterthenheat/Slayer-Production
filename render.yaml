@@ -55,8 +55,6 @@ services:
         sync: false        # whsec_...  (from the Stripe Dashboard webhook)
       - key: VITE_STRIPE_PUBLISHABLE_KEY
         sync: false        # pk_live_... / pk_test_...  (read at BUILD time)
-      - key: GEMINI_API_KEY
-        sync: false        # optional: AI commentary (degrades gracefully if unset)
       - key: POLYGON_API_KEY
         sync: false        # optional: live market data (else simulated)
       - key: TRADIER_API_KEY

@@ -642,27 +642,34 @@ export function computeDealerInventory(
     }
   }
 
-  // Find walls - select the strike with the maximum absolute Gamma Exposure (GEX)
+  // Find walls — the strike with the maximum absolute Gamma Exposure (GEX).
+  // Enforce the directional convention: the call wall (resistance) is the
+  // dominant call-gamma strike AT OR ABOVE spot, the put wall (support) the
+  // dominant put-gamma strike AT OR BELOW spot — so they straddle spot instead
+  // of collapsing onto the same at-the-money strike. Fall back to the global max
+  // for that side if no directional strike qualifies (degenerate chains).
   let callWall = spot * 1.015;
   let putWall = spot * 0.985;
-  let maxCallGexAbs = -1;
-  let maxPutGexAbs = -1;
+  let maxCallGexAbs = -1, maxPutGexAbs = -1;        // directional
+  let callWallAny = callWall, putWallAny = putWall; // fallback
+  let maxCallAny = -1, maxPutAny = -1;
 
   chain.forEach(c => {
     const isCallType = c.type === 'call';
-    const isPutType = c.type === 'put';
     const sign = isCallType ? 1 : -1;
     const GEX_strike = c.gamma * c.openInterest * 100 * (spot * spot) * 0.01 * sign;
     const absGex = Math.abs(GEX_strike);
-    if (isCallType && absGex > maxCallGexAbs) {
-      maxCallGexAbs = absGex;
-      callWall = c.strike;
-    }
-    if (isPutType && absGex > maxPutGexAbs) {
-      maxPutGexAbs = absGex;
-      putWall = c.strike;
+    if (isCallType) {
+      if (absGex > maxCallAny) { maxCallAny = absGex; callWallAny = c.strike; }
+      if (c.strike >= spot && absGex > maxCallGexAbs) { maxCallGexAbs = absGex; callWall = c.strike; }
+    } else {
+      if (absGex > maxPutAny) { maxPutAny = absGex; putWallAny = c.strike; }
+      if (c.strike <= spot && absGex > maxPutGexAbs) { maxPutGexAbs = absGex; putWall = c.strike; }
     }
   });
+
+  if (maxCallGexAbs < 0) { callWall = callWallAny; maxCallGexAbs = maxCallAny; }
+  if (maxPutGexAbs < 0) { putWall = putWallAny; maxPutGexAbs = maxPutAny; }
 
   // A dominant wall on BOTH sides is required to trust wall-based Phase-3 metrics.
   const wallsConfident = maxCallGexAbs > 0 && maxPutGexAbs > 0;
@@ -705,6 +712,10 @@ export function generateMockOptionsChain(spot: number, ivBase: number): ChainCon
   const chain: ChainContract[] = [];
   const step = spot > 1000 ? 50 : spot > 150 ? 5 : 1;
   const centerStrike = Math.round(spot / step) * step;
+  // A few days to expiry (not 0DTE): gamma is spread across strikes rather than
+  // pinned entirely at-the-money, so the call/put walls separate realistically
+  // and the greeks aren't 0DTE-extreme.
+  const chainDte = 5;
   
   // Generate 21 strikes (-10 to +10)
   for (let offset = -10; offset <= 10; offset++) {
@@ -720,18 +731,22 @@ export function generateMockOptionsChain(spot: number, ivBase: number): ChainCon
     // walls snap to psychological levels and only jump when spot crosses far
     // enough, instead of sliding tick-by-tick off a smooth bell curve.
     const roundFactor = strike % (step * 5) === 0 ? 2.2 : strike % (step * 2) === 0 ? 1.35 : 1.0;
-    const moneyness = Math.exp(-(offset * offset) / 18);
+    // Call OI skews above spot (calls are OTM higher), put OI below — so the GEX
+    // call wall (resistance) forms above spot and the put wall (support) below,
+    // instead of both collapsing onto the same at-the-money strike.
+    const callMoneyness = Math.exp(-((offset - 2) * (offset - 2)) / 18);
+    const putMoneyness = Math.exp(-((offset + 2) * (offset + 2)) / 18);
 
     // Call Contract
-    const greeksC = calculateAnalyticGreeks(spot, strike, 1, skewVolCall, true);
-    const bsPriceC = computeBlackScholesPrice(spot, strike, 1, skewVolCall, true);
+    const greeksC = calculateAnalyticGreeks(spot, strike, chainDte, skewVolCall, true);
+    const bsPriceC = computeBlackScholesPrice(spot, strike, chainDte, skewVolCall, true);
     const bidC = Math.max(0.05, bsPriceC * 0.97);
     const askC = Math.max(0.10, bsPriceC * 1.03);
 
     chain.push({
       strike,
       type: 'call',
-      openInterest: Math.round((1500 * moneyness + 120) * roundFactor),
+      openInterest: Math.round((1500 * callMoneyness + 120) * roundFactor),
       iv: skewVolCall,
       bid: Number(bidC.toFixed(2)),
       ask: Number(askC.toFixed(2)),
@@ -744,15 +759,15 @@ export function generateMockOptionsChain(spot: number, ivBase: number): ChainCon
     });
 
     // Put Contract
-    const greeksP = calculateAnalyticGreeks(spot, strike, 1, skewVolPut, false);
-    const bsPriceP = computeBlackScholesPrice(spot, strike, 1, skewVolPut, false);
+    const greeksP = calculateAnalyticGreeks(spot, strike, chainDte, skewVolPut, false);
+    const bsPriceP = computeBlackScholesPrice(spot, strike, chainDte, skewVolPut, false);
     const bidP = Math.max(0.05, bsPriceP * 0.97);
     const askP = Math.max(0.10, bsPriceP * 1.03);
 
     chain.push({
       strike,
       type: 'put',
-      openInterest: Math.round((1800 * moneyness + 140) * roundFactor),
+      openInterest: Math.round((1800 * putMoneyness + 140) * roundFactor),
       iv: skewVolPut,
       bid: Number(bidP.toFixed(2)),
       ask: Number(askP.toFixed(2)),

@@ -1,20 +1,36 @@
-<div align="center">
-<img width="1200" height="475" alt="GHBanner" src="https://ai.google.dev/static/site-assets/images/share-ais-513315318.png" />
-</div>
+# Slayer Terminal
 
-# Run and deploy your AI Studio app
+An institutional-grade options intelligence terminal. SkysVision finds the setup;
+the Pinpoint quant engine reads dealer flow (GEX/DEX/VEX, gamma flip, walls),
+volatility surface, and regime — all computed locally with **no external AI/LLM
+dependency**. It runs fully on high-fidelity simulated data out of the box and
+upgrades to live market data when you add provider keys.
 
-This contains everything you need to run your app locally.
+This is **one app**: an Express server (`server.ts` → `dist/server.cjs`) that
+serves both the API and the built React frontend. It needs **Node** and (for
+auth/billing persistence) **Postgres**. See `DEPLOY.md` for the full deploy guide.
 
-View your app in AI Studio: https://ai.studio/apps/d0d3056b-cbe0-49f8-94fe-29953c770415
+## Run locally
 
-## Run Locally
+**Prerequisites:** Node.js 22+
 
-**Prerequisites:**  Node.js
+```bash
+npm install
+npm run dev      # tsx server.ts — API + Vite dev frontend on http://localhost:3000
+```
 
+No keys are required to run: the engine streams realistic synthetic market data
+and the Quant Co-Pilot generates its analysis from the live engine. Add keys to
+go live (see `.env.example`):
 
-1. Install dependencies:
-   `npm install`
-2. Set the `GEMINI_API_KEY` in [.env.local](.env.local) to your Gemini API key
-3. Run the app:
-   `npm run dev`
+- `POLYGON_API_KEY` / `TRADIER_API_KEY` (+ `TRADIER_ENV`) — live market data
+- `STRIPE_SECRET_KEY` / `STRIPE_WEBHOOK_SECRET` / `VITE_STRIPE_PUBLISHABLE_KEY` — billing
+- `SQL_*` + `COOKIE_SECRET` — Postgres persistence + signed sessions
+
+## Scripts
+
+- `npm run dev` — run the server (API + frontend) in development
+- `npm run build` — build the frontend (Vite) and bundle the server (esbuild)
+- `npm start` — run the production bundle (`dist/server.cjs`)
+- `npm run lint` — TypeScript typecheck (`tsc --noEmit`)
+- `npm test` — run the quant + SkyScore test suites
