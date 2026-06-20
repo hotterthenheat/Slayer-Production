@@ -16,14 +16,12 @@ import {
   Compass,
   GraduationCap,
   Sparkles,
-  Bookmark,
-  Activity
+  Bookmark
 } from 'lucide-react';
-import { InstitutionalPhysicsDashboard } from './InstitutionalPhysicsDashboard';
 import { useContractStore } from '../lib/store';
 
 export default function ArborCapital() {
-  const [activeChannel, setActiveChannel] = useState<'research' | 'education' | 'community' | 'support' | 'physics'>('physics');
+  const [activeChannel, setActiveChannel] = useState<'research' | 'education' | 'community' | 'support'>('research');
   
   // Feature requests state
   const [userRequests, setUserRequests] = useState([
@@ -179,21 +177,6 @@ export default function ArborCapital() {
         <div className="col-span-1 flex flex-col gap-2 w-full">
           
           <button
-            onClick={() => setActiveChannel('physics')}
-            className={`flex items-center gap-3 p-3 px-4 rounded-xl text-left font-mono text-xs font-bold transition-all border ${
-              activeChannel === 'physics'
-                ? 'bg-[#4ADE80] text-black/10 text-[#d4d4d8] border-black shadow'
-                : 'bg-black/30 border-white/5 hover:border-black text-[#888888] hover:text-zinc-200'
-            }`}
-          >
-            <Activity className="w-4 h-4 shrink-0 text-[#d4d4d8] animate-pulse" />
-            <div className="flex flex-col">
-              <span>SVI & GAMMA PHYSICS LAB</span>
-              <span className="text-[9px] text-[#d4d4d8] font-bold">3D SURFACE COMPUTATION</span>
-            </div>
-          </button>
-
-          <button
             onClick={() => setActiveChannel('research')}
             className={`flex items-center gap-3 p-3 px-4 rounded-xl text-left font-mono text-xs font-bold transition-all border ${
               activeChannel === 'research'
@@ -280,13 +263,6 @@ export default function ArborCapital() {
         {/* Content Dynamic Area */}
         <div className="col-span-1 lg:col-span-3 bg-black/40 border border-white/5 rounded-2xl p-6 shadow-xl relative min-h-[350px]">
           
-          {/* SVI Volatility & Gamma Option Physics Lab Channel */}
-          {activeChannel === 'physics' && (
-            <div className="animate-fadeIn w-full relative">
-              <InstitutionalPhysicsDashboard />
-            </div>
-          )}
-
           {/* Channel 1: Research Articles */}
           {activeChannel === 'research' && (
             <div className="flex flex-col gap-4 animate-fadeIn">

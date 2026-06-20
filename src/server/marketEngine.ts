@@ -513,8 +513,7 @@ export function accessTierToLevel(accessTier?: string | null): number {
  * The level for a block is the LOWEST requiredTier among the tabs whose components
  * consume it, so a paying user who can open a tab always gets its data:
  *   • trade_plan / strike_gravity  → SkyVision (tier 2)
- *   • quant_edge                   → Community/Arbor physics dash (tier 2) + Dealer Flow
- *   • gex_profile / zerodte / dealer_dynamics → Dealer Flow (tier 3)
+ *   • gex_profile / zerodte / dealer_dynamics / quant_edge → Dealer Flow (tier 3)
  *   • option_chain                 → Quant Lab (tier 3)
  * Blocks NOT listed here (deep_intelligence, system_score, candles, discovery, …) are
  * free — they drive the public home tab and the always-on alert hub.
@@ -522,10 +521,10 @@ export function accessTierToLevel(accessTier?: string | null): number {
 const PREMIUM_BLOCK_TIERS: Record<string, number> = {
   trade_plan: 2,
   strike_gravity: 2,
-  quant_edge: 2,
   gex_profile: 3,
   zerodte: 3,
   dealer_dynamics: 3,
+  quant_edge: 3,
   option_chain: 3,
 };
 
