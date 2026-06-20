@@ -998,7 +998,7 @@ export default function App() {
 
             {/* TAB 3: PINPOINT AI (MARKET INTELLIGENCE) */}
             {activeTab === 'pinpoint' && (
-              <div className="view-enter border border-black bg-black/80 rounded-md p-1 drop-shadow-2xl">
+              <div id="pinpoint-page" className="view-enter border border-black bg-black/80 rounded-md p-1 drop-shadow-2xl">
                 <TierGuard requiredTier={3} tabKey="pinpoint" planKey="pinpoint" planName="Pinpoint AI Tracker" planPrice="$500">
                   <DealerFlowView />
                 </TierGuard>
