@@ -1761,3 +1761,67 @@ body.prism-locked {
     width: 100% !important;
   }
 }
+
+/* ============================================================
+   DESIGN SYSTEM — platform-wide polish (motion · focus · depth)
+   Additive and dark-first; respects .light-theme and reduced motion.
+   One place, so every page/modal/table/card gets it consistently.
+   ============================================================ */
+
+/* Accessibility + performance: honor reduced-motion (also removes jank
+   for anyone who opts out of animation at the OS level). */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* Smooth, consistent interactivity on controls that don't set their own
+   transition. Tailwind transition utilities (a class) still win where used,
+   so this only fills the gaps — making hovers uniform across the app. */
+@media (prefers-reduced-motion: no-preference) {
+  button, a, summary, [role="button"], input, select, textarea {
+    transition: color .15s ease, background-color .15s ease, border-color .15s ease,
+      box-shadow .15s ease, transform .15s cubic-bezier(0.16, 1, 0.3, 1), opacity .15s ease;
+  }
+  /* Tactile press feedback so taps/clicks feel responsive and premium. */
+  button:not(:disabled):active,
+  [role="button"]:not([aria-disabled="true"]):active {
+    transform: translateY(0.5px) scale(0.99);
+  }
+}
+
+/* Accessible keyboard focus ring — keyboard navigation only, never on
+   mouse click, so it adds a11y without changing the click aesthetic. */
+:where(button, a, summary, [role="button"], input, select, textarea, [tabindex]):focus-visible {
+  outline: 2px solid rgba(74, 222, 128, 0.75);
+  outline-offset: 2px;
+}
+:where(button, a, [role="button"]):focus:not(:focus-visible) { outline: none; }
+.light-theme :where(button, a, summary, [role="button"], input, select, textarea, [tabindex]):focus-visible {
+  outline-color: rgba(2, 132, 199, 0.85);
+}
+
+/* Consistent disabled treatment everywhere. */
+button:disabled, [aria-disabled="true"] { opacity: 0.5; cursor: not-allowed !important; }
+
+/* Premium depth + a consistent hover on the primary card surface
+   (.apple-glass is the shared card used across the platform). */
+.apple-glass, .apple-glass-bright, .apple-glass-dark {
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.40), 0 14px 36px -18px rgba(0, 0, 0, 0.65);
+}
+@media (prefers-reduced-motion: no-preference) {
+  .apple-glass, .apple-glass-bright, .apple-glass-dark {
+    transition: box-shadow .25s ease, border-color .25s ease;
+  }
+  .apple-glass:hover, .apple-glass-bright:hover, .apple-glass-dark:hover {
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.45), 0 22px 48px -20px rgba(0, 0, 0, 0.75);
+  }
+}
+
+/* On-brand text selection + crisp rendering. */
+::selection { background: rgba(74, 222, 128, 0.25); color: #ffffff; }
+html { -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; text-rendering: optimizeLegibility; }
