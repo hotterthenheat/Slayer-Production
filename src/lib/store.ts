@@ -280,10 +280,17 @@ export function useTierValidation() {
       setIsAuthenticated(authSync);
     }
 
-    // 2. Perform definitive network validation
+    // 2. Perform definitive network validation. Guard against (a) a server error
+    //    (res.ok) silently downgrading a paid user to tier 0, and (b) a stale
+    //    response from a previous mount clobbering a newer one (cancelled flag).
+    let cancelled = false;
     fetch('/api/auth/session', { cache: 'no-store' })
-      .then(res => res.json())
+      .then(res => {
+        if (!res.ok) throw new Error(`session ${res.status}`);
+        return res.json();
+      })
       .then(data => {
+        if (cancelled) return;
         if (data.authenticated && data.access_tier) {
           setIsAuthenticated(true);
           localStorage.setItem('slayer_auth', 'true');
@@ -295,11 +302,12 @@ export function useTierValidation() {
         }
       })
       .catch(err => console.error("Tier sync failed", err));
+    return () => { cancelled = true; };
   }, [setPurchasedTier, setIsAuthenticated]);
 }
 
 export const useContractStore = create<ContractStore>((set, get) => ({
-  activeTab: (localStorage.getItem('lastActiveTab') as 'home' | 'skyvision' | 'pinpoint' | 'quant' | 'auditor' | 'dealerflow' | 'community' | 'settings' | 'admin' | 'subscription' | 'workspace') || 'home',
+  activeTab: ((typeof window !== 'undefined' ? localStorage.getItem('lastActiveTab') : null) as 'home' | 'skyvision' | 'pinpoint' | 'quant' | 'auditor' | 'dealerflow' | 'community' | 'settings' | 'admin' | 'subscription' | 'workspace') || 'home',
   setActiveTab: (tab, keepContract = false) => {
     // The legacy 'dealerflow' tab was consolidated into 'pinpoint' (which renders
     // DealerFlowView). Normalize so any lingering 'dealerflow' navigation resolves

@@ -624,17 +624,19 @@ export default function App() {
   useEffect(() => {
     fetchSession();
     (window as any).refreshSlayerSession = fetchSession;
-    
-    // Check for referral link
+
+    // Check for referral link — route to subscription. Single cleanup path so the
+    // refreshSlayerSession global is always removed (the previous early return on the
+    // /join/ path skipped that cleanup and leaked the global).
+    let joinTimer: ReturnType<typeof setTimeout> | undefined;
     if (window.location.pathname.startsWith('/join/')) {
-      // Just take them to the subscription page directly as requested
-      const timer = setTimeout(() => {
+      joinTimer = setTimeout(() => {
         setActiveTab('subscription');
       }, 100);
-      return () => clearTimeout(timer);
     }
-    
+
     return () => {
+      if (joinTimer) clearTimeout(joinTimer);
       delete (window as any).refreshSlayerSession;
     };
   }, []);
@@ -704,8 +706,10 @@ export default function App() {
     
     // Throttle SSE flushes to ~7/sec. Candle/greek data doesn't need 60fps, and
     // flushing on every animation frame forced a full app-tree reconcile (jank).
+    let cancelled = false;
     let lastFlush = 0;
     const flushData = (ts: number) => {
+      if (cancelled) return;
       if (latestPayload && ts - lastFlush >= 150) {
         updateFromSSE(latestPayload);
         latestPayload = null;
@@ -722,6 +726,7 @@ export default function App() {
     };
 
     return () => {
+      cancelled = true;
       eventSource.close();
       if (flushInterval) cancelAnimationFrame(flushInterval);
     };
