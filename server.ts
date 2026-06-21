@@ -1230,7 +1230,7 @@ app.post('/api/users/export-data', async (req, res) => {
 [GDPR COMPLIANCE AUDIT] DISPATCHING SECURE DATA EXPORT CONTAINER
 TO: ${userEmail}
 TIMESTAMP: ${new Date().toISOString()}
-CONTAINER URL: http://localhost:3000/api/users/download-export/${token}
+CONTAINER URL: http://localhost:3000/api/users/download-export/<token redacted from logs>
 EXPIRATION: 24 HOURS (Expires: ${new Date(expiresAt).toLocaleString()})
 STATUS: DELIVERED VIA ENCRYPTED TLS SMTP HANDSHAKE
 ======================================================================
@@ -2278,7 +2278,9 @@ app.get('/api/history', async (req, res) => {
   try {
     const ticker = String(req.query.ticker || 'SPX');
     const tf = String(req.query.timeframe || '5m') as TimeframeVal;
-    const count = req.query.count ? Number(req.query.count) : 120;
+    // Clamp caller-supplied candle count to a sane range (guards NaN / huge allocations).
+    const rawCount = Number(req.query.count);
+    const count = Number.isFinite(rawCount) ? Math.min(500, Math.max(1, Math.trunc(rawCount))) : 120;
     
     const candleResult = await getUnifiedCandles(ticker, tf, count);
     if (candleResult && candleResult.candles && candleResult.candles.length > 0) {
@@ -2506,7 +2508,7 @@ app.patch('/api/admin/users/:email/tier', requireAdmin(['owner', 'admin', 'moder
   // instant invalidate
   for (const client of sse.clients) {
     if (client.userEmail === email && !client.res.finished) {
-      client.res.write(`data: ${JSON.stringify({ type: 'TIER_UPGRADE', access_tier: req.body.access_tier })}\n\n`);
+      client.res.write(`data: ${JSON.stringify({ type: 'TIER_UPGRADE', access_tier: user.access_tier })}\n\n`);
     }
   }
   logAudit(req, 'USER_TIER_UPDATE', email);

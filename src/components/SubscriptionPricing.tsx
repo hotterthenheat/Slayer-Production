@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence } from 'motion/react';
 import { 
   Check, Lock, CreditCard, ChevronRight, X, AlertTriangle, Shield, CheckCircle2, ArrowRight, User, Mail, ShieldCheck
 } from 'lucide-react';
