@@ -87,23 +87,23 @@ export function MyTrackedContracts() {
   const closed = trades.filter((t) => t.status === 'CLOSED').slice(0, 8);
 
   return (
-    <div className="rounded-xl border bg-white/[0.02] p-5 shadow-lg" style={{ borderColor: 'rgba(96,165,250,0.22)', borderLeftColor: 'rgba(96,165,250,0.9)', borderLeftWidth: '3px' }}>
+    <div className="rounded-xl border bg-[var(--surface)] p-5 shadow-lg" style={{ borderColor: 'rgba(96,165,250,0.22)', borderLeftColor: 'rgba(96,165,250,0.9)', borderLeftWidth: '3px' }}>
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-2">
           <Crosshair className="w-4 h-4 text-[#60A5FA]" />
-          <span className="text-[11px] font-black tracking-widest uppercase text-[#E5E5E5]">My Tracked Contracts</span>
+          <span className="text-[11px] font-black tracking-widest uppercase text-[var(--text-primary)]">My Tracked Contracts</span>
         </div>
-        <span className="text-[10px] font-mono font-bold text-zinc-300">
+        <span className="text-[10px] font-mono font-bold text-[var(--text-secondary)]">
           <span style={{ color: openCount >= maxOpen ? '#F87171' : '#60A5FA' }}>{openCount}</span> / {maxOpen} slots
         </span>
       </div>
 
       {!loaded ? (
-        <div className="text-[10px] text-zinc-400 flex items-center gap-1.5"><Loader2 className="w-3 h-3 animate-spin" /> Loading your contracts…</div>
+        <div className="text-[10px] text-[var(--text-secondary)] flex items-center gap-1.5"><Loader2 className="w-3 h-3 animate-spin" /> Loading your contracts…</div>
       ) : open.length === 0 && closed.length === 0 ? (
-        <div className="rounded-lg border border-dashed border-white/10 p-6 text-center">
-          <div className="text-[11px] text-zinc-300 font-bold mb-1">No tracked contracts yet</div>
-          <div className="text-[10px] text-zinc-400">Add a contract from Sky Vision (or the setups) and the engine will track it here and auto-exit on target, stop, time, or a thesis break.</div>
+        <div className="rounded-lg border border-dashed border-[var(--border)] p-6 text-center">
+          <div className="text-[11px] text-[var(--text-secondary)] font-bold mb-1">No tracked contracts yet</div>
+          <div className="text-[10px] text-[var(--text-secondary)]">Add a contract from Sky Vision (or the setups) and the engine will track it here and auto-exit on target, stop, time, or a thesis break.</div>
         </div>
       ) : (
         <div className="space-y-4">
@@ -114,10 +114,10 @@ export function MyTrackedContracts() {
                 const up = t.pnlPct >= 0;
                 const pnlTone = up ? '#4ADE80' : '#F87171';
                 return (
-                  <div key={t.id} className="rounded-lg border border-white/10 bg-black/30 p-3">
+                  <div key={t.id} className="rounded-lg border border-[var(--border)] bg-[var(--surface-2)] p-3">
                     <div className="flex items-center justify-between gap-2 flex-wrap">
                       <div className="flex items-center gap-2 min-w-0">
-                        <span className="text-[13px] font-black text-[#E5E5E5]">{t.contract}</span>
+                        <span className="text-[13px] font-black text-[var(--text-primary)]">{t.contract}</span>
                         <span className="text-[8.5px] font-black uppercase px-1.5 py-0.5 rounded" style={{ background: 'rgba(96,165,250,0.12)', color: '#60A5FA' }}>{CATEGORY_LABEL[t.category] || t.category}</span>
                         {t.scaledOut && <span className="text-[8.5px] font-black uppercase px-1.5 py-0.5 rounded" style={{ background: 'rgba(74,222,128,0.12)', color: '#4ADE80' }}>SCALED ½ @ T1</span>}
                       </div>
@@ -132,11 +132,11 @@ export function MyTrackedContracts() {
                       </div>
                     </div>
                     <div className="mt-2 grid grid-cols-2 sm:grid-cols-5 gap-2 text-[10px]">
-                      <div><span className="text-zinc-400">Entry </span><span className="font-mono text-[#E5E5E5]">${fmt(t.entryPrice)}</span></div>
-                      <div><span className="text-zinc-400">Now </span><span className="font-mono text-[#E5E5E5]">${fmt(t.currentPrice)}</span></div>
-                      <div><span className="text-zinc-400">T1 </span><span className="font-mono text-[#4ADE80]">${fmt(t.target1)}</span></div>
-                      <div><span className="text-zinc-400">T2 </span><span className="font-mono text-[#4ADE80]">${fmt(t.target2)}</span></div>
-                      <div><span className="text-zinc-400">Stop </span><span className="font-mono text-[#F87171]">${fmt(t.stopLoss)}</span></div>
+                      <div><span className="text-[var(--text-secondary)]">Entry </span><span className="font-mono text-[var(--text-primary)]">${fmt(t.entryPrice)}</span></div>
+                      <div><span className="text-[var(--text-secondary)]">Now </span><span className="font-mono text-[var(--text-primary)]">${fmt(t.currentPrice)}</span></div>
+                      <div><span className="text-[var(--text-secondary)]">T1 </span><span className="font-mono text-[#4ADE80]">${fmt(t.target1)}</span></div>
+                      <div><span className="text-[var(--text-secondary)]">T2 </span><span className="font-mono text-[#4ADE80]">${fmt(t.target2)}</span></div>
+                      <div><span className="text-[var(--text-secondary)]">Stop </span><span className="font-mono text-[#F87171]">${fmt(t.stopLoss)}</span></div>
                     </div>
                   </div>
                 );
@@ -147,16 +147,16 @@ export function MyTrackedContracts() {
           {/* CLOSED */}
           {closed.length > 0 && (
             <div>
-              <div className="text-[9px] uppercase tracking-widest text-zinc-400 mb-1.5">Recently Closed</div>
+              <div className="text-[9px] uppercase tracking-widest text-[var(--text-secondary)] mb-1.5">Recently Closed</div>
               <div className="space-y-1">
                 {closed.map((t) => {
                   const win = (t.outcome || '') === 'WIN';
                   const tone = win ? '#4ADE80' : t.outcome === 'LOSS' ? '#F87171' : '#A3A3A3';
                   return (
-                    <div key={t.id} className="flex items-center justify-between text-[10px] rounded px-2 py-1.5 bg-black/20">
-                      <span className="font-mono font-bold text-[#E5E5E5]">{t.contract}</span>
+                    <div key={t.id} className="flex items-center justify-between text-[10px] rounded px-2 py-1.5 bg-[var(--surface-2)]">
+                      <span className="font-mono font-bold text-[var(--text-primary)]">{t.contract}</span>
                       <div className="flex items-center gap-3">
-                        <span className="text-zinc-400 uppercase text-[8.5px]">{(t.exitReason || '').replace('_', ' ')}</span>
+                        <span className="text-[var(--text-secondary)] uppercase text-[8.5px]">{(t.exitReason || '').replace('_', ' ')}</span>
                         <span className="font-black uppercase text-[8.5px] px-1.5 py-0.5 rounded" style={{ background: `${tone}1a`, color: tone }}>{t.outcome}</span>
                         <span className="font-mono font-bold w-14 text-right" style={{ color: tone }}>{t.pnlPct >= 0 ? '+' : ''}{fmt(t.pnlPct, 1)}%</span>
                       </div>
