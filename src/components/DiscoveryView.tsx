@@ -769,42 +769,42 @@ export function DiscoveryView({
 
   const SHELF_EXPLANATIONS = {
     conviction: {
-      title: "🎯 Core Conviction Setups (High Probability Positions)",
+      title: "Core Conviction Setups (High Probability Positions)",
       whyItsBest: "These are our absolute highest-quality trades backed by massive institutional dealer buy walls. They are 'the best' because market makers are heavily committed at these levels and are forced to buy stock to defend their positions, creating an exceptionally strong and reliable price floor with almost zero downside risk.",
       horizon: "1 TO 3 DAYS (SWING)",
       mathTracking: "Strong dealer buy-walls sitting under price",
       confidenceTier: "VERY HIGH (94–98%)"
     },
     improved: {
-      title: "📈 High Velocity Breakouts (Quick Scalp Trades)",
+      title: "High Velocity Breakouts (Quick Scalp Trades)",
       whyItsBest: "These are fast-moving momentum trades with explosive volume speed. They are 'the best' for quick day trading (scalping) because derivative volumes are speeding up rapidly in the last 15 minutes, showing that buyers are sweeping options at the ask, which forces dealers to cover their shorts, driving price up fast.",
       horizon: "15 MIN TO 3 HOURS (SCALP)",
       mathTracking: "Fast volume and momentum building",
       confidenceTier: "HIGH (86–92%)"
     },
     mispriced: {
-      title: "💎 Mathematical Arbitrage (Option Premium Discounts)",
+      title: "Mathematical Arbitrage (Option Premium Discounts)",
       whyItsBest: "These are deep value opportunities where options are priced exceptionally cheap. They are 'the best' because temporary implied volatility drops have created a price mismatch: active brokers are selling these contracts at a -15% discount compared to their true mathematical value. Enter cheap, exit under normal curves.",
       horizon: "2 HOURS TO 1 DAY (VALUE)",
       mathTracking: "Option priced below fair value",
       confidenceTier: "SOLID (80–85%)"
     },
     invalidation: {
-      title: "⚠️ Support Rebounds & Boundaries (Trades Coming Back)",
+      title: "Support Rebounds & Boundaries (Trades Coming Back)",
       whyItsBest: "These are options hovering right at critical line-in-the-sand support thresholds. They are 'the best' for reversals because they are 'coming back' to key support lines (put walls), offering a highly defined bounce-back entry with tight, predefined stop-losses.",
       horizon: "30 MIN TO 2 HOURS (BOUNCE)",
       mathTracking: "Bouncing off dealer put-wall support",
       confidenceTier: "SPECULATIVE (40–55%)"
     },
     whale: {
-      title: "🐳 Smart Money Whale Sweeps (Institutional Tape Follower)",
+      title: "Smart Money Whale Sweeps (Institutional Tape Follower)",
       whyItsBest: "These represent trades where ultra-wealthy institutional players are sweeping multi-million dollar cash blocks directly at the ask price. They are 'the best' because you are alignment-trading with the largest forces in the market, riding their powerful directional tailwinds.",
       horizon: "1 HOUR TO 2 DAYS (SWING)",
       mathTracking: "$5M+ block trades hitting the tape",
       confidenceTier: "HIGH (85%+)"
     },
     all: {
-      title: "📂 All Discovered Signals (Unified Market Catalog)",
+      title: "All Discovered Signals (Unified Market Catalog)",
       whyItsBest: "A unified look across the entire option spectrum under scanning supervision. Use this tab to compare all categories side-by-side, sorted from the absolute strongest active model ratings to the weakest.",
       horizon: "Dependent on Selection",
       mathTracking: "All signals combined",
@@ -1114,34 +1114,34 @@ export function DiscoveryView({
       <div className={`grid grid-cols-1 md:grid-cols-12 gap-3 items-center rounded-lg border ${c_glassBg}`}>
         
         {/* Navigation Categories Tabs */}
-        <div className={`md:col-span-8 flex items-center p-0.5 border rounded-md overflow-x-auto scrollbar-none gap-0.5 ${isLight ? "bg-black border-black" : "bg-black border-black"}`}>
+        <div className="md:col-span-8 flex items-center p-0.5 border rounded-md overflow-x-auto scrollbar-none gap-0.5 bg-[var(--surface-2)] border-[var(--border)]">
           {[
-            { id: 'conviction', label: '🎯 TOP OPPORTUNITIES', count: contracts.filter(c => c.shelf === 'conviction').length },
-            { id: 'improved', label: '⚡ QUICKSCALP', count: contracts.filter(c => c.shelf === 'improved').length },
-            { id: 'mispriced', label: '💵 DISCOUNTED PRICES', count: contracts.filter(c => c.shelf === 'mispriced').length },
-            { id: 'invalidation', label: '↩️ REBOUNDS', count: contracts.filter(c => c.shelf === 'invalidation').length },
-            { id: 'whale', label: '🐳 WHALE SWEEPS', count: contracts.filter(c => c.shelf === 'whale').length },
-            { id: 'all', label: '📂 ALL DETECTED', count: contracts.length }
+            { id: 'conviction', label: 'TOP OPPORTUNITIES', count: contracts.filter(c => c.shelf === 'conviction').length },
+            { id: 'improved', label: 'QUICKSCALP', count: contracts.filter(c => c.shelf === 'improved').length },
+            { id: 'mispriced', label: 'DISCOUNTED', count: contracts.filter(c => c.shelf === 'mispriced').length },
+            { id: 'invalidation', label: 'REBOUNDS', count: contracts.filter(c => c.shelf === 'invalidation').length },
+            { id: 'whale', label: 'WHALE SWEEPS', count: contracts.filter(c => c.shelf === 'whale').length },
+            { id: 'all', label: 'ALL', count: contracts.length }
           ].map(shelf => (
             <button
               key={shelf.id}
               onClick={() => setActiveShelf(shelf.id as any)}
-              className={`px-3 py-1.5 text-[9.5px] uppercase font-black tracking-wider rounded-xs transition-all cursor-pointer whitespace-nowrap flex items-center gap-1.5 ${
+              className={`px-3 py-1.5 text-[9.5px] uppercase font-black tracking-wider rounded transition-colors cursor-pointer whitespace-nowrap flex items-center gap-1.5 ${
                 activeShelf === shelf.id
-                  ? (isLight ? 'bg-white text-zinc-950 font-extrabold shadow border border-black' : 'bg-white text-black font-extrabold shadow')
-                  : 'text-zinc-550 hover:text-[#4ADE80]'
+                  ? 'bg-[var(--surface-3)] text-[var(--text-primary)]'
+                  : 'text-[var(--text-tertiary)] hover:text-[var(--text-primary)]'
               }`}
             >
               <span>{shelf.label}</span>
-              <span className={`text-[8px] font-bold px-1 py-0.2 rounded ${activeShelf === shelf.id ? 'bg-black text-zinc-900' : (isLight ? 'bg-white text-zinc-400' : 'bg-black text-zinc-650')}`}>
+              <span className={`text-[8px] font-bold px-1 py-0.5 rounded ${activeShelf === shelf.id ? 'bg-[var(--surface)] text-[var(--text-secondary)]' : 'bg-[var(--surface)] text-[var(--text-tertiary)]'}`}>
                 {shelf.count}
               </span>
             </button>
           ))}
         </div>
 
-        {/* Option Call/Put Type Filter Option */}
-         <div className={`md:col-span-2 flex justify-center p-0.5 border rounded-md ${isLight ? "bg-black border-black" : "bg-black border-black"}`}>
+        {/* Option Call/Put Type Filter */}
+         <div className="md:col-span-2 flex justify-center p-0.5 border rounded-md bg-[var(--surface-2)] border-[var(--border)]">
           {[
             { id: 'all', label: 'ALL' },
             { id: 'calls', label: 'C' },
@@ -1150,10 +1150,10 @@ export function DiscoveryView({
             <button
               key={opt.id}
               onClick={() => setOptionTypeFilter(opt.id as any)}
-              className={`px-3.5 py-1.5 text-[8.5px] uppercase font-extrabold rounded-xs flex-1 transition-all cursor-pointer ${
+              className={`px-3.5 py-1.5 text-[8.5px] uppercase font-extrabold rounded flex-1 transition-colors cursor-pointer ${
                 optionTypeFilter === opt.id
-                  ? 'bg-[#4f8cff]/15 text-[#4f8cff] border border-[#4f8cff]/30 font-black'
-                  : `text-zinc-500 border border-transparent ${isLight ? 'hover:text-zinc-950' : 'hover:text-[#E5E5E5]'}`
+                  ? 'bg-[#60A5FA]/15 text-[#60A5FA] border border-[#60A5FA]/30'
+                  : 'text-[var(--text-tertiary)] border border-transparent hover:text-[var(--text-primary)]'
               }`}
             >
               {opt.label}
@@ -1161,16 +1161,12 @@ export function DiscoveryView({
           ))}
         </div>
 
-        {/* Mini Ticker/Strike search box - Glassmorphism, high-fidelity focus effect */}
-        <div 
-          className={`md:col-span-2 relative flex items-center rounded-lg px-3 py-1.5 border transition-all duration-300 focus-within:ring-1 focus-within:ring-[#4f8cff]/50 ${
-            isLight 
-              ? 'bg-zinc-50 border-black focus-within:bg-white focus-within:border-black' 
-              : 'bg-black/60 border-black focus-within:bg-black/90 focus-within:border-black shadow-inner'
-          }`}
+        {/* Ticker / strike search box */}
+        <div
+          className="md:col-span-2 relative flex items-center rounded-lg px-3 py-1.5 border transition-colors bg-[var(--surface-2)] border-[var(--border)] focus-within:border-[#60A5FA]/50"
           ref={searchContainerRef}
         >
-          <Search className="w-3.5 h-3.5 text-zinc-500 mr-2 shrink-0" />
+          <Search className="w-3.5 h-3.5 text-[var(--text-tertiary)] mr-2 shrink-0" />
           <input 
             type="text" 
             value={searchQuery}
@@ -1269,18 +1265,18 @@ export function DiscoveryView({
                         }`}
                       >
                         <div className="flex justify-between items-center">
-                          <span className={`text-[9.5px] font-black ${c.isCall ? 'text-[#4ADE80]' : 'text-rose-455'}`}>
+                          <span className={`text-[9.5px] font-black ${c.isCall ? 'text-[#4ADE80]' : 'text-[#F87171]'}`}>
                             {c.ticker} {c.strike}{c.isCall ? 'C' : 'P'}
                           </span>
-                          <span className={`text-[7.5px] font-bold px-1 py-0.2 rounded border ${
-                            c.isCall 
-                              ? 'bg-black/40 text-[#4ADE80] border-black' 
-                              : 'bg-rose-950/20 text-[#F87171] border-[#F87171]/40'
+                          <span className={`text-[7.5px] font-bold px-1 py-0.5 rounded border ${
+                            c.isCall
+                              ? 'bg-[#4ADE80]/10 text-[#4ADE80] border-[#4ADE80]/20'
+                              : 'bg-[#F87171]/10 text-[#F87171] border-[#F87171]/20'
                           }`}>
                             {c.shelf.toUpperCase()}
                           </span>
                         </div>
-                        <span className="text-[8px] text-zinc-550 font-sans font-semibold uppercase truncate">{c.narrative}</span>
+                        <span className="text-[8px] text-[var(--text-tertiary)] font-sans font-semibold uppercase truncate">{c.narrative}</span>
                       </button>
                     ))
                   )}
@@ -1292,20 +1288,19 @@ export function DiscoveryView({
 
       </div>
 
-      {/* 2B. EXPANDABLE STRATEGY EXPLANATION & TARGETS CONSOLE (In simple plain English!) */}
-      <div className={`w-full p-4 rounded-xl text-left relative overflow-hidden border ${c_cardBg}`}>
-        <div className="absolute top-0 right-0 w-32 h-32 bg-[#4f8cff]/4 blur-2xl pointer-events-none" />
-        
-        <div className={`flex justify-between items-center cursor-pointer select-none pb-2 border-b ${isLight ? 'border-black' : 'border-black/60'}`} onClick={() => setIsStrategyExpanded(!isStrategyExpanded)}>
+      {/* 2B. EXPANDABLE STRATEGY EXPLANATION */}
+      <div className={`w-full p-4 rounded-xl text-left border ${c_cardBg}`}>
+
+        <div className="flex justify-between items-center cursor-pointer select-none pb-2.5 border-b border-[var(--border)]" onClick={() => setIsStrategyExpanded(!isStrategyExpanded)}>
           <div className="flex items-center gap-2">
             <Info className="w-4 h-4 text-[#60A5FA]" />
-            <span className={`text-[10px] font-extrabold uppercase tracking-widest ${isLight ? 'text-zinc-600' : 'text-[var(--text-secondary)]'}`}>
+            <span className="text-[10px] font-extrabold uppercase tracking-widest text-[var(--text-secondary)]">
               How This Category Works
             </span>
           </div>
-          <div className={`flex items-center gap-1.5 py-0.5 px-2 rounded border ${isLight ? 'bg-zinc-50 border-black text-zinc-850 font-bold' : 'bg-black/40 border-black text-zinc-350'}`}>
+          <div className="flex items-center gap-1.5 py-1 px-2 rounded border bg-[var(--surface-2)] border-[var(--border)] text-[var(--text-secondary)]">
             <span className="text-[8px] font-black tracking-widest uppercase">
-              {isStrategyExpanded ? 'HIDE MANUAL' : 'SHOW MANUAL'}
+              {isStrategyExpanded ? 'Hide' : 'Show'}
             </span>
             {isStrategyExpanded ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
           </div>
@@ -1321,38 +1316,38 @@ export function DiscoveryView({
               className="overflow-hidden pt-3.5"
             >
               <div className="grid grid-cols-1 md:grid-cols-12 gap-5 items-stretch text-[10.5px]">
-                
-                {/* Simple Justification Column */}
+
+                {/* Justification Column */}
                 <div className="md:col-span-8 space-y-2.5">
-                  <div className={`p-3 rounded-xl border ${c_innerWellBg}`}>
+                  <div className="p-3 rounded-xl border bg-[var(--surface-2)] border-[var(--border)]">
                     <span className={`font-extrabold text-xs block mb-1 uppercase tracking-tight ${c_textWhite}`}>
                       {currentManualText.title}
                     </span>
-                    <p className={`leading-relaxed font-sans uppercase text-[10px]/[15px] ${isLight ? 'text-zinc-600' : 'text-zinc-400'}`}>
+                    <p className="leading-relaxed font-sans text-[10px]/[15px] text-[var(--text-secondary)]">
                       {currentManualText.whyItsBest}
                     </p>
                   </div>
                 </div>
 
-                {/* Quantitative Targets & Threshold Metrics Column */}
-                <div className={`md:col-span-4 p-3 rounded-xl flex flex-col justify-between gap-3 border ${c_innerCardBg}`}>
+                {/* Targets & Threshold Metrics Column */}
+                <div className="md:col-span-4 p-3 rounded-xl flex flex-col justify-between gap-3 border bg-[var(--surface-2)] border-[var(--border)]">
                   <div className="space-y-1.5 text-left">
-                    <span className="text-[8px] text-zinc-550 tracking-wider uppercase block">PRICE TARGETS</span>
+                    <span className="text-[8px] text-[var(--text-tertiary)] tracking-wider uppercase block font-black">Parameters</span>
                     <div className="flex justify-between items-baseline font-mono">
-                      <span className="text-zinc-500">HORIZON:</span>
+                      <span className="text-[var(--text-tertiary)]">Horizon</span>
                       <span className={`font-bold ${c_textWhite}`}>{currentManualText.horizon}</span>
                     </div>
-                    <div className={`flex justify-between items-baseline font-mono border-t pt-1.5 ${isLight ? 'border-black' : 'border-black'}`}>
-                      <span className="text-zinc-500">SIGNAL:</span>
-                      <span className="text-[#4f8cff] font-bold text-[9px] uppercase">{currentManualText.mathTracking}</span>
+                    <div className="flex justify-between items-baseline font-mono border-t pt-1.5 border-[var(--border)] gap-2">
+                      <span className="text-[var(--text-tertiary)] shrink-0">Signal</span>
+                      <span className="text-[#60A5FA] font-bold text-[9px] uppercase text-right">{currentManualText.mathTracking}</span>
                     </div>
-                    <div className={`flex justify-between items-baseline font-mono border-t pt-1.5 ${isLight ? 'border-black' : 'border-black'}`}>
-                      <span className="text-zinc-500">CONFIDENCE:</span>
+                    <div className="flex justify-between items-baseline font-mono border-t pt-1.5 border-[var(--border)]">
+                      <span className="text-[var(--text-tertiary)]">Confidence</span>
                       <span className="text-[#4ADE80] font-bold text-[9px] uppercase">{currentManualText.confidenceTier}</span>
                     </div>
                   </div>
-                  <div className={`text-[8px] text-zinc-500 border-t pt-1 tracking-wide ${isLight ? 'border-black' : 'border-black/50'}`}>
-                    ⚠️ Updates automatically in real time.
+                  <div className="text-[8px] text-[var(--text-tertiary)] border-t pt-1.5 tracking-wide border-[var(--border)]">
+                    Updates automatically in real time.
                   </div>
                 </div>
 
@@ -1657,11 +1652,11 @@ export function DiscoveryView({
             </AnimatePresence>
 
             {filteredContracts.length === 0 && (
-              <div className={`border p-8 rounded-xl text-center text-zinc-500 uppercase text-xs space-y-2 ${isLight ? 'bg-[#f4f4f5] border-black' : 'bg-black border-black'}`}>
-                <ShieldAlert className="w-8 h-8 text-zinc-500 mx-auto" />
+              <div className="border p-8 rounded-xl text-center uppercase text-xs space-y-2 bg-[var(--surface)] border-[var(--border)]">
+                <ShieldAlert className="w-8 h-8 text-[var(--text-tertiary)] mx-auto" />
                 <p className={`font-extrabold tracking-widest text-[10px] ${c_textWhite}`}>No setups match your filters.</p>
-                <p className="text-[9px] text-zinc-500 leading-snug font-sans uppercase">
-                  Try clearing the filters or modifying your manual search terms above.
+                <p className="text-[9px] text-[var(--text-tertiary)] leading-snug font-sans">
+                  Try clearing the filters or modifying your search terms above.
                 </p>
                 <button
                   type="button"
@@ -1670,11 +1665,7 @@ export function DiscoveryView({
                     setOptionTypeFilter('all');
                     setSearchQuery('');
                   }}
-                  className={`mt-3 inline-flex items-center gap-1.5 px-4 py-2 rounded-lg border font-mono text-[9px] font-black uppercase tracking-wider transition-all cursor-pointer ${
-                    isLight
-                      ? 'bg-transparent border-zinc-400 text-zinc-600 hover:border-zinc-700 hover:text-zinc-900'
-                      : 'bg-transparent border-zinc-600 text-zinc-400 hover:border-[#4ADE80] hover:text-[#4ADE80]'
-                  }`}
+                  className="mt-3 inline-flex items-center gap-1.5 px-4 py-2 rounded-lg border font-mono text-[9px] font-black uppercase tracking-wider transition-colors cursor-pointer bg-transparent border-[var(--border-strong)] text-[var(--text-secondary)] hover:border-[#4ADE80] hover:text-[#4ADE80]"
                 >
                   <RefreshCw className="w-3 h-3" />
                   Clear filters
@@ -1795,12 +1786,12 @@ export function DiscoveryView({
             </div>
 
             {/* Scrolling Tape Container */}
-            <div className="h-[285px] overflow-y-auto scrollbar-thin divide-y divide-zinc-950 pr-1 select-none flex flex-col gap-1.5">
+            <div className="h-[285px] overflow-y-auto scrollbar-thin pr-1 select-none flex flex-col gap-1.5">
               <AnimatePresence initial={false}>
                 {feedLogs.map((log, index) => {
-                  const isGoldSweep = log.side === 'Sweep';
+                  const isSweep = log.side === 'Sweep';
                   const isBullish = log.tag === 'BULLISH';
-                  
+
                   return (
                     <motion.div
                       key={(log as any).id ?? `${log.timestamp}-${log.ticker}-${log.strike}-${index}`}
@@ -1808,18 +1799,18 @@ export function DiscoveryView({
                       animate={{ opacity: 1, x: 0, height: 'auto' }}
                       exit={{ opacity: 0 }}
                       transition={{ duration: 0.3 }}
-                      className={`py-2.5 border rounded-lg px-2.5 transition-colors flex flex-col gap-1 text-[9.5px] ${isLight ? 'bg-zinc-50 hover:bg-black border-black' : 'bg-black/40 border-black/40 hover:bg-black/60'}`}
+                      className="py-2.5 border rounded-lg px-2.5 transition-colors flex flex-col gap-1 text-[9.5px] bg-[var(--surface-2)] border-[var(--border)] hover:bg-[var(--surface-3)]"
                     >
                       <div className="flex justify-between items-center text-[9px]">
                         <div className="flex items-center gap-1.5">
-                          <span className={`font-mono font-bold ${isLight ? 'text-zinc-500' : 'text-zinc-650'}`}>{log.timestamp}</span>
-                          <span className={`px-1 py-0.2 rounded font-black text-[7.5px] ${
-                            isGoldSweep ? 'bg-amber-400/10 border border-amber-400/25 text-amber-500' : 'bg-[#4f8cff]/10 border border-[#4f8cff]/25 text-[#4f8cff]'
+                          <span className="font-mono font-bold text-[var(--text-tertiary)]">{log.timestamp}</span>
+                          <span className={`px-1 py-0.5 rounded font-black text-[7.5px] ${
+                            isSweep ? 'bg-[#FBBF24]/10 border border-[#FBBF24]/25 text-[#FBBF24]' : 'bg-[#60A5FA]/10 border border-[#60A5FA]/25 text-[#60A5FA]'
                           }`}>
                             {log.side.toUpperCase()}
                           </span>
                         </div>
-                        <span className={`font-mono font-extrabold ${isBullish ? 'text-[#4ADE80]' : 'text-amber-500'}`}>
+                        <span className={`font-mono font-extrabold ${isBullish ? 'text-[#4ADE80]' : 'text-[#FBBF24]'}`}>
                           {log.action}
                         </span>
                       </div>
@@ -1828,25 +1819,19 @@ export function DiscoveryView({
                         <span className={`text-[10.5px] ${c_textWhite}`}>
                           {log.ticker} {log.strike}{log.type}
                         </span>
-                        <span className={isBullish ? 'text-[#4ADE80]' : 'text-amber-650'}>
+                        <span className={isBullish ? 'text-[#4ADE80]' : 'text-[#FBBF24]'}>
                           {log.premium}
                         </span>
                       </div>
 
-                      <div className={`flex justify-between items-center text-[8.5px] text-zinc-550 pt-0.5 border-t border-dashed ${isLight ? 'border-black' : 'border-black'}`}>
-                        <span>SIZE: {log.size}</span>
-                        <span>BIAS: <span className={isBullish ? 'text-[#4ADE80] font-bold' : 'text-zinc-500 font-bold'}>{log.tag}</span></span>
+                      <div className="flex justify-between items-center text-[8.5px] text-[var(--text-tertiary)] pt-1 border-t border-[var(--border)]">
+                        <span>Size {log.size}</span>
+                        <span>Bias <span className={isBullish ? 'text-[#4ADE80] font-bold' : 'text-[var(--text-secondary)] font-bold'}>{log.tag}</span></span>
                       </div>
                     </motion.div>
                   );
                 })}
               </AnimatePresence>
-            </div>
-
-            {/* Bottom active status ticker */}
-            <div className={`text-[7.5px] p-2 rounded border font-black flex justify-between items-center uppercase ${isLight ? 'text-zinc-600 bg-black border-black' : 'text-zinc-500 bg-black/80 border-black'}`}>
-              <span>STREAMING ACTIVE</span>
-              <span className="animate-pulse">● FEED ONLINE</span>
             </div>
 
           </div>
