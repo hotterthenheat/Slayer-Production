@@ -184,6 +184,32 @@ app.use(async (req, res, next) => {
   next();
 });
 
+// Per-endpoint rate limiter (independent of HTTP method, so it ALSO covers the
+// expensive live-data GETs — /api/history, /api/dealer-flow — that fan out to
+// paid Polygon/Tradier APIs and run heavy GEX math; the global limiter above
+// only throttles mutating methods). Each limiter keeps its own per-IP window.
+function endpointRateLimit(maxPerMin: number, label: string) {
+  const buckets = new Map<string, { count: number; windowStart: number }>();
+  return (req: express.Request, res: express.Response, next: express.NextFunction) => {
+    const clientIp = req.ip || (req.headers['x-forwarded-for'] as string) || req.socket?.remoteAddress || 'unknown';
+    const now = Date.now();
+    if (buckets.size > 5000) {
+      for (const [ip, d] of buckets) if (now - d.windowStart > RATE_LIMIT_WINDOW_MS) buckets.delete(ip);
+    }
+    let b = buckets.get(clientIp);
+    if (!b || (now - b.windowStart) > RATE_LIMIT_WINDOW_MS) {
+      buckets.set(clientIp, { count: 1, windowStart: now });
+    } else {
+      b.count++;
+      if (b.count > maxPerMin) {
+        console.warn(`[RATE LIMIT BREACH] ${clientIp} exceeded ${label} (${maxPerMin}/min)`);
+        return res.status(429).json({ error: 'Rate limit exceeded for this endpoint. Please slow down.' });
+      }
+    }
+    next();
+  };
+}
+
 // STRICT CSRF DEFENSE PROTOCOL (SECURE ORIGIN VALIDATION)
 app.use((req, res, next) => {
   const method = req.method.toUpperCase();
@@ -357,12 +383,18 @@ app.post('/api/auth/clerk-signup', express.json(), async (req, res) => {
       }
     }
 
-    if (referrerMatch) {
+    if (referrerMatch && referrerMatch.email.toLowerCase() !== userEmail && !newUser.referred_by) {
+      // Record referred_by on the referee so the referrer is credited exactly once
+      // (no double-credit if a later apply-coupon call references the same code).
+      newUser.referred_by = referrerMatch.email;
       referrerMatch.referral_tokens_pool = (referrerMatch.referral_tokens_pool || 0) + 1;
       await persistUser(referrerMatch.email, referrerMatch);
+      await persistUser(newUser.email, newUser);
       referralCreditApplied = true;
       creditedReferrerEmail = referrerMatch.email;
       console.log(`[PASSIVE REFERRAL ENGINE CREDITED] User ${userEmail} registered via referral code/username "${referralCode}". Referrer "${referrerMatch.email}" token pool credited +1 (New count: ${referrerMatch.referral_tokens_pool}).`);
+    } else if (referrerMatch) {
+      console.log(`[PASSIVE REFERRAL] Skipped credit for ${userEmail} (self-referral or already referred).`);
     } else {
       console.log(`[PASSIVE REFERRAL DISPATCH] Referral identifier "${referralCode}" did not match any active referrer record.`);
     }
@@ -1161,7 +1193,7 @@ app.get('/api/users/profile/:username', async (req, res) => {
   });
 });
 
-app.post('/api/users/export-data', async (req, res) => {
+app.post('/api/users/export-data', endpointRateLimit(5, '/api/users/export-data'), async (req, res) => {
   const session = await getSessionFromCookies(req.headers.cookie);
   if (!session || !session.email) {
     return res.status(401).json({ error: 'GDPR Export blocked. Unauthorized.' });
@@ -1615,10 +1647,19 @@ app.post('/api/billing/apply-coupon', express.json(), async (req, res) => {
     return res.status(404).json({ error: 'Invalid Promo or Referral Code.' });
   }
 
-  // Credit the referrer with exactly 1 Token
-  referrerMatch.referral_tokens_pool = (referrerMatch.referral_tokens_pool || 0) + 1;
-  await persistUser(referrerMatch.email, referrerMatch);
-  console.log(`[ACTIVE REFERRAL ENGAGED] Credited +1 token to referrer: "${referrerMatch.email}". New count: ${referrerMatch.referral_tokens_pool}`);
+  // Idempotent crediting: a referee can credit a referrer AT MOST ONCE. If this
+  // account was already referred, honor the discount but do NOT credit again —
+  // this closes the farm-by-replaying-apply-coupon vector (previously +1 token to
+  // the referrer on every call). Guard against a missing self-referrer too.
+  if (currentUser && !currentUser.referred_by && referrerMatch.email.toLowerCase() !== userEmail) {
+    currentUser.referred_by = referrerMatch.email;
+    referrerMatch.referral_tokens_pool = (referrerMatch.referral_tokens_pool || 0) + 1;
+    await persistUser(referrerMatch.email, referrerMatch);
+    await persistUser(currentUser.email, currentUser); // record referred_by on the referee
+    console.log(`[ACTIVE REFERRAL ENGAGED] Credited +1 token to referrer "${referrerMatch.email}" for referee ${userEmail}. New count: ${referrerMatch.referral_tokens_pool}`);
+  } else {
+    console.log(`[ACTIVE REFERRAL] Discount applied without re-credit for ${userEmail} (already referred_by=${currentUser?.referred_by || 'n/a'}).`);
+  }
 
   res.json({
     success: true,
@@ -1830,7 +1871,7 @@ app.get('/api/images/:id', async (req, res) => {
 });
 
 // Image Upload Router with strict validators (Module 6)
-app.post('/api/upload', express.json({ limit: '10mb' }), async (req, res) => {
+app.post('/api/upload', endpointRateLimit(10, '/api/upload'), express.json({ limit: '10mb' }), async (req, res) => {
   const session = await getSessionFromCookies(req.headers.cookie);
   if (!session || !session.email) {
     return res.status(401).json({ error: 'Upload refused. Unautomated session.' });
@@ -2327,7 +2368,7 @@ app.post('/api/trades/clear', async (req, res) => {
 });
 
 // GET real intraday lookbacks or synthetic fallback
-app.get('/api/history', async (req, res) => {
+app.get('/api/history', endpointRateLimit(20, '/api/history'), async (req, res) => {
   const session = await getSessionFromCookies(req.headers.cookie);
   if (!session || !session.email) return res.status(401).json({ error: 'Unauthorized' });
 
@@ -2355,7 +2396,7 @@ app.get('/api/history', async (req, res) => {
 });
 
 // GET Real-time option GEX-profile and dealer buying pressure gauge
-app.get('/api/dealer-flow', async (req, res) => {
+app.get('/api/dealer-flow', endpointRateLimit(20, '/api/dealer-flow'), async (req, res) => {
   const session = await getSessionFromCookies(req.headers.cookie);
   if (!session || !session.email) return res.status(401).json({ error: 'Unauthorized' });
 
@@ -2661,7 +2702,7 @@ async function startServer() {
 // Generates an institutional-grade narrative purely from the live quant engine
 // (dealer GEX/DEX, walls, gamma flip, expected move). No external LLM/API key.
 // ==========================================
-app.post('/api/ai/analyze', async (req, res) => {
+app.post('/api/ai/analyze', endpointRateLimit(10, '/api/ai/analyze'), async (req, res) => {
   try {
     // SECURITY: require an authenticated session AND a paid tier in production
     // (premium Quant Co-Pilot, client-gated at Tier 3; tier read from the DB, never

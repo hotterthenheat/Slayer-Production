@@ -5,6 +5,21 @@ import * as schema from './schema.ts';
 
 const { Pool } = pg;
 
+/**
+ * TLS for the DB connection, driven by SQL_SSL so it can be enabled in
+ * production (where PII + password hashes + Stripe identifiers otherwise travel
+ * in cleartext) without breaking a local/no-TLS Postgres:
+ *   SQL_SSL=require   -> encrypt AND verify the server certificate (strongest)
+ *   SQL_SSL=no-verify -> encrypt but skip cert verification (managed/self-signed)
+ *   SQL_SSL=disable / unset -> no TLS (default; local dev)
+ */
+export function pgSslOption(): false | { rejectUnauthorized: boolean } {
+  const mode = (process.env.SQL_SSL || '').toLowerCase();
+  if (mode === 'require' || mode === 'verify') return { rejectUnauthorized: true };
+  if (mode === 'no-verify' || mode === 'prefer') return { rejectUnauthorized: false };
+  return false;
+}
+
 export const createPool = () => {
   return new Pool({
     host: process.env.SQL_HOST,
@@ -12,6 +27,7 @@ export const createPool = () => {
     password: process.env.SQL_PASSWORD,
     database: process.env.SQL_DB_NAME,
     connectionTimeoutMillis: 15000,
+    ssl: pgSslOption(),
   });
 };
 

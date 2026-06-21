@@ -120,6 +120,10 @@ export interface UserAccount {
   access_tier: 'guest' | 'discord' | 'intraday' | 'quant' | 'enterprise' | 'lifetime';
   referral_tokens_pool: number;
   custom_referral_code: string;
+  // Email of the referrer this account was credited to — set exactly once so a
+  // referrer can be credited at most one token per referee (prevents farming via
+  // repeated apply-coupon calls).
+  referred_by?: string | null;
   selected_font_scale: 'STANDARD' | 'ENHANCED';
   compact_view_enabled: boolean;
   ultrawide_enabled?: boolean;

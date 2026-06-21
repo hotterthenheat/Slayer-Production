@@ -36,6 +36,16 @@ export function isPolygonConfigured(): boolean {
 }
 
 /**
+ * Polygon supports header auth, so the key is passed as a Bearer token rather
+ * than a `?apiKey=` query param. This keeps the secret out of request URLs —
+ * and therefore out of upstream access logs, proxy logs, and error-tracking
+ * breadcrumbs, the most common API-key leak vector.
+ */
+function polygonFetch(url: string): Promise<Response> {
+  return fetch(url, { headers: { Authorization: `Bearer ${process.env.POLYGON_API_KEY || ''}` } });
+}
+
+/**
  * Fetches real-time spot prices for indexes/ETFs using the Polygon Snapshot API.
  * Gracefully falls back to ETF-ratio scaling or simulation values.
  */
@@ -59,8 +69,8 @@ export async function fetchLiveSpotPrice(ticker: string, defaultFallbackPrice: n
     if (ticker === 'SPX' || ticker === 'NDX') {
       try {
         // Query correct V3 indices snapshot endpoint
-        const url = `https://api.polygon.io/v3/snapshot/indices?tickers=${polyTicker}&apiKey=${apiKey}`;
-        const response = await fetch(url);
+        const url = `https://api.polygon.io/v3/snapshot/indices?tickers=${polyTicker}`;
+        const response = await polygonFetch(url);
         if (!response.ok) {
           throw new Error(`HTTP ${response.status}`);
         }
@@ -87,8 +97,8 @@ export async function fetchLiveSpotPrice(ticker: string, defaultFallbackPrice: n
       }
     } else {
       // Correct V2 stocks snapshot endpoint for ETFs & Equities
-      const url = `https://api.polygon.io/v2/snapshot/locale/us/markets/stocks/tickers/${polyTicker}?apiKey=${apiKey}`;
-      const response = await fetch(url);
+      const url = `https://api.polygon.io/v2/snapshot/locale/us/markets/stocks/tickers/${polyTicker}`;
+      const response = await polygonFetch(url);
       if (!response.ok) {
         throw new Error(`HTTP ${response.status}`);
       }
@@ -147,9 +157,9 @@ export async function fetchLiveOptionChain(asset: AssetInfo, spotPrice: number):
   try {
     const queryUnderlying = (underlying === 'SPX') ? 'SPY' : (underlying === 'NDX' ? 'QQQ' : underlying);
     // Removed unsupported limit=400 parameter causing HTTP 400 errors
-    const url = `https://api.polygon.io/v3/snapshot/options/${queryUnderlying}?apiKey=${apiKey}`;
-    
-    const response = await fetch(url);
+    const url = `https://api.polygon.io/v3/snapshot/options/${queryUnderlying}`;
+
+    const response = await polygonFetch(url);
     if (!response.ok) {
       throw new Error(`HTTP ${response.status}`);
     }
@@ -242,8 +252,8 @@ export async function collectLiveFlows(ticker: string, currentSpot: number): Pro
   try {
     const queryUnderlying = (ticker === 'SPX') ? 'SPY' : (ticker === 'NDX' ? 'QQQ' : ticker);
     // Removed unsupported limit=50 parameter causing HTTP 400 errors
-    const url = `https://api.polygon.io/v3/snapshot/options/${queryUnderlying}?apiKey=${apiKey}`;
-    const response = await fetch(url);
+    const url = `https://api.polygon.io/v3/snapshot/options/${queryUnderlying}`;
+    const response = await polygonFetch(url);
     if (!response.ok) return [];
 
     const resJson = await response.json();
