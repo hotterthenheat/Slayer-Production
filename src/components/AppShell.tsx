@@ -67,8 +67,8 @@ function NavItem({ id, label, icon: Icon, adminOnly = false, activeColor = 'text
         isActive
           ? adminOnly
             ? 'bg-rose-950/40 text-[#E5E5E5] border-rose-500/50'
-            : 'bg-[#111] text-[#E5E5E5] border-zinc-700/50 shadow-[0_0_15px_rgba(255,255,255,0.03)]'
-          : 'border-transparent text-zinc-500 hover:bg-[#111] hover:text-[#E5E5E5]'
+            : 'bg-[var(--surface-2)] text-[#E5E5E5] border-[var(--border-strong)] shadow-[0_0_15px_rgba(255,255,255,0.03)]'
+          : 'border-transparent text-zinc-500 hover:bg-[var(--surface-2)] hover:text-[#E5E5E5]'
       }`}
     >
       <Icon className={`w-4 h-4 shrink-0 ${isActive ? (adminOnly ? 'text-rose-500' : activeColor) : ''}`} />
@@ -115,14 +115,14 @@ export function AppShell({ children, session, onLogout, tierInfo, onUpgradeClick
 
   return (
     <NavCtx.Provider value={navCtxValue}>
-    <div className="flex w-full h-full min-h-screen font-mono text-[#E5E5E5] bg-[#000000] overflow-hidden select-none antialiased">
+    <div className="flex w-full h-full min-h-screen font-mono text-[var(--text-primary)] bg-[var(--background)] overflow-hidden select-none antialiased">
       {/* Desktop Sidebar */}
       <aside 
         onMouseEnter={() => setIsSidebarExpanded(true)}
         onMouseLeave={() => setIsSidebarExpanded(false)}
-        className={`bg-[#050505] border-r border-[#1F1F1F] flex-col hidden md:flex shrink-0 z-[100] h-full relative transition-[width] duration-300 ease-in-out ${isSidebarExpanded ? 'w-64' : 'w-16'}`}
+        className={`bg-[var(--surface)] border-r border-[var(--border)] flex-col hidden md:flex shrink-0 z-[100] h-full relative transition-[width] duration-300 ease-in-out ${isSidebarExpanded ? 'w-64' : 'w-16'}`}
       >
-        <div className="p-4 border-b border-[#1F1F1F] h-[73px] flex items-center overflow-hidden">
+        <div className="p-4 border-b border-[var(--border)] h-[73px] flex items-center overflow-hidden">
           <div className="origin-left cursor-pointer transition-transform duration-300" style={{ transform: isSidebarExpanded ? 'scale(0.9)' : 'scale(0.9) translateX(-4px)' }} onClick={() => setActiveTab('home')}>
              <BrandHeader />
           </div>
@@ -149,20 +149,20 @@ export function AppShell({ children, session, onLogout, tierInfo, onUpgradeClick
           <NavItem id="workspace" label="Workspace" icon={LayoutGrid} />
           <NavItem id="community" label="Community" icon={GraduationCap} activeColor="text-[#3F9C79]" />
           
-          <div className="mt-auto pt-4 flex flex-col gap-1.5 border-t border-[#1F1F1F] mt-2">
+          <div className="mt-auto pt-4 flex flex-col gap-1.5 border-t border-[var(--border)] mt-2">
             <NavItem id="settings" label="Settings" icon={SlidersHorizontal} />
             <NavItem id="admin" label="Admin Panel" icon={Lock} adminOnly />
           </div>
         </div>
 
-        <div className={`p-4 border-t border-[#1F1F1F] bg-[#020202] overflow-hidden whitespace-nowrap transition-[padding] duration-300 ${isSidebarExpanded ? 'px-4' : 'px-2'}`}>
+        <div className={`p-4 border-t border-[var(--border)] bg-[var(--surface)] overflow-hidden whitespace-nowrap transition-[padding] duration-300 ${isSidebarExpanded ? 'px-4' : 'px-2'}`}>
            <div className={`flex mb-3 ${isSidebarExpanded ? 'justify-start px-1' : 'justify-center'}`}>
              <FeedPill status={feedStatus} compact={!isSidebarExpanded} />
            </div>
            {/* Tier Info */}
            <div 
              onClick={onUpgradeClick}
-             className={`flex items-center gap-2.5 px-3 py-2 mb-3 bg-[#111] border border-[#1f1f1f] rounded-md cursor-pointer hover:border-zinc-700 transition-all font-mono mx-auto ${isSidebarExpanded ? 'w-full justify-start' : 'w-max justify-center'}`}
+             className={`flex items-center gap-2.5 px-3 py-2 mb-3 bg-[var(--surface-2)] border border-[var(--border)] rounded-md cursor-pointer hover:border-zinc-700 transition-all font-mono mx-auto ${isSidebarExpanded ? 'w-full justify-start' : 'w-max justify-center'}`}
              title={!isSidebarExpanded ? tierInfo?.label : undefined}
            >
               <span className="relative flex h-2 w-2 shrink-0">
@@ -179,7 +179,7 @@ export function AppShell({ children, session, onLogout, tierInfo, onUpgradeClick
              <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2 overflow-hidden flex-1">
                    {session.avatar && (
-                     <img src={session.avatar} alt="Avatar" className="w-6 h-6 shrink-0 rounded-xs border border-[#1f1f1f]" referrerPolicy="no-referrer" />
+                     <img src={session.avatar} alt="Avatar" className="w-6 h-6 shrink-0 rounded-xs border border-[var(--border)]" referrerPolicy="no-referrer" />
                    )}
                    <span className={`text-[10px] font-black uppercase truncate text-zinc-400 transition-all duration-300 ${isSidebarExpanded ? 'opacity-100 max-w-[120px]' : 'opacity-0 max-w-0'}`}>{session.name}</span>
                 </div>
@@ -192,7 +192,7 @@ export function AppShell({ children, session, onLogout, tierInfo, onUpgradeClick
            ) : (
               <button
                 onClick={() => setShowAuthModal(true)}
-                className={`w-full px-3 py-2 border border-[#1f1f1f] hover:border-[#333] bg-black text-[#4ADE80] hover:text-[#E5E5E5] uppercase font-black transition-all flex items-center justify-center gap-1.5 text-[9px] rounded-lg cursor-pointer active:scale-95 ${isSidebarExpanded ? '' : 'px-0'}`}
+                className={`w-full px-3 py-2 border border-[var(--border)] hover:border-[#333] bg-black text-[#4ADE80] hover:text-[#E5E5E5] uppercase font-black transition-all flex items-center justify-center gap-1.5 text-[9px] rounded-lg cursor-pointer active:scale-95 ${isSidebarExpanded ? '' : 'px-0'}`}
                 title="LOGIN"
               >
                 {isSidebarExpanded ? 'LOGIN / CREATE ACCOUNT' : <Lock className="w-4 h-4" />}
@@ -202,7 +202,7 @@ export function AppShell({ children, session, onLogout, tierInfo, onUpgradeClick
       </aside>
 
       {/* Mobile Nav */}
-      <div className="md:hidden fixed top-0 left-0 w-full z-[100] bg-[#050505] border-b border-[#1F1F1F] px-4 py-3 flex items-center justify-between">
+      <div className="md:hidden fixed top-0 left-0 w-full z-[100] bg-[var(--surface)] border-b border-[var(--border)] px-4 py-3 flex items-center justify-between">
          <div className="cursor-pointer scale-[0.85] origin-left" onClick={() => setActiveTab('home')}>
              <BrandHeader />
          </div>
@@ -217,7 +217,7 @@ export function AppShell({ children, session, onLogout, tierInfo, onUpgradeClick
       {/* Mobile Menu Dropdown */}
       {isMobileMenuOpen && (
         <div 
-          className="md:hidden fixed inset-0 top-[57px] z-[90] bg-black/95 backdrop-blur-xl border-t border-[#1F1F1F] overflow-y-auto pb-20 touch-pan-y scroll-smooth"
+          className="md:hidden fixed inset-0 top-[57px] z-[90] bg-black/95 backdrop-blur-xl border-t border-[var(--border)] overflow-y-auto pb-20 touch-pan-y scroll-smooth"
           style={{ WebkitOverflowScrolling: 'touch' }}
         >
           <div className="p-4 flex flex-col gap-2">
@@ -249,7 +249,7 @@ export function AppShell({ children, session, onLogout, tierInfo, onUpgradeClick
             ) : (
               <button
                 onClick={() => { setShowAuthModal(true); setIsMobileMenuOpen(false); }}
-                className="w-full px-3 py-3 mt-6 border border-[#1f1f1f] bg-[#111] text-[#4ADE80] uppercase font-black transition-all flex items-center justify-center gap-1.5 text-[10px] rounded-lg tracking-widest"
+                className="w-full px-3 py-3 mt-6 border border-[var(--border)] bg-[var(--surface-2)] text-[#4ADE80] uppercase font-black transition-all flex items-center justify-center gap-1.5 text-[10px] rounded-lg tracking-widest"
               >
                 LOGIN / CREATE ACCOUNT
               </button>
