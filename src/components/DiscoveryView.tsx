@@ -1050,6 +1050,24 @@ export function DiscoveryView({
     }
   };
 
+  // Add a setup's contract to the per-user Trade History (server computes the exit plan
+  // and tracks it). Category maps the shelf to the tracked-trade category.
+  const addToTrackedHistory = async (c: any) => {
+    const category = c.shelf === 'mispriced' ? 'discounted' : c.shelf === 'improved' ? 'quickscalp' : 'top_opportunity';
+    try {
+      const res = await fetch('/api/tracked/add', {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ underlying: c.ticker, strike: c.strike, isCall: c.isCall, dteDays: 1, category, entryPrice: c.price }),
+      });
+      const data = await res.json().catch(() => ({}));
+      setLastScanMessage(res.ok ? `Added ${c.ticker} ${c.strike}${c.isCall ? 'C' : 'P'} to Trade History.` : (data.error || 'Could not add to Trade History.'));
+    } catch {
+      setLastScanMessage('Network error adding to Trade History.');
+    }
+  };
+
   const currentManualText = SHELF_EXPLANATIONS[activeShelf];
 
   // Dynamic light mode theme classes mapping
@@ -1122,10 +1140,10 @@ export function DiscoveryView({
         {/* Navigation Categories Tabs */}
         <div className={`md:col-span-8 flex items-center p-0.5 border rounded-md overflow-x-auto scrollbar-none gap-0.5 ${isLight ? "bg-black border-black" : "bg-black border-black"}`}>
           {[
-            { id: 'conviction', label: '🎯 CONVICTION', count: contracts.filter(c => c.shelf === 'conviction').length },
-            { id: 'improved', label: '📈 VELOCITY', count: contracts.filter(c => c.shelf === 'improved').length },
-            { id: 'mispriced', label: '💎 ARBITRAGE', count: contracts.filter(c => c.shelf === 'mispriced').length },
-            { id: 'invalidation', label: '⚠️ BOUNDARIES', count: contracts.filter(c => c.shelf === 'invalidation').length },
+            { id: 'conviction', label: '🎯 TOP OPPORTUNITIES', count: contracts.filter(c => c.shelf === 'conviction').length },
+            { id: 'improved', label: '⚡ QUICKSCALP', count: contracts.filter(c => c.shelf === 'improved').length },
+            { id: 'mispriced', label: '💵 DISCOUNTED PRICES', count: contracts.filter(c => c.shelf === 'mispriced').length },
+            { id: 'invalidation', label: '↩️ REBOUNDS', count: contracts.filter(c => c.shelf === 'invalidation').length },
             { id: 'whale', label: '🐳 WHALE SWEEPS', count: contracts.filter(c => c.shelf === 'whale').length },
             { id: 'all', label: '📂 ALL DETECTED', count: contracts.length }
           ].map(shelf => (
@@ -1462,16 +1480,16 @@ export function DiscoveryView({
                               : 'bg-black hover:border-black hover:bg-black border-black text-zinc-100 shadow-xl');
 
                         // Classification tags: Core vs Fast Scalps vs Rebound Recoveries
-                        let classBadgeLabel = "💎 SWING POSITION";
+                        let classBadgeLabel = "💎 TOP OPPORTUNITY";
                         let classBadgeStyle = "bg-[#4f8cff]/10 text-[#4f8cff] border-[#4f8cff]/20";
                         if (c.shelf === 'improved') {
-                          classBadgeLabel = "⚡ VOLATILITY SCALP";
+                          classBadgeLabel = "⚡ QUICKSCALP";
                           classBadgeStyle = "bg-amber-400/10 text-amber-300 border-amber-400/20";
                         } else if (c.shelf === 'invalidation') {
-                          classBadgeLabel = "↩️ REBOUND RECOVERY";
+                          classBadgeLabel = "↩️ REBOUND";
                           classBadgeStyle = "bg-rose-500/10 text-[#F87171] border-rose-500/20";
                         } else if (c.shelf === 'mispriced') {
-                          classBadgeLabel = "💵 PRICING GAP EDGE";
+                          classBadgeLabel = "💵 DISCOUNTED PRICE";
                           classBadgeStyle = "bg-black/40 text-[#d4d4d8] border-black";
                         }
 
@@ -1657,6 +1675,14 @@ export function DiscoveryView({
                                 >
                                   <span>LAUNCH DEEP SKYEYES ASSESSMENT</span>
                                   <ArrowRight className="w-2.5 h-2.5" />
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={(e) => { e.stopPropagation(); addToTrackedHistory(c); }}
+                                  className="w-full py-2 mt-1.5 rounded-md text-[9px] font-black uppercase tracking-wider flex items-center justify-center gap-1 transition-colors cursor-pointer hover:brightness-125"
+                                  style={{ background: 'rgba(74,222,128,0.12)', color: '#4ADE80', border: '1px solid rgba(74,222,128,0.4)' }}
+                                >
+                                  + Add to Trade History
                                 </button>
                               </div>
                             )}
