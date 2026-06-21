@@ -1,27 +1,16 @@
 import React, { useMemo, useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { 
-  ArrowRight, 
-  Award, 
-  AlertTriangle, 
-  Percent, 
-  Activity, 
-  Zap, 
-  Search, 
-  ShieldAlert, 
-  Flame, 
+import {
+  ArrowRight,
+  Search,
+  ShieldAlert,
+  Flame,
   Database,
   RefreshCw,
-  Sliders,
-  DollarSign,
-  Volume2,
   ChevronDown,
   ChevronUp,
-  Clock,
   Target,
-  Info,
-  Sparkles,
-  Layers
+  Info
 } from 'lucide-react';
 import { AssetInfo } from '../types';
 import { ASSET_LIST } from '../data';

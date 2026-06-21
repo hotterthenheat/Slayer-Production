@@ -52,7 +52,9 @@ export function SkyVisionV2Panel() {
   const dir: string = sv.direction;
   const dirBull = dir === 'BULLISH';
   const dirTone = dir === 'BULLISH' ? '#4ADE80' : dir === 'BEARISH' ? '#F87171' : '#A3A3A3';
-  const lead = dirBull ? sv.bestCall : sv.bestPut;
+  // Lead side matches the server (leadIsCall = direction !== 'BEARISH'), so the
+  // strongest contract stays consistent with the target ladder on a NEUTRAL read.
+  const lead = dir !== 'BEARISH' ? sv.bestCall : sv.bestPut;
   const master = sv.master;
 
   const components: { key: string; label: string }[] = [
@@ -133,7 +135,7 @@ export function SkyVisionV2Panel() {
           <div className="space-y-1.5 flex-1">
             {(sv.contracts || []).slice(0, 5).map((c: any) => (
               <div key={c.key} className={`flex items-center gap-2 rounded px-2 py-1 ${c.strongest ? 'bg-[#4ADE80]/10 border border-[#4ADE80]/30' : ''}`}>
-                <span className="text-[10px] font-mono font-bold text-[var(--text-primary)] w-16 shrink-0">{c.key.replace(sv.ticker + ' ', '')}</span>
+                <span className="text-[10px] font-mono font-bold text-[var(--text-primary)] w-16 shrink-0">{(c.key || '').replace(sv.ticker + ' ', '')}</span>
                 <div className="flex-1"><ScoreBar value={c.strength} tone={strengthTone(c.strength)} /></div>
                 <span className="text-[10px] font-black w-7 text-right" style={{ color: strengthTone(c.strength) }}>{Math.round(c.strength)}</span>
                 <span className="text-[9px] w-3 text-center" style={{ color: c.trend === 'RISING' ? '#4ADE80' : c.trend === 'FALLING' ? '#F87171' : '#71717A' }}>{c.trend === 'RISING' ? '▲' : c.trend === 'FALLING' ? '▼' : '–'}</span>

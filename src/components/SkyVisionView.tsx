@@ -5,7 +5,7 @@ import { InteractiveChart } from './InteractiveChart';
 import { StrikeGravityPanel } from './StrikeGravityPanel';
 import { TradePlanCard } from './TradePlanCard';
 import { ASSET_LIST } from '../data';
-import { Zap, Percent, HelpCircle, FileText, CheckCircle2, Bot, Search, Maximize2, Minimize2 } from 'lucide-react';
+import { Zap, FileText, CheckCircle2, Maximize2, Minimize2 } from 'lucide-react';
 import { DiscoveryView } from './DiscoveryView';
 import { SkyVisionV2Panel } from './SkyVisionV2Panel';
 

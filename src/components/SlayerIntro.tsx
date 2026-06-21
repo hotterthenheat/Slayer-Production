@@ -9,30 +9,7 @@ import { BrandHeader } from './BrandLogo';
 import { useContractStore } from '../lib/store';
 import { FeatureMatrix } from './FeatureMatrix';
 import { SubscriptionPricing } from './SubscriptionPricing';
-import { 
-  ArrowRight, 
-  Check, 
-  Sparkles, 
-  Compass, 
-  Dna, 
-  Database,
-  Layers,
-  MessageSquare,
-  Sliders,
-  CheckCircle2,
-  ShieldCheck,
-  Eye,
-  Activity,
-  Bot,
-  ExternalLink,
-  Lock,
-  Search,
-  Bell,
-  CreditCard,
-  X,
-  Mail,
-  User
-} from 'lucide-react';
+import { ArrowRight, Eye, Search } from 'lucide-react';
 import { AssetInfo, TimeframeVal, SystemScore, V8TradeRecord } from '../types';
 import { ASSET_LIST } from '../data';
 
