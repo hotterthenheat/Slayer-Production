@@ -399,8 +399,19 @@ export function InstitutionalPhysicsDashboard({ profile: externalProfile, ticker
     const w = rect.width || 480;
     const h = rect.height || 360;
 
-    // Create GPU-accelerated WebGLRenderer on the target canvas
-    const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
+    // Create GPU-accelerated WebGLRenderer on the target canvas. The canvas is
+    // keyed on resizeKey in the JSX, so every re-run of this effect gets a FRESH
+    // canvas element — without that, recreating a renderer on a canvas that already
+    // holds a (disposed) context throws "Canvas has an existing context of a
+    // different type" and the surface freezes. Guard creation so a missing WebGL
+    // context degrades gracefully instead of crashing the panel.
+    let renderer: THREE.WebGLRenderer;
+    try {
+      renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
+    } catch (err) {
+      console.warn('[physics] WebGL unavailable — skipping 3D surface:', err);
+      return;
+    }
     renderer.setPixelRatio(window.devicePixelRatio || 1);
     renderer.setSize(w, h, false);
 
@@ -760,6 +771,7 @@ export function InstitutionalPhysicsDashboard({ profile: externalProfile, ticker
       cancelAnimationFrame(animId);
       window.removeEventListener('resize', handleResize);
       renderer.dispose();
+      renderer.forceContextLoss(); // release the GL context so the discarded canvas frees GPU memory
       geometry.dispose();
       surfaceMaterial.dispose();
       wireframeMaterial.dispose();
@@ -1118,6 +1130,7 @@ export function InstitutionalPhysicsDashboard({ profile: externalProfile, ticker
           {/* Interactive 3D Canvas Box */}
           <div className="flex-1 relative bg-black border border-black rounded-sm overflow-hidden animate-fade-in" id="canvas-stage-wrapper">
             <canvas
+              key={resizeKey}
               ref={canvasRef}
               onMouseDown={handleMouseDown}
               onMouseMove={handleMouseMove}
