@@ -13,8 +13,14 @@
  *   • short/long-term swing read
  *   • the Layer-7 master score (direction, best contract, target, health, confidence)
  *
- * Mock chain for now (deterministic + evolving); swap snapshotFromMarket inputs for
- * a real chain feed later without touching the engine.
+ * Chain sourcing (honesty-first): when the server has a real per-ticker chain in
+ * `db.liveOptionChains[ticker]` (raw provider shape: { strike, type:'C'|'P', oi,
+ * volume, impliedVolatility, greeks:{delta,gamma,theta,vega}, bid, ask, lastPrice }),
+ * the engine runs over the REAL strikes / OI / volume / IV / greeks and the result is
+ * flagged `source: 'LIVE'`. Only when no real chain is present does it fall back to a
+ * deterministic MODEL chain (no Math.random — synthetic OI/volume are derived from
+ * strike distance) and the result is flagged `source: 'MODEL'`, so the UI can stop
+ * claiming a live chain when it isn't one.
  */
 import { db } from './state';
 import { ASSET_LIST, optionDteDays } from '../data';
@@ -73,6 +79,10 @@ export interface SkyVisionTicker {
   leadContract: string;
   swing: SwingRead;
   master: ReturnType<typeof computeMasterScore>;
+  /** 'LIVE' = built from db.liveOptionChains; 'MODEL' = deterministic fallback. */
+  source: 'LIVE' | 'MODEL';
+  /** Convenience boolean mirror of `source === 'LIVE'`. */
+  isLive: boolean;
   updatedAt: number;
 }
 
@@ -97,6 +107,62 @@ function baseIv(type: string): number {
 
 const clamp = (v: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, v));
 const round2 = (v: number) => Number(v.toFixed(2));
+
+/** A single normalized contract pulled from the real provider chain. */
+interface NormalizedLiveContract {
+  strike: number;
+  isCall: boolean;
+  oi: number;
+  volume: number;
+  iv: number;
+  delta: number | null;
+  gamma: number | null;
+  theta: number | null;
+  vega: number | null;
+}
+
+/**
+ * Normalize the raw provider chain (shape: { strike, type:'C'|'P', oi, volume,
+ * impliedVolatility, greeks:{delta,gamma,theta,vega} }) into a strike→contract
+ * lookup. Mirrors marketEngine's `liveChainToContracts` field handling but kept
+ * local to avoid an import cycle. Greeks are left null when the feed omits them so
+ * the caller can fall back to analytic BSM greeks instead of fabricating zeros.
+ */
+function normalizeLiveChain(live: any[]): Map<string, NormalizedLiveContract> {
+  const out = new Map<string, NormalizedLiveContract>();
+  for (const c of live) {
+    if (!c || typeof c.strike !== 'number') continue;
+    const isCall = c.type === 'C' || c.type === 'call' || c.type === 'CALL';
+    const g = c.greeks || {};
+    const delta = g.delta ?? c.delta;
+    const gamma = g.gamma ?? c.gamma;
+    const theta = g.theta ?? c.theta;
+    const vega = g.vega ?? c.vega;
+    out.set(`${c.strike}|${isCall ? 'C' : 'P'}`, {
+      strike: c.strike,
+      isCall,
+      oi: Number(c.oi ?? c.openInterest ?? 0) || 0,
+      volume: Number(c.volume ?? c.vol ?? c.day?.volume ?? 0) || 0,
+      iv: Number(c.impliedVolatility ?? c.iv) || 0,
+      delta: typeof delta === 'number' ? delta : null,
+      gamma: typeof gamma === 'number' ? gamma : null,
+      theta: typeof theta === 'number' ? theta : null,
+      vega: typeof vega === 'number' ? vega : null,
+    });
+  }
+  return out;
+}
+
+/** ATM strike on the real chain: the listed strike closest to spot. */
+function nearestRealStrike(strikes: number[], spot: number): number {
+  let best = strikes[0];
+  let bestDist = Infinity;
+  for (const s of strikes) {
+    const d = Math.abs(s - spot);
+    if (d < bestDist) { bestDist = d; best = s; }
+  }
+  return best;
+}
 
 /** Trend of a metric across a contract's history, mapped to 0..100 (50 = flat). */
 function trendScore(hist: ContractSnapshot[], pick: (s: ContractSnapshot) => number): number {
@@ -138,31 +204,86 @@ function computeForAsset(asset: (typeof ASSET_LIST)[number]): void {
   const dte = optionDteDays(asset); // 0–1DTE for daily names, front-weekly for single stocks
   const emPts = spot * iv0 * Math.sqrt(dte / 365);
 
-  // Build the focus chain: ATM..+3 calls, ATM..-3 puts.
+  // Source the focus chain. Prefer the REAL provider chain in db.liveOptionChains;
+  // only fall back to the deterministic model when no live chain is present.
+  const liveRaw = db.liveOptionChains[ticker];
+  const haveLive = Array.isArray(liveRaw) && liveRaw.length > 0;
+  const liveMap = haveLive ? normalizeLiveChain(liveRaw) : null;
+  const source: SkyVisionTicker['source'] = haveLive && liveMap && liveMap.size > 0 ? 'LIVE' : 'MODEL';
+
+  // Build the focus chain: ATM..+3 calls, ATM..-3 puts. On the live path the ATM is
+  // the listed strike closest to spot and the steps walk the real listed strikes.
   const specs: { strike: number; isCall: boolean }[] = [];
-  for (let i = 0; i <= STRIKES_EACH_SIDE; i++) specs.push({ strike: atm + i * step, isCall: true });
-  for (let i = 0; i <= STRIKES_EACH_SIDE; i++) specs.push({ strike: atm - i * step, isCall: false });
+  if (source === 'LIVE' && liveMap) {
+    const callStrikes = Array.from(liveMap.values()).filter((c) => c.isCall).map((c) => c.strike).sort((a, b) => a - b);
+    const putStrikes = Array.from(liveMap.values()).filter((c) => !c.isCall).map((c) => c.strike).sort((a, b) => a - b);
+    const allStrikes = Array.from(new Set([...callStrikes, ...putStrikes])).sort((a, b) => a - b);
+    const atmReal = nearestRealStrike(allStrikes.length ? allStrikes : [atm], spot);
+    const atmIdx = allStrikes.indexOf(atmReal);
+    // Real-chain calls at/above ATM, real-chain puts at/below ATM (listed strikes only).
+    for (let i = 0; i <= STRIKES_EACH_SIDE; i++) {
+      const s = allStrikes[atmIdx + i];
+      if (typeof s === 'number' && liveMap.has(`${s}|C`)) specs.push({ strike: s, isCall: true });
+    }
+    for (let i = 0; i <= STRIKES_EACH_SIDE; i++) {
+      const s = allStrikes[atmIdx - i];
+      if (typeof s === 'number' && liveMap.has(`${s}|P`)) specs.push({ strike: s, isCall: false });
+    }
+  }
+  // Model fallback (also covers a live chain that yielded no usable near-ATM strikes).
+  if (specs.length === 0) {
+    for (let i = 0; i <= STRIKES_EACH_SIDE; i++) specs.push({ strike: atm + i * step, isCall: true });
+    for (let i = 0; i <= STRIKES_EACH_SIDE; i++) specs.push({ strike: atm - i * step, isCall: false });
+  }
+  const effectiveSource: SkyVisionTicker['source'] = source === 'LIVE' && liveMap && specs.some((sp) => liveMap.has(`${sp.strike}|${sp.isCall ? 'C' : 'P'}`)) ? 'LIVE' : 'MODEL';
 
   const scored: ScoredContract[] = [];
   const meta = new Map<string, { snap: ContractSnapshot; volume: number; oi: number; iv: number }>();
 
   for (const { strike, isCall } of specs) {
     const key = `${ticker} ${strike}${isCall ? 'C' : 'P'}`;
-    // Volatility skew: OTM puts richer, far OTM calls slightly cheaper.
-    const moneyness = (strike - spot) / (spot || 1);
-    const iv = clamp(iv0 + (isCall ? -0.15 : 0.25) * moneyness + 0.02 * Math.abs(moneyness), 0.05, 1.5);
-
-    // Evolving mock volume/OI: in-direction, near-ATM contracts attract flow when
-    // price moves their way; OI builds slowly. Gives the strength engine real signal.
-    const nearness = Math.max(0, 1 - Math.abs(strike - spot) / (4 * step));
-    const dirFlow = isCall ? Math.max(0, momentum) : Math.max(0, -momentum);
+    const real = liveMap?.get(`${strike}|${isCall ? 'C' : 'P'}`) || null;
     const prevHist = histories.get(key) || [];
-    const prevVol = prevHist.length ? prevHist[prevHist.length - 1].volume : 250 + nearness * 400;
-    const prevOi = prevHist.length ? prevHist[prevHist.length - 1].oi : 1200 + nearness * 1500;
-    const volume = Math.max(20, Math.round(prevVol * 0.6 + (250 + nearness * 600 + dirFlow * 220 * nearness) * 0.4 + (Math.random() - 0.5) * 40));
-    const oi = Math.max(50, Math.round(prevOi + nearness * 30 + dirFlow * 25 * nearness + (Math.random() - 0.5) * 10));
 
-    const snap = snapshotFromMarket({ t: tickIndex, spot, strike, dteDays: dte, iv, isCall, volume, oi, r: RISK_FREE });
+    let iv: number;
+    let volume: number;
+    let oi: number;
+    let snap: ContractSnapshot;
+
+    if (effectiveSource === 'LIVE' && real) {
+      // REAL strike: take IV / OI / volume straight from the feed. Use real greeks
+      // when the feed supplies them; fall back to analytic BSM greeks only for any
+      // greek the feed omits. No Math.random — every value has a real source.
+      iv = real.iv > 0 ? clamp(real.iv, 0.01, 5) : iv0;
+      volume = Math.max(0, Math.round(real.volume));
+      oi = Math.max(0, Math.round(real.oi));
+      const base = snapshotFromMarket({ t: tickIndex, spot, strike, dteDays: dte, iv, isCall, volume, oi, r: RISK_FREE });
+      snap = {
+        ...base,
+        delta: real.delta ?? base.delta,
+        gamma: real.gamma ?? base.gamma,
+        theta: real.theta ?? base.theta,
+        vega: real.vega ?? base.vega,
+      };
+    } else {
+      // Deterministic MODEL fallback (no real source). Volatility skew: OTM puts
+      // richer, far OTM calls slightly cheaper.
+      const moneyness = (strike - spot) / (spot || 1);
+      iv = clamp(iv0 + (isCall ? -0.15 : 0.25) * moneyness + 0.02 * Math.abs(moneyness), 0.05, 1.5);
+
+      // Deterministic synthetic volume/OI derived from strike distance + directional
+      // momentum (no Math.random, so the model output does not flicker every call).
+      // In-direction, near-ATM contracts carry more flow; OI builds slowly with each
+      // tick the contract stays in focus.
+      const nearness = Math.max(0, 1 - Math.abs(strike - spot) / (4 * step));
+      const dirFlow = isCall ? Math.max(0, momentum) : Math.max(0, -momentum);
+      const prevVol = prevHist.length ? prevHist[prevHist.length - 1].volume : 250 + nearness * 400;
+      const prevOi = prevHist.length ? prevHist[prevHist.length - 1].oi : 1200 + nearness * 1500;
+      volume = Math.max(20, Math.round(prevVol * 0.6 + (250 + nearness * 600 + dirFlow * 220 * nearness) * 0.4));
+      oi = Math.max(50, Math.round(prevOi + nearness * 30 + dirFlow * 25 * nearness));
+      snap = snapshotFromMarket({ t: tickIndex, spot, strike, dteDays: dte, iv, isCall, volume, oi, r: RISK_FREE });
+    }
+
     const hist = prevHist.concat(snap).slice(-HISTORY_CAP);
     histories.set(key, hist);
     lastSeen.set(key, tickIndex);
@@ -268,6 +389,8 @@ function computeForAsset(asset: (typeof ASSET_LIST)[number]): void {
     leadContract: leadKey,
     swing,
     master,
+    source: effectiveSource,
+    isLive: effectiveSource === 'LIVE',
     updatedAt: Date.now(),
   };
 }

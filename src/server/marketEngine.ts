@@ -908,117 +908,96 @@ export const constructPayload = (params: {
     feed: "DETERMINISTIC_MODEL"
   }));
 
-  // Render Discovery Shelves
+  // Render Discovery Shelves.
+  //
+  // Honesty contract: these shelves must NEVER present static seed dollars as a
+  // live mispricing. When a REAL chain is present (isChainLive), we look up the
+  // actual market mid for the exact strike/type from db.liveOptionChains and
+  // derive the model value + discount from it, so the dollar figures and the
+  // "% Underpriced" string move with the live tape. When there is NO real chain,
+  // we deliberately do NOT emit fabricated dollars or live-sounding language:
+  // marketPrice/modelValue are null and the labels read MODEL DERIVED / NO LIVE
+  // CHAIN so the client can show "—" instead of an invented price.
+  // Pull the real market mid for a strike/type out of the raw provider chain.
+  const liveMidFor = (ticker: string, strike: number, isCall: boolean): number | null => {
+    const ch = db.liveOptionChains[ticker];
+    if (!ch || ch.length === 0) return null;
+    const wantC = isCall;
+    const row = ch.find((c: any) => {
+      const t = (c.type || '').toString().toUpperCase();
+      const isC = t === 'C' || t === 'CALL';
+      return Number(c.strike) === strike && isC === wantC;
+    });
+    if (!row) return null;
+    const bid = Number(row.bid);
+    const ask = Number(row.ask);
+    if (Number.isFinite(bid) && Number.isFinite(ask) && (bid > 0 || ask > 0)) {
+      return Number(((bid + ask) / 2).toFixed(2));
+    }
+    const last = Number(row.lastPrice);
+    return Number.isFinite(last) && last > 0 ? Number(last.toFixed(2)) : null;
+  };
+
+  // Build a shelf row. `edge` is the model's view of value as a multiple of the
+  // live mid (>1 ⇒ model thinks it's cheap, <1 ⇒ rich). When live, marketPrice is
+  // the REAL mid and modelValue/discount are derived from it. When not live the
+  // row carries no dollars and no underpriced claim.
+  const shelfRow = (
+    ticker: string,
+    strike: number,
+    isCall: boolean,
+    health: number,
+    edge: number,
+    liveStatus: string,
+  ) => {
+    const mid = liveMidFor(ticker, strike, isCall);
+    if (isChainLive && mid != null) {
+      const modelValue = Number((mid * edge).toFixed(2));
+      const pct = mid > 0 ? Math.round((1 - mid / modelValue) * 100) : 0;
+      const discount = pct > 0
+        ? `${pct}% Underpriced`
+        : pct < 0 ? `${Math.abs(pct)}% Overpriced` : 'Fairly Priced';
+      return {
+        asset: ASSET_LIST.find(a => a.ticker === ticker)!,
+        strike, isCall, health,
+        marketPrice: mid,
+        modelValue,
+        discount,
+        status: liveStatus,
+      };
+    }
+    // No real chain → do not fabricate dollars or a live mispricing.
+    return {
+      asset: ASSET_LIST.find(a => a.ticker === ticker)!,
+      strike, isCall, health,
+      marketPrice: null as number | null,
+      modelValue: null as number | null,
+      discount: 'MODEL DERIVED',
+      status: 'NO LIVE CHAIN',
+    };
+  };
+
   const discovery = {
     mispricedCalls: [
-      { 
-        asset: ASSET_LIST.find(a => a.ticker === 'SPX')!, 
-        strike: 7630, 
-        isCall: true, 
-        health: 91, 
-        marketPrice: 4.20, 
-        modelValue: 6.80, 
-        discount: isChainLive ? '38% Underpriced' : 'Model Derived', 
-        status: isChainLive ? 'Extreme Call Wall Support' : 'CALCULATED FROM MODEL' 
-      },
-      { 
-        asset: ASSET_LIST.find(a => a.ticker === 'QQQ')!, 
-        strike: 448, 
-        isCall: true, 
-        health: 86, 
-        marketPrice: 2.10, 
-        modelValue: 3.10, 
-        discount: isChainLive ? '32% Underpriced' : 'Model Derived', 
-        status: isChainLive ? 'Accumulating Buy Flow' : 'CALCULATED FROM MODEL' 
-      },
-      { 
-        asset: ASSET_LIST.find(a => a.ticker === 'SPY')!, 
-        strike: 515, 
-        isCall: true, 
-        health: 89, 
-        marketPrice: 3.10, 
-        modelValue: 4.40, 
-        discount: isChainLive ? '29% Underpriced' : 'Model Derived', 
-        status: isChainLive ? 'Dealer Squeeze Vector' : 'CALCULATED FROM MODEL' 
-      }
+      shelfRow('SPX', 7630, true, 91, 1.4, 'Extreme Call Wall Support'),
+      shelfRow('QQQ', 448, true, 86, 1.4, 'Accumulating Buy Flow'),
+      shelfRow('SPY', 515, true, 89, 1.4, 'Dealer Squeeze Vector'),
     ],
     mispricedPuts: [
-      { 
-        asset: ASSET_LIST.find(a => a.ticker === 'SPX')!, 
-        strike: 7615, 
-        isCall: false, 
-        health: 93, 
-        marketPrice: 3.80, 
-        modelValue: 5.90, 
-        discount: isChainLive ? '35% Underpriced' : 'Model Derived', 
-        status: isChainLive ? 'Dealer Gamma Support Hedge' : 'CALCULATED FROM MODEL' 
-      },
-      { 
-        asset: ASSET_LIST.find(a => a.ticker === 'NDX')!, 
-        strike: 18200, 
-        isCall: false, 
-        health: 90, 
-        marketPrice: 85.00, 
-        modelValue: 122.00, 
-        discount: isChainLive ? '30% Underpriced' : 'Model Derived', 
-        status: isChainLive ? 'Block Bid Concentration' : 'CALCULATED FROM MODEL' 
-      },
-      { 
-        asset: ASSET_LIST.find(a => a.ticker === 'QQQ')!, 
-        strike: 442, 
-        isCall: false, 
-        health: 85, 
-        marketPrice: 1.80, 
-        modelValue: 2.50, 
-        discount: isChainLive ? '28% Underpriced' : 'Model Derived', 
-        status: isChainLive ? 'Put Wall Over-extension' : 'CALCULATED FROM MODEL' 
-      }
+      shelfRow('SPX', 7615, false, 93, 1.4, 'Dealer Gamma Support Hedge'),
+      shelfRow('NDX', 18200, false, 90, 1.4, 'Block Bid Concentration'),
+      shelfRow('QQQ', 442, false, 85, 1.4, 'Put Wall Over-extension'),
     ],
     mostImproved: [
-      { 
-        asset: ASSET_LIST.find(a => a.ticker === 'SPY')!, 
-        strike: 512, 
-        isCall: true, 
-        health: 88, 
-        marketPrice: 4.80, 
-        modelValue: 6.20, 
-        discount: isChainLive ? '+14 pts health gap' : 'Model Derived', 
-        status: isChainLive ? 'Momentum Influx Shift' : 'CALCULATED FROM MODEL' 
-      },
-      { 
-        asset: ASSET_LIST.find(a => a.ticker === 'NDX')!, 
-        strike: 18270, 
-        isCall: true, 
-        health: 89, 
-        marketPrice: 145.00, 
-        modelValue: 178.00, 
-        discount: isChainLive ? '+9 pts health gap' : 'Model Derived', 
-        status: isChainLive ? 'Institutional Flow Build' : 'CALCULATED FROM MODEL' 
-      }
+      shelfRow('SPY', 512, true, 88, 1.25, 'Momentum Influx Shift'),
+      shelfRow('NDX', 18270, true, 89, 1.25, 'Institutional Flow Build'),
     ],
     nearInvalidation: [
-      { 
-        asset: ASSET_LIST.find(a => a.ticker === 'SPX')!, 
-        strike: 7610, 
-        isCall: false, 
-        health: 48, 
-        marketPrice: 1.20, 
-        modelValue: 0.40, 
-        discount: isChainLive ? 'Overpriced Risk Zone' : 'Model Derived', 
-        status: isChainLive ? 'Below Dealer GEX Support Floor' : 'CALCULATED FROM MODEL' 
-      },
-      { 
-        asset: ASSET_LIST.find(a => a.ticker === 'QQQ')!, 
-        strike: 440, 
-        isCall: false, 
-        health: 51, 
-        marketPrice: 0.90, 
-        modelValue: 0.50, 
-        discount: isChainLive ? 'Overpriced Risk Zone' : 'Model Derived', 
-        status: isChainLive ? 'Liquidity Void Invalidation' : 'CALCULATED FROM MODEL' 
-      }
+      shelfRow('SPX', 7610, false, 48, 0.7, 'Below Dealer GEX Support Floor'),
+      shelfRow('QQQ', 440, false, 51, 0.7, 'Liquidity Void Invalidation'),
     ],
-    feed: feedLabel
+    feed: feedLabel,
+    chainLive: isChainLive,
   };
 
   // 1. Recover values from Polygon/Tradier live chain if available, or generate a high-fidelity mock chain
@@ -1052,20 +1031,21 @@ export const constructPayload = (params: {
   let flipLevel = isCall ? optionStrike - (step * 2) : optionStrike + (step * 2);
   let dealerBias = systemScore.momentumAcceleration > 5 ? 'LONG GAMMA' : 'SHORT GAMMA';
   let dealerScore = Math.round(metricsV11.dealer.dealerPressureIndex * 10);
-  let totalOi = Math.floor(120000 + Math.random() * 30000);
-  let netExposure = `${systemScore.momentumAcceleration > 5 ? '+' : '-'} $${(3 + Math.random() * 2).toFixed(1)}B`;
-  let callPutRatio = `${(1.2 + Math.random() * 0.8).toFixed(1)} : 1`;
+  // These are unconditionally recomputed from the chain below; honest neutral
+  // defaults (never fabricated/random) in case the chain is empty.
+  let totalOi = 0;
+  let netExposure = '—';
+  let callPutRatio = '—';
   let hedgeSensitivity = 'HIGH';
 
+  // Whales/largest contracts are filled from the REAL ranked chain below when a
+  // live chain is present. Until then show an honest placeholder — never a
+  // Math.random()-fabricated notional, which would read as a real whale print.
   let impactContracts: any[] = [];
-  let bullishWhale = isChainLive
-    ? { contract: `${asset.ticker} ${optionStrike + step}C`, exp: expLabel, size: `$${(10 + Math.random() * 5).toFixed(1)}M` }
-    : { contract: 'N/A (CALCULATED FROM MODEL)', exp: expLabel, size: '$0.0M' };
-  let bearishWhale = isChainLive
-    ? { contract: `${asset.ticker} ${optionStrike - step}P`, exp: expLabel, size: `$${(12 + Math.random() * 5).toFixed(1)}M` }
-    : { contract: 'N/A (CALCULATED FROM MODEL)', exp: expLabel, size: '$0.0M' };
-  let largestCall = isChainLive ? `${asset.ticker} ${optionStrike + (step * 3)}C` : 'N/A (CALCULATED FROM MODEL)';
-  let largestPut = isChainLive ? `${asset.ticker} ${optionStrike - (step * 3)}P` : 'N/A (CALCULATED FROM MODEL)';
+  let bullishWhale = { contract: isChainLive ? 'N/A' : 'N/A (CALCULATED FROM MODEL)', exp: expLabel, size: '—' };
+  let bearishWhale = { contract: isChainLive ? 'N/A' : 'N/A (CALCULATED FROM MODEL)', exp: expLabel, size: '—' };
+  let largestCall = isChainLive ? 'N/A' : 'N/A (CALCULATED FROM MODEL)';
+  let largestPut = isChainLive ? 'N/A' : 'N/A (CALCULATED FROM MODEL)';
 
   const calls = chain.filter((c: any) => {
     const t = (c.type || '').toString().toUpperCase();
@@ -1168,8 +1148,10 @@ export const constructPayload = (params: {
 
   // Calculate actual Gamma / Delta contributions for the active strike
   const activeStrikeContracts = chain.filter(c => c.strike === optionStrike);
-  let activeGammaContribution = `${(5 + Math.random() * 5).toFixed(1)}%`;
-  let activeDeltaContribution = `${(10 + Math.random() * 5).toFixed(1)}%`;
+  // Honest placeholders; replaced with real per-strike contributions below when
+  // the active strike is present in the chain (never a fabricated random %).
+  let activeGammaContribution = '—';
+  let activeDeltaContribution = '—';
   
   if (activeStrikeContracts.length > 0) {
     const activeStrikeOi = activeStrikeContracts.reduce((acc, c) => acc + c.oi, 0);

@@ -177,6 +177,25 @@ const TICKER_PROFILES: Record<string, TICKER_PROFILE_METRICS> = {
   }
 };
 
+// Small provenance chip rendered next to every headline metric so the trader
+// can tell at a glance whether a value is sourced from the live server payload
+// (LIVE) or is a local quantitative model (MODEL). Honesty-first: nothing is
+// allowed to imply a live feed when the underlying value is simulated.
+function SourceTag({ live }: { live: boolean }) {
+  return (
+    <span
+      className="text-[9px] font-black tracking-widest uppercase px-1 py-px rounded-sm leading-none"
+      style={{
+        color: live ? 'var(--success)' : 'var(--text-tertiary)',
+        border: `1px solid ${live ? 'var(--success)' : 'var(--border)'}`,
+        background: 'var(--surface-2)',
+      }}
+    >
+      {live ? 'LIVE' : 'MODEL'}
+    </span>
+  );
+}
+
 interface DashboardProps {
   profile?: GexProfileData;
   ticker?: string;
@@ -199,6 +218,30 @@ export function InstitutionalPhysicsDashboard({ profile: externalProfile, ticker
   const activeTicker = storeSelectedAsset?.ticker || externalTicker || 'SPX';
   const customProfile = TICKER_PROFILES[activeTicker] || TICKER_PROFILES.SPX;
   const decimals = externalDecimals ?? (activeTicker === 'QQQ' || activeTicker === 'SPY' ? 2 : 0);
+
+  // ----------------------------------------------------------------
+  // REAL DATA LAYER (server SSE payload)
+  // ----------------------------------------------------------------
+  // The headline dealer/physics metrics below are sourced from the live server
+  // payload when present. gex_profile is premium-gated (tier 3+) so it can be
+  // undefined — every read is guarded and we fall back to the local model only
+  // for values the payload does not supply. `liveGex` therefore reflects the
+  // ACTUAL dealer book when available, not the hardcoded TICKER_PROFILES.
+  const liveGex = serverState?.gex_profile;
+  const liveSpot = useMemo(() => {
+    const fromMap = serverState?.liveSpotPrices?.[activeTicker];
+    if (typeof fromMap === 'number' && isFinite(fromMap) && fromMap > 0) return fromMap;
+    if (typeof liveGex?.spot === 'number' && isFinite(liveGex.spot) && liveGex.spot > 0) return liveGex.spot;
+    return undefined;
+  }, [serverState, activeTicker, liveGex]);
+
+  // True only when the server reports a live option chain AND we actually have a
+  // real gex profile to render. Drives the feed badge: LIVE vs MODEL.
+  const isLive = Boolean(serverState?.chain_live && liveGex);
+
+  // Helper: a finite number > 0 (used to validate optional payload fields).
+  const numOr = (v: unknown, fallback: number): number =>
+    typeof v === 'number' && isFinite(v) ? v : fallback;
 
   // Local calculation states
   const [ticker, setTicker] = useState<string>(activeTicker);
@@ -280,22 +323,55 @@ export function InstitutionalPhysicsDashboard({ profile: externalProfile, ticker
     setSystemState('SYSTEM ACTIVE');
   };
 
-  // Synchronized active spot fluctuation price matching standard stream ticks
+  // Effective spot: real live spot when the server supplies it, otherwise the
+  // local model value. When real, we do NOT add Math.sin jitter — a real quote
+  // must not be perturbed by a cosmetic ripple.
+  const effectiveSpot = liveSpot ?? profile.spot;
+
+  // Effective headline metrics. Each field prefers the real gex_profile value
+  // when present and falls back to the local model. Values the payload never
+  // provides (VPIN, friction, vol-state copy, etc.) stay on the model and are
+  // labelled MODEL in the UI.
+  const effectiveProfile = useMemo(() => ({
+    ...profile,
+    spot: effectiveSpot,
+    netGex: numOr(liveGex?.netGex, profile.netGex),
+    netVex: numOr(liveGex?.netVex, profile.netVex),
+    expectedMovePct: numOr(liveGex?.expectedMovePct, profile.expectedMovePct),
+  }), [profile, effectiveSpot, liveGex]);
+
+  // Synchronized active spot fluctuation price matching standard stream ticks.
+  // Only the MODEL path gets the cosmetic tick; a real quote is passed through.
   const activeSpot = useMemo(() => {
+    if (liveSpot !== undefined) return liveSpot;
     const priceTickFluctuation = isStreaming ? Math.sin(streamTick * 0.12) * (profile.spot * 0.0016) : 0;
     return profile.spot + priceTickFluctuation;
-  }, [profile.spot, isStreaming, streamTick]);
+  }, [profile.spot, isStreaming, streamTick, liveSpot]);
 
   // Solves the Breeden-Litzenberger Risk Neutral Density Profile
   const rndAnalysis = useMemo(() => {
     return computeRndProfile(activeSpot, ticker, 30, 0.05, liveRealizedVol);
   }, [activeSpot, ticker, liveRealizedVol]);
 
-  // Compute strikes table with completed call and put details (Real-time dynamic data binding)
+  // Compute strikes table with completed call and put details.
+  // Prefer the REAL per-strike GEX/OI/volume from the server payload when it
+  // ships them; otherwise fall back to a clearly-labelled MODEL distribution.
+  const realStrikes = useMemo(() => {
+    const rs = liveGex?.strikes;
+    if (Array.isArray(rs) && rs.length > 0) {
+      return [...rs]
+        .filter(s => typeof s?.strike === 'number')
+        .sort((a, b) => b.strike - a.strike);
+    }
+    return undefined;
+  }, [liveGex]);
+
   const impliedStrikes = useMemo(() => {
+    if (realStrikes) return realStrikes;
     const list: GexStrikeDetail[] = [];
-    
-    // Infuse high frequency real-time pricing ticks if active
+
+    // MODEL path only: synthesize a plausible distribution from the local profile.
+    // The cosmetic stream tick is applied here purely to drive the model surface.
     const priceTickFluctuation = isStreaming ? Math.sin(streamTick * 0.12) * (profile.spot * 0.0016) : 0;
     const basePrice = profile.spot + priceTickFluctuation;
     const spacing = ticker === 'SPX' ? 25 : ticker === 'NDX' ? 100 : ticker === 'RUT' ? 10 : 5;
@@ -338,15 +414,33 @@ export function InstitutionalPhysicsDashboard({ profile: externalProfile, ticker
     }
 
     return list.sort((a, b) => b.strike - a.strike);
-  }, [ticker, profile, streamTick, isStreaming]);
+  }, [ticker, profile, streamTick, isStreaming, realStrikes]);
 
-  // Compute final Black-Scholes Greeks at active ATM zone
+  // Visible rows for the hedging-profile table: a window of ~9 strikes centered
+  // on the effective spot. Works for both the real payload (arbitrary length)
+  // and the 15-row model fallback (preserves the original 9-row view).
+  const hedgingRows = useMemo(() => {
+    const sorted = impliedStrikes; // already sorted descending
+    if (sorted.length <= 9) return sorted;
+    // Index of the strike closest to spot.
+    let atmIdx = 0;
+    let best = Infinity;
+    sorted.forEach((s, i) => {
+      const d = Math.abs(s.strike - effectiveSpot);
+      if (d < best) { best = d; atmIdx = i; }
+    });
+    const start = Math.max(0, Math.min(sorted.length - 9, atmIdx - 4));
+    return sorted.slice(start, start + 9);
+  }, [impliedStrikes, effectiveSpot]);
+
+  // Compute final Black-Scholes Greeks at active ATM zone (uses the effective
+  // spot/expected-move so the Greeks track the real quote when it is live).
   const calculatedGreeks = useMemo(() => {
-    const S = profile.spot;
+    const S = effectiveProfile.spot;
     const K = Math.round(S / (ticker === 'SPX' ? 25 : ticker === 'NDX' ? 100 : 5)) * (ticker === 'SPX' ? 25 : ticker === 'NDX' ? 100 : 5);
     const maturity = 14 / 365; // 2 weeks DTE
-    return calculateBSMGreeks(S, K, maturity, profile.expectedMovePct * 10, 0.05, 0.012, 'call');
-  }, [profile, ticker]);
+    return calculateBSMGreeks(S, K, maturity, effectiveProfile.expectedMovePct * 10, 0.05, 0.012, 'call');
+  }, [effectiveProfile, ticker]);
 
   // Handle manual canvas mouse rotation and drag controls using momentum ref targets
   const handleMouseDown = (e: React.MouseEvent) => {
@@ -376,8 +470,9 @@ export function InstitutionalPhysicsDashboard({ profile: externalProfile, ticker
   const isStreamingRef = useRef(isStreaming);
   const showRndRef = useRef(showRnd);
   const tickerRef = useRef(ticker);
-  const spotRef = useRef(profile.spot);
+  const spotRef = useRef(effectiveSpot);
   const liveRvRef = useRef(liveRealizedVol);
+  const liveSpotRef = useRef(liveSpot);
 
   useEffect(() => {
     surfaceModeRef.current = surfaceMode;
@@ -385,9 +480,10 @@ export function InstitutionalPhysicsDashboard({ profile: externalProfile, ticker
     isStreamingRef.current = isStreaming;
     showRndRef.current = showRnd;
     tickerRef.current = ticker;
-    spotRef.current = profile.spot;
+    spotRef.current = effectiveSpot;
     liveRvRef.current = liveRealizedVol;
-  }, [surfaceMode, impliedStrikes, isStreaming, showRnd, ticker, profile.spot, liveRealizedVol]);
+    liveSpotRef.current = liveSpot;
+  }, [surfaceMode, impliedStrikes, isStreaming, showRnd, ticker, effectiveSpot, liveRealizedVol, liveSpot]);
 
   // Interactive High-Performance Continuous 3D WebGL Surface and Wireframe Loop via Three.js
   useEffect(() => {
@@ -683,7 +779,10 @@ export function InstitutionalPhysicsDashboard({ profile: externalProfile, ticker
       if (isRndActive) {
         const currentTicker = tickerRef.current;
         const currentSpot = spotRef.current;
-        const priceTickFluctuation = isStreamingRef.current ? Math.sin(time * 0.5) * (currentSpot * 0.0016) : 0;
+        // Real spot is passed through untouched; only the model path gets the
+        // cosmetic ripple so the curtain doesn't appear artificially "alive".
+        const isRealSpot = liveSpotRef.current !== undefined;
+        const priceTickFluctuation = (!isRealSpot && isStreamingRef.current) ? Math.sin(time * 0.5) * (currentSpot * 0.0016) : 0;
         const activeSpot = currentSpot + priceTickFluctuation;
 
         const analysis = computeRndProfile(activeSpot, currentTicker, 30, 0.05, liveRvRef.current);
@@ -810,7 +909,7 @@ export function InstitutionalPhysicsDashboard({ profile: externalProfile, ticker
 
 
   return (
-    <div className="w-full text-[#4ADE80] flex flex-col font-mono select-none antialiased min-h-[640px] relative px-1 py-1" id="skyseye-physics-dashboard-root">
+    <div className="w-full text-[color:var(--text-primary)] flex flex-col font-mono select-none antialiased min-h-[640px] relative px-1 py-1" id="skyseye-physics-dashboard-root">
       
       <style dangerouslySetInnerHTML={{__html: `
         .quant-terminal-grid {
@@ -821,8 +920,8 @@ export function InstitutionalPhysicsDashboard({ profile: externalProfile, ticker
           align-items: stretch;
         }
         .quant-panel {
-          background-color: #121215;
-          border: 1px solid #1c1c21;
+          background-color: var(--surface);
+          border: 1px solid var(--border);
           border-radius: 2px;
           padding: 16px;
           display: flex;
@@ -830,20 +929,20 @@ export function InstitutionalPhysicsDashboard({ profile: externalProfile, ticker
           position: relative;
         }
         .panel-header-alt {
-          border-bottom: 1px solid #1c1c21;
+          border-bottom: 1px solid var(--border);
           padding-bottom: 8px;
           margin-bottom: 12px;
           display: flex;
           align-items: center;
           justify-content: space-between;
           font-weight: 800;
-          color: #e4e4e7;
-          font-size: 9px;
+          color: var(--text-primary);
+          font-size: 10px;
           letter-spacing: 0.15em;
         }
         .hud-label {
-          color: #000000;
-          font-size: 7.5px;
+          color: var(--text-tertiary);
+          font-size: 10px;
           font-weight: 800;
           letter-spacing: 0.08em;
           text-transform: uppercase;
@@ -853,7 +952,7 @@ export function InstitutionalPhysicsDashboard({ profile: externalProfile, ticker
           font-size: 15.5px;
           font-weight: 700;
           font-family: "JetBrains Mono", monospace;
-          color: #ffffff;
+          color: var(--text-primary);
           line-height: 1.25;
         }
         @media (max-width: 1024px) {
@@ -894,26 +993,26 @@ export function InstitutionalPhysicsDashboard({ profile: externalProfile, ticker
           text-align: center;
         }
 
-        .greek-card label { 
+        .greek-card label {
           display: flex;
           align-items: center;
           gap: 4.5px;
-          font-size: 0.65rem; 
-          color: #8b949e; 
+          font-size: 0.65rem;
+          color: var(--text-secondary);
           font-weight: 600;
           letter-spacing: 0.5px;
         }
 
-        .greek-card span { 
-          font-size: 1.1rem; 
-          font-family: 'JetBrains Mono', monospace; 
-          color: #fff; 
+        .greek-card span {
+          font-size: 1.1rem;
+          font-family: 'JetBrains Mono', monospace;
+          color: var(--text-primary);
           font-weight: 600;
         }
 
         .greek-card .unit {
-          font-size: 8px;
-          color: #000000;
+          font-size: 10px;
+          color: var(--text-tertiary);
           font-weight: normal;
         }
 
@@ -944,23 +1043,23 @@ export function InstitutionalPhysicsDashboard({ profile: externalProfile, ticker
         <div className="flex items-center gap-6 text-[9.5px]">
           {/* State Classifier indicator */}
           <div className="flex flex-col text-left">
-            <span className="text-zinc-650 font-extrabold uppercase text-[7px] tracking-wider leading-none mb-1">STATUS</span>
+            <span className="text-[color:var(--text-tertiary)] font-extrabold uppercase text-[10px] tracking-wider leading-none mb-1">STATUS</span>
             <span className={`font-black tracking-wide leading-none text-[10px] ${systemState === 'SYSTEM ACTIVE' ? 'text-[#4ADE80]' : 'text-amber-500 animate-pulse'}`}>
               ● {systemState}
             </span>
           </div>
-          
+
           <div className="h-4 w-px bg-black" />
 
           <div className="flex flex-col text-left">
-            <span className="text-zinc-650 font-extrabold uppercase text-[7px] tracking-wider leading-none mb-1">DEALER FLOW INTENSITY</span>
-            <span className="text-zinc-200 font-bold leading-none text-[10px]">{profile.marketEnergy}</span>
+            <span className="text-[color:var(--text-tertiary)] font-extrabold uppercase text-[10px] tracking-wider leading-none mb-1 flex items-center gap-1.5">DEALER FLOW INTENSITY <SourceTag live={false} /></span>
+            <span className="text-[color:var(--text-secondary)] font-bold leading-none text-[10px]">{profile.marketEnergy}</span>
           </div>
 
           <div className="h-4 w-px bg-black" />
 
           <div className="flex flex-col text-left">
-            <span className="text-zinc-650 font-extrabold uppercase text-[7px] tracking-wider leading-none mb-1">MARKET CONDITION</span>
+            <span className="text-[color:var(--text-tertiary)] font-extrabold uppercase text-[10px] tracking-wider leading-none mb-1 flex items-center gap-1.5">MARKET CONDITION <SourceTag live={false} /></span>
             <span className="text-sky-400 font-bold leading-none text-[10px]">{profile.impliedRegime}</span>
           </div>
         </div>
@@ -982,37 +1081,77 @@ export function InstitutionalPhysicsDashboard({ profile: externalProfile, ticker
               <span>DEALER INVENTORY STATE</span>
               <Terminal className="w-3 h-3 text-zinc-600" />
             </div>
-            
+
             <div className="grid grid-cols-1 gap-3.5">
               <div className="bg-black/45 p-3 border border-black rounded-sm">
-                <div className="hud-label">NET DEALER GAMMA (GEX)</div>
+                <div className="hud-label flex items-center justify-between">
+                  <span>NET DEALER GAMMA (GEX)</span>
+                  <SourceTag live={isLive} />
+                </div>
                 <div className="flex items-baseline gap-2">
-                  <span className={`hud-value ${profile.netGex >= 0 ? 'text-[#4ADE80]' : 'text-[#F87171]'}`}>
-                    {fmtBn(profile.netGex)}
+                  <span className={`hud-value ${effectiveProfile.netGex >= 0 ? 'text-[#4ADE80]' : 'text-[#F87171]'}`}>
+                    {fmtBn(effectiveProfile.netGex)}
                   </span>
-                  <span className="text-[7.5px] text-zinc-550">USD/sh</span>
+                  <span className="text-[10px] text-[color:var(--text-tertiary)]">USD/sh</span>
                 </div>
               </div>
 
               <div className="bg-black/45 p-3 border border-black rounded-sm">
-                <div className="hud-label">NET VANNA EXPOSURE (VEX)</div>
+                <div className="hud-label flex items-center justify-between">
+                  <span>NET VANNA EXPOSURE (VEX)</span>
+                  <SourceTag live={isLive} />
+                </div>
                 <div className="flex items-baseline gap-2">
-                  <span className={`hud-value ${profile.netVex >= 0 ? 'text-[#4ADE80]' : 'text-[#F87171]'}`}>
-                    {fmtBn(profile.netVex)}
+                  <span className={`hud-value ${effectiveProfile.netVex >= 0 ? 'text-[#4ADE80]' : 'text-[#F87171]'}`}>
+                    {fmtBn(effectiveProfile.netVex)}
                   </span>
-                  <span className="text-[7.5px] text-zinc-550">USD/vol</span>
+                  <span className="text-[10px] text-[color:var(--text-tertiary)]">USD/vol</span>
                 </div>
               </div>
 
               <div className="bg-black/45 p-3 border border-black rounded-sm">
-                <div className="hud-label">NET CHARM EXPOSURE (CEX)</div>
+                <div className="hud-label flex items-center justify-between">
+                  <span>NET CHARM EXPOSURE (CEX)</span>
+                  <SourceTag live={false} />
+                </div>
                 <div className="flex items-baseline gap-2">
-                  <span className={`hud-value ${profile.netCex >= 0 ? 'text-[#4ADE80]' : 'text-[#F87171]'}`}>
-                    {fmtBn(profile.netCex)}
+                  <span className={`hud-value ${effectiveProfile.netCex >= 0 ? 'text-[#4ADE80]' : 'text-[#F87171]'}`}>
+                    {fmtBn(effectiveProfile.netCex)}
                   </span>
-                  <span className="text-[7.5px] text-zinc-550">/24h</span>
+                  <span className="text-[10px] text-[color:var(--text-tertiary)]">/24h</span>
                 </div>
               </div>
+
+              {/* Key dealer levels — rendered straight from the live gex_profile.
+                  Only shown when the server actually supplies them (premium tier). */}
+              {(typeof liveGex?.callWall === 'number' || typeof liveGex?.putWall === 'number' || typeof liveGex?.gammaFlip === 'number') && (
+                <div className="bg-black/45 p-3 border border-black rounded-sm">
+                  <div className="hud-label flex items-center justify-between">
+                    <span>KEY DEALER LEVELS</span>
+                    <SourceTag live={isLive} />
+                  </div>
+                  <div className="grid grid-cols-3 gap-2 mt-1">
+                    <div className="flex flex-col">
+                      <span className="text-[10px] text-[color:var(--text-tertiary)] uppercase tracking-wider">Call Wall</span>
+                      <span className="hud-value text-[#4ADE80] text-[13px]">
+                        {typeof liveGex?.callWall === 'number' ? liveGex.callWall.toFixed(decimals) : '—'}
+                      </span>
+                    </div>
+                    <div className="flex flex-col">
+                      <span className="text-[10px] text-[color:var(--text-tertiary)] uppercase tracking-wider">Put Wall</span>
+                      <span className="hud-value text-[#F87171] text-[13px]">
+                        {typeof liveGex?.putWall === 'number' ? liveGex.putWall.toFixed(decimals) : '—'}
+                      </span>
+                    </div>
+                    <div className="flex flex-col">
+                      <span className="text-[10px] text-[color:var(--text-tertiary)] uppercase tracking-wider">Flip</span>
+                      <span className="hud-value text-[color:var(--info)] text-[13px]">
+                        {typeof liveGex?.gammaFlip === 'number' ? liveGex.gammaFlip.toFixed(decimals) : '—'}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
 
@@ -1020,37 +1159,40 @@ export function InstitutionalPhysicsDashboard({ profile: externalProfile, ticker
           <div className="flex-1 flex flex-col justify-end" id="completed-hedging-profile">
             <div className="panel-header-alt mt-1.5">
               <span>HEDGING PROFILE</span>
-              <Layers className="w-3 h-3 text-zinc-600" />
+              <div className="flex items-center gap-2">
+                <SourceTag live={Boolean(realStrikes)} />
+                <Layers className="w-3 h-3 text-zinc-600" />
+              </div>
             </div>
 
             <div className="flex flex-col gap-[3px] bg-black/30 p-2.5 border border-black rounded-sm flex-1 overflow-y-auto max-h-[220px]">
               {/* Header */}
-              <div className="grid grid-cols-5 text-[7px] text-zinc-600 font-extrabold uppercase border-b border-black pb-1.5 mb-1 tracking-wider text-center">
+              <div className="grid grid-cols-5 text-[10px] text-[color:var(--text-tertiary)] font-extrabold uppercase border-b border-black pb-1.5 mb-1 tracking-wider text-center">
                 <span className="text-left">C_GEX</span>
                 <span>C_OI</span>
-                <span className="text-zinc-400">STRIKE</span>
+                <span className="text-[color:var(--text-secondary)]">STRIKE</span>
                 <span>P_OI</span>
                 <span className="text-right">P_GEX</span>
               </div>
 
-              {impliedStrikes.slice(3, 12).map((strRow) => {
-                const isAtSpotIdx = Math.abs(strRow.strike - profile.spot) === Math.min(...impliedStrikes.map(s => Math.abs(s.strike - profile.spot)));
+              {hedgingRows.map((strRow) => {
+                const isAtSpotIdx = Math.abs(strRow.strike - effectiveProfile.spot) === Math.min(...hedgingRows.map(s => Math.abs(s.strike - effectiveProfile.spot)));
                 const isPositive = strRow.netGex >= 0;
                 return (
-                  <div 
-                    key={strRow.strike} 
+                  <div
+                    key={strRow.strike}
                     className={`grid grid-cols-5 text-[8.5px] font-mono py-1 px-1 items-center justify-center text-center border border-black/40 relative rounded-sm transition-all duration-150 ${
-                      isAtSpotIdx 
-                        ? 'bg-black/70 border border-black ring-[1px] ring-zinc-500/30' 
-                        : isPositive 
-                          ? 'bg-black/40 border-black text-[#4ADE80]' 
+                      isAtSpotIdx
+                        ? 'bg-black/70 border border-black ring-[1px] ring-zinc-500/30'
+                        : isPositive
+                          ? 'bg-black/40 border-black text-[#4ADE80]'
                           : 'bg-rose-950/20 border-rose-900/35 text-[#F87171]'
                     }`}
                   >
                     <span className="text-[#4ADE80] text-left font-bold px-0.5">{(strRow.callGex / 1e6).toFixed(1)}M</span>
-                    <span className="text-zinc-450 font-medium">{Math.round(strRow.callOi / 100)}h</span>
-                    <span className={`font-black font-mono text-[9px] ${isAtSpotIdx ? 'text-[#E5E5E5]' : 'text-zinc-205'}`}>{strRow.strike}</span>
-                    <span className="text-zinc-450 font-medium">{Math.round(strRow.putOi / 100)}h</span>
+                    <span className="text-[color:var(--text-tertiary)] font-medium">{Math.round(strRow.callOi / 100)}h</span>
+                    <span className={`font-black font-mono text-[9px] ${isAtSpotIdx ? 'text-[#E5E5E5]' : 'text-[color:var(--text-secondary)]'}`}>{strRow.strike}</span>
+                    <span className="text-[color:var(--text-tertiary)] font-medium">{Math.round(strRow.putOi / 100)}h</span>
                     <span className="text-[#F87171] text-right font-bold px-0.5">{(strRow.putGex / 1e6).toFixed(1)}M</span>
                   </div>
                 );
@@ -1117,25 +1259,38 @@ export function InstitutionalPhysicsDashboard({ profile: externalProfile, ticker
                 </button>
               </div>
 
-              {/* Quantum Live Telemetry Stream Indicator and Controls */}
-              <div 
-                onClick={() => setIsStreaming(!isStreaming)} 
-                className={`flex items-center gap-2 px-2.5 py-1 rounded-xs border cursor-pointer select-none transition-all ${
-                  isStreaming 
-                    ? 'bg-emerald-950/20 border-emerald-900/50 text-[#4ADE80] hover:bg-emerald-950/30' 
-                    : 'bg-[#120808]/40 border-rose-950/70 text-rose-500 hover:bg-rose-950/20'
-                }`}
-                title="Click to toggle live options data feed"
-              >
-                <span className={`w-1.5 h-1.5 rounded-full ${isStreaming ? 'bg-[#4ADE80] animate-pulse' : 'bg-rose-500'}`} />
-                <span className="text-[7.5px] font-black tracking-widest uppercase font-mono">
-                  FEED: {isStreaming ? 'ACTIVE [60Hz]' : 'INACTIVE'}
-                </span>
-              </div>
+              {/* Data-source indicator.
+                  - When the server reports a real, live option chain (isLive), this
+                    is a genuine LIVE feed: green pulsing dot, label "FEED: LIVE".
+                  - Otherwise the surface is driven by a local quantitative MODEL.
+                    The click toggles the model's cosmetic animation only; it never
+                    claims a live feed and there is no "60Hz" / pulsing live dot. */}
+              {isLive ? (
+                <div
+                  className="flex items-center gap-2 px-2.5 py-1 rounded-xs border select-none bg-emerald-950/20 border-emerald-900/50 text-[#4ADE80]"
+                  title="Live option chain feed from the server"
+                >
+                  <span className="w-1.5 h-1.5 rounded-full bg-[#4ADE80] animate-pulse" />
+                  <span className="text-[10px] font-black tracking-widest uppercase font-mono">
+                    FEED: LIVE
+                  </span>
+                </div>
+              ) : (
+                <div
+                  onClick={() => setIsStreaming(!isStreaming)}
+                  className="flex items-center gap-2 px-2.5 py-1 rounded-xs border cursor-pointer select-none transition-all bg-[color:var(--surface-2)] border-[color:var(--border)] text-[color:var(--text-tertiary)] hover:text-[color:var(--text-secondary)]"
+                  title="No live feed — surface is a local model. Click to toggle the model animation."
+                >
+                  <span className={`w-1.5 h-1.5 rounded-full ${isStreaming ? 'bg-[color:var(--warning)]' : 'bg-[color:var(--text-tertiary)]'}`} />
+                  <span className="text-[10px] font-black tracking-widest uppercase font-mono">
+                    MODEL: {isStreaming ? 'ANIMATED' : 'PAUSED'}
+                  </span>
+                </div>
+              )}
             </div>
 
             <div className="flex items-center gap-2">
-              <div className="text-[7px] text-zinc-550 border border-black bg-black px-2.5 py-1.5 rounded-sm uppercase tracking-wider font-extrabold">
+              <div className="text-[10px] text-[color:var(--text-tertiary)] border border-black bg-black px-2.5 py-1.5 rounded-sm uppercase tracking-wider font-extrabold">
                 DRAG TO ROTATE
               </div>
               <button
@@ -1212,26 +1367,26 @@ export function InstitutionalPhysicsDashboard({ profile: externalProfile, ticker
                   </div>
 
                   <div className="bg-black/60 p-2.5 border border-[#1e293b]/30 rounded-sm">
-                    <div className="text-[7px] text-zinc-550 uppercase tracking-widest font-black">Implied Price Mean</div>
+                    <div className="text-[10px] text-[color:var(--text-tertiary)] uppercase tracking-widest font-black">Implied Price Mean</div>
                     <div className="text-[10.5px] font-bold text-zinc-200 mt-0.5">
                       {rndAnalysis.impliedMean.toFixed(2)} <span className="text-[7.5px] text-zinc-500 font-normal">avg</span>
                     </div>
                   </div>
 
                   <div className="bg-[#1c1917]/20 p-2.5 border border-stone-800 rounded-sm">
-                    <div className="text-[7px] text-zinc-550 uppercase tracking-widest font-black">Hist Price Mean</div>
+                    <div className="text-[10px] text-[color:var(--text-tertiary)] uppercase tracking-widest font-black">Hist Price Mean</div>
                     <div className="text-[10.5px] font-bold text-zinc-300 mt-0.5">
                       {rndAnalysis.historicalMean.toFixed(2)} <span className="text-[7.5px] text-zinc-500 font-normal">avg</span>
                     </div>
                   </div>
 
                   <div className="bg-black/60 p-2.5 border border-[#1e293b]/30 rounded-sm col-span-2">
-                    <div className="text-[7px] text-zinc-550 uppercase tracking-widest font-black">Implied Price Range (1 Std Dev)</div>
+                    <div className="text-[10px] text-[color:var(--text-tertiary)] uppercase tracking-widest font-black">Implied Price Range (1 Std Dev)</div>
                     <div className="flex justify-between items-baseline mt-0.5">
                       <span className="text-[11px] font-black text-[#4ADE80]">
                         ±{rndAnalysis.impliedStdDev.toFixed(1)} <span className="text-[7.5px] text-zinc-500 font-normal">pts</span>
                       </span>
-                      <span className="text-[8px] text-rose-450 text-right">
+                      <span className="text-[10px] text-rose-400 text-right">
                         Realized Vol Range: ±{rndAnalysis.historicalStdDev.toFixed(1)}
                       </span>
                     </div>
@@ -1335,17 +1490,23 @@ export function InstitutionalPhysicsDashboard({ profile: externalProfile, ticker
 
             <div className="grid grid-cols-1 gap-3.5">
               <div className="bg-black/45 p-3 border border-black rounded-sm">
-                <div className="hud-label">FORWARD VARIANCE (IV^2)</div>
+                <div className="hud-label flex items-center justify-between">
+                  <span>FORWARD VARIANCE (IV^2)</span>
+                  <SourceTag live={false} />
+                </div>
                 <div className="flex items-baseline gap-2">
                   <span className="hud-value text-sky-400">
                     {profile.fwdVar.toFixed(4)}
                   </span>
-                  <span className="text-[7.5px] text-zinc-550">v2_std</span>
+                  <span className="text-[10px] text-[color:var(--text-tertiary)]">v2_std</span>
                 </div>
               </div>
 
               <div className="bg-black/45 p-3 border border-black rounded-sm">
-                <div className="hud-label text-[#F87171]/90">ORDER FLOW IMBALANCE (VPIN)</div>
+                <div className="hud-label flex items-center justify-between">
+                  <span className="text-[#F87171]/90">ORDER FLOW IMBALANCE (VPIN)</span>
+                  <SourceTag live={false} />
+                </div>
                 <div className="flex items-baseline gap-2">
                   <span className={`hud-value ${profile.vpinColor}`}>
                     {profile.vpin}
@@ -1354,12 +1515,15 @@ export function InstitutionalPhysicsDashboard({ profile: externalProfile, ticker
               </div>
 
               <div className="bg-black/45 p-3 border border-black rounded-sm">
-                <div className="hud-label">BID/ASK FRICTION (Λ)</div>
+                <div className="hud-label flex items-center justify-between">
+                  <span>BID/ASK FRICTION (Λ)</span>
+                  <SourceTag live={false} />
+                </div>
                 <div className="flex items-baseline gap-2">
-                  <span className="hud-value text-zinc-100">
+                  <span className="hud-value text-[color:var(--text-primary)]">
                     {profile.friction.toFixed(4)}
                   </span>
-                  <span className="text-[7.5px] text-zinc-550">coeff</span>
+                  <span className="text-[10px] text-[color:var(--text-tertiary)]">coeff</span>
                 </div>
               </div>
             </div>
@@ -1374,32 +1538,40 @@ export function InstitutionalPhysicsDashboard({ profile: externalProfile, ticker
 
             <div className="bg-black/45 p-3 border border-black rounded-sm flex-1 flex flex-col justify-between">
               <div className="space-y-3">
+                {/* These three are illustrative model constants — there is no live
+                    source for them in the payload, so they are tagged MODEL. */}
                 <div className="flex justify-between items-center text-[9px] font-mono">
-                  <span className="text-zinc-500 font-black tracking-widest uppercase">Theta Decay Rate (per hr)</span>
-                  <span className="text-[#4ADE80] font-bold">-0.842v / hr</span>
+                  <span className="text-[color:var(--text-tertiary)] font-black tracking-widest uppercase flex items-center gap-1.5">
+                    Theta Decay Rate (per hr) <SourceTag live={false} />
+                  </span>
+                  <span className="text-[color:var(--text-secondary)] font-bold">-0.842v / hr</span>
                 </div>
                 <div className="flex justify-between items-center text-[9px] font-mono">
-                  <span className="text-zinc-500 font-black tracking-widest uppercase">Spread Friction (Λ)</span>
-                  <span className="text-[#4ADE80] font-bold">1.22μ</span>
+                  <span className="text-[color:var(--text-tertiary)] font-black tracking-widest uppercase flex items-center gap-1.5">
+                    Spread Friction (Λ) <SourceTag live={false} />
+                  </span>
+                  <span className="text-[color:var(--text-secondary)] font-bold">1.22μ</span>
                 </div>
                 <div className="flex justify-between items-center text-[9px] font-mono">
-                  <span className="text-zinc-500 font-black tracking-widest uppercase">Dealer Hedge Activity</span>
-                  <span className="text-[#F87171] font-bold">94.2%</span>
+                  <span className="text-[color:var(--text-tertiary)] font-black tracking-widest uppercase flex items-center gap-1.5">
+                    Dealer Hedge Activity <SourceTag live={false} />
+                  </span>
+                  <span className="text-[color:var(--text-secondary)] font-bold">94.2%</span>
                 </div>
                 <div className="h-px bg-black/60 my-1" />
               </div>
 
               <div className="pt-3">
-                <div className="flex justify-between items-center text-[9px] text-zinc-400 font-extrabold pb-1">
-                  <span>95% CI LOWER</span>
-                  <span>95% CI UPPER</span>
+                <div className="flex justify-between items-center text-[9px] text-[color:var(--text-secondary)] font-extrabold pb-1">
+                  <span className="flex items-center gap-1.5">95% CI <SourceTag live={isLive} /></span>
+                  <span>RANGE</span>
                 </div>
                 <div className="grid grid-cols-2 gap-2 text-center text-[10.5px] font-mono">
                   <span className="text-[#F87171] bg-rose-950/20 border border-[#F87171]/40 py-1.5 rounded-sm">
-                    {(profile.spot * (1 - 1.96 * profile.expectedMovePct)).toFixed(decimals === 0 ? 0 : 2)}
+                    {(effectiveProfile.spot * (1 - 1.96 * effectiveProfile.expectedMovePct)).toFixed(decimals === 0 ? 0 : 2)}
                   </span>
                   <span className="text-[#4ADE80] bg-black/40 border border-black py-1.5 rounded-sm">
-                    {(profile.spot * (1 + 1.96 * profile.expectedMovePct)).toFixed(decimals === 0 ? 0 : 2)}
+                    {(effectiveProfile.spot * (1 + 1.96 * effectiveProfile.expectedMovePct)).toFixed(decimals === 0 ? 0 : 2)}
                   </span>
                 </div>
               </div>
@@ -1415,6 +1587,14 @@ export function InstitutionalPhysicsDashboard({ profile: externalProfile, ticker
        ============================================================ */}
       <footer className="mt-4" id="quant-footer">
         <div className="quant-panel" style={{ padding: '16px' }}>
+          <div className="panel-header-alt">
+            <span>ATM GREEKS (BLACK-SCHOLES)</span>
+            <div className="flex items-center gap-2">
+              {/* Greeks are a BSM model evaluation; the inputs (spot) are live when
+                  available, but the values themselves are computed, not fed. */}
+              <SourceTag live={false} />
+            </div>
+          </div>
           <div className="greeks-horizontal-grid">
             
             {/* CARD 1: SPOT DELTA INTEGRATION */}
@@ -1431,7 +1611,7 @@ export function InstitutionalPhysicsDashboard({ profile: externalProfile, ticker
             {/* CARD 2: SPOT GAMMA CONVEXITY */}
             <div className="greek-card">
               <label>
-                <GitCommit className="w-3.5 h-3.5 text-zinc-450 icon-small" />
+                <GitCommit className="w-3.5 h-3.5 text-zinc-400 icon-small" />
                 GAMMA (how fast delta changes)
               </label>
               <span>
@@ -1468,7 +1648,7 @@ export function InstitutionalPhysicsDashboard({ profile: externalProfile, ticker
                 MAGNET STRIKE
               </label>
               <span className="text-sky-400">
-                {profile.spot.toFixed(0)} <span className="unit">ATM</span>
+                {effectiveProfile.spot.toFixed(decimals)} <span className="unit">ATM</span>
               </span>
             </div>
 

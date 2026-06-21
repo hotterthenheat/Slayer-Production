@@ -21,7 +21,7 @@ import { V8TradeRecord } from '../types';
 type ChannelKey = 'verified' | 'research' | 'education' | 'support';
 
 const CHANNELS: { key: ChannelKey; label: string; sub: string; Icon: typeof FileText }[] = [
-  { key: 'verified', label: 'Verified Results', sub: 'Live trade ledger', Icon: ShieldCheck },
+  { key: 'verified', label: 'Trade Record', sub: 'Logged trade ledger', Icon: ShieldCheck },
   { key: 'research', label: 'Research Library', sub: 'Flow & macro methodology', Icon: FileText },
   { key: 'education', label: 'Options Education', sub: 'Greeks & risk framework', Icon: BookOpen },
   { key: 'support', label: 'Product Support', sub: 'Feature requests & feedback', Icon: HelpCircle },
@@ -65,12 +65,15 @@ export default function ArborCapital() {
   const marketState = useContractStore((s) => s.marketState);
   const selectedAsset = useContractStore((s) => s.selectedAsset);
 
-  // Feature requests are genuine client-side UI (a working form + voting), not
-  // mock "live" data. Kept and restyled.
+  // Feature requests are genuine client-side UI (a working form + voting). The
+  // rows seeded below are illustrative EXAMPLES of the format, not a live
+  // community board — they are flagged `example` and labeled as such in the UI
+  // so the vote counts/statuses are never presented as real activity. Requests
+  // a user submits this session are real and unflagged.
   const [userRequests, setUserRequests] = useState([
-    { id: 'req-1', title: 'Imbalance sweep trigger audio alerts', type: 'Feature Request', votes: 24, status: 'Completed' },
-    { id: 'req-2', title: 'Vanna exposure speed indicators', type: 'Research Suggestion', votes: 11, status: 'In Review' },
-    { id: 'req-3', title: 'Gamma flip level overlays on index charts', type: 'Feature Request', votes: 19, status: 'Scheduled' },
+    { id: 'req-1', title: 'Imbalance sweep trigger audio alerts', type: 'Feature Request', votes: 24, status: 'Completed', example: true },
+    { id: 'req-2', title: 'Vanna exposure speed indicators', type: 'Research Suggestion', votes: 11, status: 'In Review', example: true },
+    { id: 'req-3', title: 'Gamma flip level overlays on index charts', type: 'Feature Request', votes: 19, status: 'Scheduled', example: true },
   ]);
   const [newRequestTitle, setNewRequestTitle] = useState('');
   const [newRequestType, setNewRequestType] = useState('Feature Request');
@@ -80,7 +83,7 @@ export default function ArborCapital() {
     e.preventDefault();
     if (!newRequestTitle.trim()) return;
     setUserRequests([
-      { id: `req-${Date.now()}`, title: newRequestTitle, type: newRequestType, votes: 1, status: 'Open' },
+      { id: `req-${Date.now()}`, title: newRequestTitle, type: newRequestType, votes: 1, status: 'Open', example: false },
       ...userRequests,
     ]);
     setNewRequestTitle('');
@@ -92,7 +95,7 @@ export default function ArborCapital() {
     setUserRequests((prev) => prev.map((r) => (r.id === id ? { ...r, votes: r.votes + 1 } : r)));
   };
 
-  // Aggregate verified results from the real trade archive.
+  // Aggregate stats from the real logged trade archive (empty until trades log).
   const ledgerStats = useMemo(() => {
     const list = (trades || []) as V8TradeRecord[];
     const closed = list.filter((t) => t.finalOutcome && t.finalOutcome !== 'Active');
@@ -187,7 +190,7 @@ export default function ArborCapital() {
             Community &amp; Education
           </h2>
           <p className="text-xs text-[var(--text-tertiary)] mt-1 leading-relaxed max-w-2xl">
-            Research, education and a verified trade ledger for options day traders. Built around
+            Research, education and a logged trade ledger for options day traders. Built around
             measurable results — not alerts.
           </p>
         </div>
@@ -225,7 +228,7 @@ export default function ArborCapital() {
           support the software and keep results accountable.
         </p>
         <div className="flex flex-wrap gap-x-5 gap-y-2 mt-4 text-[10px] uppercase tracking-[0.12em] text-[var(--text-tertiary)]">
-          {['Software first', 'Verified results', 'Data-driven methods'].map((t) => (
+          {['Software first', 'Logged results', 'Data-driven methods'].map((t) => (
             <span key={t} className="flex items-center gap-1.5">
               <span className="w-1 h-1 rounded-full bg-[#4ADE80]" />
               {t}
@@ -286,13 +289,13 @@ export default function ArborCapital() {
         {/* Content */}
         <div className="lg:col-span-3 rounded-xl border border-[var(--border)] bg-[var(--surface)] p-5 md:p-6 min-h-[360px]">
 
-          {/* Verified Results — real trade ledger */}
+          {/* Trade Record — real logged trade ledger (empty until the engine logs trades) */}
           {activeChannel === 'verified' && (
             <div className="flex flex-col gap-4 animate-fadeIn">
               <SectionHeader
                 icon={<ShieldCheck className="w-4 h-4 text-[#4ADE80]" />}
-                title="Verified Trade Ledger"
-                meta={serverState?.data_source ? `Source · ${serverState.data_source}` : 'Live'}
+                title="Trade Ledger"
+                meta={serverState?.data_source ? `Source · ${serverState.data_source}` : undefined}
               />
 
               {/* Stat strip from real archive */}
@@ -389,9 +392,9 @@ export default function ArborCapital() {
               ) : (
                 <div className="rounded-lg border border-dashed border-[var(--border)] bg-[var(--surface-2)] p-8 text-center">
                   <ShieldCheck className="w-7 h-7 text-[var(--text-tertiary)] mx-auto mb-2" />
-                  <p className="text-xs text-[var(--text-secondary)]">No trades logged yet for this session.</p>
+                  <p className="text-xs text-[var(--text-secondary)]">No closed trades recorded yet.</p>
                   <p className="text-[10px] text-[var(--text-tertiary)] mt-1">
-                    Verified entries appear here as the engine records them.
+                    Your live track record starts at launch — logged trades appear here as the engine records them.
                   </p>
                 </div>
               )}
@@ -546,11 +549,16 @@ export default function ArborCapital() {
 
                 {/* Open requests */}
                 <div className="rounded-lg border border-[var(--border)] bg-[var(--surface-2)] p-4 flex flex-col">
-                  <div className="flex items-center gap-1.5 mb-3 pb-2.5 border-b border-[var(--border)]">
-                    <Bookmark className="w-4 h-4 text-[#4ADE80]" />
-                    <h4 className="text-[11px] font-black uppercase tracking-[0.14em] text-[var(--text-primary)]">
-                      Open Requests
-                    </h4>
+                  <div className="flex items-center justify-between gap-2 mb-3 pb-2.5 border-b border-[var(--border)]">
+                    <div className="flex items-center gap-1.5">
+                      <Bookmark className="w-4 h-4 text-[#4ADE80]" />
+                      <h4 className="text-[11px] font-black uppercase tracking-[0.14em] text-[var(--text-primary)]">
+                        Open Requests
+                      </h4>
+                    </div>
+                    <span className="text-[9px] font-bold uppercase tracking-[0.12em] text-[var(--text-tertiary)] border border-[var(--border)] rounded px-1.5 py-0.5">
+                      Examples
+                    </span>
                   </div>
                   <div className="space-y-2.5 overflow-y-auto max-h-[300px]">
                     {userRequests.map((req) => {
@@ -568,7 +576,7 @@ export default function ArborCapital() {
                           className="rounded-lg border border-[var(--border)] bg-[var(--surface)] p-3 flex items-center justify-between gap-3"
                         >
                           <div className="min-w-0 flex-1">
-                            <div className="flex items-center gap-1.5 mb-1">
+                            <div className="flex items-center gap-1.5 mb-1 flex-wrap">
                               <span className="text-[9px] font-bold uppercase tracking-[0.1em] text-[var(--text-tertiary)]">
                                 {req.type}
                               </span>
@@ -579,6 +587,11 @@ export default function ArborCapital() {
                               >
                                 {req.status}
                               </span>
+                              {req.example && (
+                                <span className="text-[8px] font-bold uppercase tracking-[0.1em] px-1.5 py-px rounded text-[var(--text-tertiary)] border border-[var(--border)]">
+                                  Example
+                                </span>
+                              )}
                             </div>
                             <span className="text-xs font-bold text-[var(--text-primary)] block truncate leading-tight">
                               {req.title}
