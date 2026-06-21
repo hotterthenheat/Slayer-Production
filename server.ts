@@ -2307,8 +2307,10 @@ function serializeTracked(t: TradeRow) {
 // List the signed-in user's tracked contracts (open + closed).
 app.get('/api/tracked', async (req, res) => {
   const session = await getSessionFromCookies(req.headers.cookie);
-  if (!session || !session.email) return res.status(401).json({ error: 'Unauthorized' });
-  const email = session.email.toLowerCase().trim();
+  // Dev/local has no login session; use an anonymous sandbox so the feature is
+  // testable on localhost. Production still requires a real authenticated session.
+  const email = (session?.email || (process.env.NODE_ENV !== 'production' ? 'local@dev' : '')).toLowerCase().trim();
+  if (!email) return res.status(401).json({ error: 'Unauthorized' });
   try {
     const rows = await getTradeStore().listByUser(email);
     const openCount = rows.filter(r => r.status === 'OPEN').length;
@@ -2322,8 +2324,8 @@ app.get('/api/tracked', async (req, res) => {
 // Add a contract to the user's Trade History (enforces the 10-open cap).
 app.post('/api/tracked/add', express.json(), async (req, res) => {
   const session = await getSessionFromCookies(req.headers.cookie);
-  if (!session || !session.email) return res.status(401).json({ error: 'Unauthorized' });
-  const email = session.email.toLowerCase().trim();
+  const email = (session?.email || (process.env.NODE_ENV !== 'production' ? 'local@dev' : '')).toLowerCase().trim();
+  if (!email) return res.status(401).json({ error: 'Unauthorized' });
   const store = getTradeStore();
   try {
     const openCount = await store.countOpenByUser(email);
@@ -2363,8 +2365,8 @@ app.post('/api/tracked/add', express.json(), async (req, res) => {
 // Manually close one of the user's open contracts (frees a slot immediately).
 app.post('/api/tracked/:id/close', express.json(), async (req, res) => {
   const session = await getSessionFromCookies(req.headers.cookie);
-  if (!session || !session.email) return res.status(401).json({ error: 'Unauthorized' });
-  const email = session.email.toLowerCase().trim();
+  const email = (session?.email || (process.env.NODE_ENV !== 'production' ? 'local@dev' : '')).toLowerCase().trim();
+  if (!email) return res.status(401).json({ error: 'Unauthorized' });
   const id = String(req.params.id || '');
   try {
     const store = getTradeStore();
