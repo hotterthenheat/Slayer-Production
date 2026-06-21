@@ -1000,7 +1000,7 @@ export function QuantAuditView({
                 <div
                   key={t.id}
                   className={`bg-black hover:bg-black/60 border transition-all rounded-xl overflow-hidden cursor-pointer ${
-                    isExpanded ? 'border-black bg-black/90 shadow-lg shadow-zinc-300/5' : 'border-black/80 hover:border-black'
+                    isExpanded ? 'border-black bg-black/90 shadow-lg shadow-zinc-300/5' : 'border-white/10 hover:border-white/20'
                   }`}
                   onClick={() => toggleExpand(t.id)}
                 >
@@ -1008,9 +1008,9 @@ export function QuantAuditView({
                   <div className="p-3.5 flex items-center justify-between gap-2">
                     <div className="flex items-center gap-3 min-w-0">
                       {/* Left icon arrow inside grid box */}
-                      <div className="w-8 h-8 shrink-0 rounded border border-black bg-[#4ADE80] text-black/5 flex items-center justify-center text-[#d4d4d8]">
-                        <span className="text-[7px] uppercase font-black tracking-widest text-[#d4d4d8] -rotate-90 block" style={{writingMode: 'vertical-rl'}}>holding</span>
-                      </div>
+                      <span className="shrink-0 px-2.5 py-1 rounded-md text-[9px] font-black uppercase tracking-wider leading-none bg-[#4ADE80]/15 text-[#4ADE80] border border-[#4ADE80]/40">
+                        HOLDING
+                      </span>
                       <div className="min-w-0">
                         {/* Title line */}
                         <div className="flex items-center gap-2 flex-wrap">
@@ -1023,9 +1023,9 @@ export function QuantAuditView({
                         </div>
                         {/* Subtitle: muted secondary metadata */}
                         <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
-                          <span className="text-[7.5px] text-zinc-500 font-mono">{t.timestamp}</span>
-                          <span className="text-zinc-700 text-[7px]">|</span>
-                          <span className="text-[7.5px] text-zinc-500 font-mono">{t.timeTaken || 20}m hold</span>
+                          <span className="text-[10px] text-zinc-400 font-mono">{t.timestamp}</span>
+                          <span className="text-zinc-600 text-[10px]">|</span>
+                          <span className="text-[10px] text-zinc-400 font-mono">{t.timeTaken || 20}m hold</span>
                         </div>
                       </div>
                     </div>
@@ -1273,7 +1273,7 @@ export function QuantAuditView({
                 <div
                   key={t.id}
                   className={`bg-black hover:bg-black/60 border transition-all rounded-xl overflow-hidden cursor-pointer ${
-                    isExpanded ? 'border-rose-500/40 bg-black/90 shadow-lg shadow-rose-900/5' : 'border-black/80 hover:border-black'
+                    isExpanded ? 'border-rose-500/40 bg-black/90 shadow-lg shadow-rose-900/5' : 'border-white/10 hover:border-white/20'
                   }`}
                   onClick={() => toggleExpand(t.id)}
                 >
@@ -1281,9 +1281,9 @@ export function QuantAuditView({
                   <div className="p-3.5 flex items-center justify-between gap-2">
                     <div className="flex items-center gap-3 min-w-0">
                       {/* Left icon arrow inside grid box */}
-                      <div className="w-8 h-8 shrink-0 rounded border border-rose-500/25 bg-rose-500/5 flex items-center justify-center text-[#F87171]">
-                        <span className="text-[7px] uppercase font-black tracking-widest text-[#F87171] -rotate-90 block" style={{writingMode: 'vertical-rl'}}>failing</span>
-                      </div>
+                      <span className="shrink-0 px-2.5 py-1 rounded-md text-[9px] font-black uppercase tracking-wider leading-none bg-[#F87171]/15 text-[#F87171] border border-[#F87171]/40">
+                        FAILING
+                      </span>
                       <div className="min-w-0">
                         {/* Title line */}
                         <div className="flex items-center gap-2 flex-wrap">
@@ -1296,9 +1296,9 @@ export function QuantAuditView({
                         </div>
                         {/* Subtitle: muted secondary metadata */}
                         <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
-                          <span className="text-[7.5px] text-zinc-500 font-mono">{t.timestamp}</span>
-                          <span className="text-zinc-700 text-[7px]">|</span>
-                          <span className="text-[7.5px] text-zinc-500 font-mono">{t.timeTaken || 15}m hold</span>
+                          <span className="text-[10px] text-zinc-400 font-mono">{t.timestamp}</span>
+                          <span className="text-zinc-600 text-[10px]">|</span>
+                          <span className="text-[10px] text-zinc-400 font-mono">{t.timeTaken || 15}m hold</span>
                         </div>
                       </div>
                     </div>
