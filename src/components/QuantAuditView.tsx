@@ -1023,9 +1023,9 @@ export function QuantAuditView({
                         </div>
                         {/* Subtitle: muted secondary metadata */}
                         <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
-                          <span className="text-[10px] text-zinc-400 font-mono">{t.timestamp}</span>
+                          <span className="text-[10px] text-[#E5E5E5] font-mono font-semibold">{t.timestamp}</span>
                           <span className="text-zinc-600 text-[10px]">|</span>
-                          <span className="text-[10px] text-zinc-400 font-mono">{t.timeTaken || 20}m hold</span>
+                          <span className="text-[10px] text-[#E5E5E5] font-mono font-semibold">{t.timeTaken || 20}m hold</span>
                         </div>
                       </div>
                     </div>
@@ -1296,9 +1296,9 @@ export function QuantAuditView({
                         </div>
                         {/* Subtitle: muted secondary metadata */}
                         <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
-                          <span className="text-[10px] text-zinc-400 font-mono">{t.timestamp}</span>
+                          <span className="text-[10px] text-[#E5E5E5] font-mono font-semibold">{t.timestamp}</span>
                           <span className="text-zinc-600 text-[10px]">|</span>
-                          <span className="text-[10px] text-zinc-400 font-mono">{t.timeTaken || 15}m hold</span>
+                          <span className="text-[10px] text-[#E5E5E5] font-mono font-semibold">{t.timeTaken || 15}m hold</span>
                         </div>
                       </div>
                     </div>
