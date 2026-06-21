@@ -1455,8 +1455,8 @@ export function DiscoveryView({
                         const isPrimaryPeak = idx === 0;
 
                         // Parameters Price Targets calculation (Institutional Swing Target vs Quick Volatility Scalp)
-                        const coreSwingTarget = c.t1 ? c.t1 : c.price * 1.35;
-                        const coreSwingGain = c.p1 ? c.p1 : 35;
+                        const coreSwingTarget = c.t1 != null ? c.t1 : c.price * 1.35;
+                        const coreSwingGain = c.p1 != null ? c.p1 : 35;
                         const quickScalpTarget = c.price * 1.18;
                         const quickScalpGain = 18;
 

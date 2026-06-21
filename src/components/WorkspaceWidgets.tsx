@@ -319,7 +319,7 @@ const PinPointDealerWidget = React.memo(() => {
   const gex = serverState?.gex_profile;
   const strikes = (gex?.strikes ?? [])
     .slice()
-    .sort((a: any, b: any) => Math.abs(b.netGex) - Math.abs(a.netGex))
+    .sort((a: any, b: any) => Math.abs(b.netGex ?? 0) - Math.abs(a.netGex ?? 0))
     .slice(0, 8)
     .sort((a: any, b: any) => b.strike - a.strike);
   const rows = strikes.map((s: any) => {
@@ -351,7 +351,7 @@ const LoadedStrikesWidget = React.memo(() => {
   const gex = serverState?.gex_profile;
   const strikes = (gex?.strikes ?? [])
     .slice()
-    .sort((a: any, b: any) => (b.callVolume + b.putVolume) - (a.callVolume + a.putVolume))
+    .sort((a: any, b: any) => ((b.callVolume ?? 0) + (b.putVolume ?? 0)) - ((a.callVolume ?? 0) + (a.putVolume ?? 0)))
     .slice(0, 8)
     .sort((a: any, b: any) => b.strike - a.strike);
   const rows = strikes.map((s: any) => {

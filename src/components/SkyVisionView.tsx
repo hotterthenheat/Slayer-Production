@@ -169,11 +169,11 @@ export function SkyVisionView() {
         isSpotRow,
         callHealth,
         callAction,
-        callMove: Math.round(35 + (spotPrice - strikeValue) * 0.4),
+        callMove: Math.max(1, Math.round(35 + (spotPrice - strikeValue) * 0.4)),
         callPrice,
         putHealth,
         putAction,
-        putMove: Math.round(22 + (spotPrice - strikeValue) * 0.35),
+        putMove: Math.max(1, Math.round(22 + (spotPrice - strikeValue) * 0.35)),
         putPrice
       };
     });
@@ -713,8 +713,8 @@ export function SkyVisionView() {
                             <td className={`py-2 font-black ${c.rank === 1 ? 'text-[#F87171]' : c.rank === 2 ? 'text-[#60A5FA]' : 'text-[var(--text-tertiary)]'}`}>#{c.rank}</td>
                             <td className="py-2 font-black text-[var(--text-primary)]">{c.contract}</td>
                             <td className="py-2">{c.expiration}</td>
-                            <td className="py-2 text-[#4ADE80]">{c.oi.toLocaleString()}</td>
-                            <td className="py-2 text-[#4ADE80]">{c.volume.toLocaleString()}</td>
+                            <td className="py-2 text-[#4ADE80]">{c.oi != null ? c.oi.toLocaleString() : '--'}</td>
+                            <td className="py-2 text-[#4ADE80]">{c.volume != null ? c.volume.toLocaleString() : '--'}</td>
                             <td className="py-2 text-right font-bold text-[var(--text-primary)]">{c.deltaNotional}</td>
                             <td className="py-2 text-right font-bold text-[var(--text-primary)]">{c.gammaContribution}</td>
                           </tr>

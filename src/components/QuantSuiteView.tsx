@@ -428,6 +428,9 @@ export default function QuantSuiteView() {
   // reads fresh values, instead of being torn down/recreated on every SSE frame.
   const alertCtxRef = useRef({ alertsRules, spotPrice, gexProfile, volSuite, skewMetrics });
   alertCtxRef.current = { alertsRules, spotPrice, gexProfile, volSuite, skewMetrics };
+  // Previous-tick spot so "crosses" rules can actually detect a crossing
+  // (passing the same value for spot and prevSpot made them permanently dead).
+  const prevAlertSpotRef = useRef(spotPrice);
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -440,12 +443,13 @@ export default function QuantSuiteView() {
       const triggered = evaluateAlertRules(
         alertsRules,
         spotPrice,
-        spotPrice,
+        prevAlertSpotRef.current,
         netGexVal,
         gammaFlip,
         volSuite.vrpPercentile,
         skewMetrics.riskReversalPercentile
       );
+      prevAlertSpotRef.current = spotPrice;
 
       if (triggered.length > 0) {
         setAlertsLog(prev => [...triggered, ...prev].slice(0, 30));
