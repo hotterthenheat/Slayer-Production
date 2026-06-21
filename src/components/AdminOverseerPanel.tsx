@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { formatDateTime } from '../lib/timeUtils';
 import {
-  ShieldAlert, Users, Activity, Key, MonitorPlay, Radio, ScrollText,
-  Ticket, Power, ToggleLeft, ToggleRight, Ban, UserX, LogOut, Eye, Search, RefreshCw, Zap
+  ShieldAlert, Users, Activity, Key, MonitorPlay, Radio,
+  Ticket, Power, ToggleLeft, ToggleRight, Ban, UserX, LogOut, Eye, Search, RefreshCw, ScrollText
 } from 'lucide-react';
 
 interface AdminPanelProps {
@@ -10,13 +10,15 @@ interface AdminPanelProps {
   onSimulateTier: (tierStr: string, tierNum: number) => void;
 }
 
-type Tab = 'overview' | 'users' | 'audit' | 'coupons';
-
 async function api(path: string, opts: RequestInit = {}) {
   const res = await fetch(path, { credentials: 'same-origin', headers: { 'Content-Type': 'application/json' }, ...opts });
   if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || `HTTP ${res.status}`);
   return res.json();
 }
+
+const CARD = 'bg-[var(--surface)] border border-[var(--border)] rounded-lg';
+const FIELD = 'bg-[var(--surface-2)] border border-[var(--border)] rounded-md px-3 py-2 text-[11px] text-[var(--text-primary)] placeholder:text-[var(--text-tertiary)] focus:outline-none focus:border-[var(--border-strong)]';
+const TH = 'text-left p-3 text-[var(--text-tertiary)] uppercase tracking-widest text-[9px] font-bold';
 
 export function AdminOverseerPanel({ session, onSimulateTier }: AdminPanelProps) {
   const [tab, setTab] = useState<string>('overview');
@@ -40,10 +42,10 @@ export function AdminOverseerPanel({ session, onSimulateTier }: AdminPanelProps)
 
   if (!session?.is_super_admin && !['super_admin', 'owner', 'admin'].includes(session?.admin_role || '')) {
     return (
-      <div className="p-8 text-center bg-black border border-rose-500/30 rounded-sm max-w-xl mx-auto mt-10">
-        <ShieldAlert className="w-12 h-12 text-rose-500 mx-auto mb-4" />
-        <h2 className="text-xl font-black text-[#E5E5E5] uppercase tracking-widest">Unauthorized Access Logged</h2>
-        <p className="text-[11px] text-zinc-500 mt-2 uppercase tracking-widest">This incident has been recorded to the immutable audit trail.</p>
+      <div className={`p-8 text-center ${CARD} border-[#F87171]/30 max-w-xl mx-auto mt-10`}>
+        <ShieldAlert className="w-10 h-10 text-[#F87171] mx-auto mb-4" />
+        <h2 className="text-lg font-bold text-[var(--text-primary)] uppercase tracking-widest">Unauthorized Access</h2>
+        <p className="text-[10px] text-[var(--text-tertiary)] mt-2 uppercase tracking-widest">This incident has been recorded to the audit trail.</p>
       </div>
     );
   }
@@ -51,82 +53,79 @@ export function AdminOverseerPanel({ session, onSimulateTier }: AdminPanelProps)
   const SECTIONS = [
     { id: 'overview', label: 'Overview', icon: Activity },
     { id: 'users', label: 'User Management', icon: Users },
-    { id: 'subscriptions', label: 'Subscription Mgmt', icon: Ticket },
-    { id: 'terminal', label: 'Terminal Management', icon: MonitorPlay },
-    { id: 'alerts', label: 'Alert Management', icon: Radio },
-    { id: 'analytics', label: 'Analytics', icon: Search },
-    { id: 'skysvision', label: 'SkysVision Control', icon: Eye },
-    { id: 'pinpoint', label: 'PinPoint AI Control', icon: Zap },
-    { id: 'support', label: 'Support Center', icon: ScrollText },
-    { id: 'health', label: 'System Health', icon: ShieldAlert },
-    { id: 'roles', label: 'Role Management', icon: Key },
+    { id: 'subscriptions', label: 'Coupons', icon: Ticket },
     { id: 'audit', label: 'Audit Trail', icon: ScrollText },
   ];
 
+  const adminRole = overview?.admin_role || session?.admin_role || (session?.is_super_admin ? 'super_admin' : '—');
+
   return (
-    <div className="w-full max-w-[1400px] mx-auto font-mono text-[#4ADE80] p-4 flex flex-col md:flex-row gap-6 h-[calc(100vh-80px)]">
-      {/* Sidebar Layout */}
-      <div className="w-full md:w-64 shrink-0 flex flex-col border-r border-[#1F1F1F] pr-4 gap-2 overflow-y-auto">
-        <div className="pb-4 mb-2 border-b border-[#1F1F1F]">
-          <h2 className="text-sm font-black tracking-widest text-[#E5E5E5] uppercase flex items-center gap-2 mb-2">
-            <Key className="w-4 h-4 text-rose-500" /> Overseer
+    <div className="w-full max-w-[1400px] mx-auto font-mono p-4 flex flex-col md:flex-row gap-6 h-[calc(100vh-80px)]">
+      {/* Sidebar */}
+      <div className="w-full md:w-60 shrink-0 flex flex-col border-r border-[var(--border)] pr-4 gap-2 overflow-y-auto">
+        <div className="pb-4 mb-1 border-b border-[var(--border)]">
+          <h2 className="text-sm font-bold tracking-widest text-[var(--text-primary)] uppercase flex items-center gap-2 mb-3">
+            <Key className="w-4 h-4 text-[#F87171]" /> Overseer
           </h2>
-          <p className="text-[10px] text-zinc-500 uppercase tracking-widest leading-relaxed">
-            Role: <span className="text-amber-400 font-bold">{overview?.admin_role || session?.admin_role || 'super_admin'}</span><br/>
-            STATUS: <span className="text-[#4ADE80] animate-pulse">● SECURE MFA</span>
-          </p>
+          <div className="text-[10px] uppercase tracking-widest text-[var(--text-tertiary)] flex items-center justify-between">
+            <span>Role</span>
+            <span className="text-[#FBBF24] font-bold">{adminRole}</span>
+          </div>
         </div>
 
         <div className="flex flex-col gap-1">
           {SECTIONS.map((t) => {
             const Icon = t.icon;
+            const active = tab === t.id;
             return (
               <button key={t.id} onClick={() => setTab(t.id)}
-                className={`px-3 py-2.5 text-[10px] font-bold uppercase tracking-widest rounded-sm flex items-center gap-2 transition-all text-left ${
-                  tab === t.id ? 'bg-[#161616] border border-[#1F1F1F] text-[#4ADE80]' : 'border border-transparent text-zinc-400 hover:text-[#E5E5E5] hover:bg-[#111111]'
+                className={`px-3 py-2.5 text-[10px] font-bold uppercase tracking-widest rounded-md flex items-center gap-2.5 transition-colors text-left ${
+                  active
+                    ? 'bg-[var(--surface-2)] border border-[var(--border)] text-[#4ADE80]'
+                    : 'border border-transparent text-[var(--text-tertiary)] hover:text-[var(--text-primary)] hover:bg-[var(--surface)]'
                 }`}>
-                <Icon className="w-4 h-4" /> {t.label}
+                <Icon className="w-4 h-4 shrink-0" /> {t.label}
               </button>
             );
           })}
         </div>
-        
-        <div className="mt-auto pt-4 border-t border-[#1F1F1F]">
-          <div className="flex items-center gap-2 bg-[#111111] border border-[#161616] rounded-sm px-3 py-2">
-            <Radio className="w-3 h-3 text-[#4ADE80] animate-pulse" />
-            <div>
-              <div className="text-[8px] text-zinc-500 uppercase tracking-widest font-black">Live Connections</div>
-              <div className="text-sm font-black text-[#E5E5E5] leading-none">{live}</div>
+
+        <div className="mt-auto pt-4 border-t border-[var(--border)]">
+          <div className={`flex items-center gap-2.5 ${CARD} px-3 py-2.5`}>
+            <Radio className="w-3.5 h-3.5 text-[#4ADE80] shrink-0" />
+            <div className="min-w-0">
+              <div className="text-[9px] text-[var(--text-tertiary)] uppercase tracking-widest font-bold">Live Connections</div>
+              <div className="text-sm font-bold text-[var(--text-primary)] leading-tight">{live}</div>
             </div>
           </div>
         </div>
       </div>
 
-      {/* Main Content Area */}
+      {/* Main Content */}
       <div className="flex-1 overflow-y-auto pb-10">
         {tab === 'overview' && <OverviewTab overview={overview} reload={loadOverview} onSimulateTier={onSimulateTier} />}
         {tab === 'users' && <UsersTab />}
         {tab === 'subscriptions' && <CouponsTab />}
-        
-        {/* Placeholder Tabs */}
-        {['terminal', 'alerts', 'analytics', 'skysvision', 'pinpoint', 'support', 'health', 'roles'].includes(tab) && (
-          <div className="p-8 border border-zinc-800 border-dashed rounded-lg flex flex-col items-center justify-center text-center opacity-60">
-             <h3 className="text-xl font-bold text-zinc-400 uppercase tracking-widest">{SECTIONS.find(s=>s.id === tab)?.label}</h3>
-             <p className="text-xs text-zinc-500 mt-2 uppercase">Coming Soon in Module Update</p>
-          </div>
-        )}
-
         {tab === 'audit' && <AuditTab />}
       </div>
     </div>
   );
 }
 
-function StatCard({ label, value, color = 'text-[#E5E5E5]' }: { label: string; value: any; color?: string }) {
+function SectionHeader({ icon: Icon, title, iconColor = 'text-[var(--text-tertiary)]' }: { icon: any; title: string; iconColor?: string }) {
   return (
-    <div className="bg-black border border-black rounded-lg p-3">
-      <div className="text-[8px] text-zinc-500 uppercase font-black tracking-widest">{label}</div>
-      <div className={`text-2xl font-black mt-1 ${color}`}>{value}</div>
+    <div className="flex items-center gap-2 mb-3">
+      <Icon className={`w-4 h-4 ${iconColor}`} />
+      <span className="text-[11px] font-bold uppercase tracking-widest text-[var(--text-primary)]">{title}</span>
+    </div>
+  );
+}
+
+function StatCard({ label, value, color = 'text-[var(--text-primary)]' }: { label: string; value: any; color?: string }) {
+  return (
+    <div className={`${CARD} p-3.5`}>
+      <div className="text-[9px] text-[var(--text-tertiary)] uppercase font-bold tracking-widest">{label}</div>
+      <div className={`text-2xl font-bold mt-1 tabular-nums ${color}`}>{value}</div>
     </div>
   );
 }
@@ -143,52 +142,54 @@ function OverviewTab({ overview, reload, onSimulateTier }: { overview: any; relo
   };
   const flags = overview?.feature_flags || {};
   return (
-    <div className="space-y-6 animate-fadeIn">
+    <div className="space-y-5 animate-fadeIn">
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         <StatCard label="Total Users" value={overview?.total_users ?? '—'} />
         <StatCard label="Live Connections" value={overview?.live_connections ?? '—'} color="text-[#4ADE80]" />
-        <StatCard label="Suspended" value={overview?.suspended ?? '—'} color="text-amber-400" />
+        <StatCard label="Suspended" value={overview?.suspended ?? '—'} color="text-[#FBBF24]" />
         <StatCard label="Banned" value={overview?.banned ?? '—'} color="text-[#F87171]" />
       </div>
 
       {/* Maintenance */}
-      <div className="bg-black border border-black rounded-lg p-5">
-        <div className="flex items-center justify-between">
+      <div className={`${CARD} p-5`}>
+        <div className="flex items-center justify-between gap-4">
           <div className="flex items-center gap-2">
-            <Power className={`w-4 h-4 ${overview?.maintenance_mode ? 'text-[#F87171]' : 'text-zinc-500'}`} />
-            <span className="text-sm font-bold text-[#E5E5E5]">Maintenance Mode</span>
-            {overview?.maintenance_mode && <span className="text-[8px] bg-rose-500/15 text-[#F87171] border border-rose-500/30 px-2 py-0.5 rounded uppercase font-black tracking-widest">503 Active</span>}
+            <Power className={`w-4 h-4 ${overview?.maintenance_mode ? 'text-[#F87171]' : 'text-[var(--text-tertiary)]'}`} />
+            <span className="text-[13px] font-bold text-[var(--text-primary)]">Maintenance Mode</span>
+            {overview?.maintenance_mode && <span className="text-[9px] bg-[#F87171]/15 text-[#F87171] border border-[#F87171]/30 px-2 py-0.5 rounded uppercase font-bold tracking-widest">503 Active</span>}
           </div>
-          <button onClick={toggleMaintenance} disabled={busy} className="text-[#4ADE80]">
-            {overview?.maintenance_mode ? <ToggleRight className="w-9 h-9 text-[#F87171]" /> : <ToggleLeft className="w-9 h-9 text-zinc-600" />}
+          <button onClick={toggleMaintenance} disabled={busy} className="disabled:opacity-50" aria-label="Toggle maintenance mode">
+            {overview?.maintenance_mode ? <ToggleRight className="w-9 h-9 text-[#F87171]" /> : <ToggleLeft className="w-9 h-9 text-[var(--text-tertiary)]" />}
           </button>
         </div>
-        <p className="text-[10px] text-zinc-500 mt-2 uppercase tracking-widest">Returns 503 Service Unavailable to all non-admin traffic while active.</p>
+        <p className="text-[10px] text-[var(--text-tertiary)] mt-2 uppercase tracking-widest">Returns 503 to all non-admin traffic while active.</p>
       </div>
 
       {/* Feature flags */}
-      <div className="bg-black border border-black rounded-lg p-5">
-        <div className="text-sm font-bold text-[#E5E5E5] mb-3">Feature Toggles</div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-          {Object.keys(flags).map((k) => (
-            <button key={k} onClick={() => toggleFlag(k, !flags[k])}
-              className="flex items-center justify-between bg-black/40 border border-black rounded-md px-3 py-2 hover:border-black">
-              <span className="text-[11px] text-[#4ADE80]">{k.replace(/_/g, ' ')}</span>
-              {flags[k] ? <ToggleRight className="w-7 h-7 text-[#4ADE80]" /> : <ToggleLeft className="w-7 h-7 text-zinc-600" />}
-            </button>
-          ))}
-        </div>
+      <div className={`${CARD} p-5`}>
+        <SectionHeader icon={ToggleRight} title="Feature Toggles" />
+        {Object.keys(flags).length === 0 ? (
+          <div className="text-[10px] text-[var(--text-tertiary)] uppercase tracking-widest py-2">No feature flags configured</div>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+            {Object.keys(flags).map((k) => (
+              <button key={k} onClick={() => toggleFlag(k, !flags[k])}
+                className="flex items-center justify-between bg-[var(--surface-2)] border border-[var(--border)] rounded-md px-3 py-2 hover:border-[var(--border-strong)] transition-colors">
+                <span className="text-[11px] text-[var(--text-secondary)] capitalize">{k.replace(/_/g, ' ')}</span>
+                {flags[k] ? <ToggleRight className="w-6 h-6 text-[#4ADE80]" /> : <ToggleLeft className="w-6 h-6 text-[var(--text-tertiary)]" />}
+              </button>
+            ))}
+          </div>
+        )}
       </div>
 
-      {/* QA viewport simulation (retained) */}
-      <div className="bg-black border border-black rounded-lg p-5">
-        <div className="flex items-center gap-2 text-sm font-bold text-[#E5E5E5] mb-3">
-          <MonitorPlay className="w-4 h-4 text-sky-500" /> QA Viewport Simulation
-        </div>
+      {/* QA viewport simulation */}
+      <div className={`${CARD} p-5`}>
+        <SectionHeader icon={MonitorPlay} title="QA Viewport Simulation" iconColor="text-[var(--text-tertiary)]" />
         <div className="flex flex-wrap gap-2">
           {[['Guest', 0], ['SkyVision', 2], ['Pinpoint', 3], ['Quant', 4], ['Lifetime', 5]].map(([label, n]) => (
             <button key={label as string} onClick={() => onSimulateTier(label as string, n as number)}
-              className="px-3 py-1.5 text-[10px] font-bold uppercase tracking-widest bg-black/40 border border-black rounded text-[#4ADE80] hover:border-sky-500/50 hover:text-[#E5E5E5]">
+              className="px-3 py-1.5 text-[10px] font-bold uppercase tracking-widest bg-[var(--surface-2)] border border-[var(--border)] rounded text-[var(--text-secondary)] hover:border-[var(--border-strong)] hover:text-[var(--text-primary)] transition-colors">
               {label}
             </button>
           ))}
@@ -231,62 +232,64 @@ function UsersTab() {
     <div className="space-y-3 animate-fadeIn">
       <div className="flex items-center gap-2">
         <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-zinc-600" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-[var(--text-tertiary)]" />
           <input value={q} onChange={(e) => { setCursors({ current: null, history: [] }); setQ(e.target.value); }} placeholder="Search by email, username, name…"
-            className="w-full bg-black/50 border border-black rounded-lg pl-9 pr-3 py-2.5 text-[11px] text-zinc-200 placeholder:text-zinc-600 focus:outline-none focus:border-black" />
+            className={`w-full ${FIELD} pl-9 py-2.5`} />
         </div>
-        <button onClick={() => load(cursors.current)} className="p-2.5 bg-black/50 border border-black rounded-lg text-zinc-400 hover:text-[#E5E5E5]"><RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} /></button>
+        <button onClick={() => load(cursors.current)} aria-label="Refresh users" className="p-2.5 bg-[var(--surface-2)] border border-[var(--border)] rounded-md text-[var(--text-tertiary)] hover:text-[var(--text-primary)] hover:border-[var(--border-strong)] transition-colors"><RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} /></button>
       </div>
 
-      <div className="bg-black border border-black rounded-lg overflow-x-auto">
+      <div className={`${CARD} overflow-x-auto`}>
         <table className="w-full text-[10.5px]">
           <thead>
-            <tr className="text-zinc-600 uppercase tracking-widest text-[8.5px] border-b border-black">
-              <th className="text-left p-3">User</th><th className="text-left p-3">Tier</th>
-              <th className="text-left p-3">Tokens</th><th className="text-left p-3">Status</th><th className="text-right p-3">Actions</th>
+            <tr className="border-b border-[var(--border)]">
+              <th className={TH}>User</th><th className={TH}>Tier</th>
+              <th className={TH}>Tokens</th><th className={TH}>Status</th><th className={`${TH} text-right`}>Actions</th>
             </tr>
           </thead>
           <tbody>
             {data.rows.map((u: any) => (
-              <tr key={u.id} className="border-b border-black hover:bg-white/[0.02]">
+              <tr key={u.id} className="border-b border-[var(--border)] hover:bg-[var(--surface-2)] transition-colors">
                 <td className="p-3">
-                  <div className="text-[#E5E5E5] font-bold">{u.name || u.username}</div>
-                  <div className="text-zinc-600">{u.email}</div>
+                  <div className="text-[var(--text-primary)] font-bold">{u.name || u.username}</div>
+                  <div className="text-[var(--text-tertiary)]">{u.email}</div>
                 </td>
-                <td className="p-3 uppercase text-zinc-400">
-                  <select value={u.access_tier} onChange={(e) => changeTier(u.email, e.target.value)} className="bg-black border border-black text-[#E5E5E5] px-2 py-1 rounded outline-none focus:border-zinc-700">
-                    {['guest', 'discord', 'intraday', 'quant', 'enterprise', 'lifetime'].map(t => <option key={t} value={t}>{t}</option>)}
-                  </select>
-                  {u.role !== 'user' && <span className="ml-1 text-amber-400">★</span>}
+                <td className="p-3">
+                  <div className="flex items-center gap-1">
+                    <select value={u.access_tier} onChange={(e) => changeTier(u.email, e.target.value)} className="bg-[var(--surface-2)] border border-[var(--border)] text-[var(--text-secondary)] uppercase px-2 py-1 rounded outline-none focus:border-[var(--border-strong)]">
+                      {['guest', 'discord', 'intraday', 'quant', 'enterprise', 'lifetime'].map(t => <option key={t} value={t}>{t}</option>)}
+                    </select>
+                    {u.role !== 'user' && <span className="text-[#FBBF24]" title={u.role}>★</span>}
+                  </div>
                 </td>
-                <td className="p-3 text-[#4ADE80]">{u.referral_tokens_pool}</td>
+                <td className="p-3 text-[#4ADE80] tabular-nums">{u.referral_tokens_pool}</td>
                 <td className="p-3">
                   <div className="flex items-center gap-1.5">
-                    {u.online ? <span className="w-2 h-2 rounded-full bg-[#4ADE80] animate-pulse"></span> : <span className="w-2 h-2 rounded-full bg-zinc-600"></span>}
-                    <span className={`font-bold ${u.online ? 'text-[#4ADE80]' : 'text-zinc-500'}`}>{u.online ? 'ONLINE' : 'OFFLINE'}</span>
+                    <span className={`w-1.5 h-1.5 rounded-full ${u.online ? 'bg-[#4ADE80]' : 'bg-[var(--text-tertiary)]'}`}></span>
+                    <span className={`font-bold ${u.online ? 'text-[#4ADE80]' : 'text-[var(--text-tertiary)]'}`}>{u.online ? 'ONLINE' : 'OFFLINE'}</span>
                   </div>
-                  {u.banned ? <span className="text-[#F87171] font-bold block mt-1 text-[9px]">BANNED</span> : u.suspended ? <span className="text-amber-400 font-bold block mt-1 text-[9px]">SUSPENDED</span> : null}
+                  {u.banned ? <span className="text-[#F87171] font-bold block mt-1 text-[9px]">BANNED</span> : u.suspended ? <span className="text-[#FBBF24] font-bold block mt-1 text-[9px]">SUSPENDED</span> : null}
                 </td>
                 <td className="p-3">
-                  <div className="flex items-center justify-end gap-1.5">
-                    <button title="Impersonate" onClick={() => impersonate(u.email)} className="p-1.5 rounded hover:bg-sky-500/15 text-sky-400"><Eye className="w-3.5 h-3.5" /></button>
-                    <button title={u.suspended ? 'Unsuspend' : 'Suspend'} onClick={() => act(u.email, u.suspended ? 'unsuspend' : 'suspend')} className="p-1.5 rounded hover:bg-amber-500/15 text-amber-400"><UserX className="w-3.5 h-3.5" /></button>
-                    <button title="Force Logout" onClick={() => act(u.email, 'force-logout')} className="p-1.5 rounded hover:bg-black text-zinc-400"><LogOut className="w-3.5 h-3.5" /></button>
-                    <button title={u.banned ? 'Unban' : 'Ban'} onClick={() => act(u.email, u.banned ? 'unban' : 'ban')} className="p-1.5 rounded hover:bg-rose-500/15 text-[#F87171]"><Ban className="w-3.5 h-3.5" /></button>
+                  <div className="flex items-center justify-end gap-1">
+                    <button title="Impersonate" onClick={() => impersonate(u.email)} className="p-1.5 rounded text-[var(--text-tertiary)] hover:text-[var(--text-primary)] hover:bg-[var(--surface-3)] transition-colors"><Eye className="w-3.5 h-3.5" /></button>
+                    <button title={u.suspended ? 'Unsuspend' : 'Suspend'} onClick={() => act(u.email, u.suspended ? 'unsuspend' : 'suspend')} className="p-1.5 rounded text-[#FBBF24] hover:bg-[#FBBF24]/15 transition-colors"><UserX className="w-3.5 h-3.5" /></button>
+                    <button title="Force Logout" onClick={() => act(u.email, 'force-logout')} className="p-1.5 rounded text-[var(--text-tertiary)] hover:text-[var(--text-primary)] hover:bg-[var(--surface-3)] transition-colors"><LogOut className="w-3.5 h-3.5" /></button>
+                    <button title={u.banned ? 'Unban' : 'Ban'} onClick={() => act(u.email, u.banned ? 'unban' : 'ban')} className="p-1.5 rounded text-[#F87171] hover:bg-[#F87171]/15 transition-colors"><Ban className="w-3.5 h-3.5" /></button>
                   </div>
                 </td>
               </tr>
             ))}
-            {data.rows.length === 0 && <tr><td colSpan={5} className="p-8 text-center text-zinc-600 uppercase tracking-widest">No users</td></tr>}
+            {data.rows.length === 0 && <tr><td colSpan={5} className="p-8 text-center text-[var(--text-tertiary)] uppercase tracking-widest text-[10px]">No users</td></tr>}
           </tbody>
         </table>
       </div>
 
-      <div className="flex items-center justify-between text-[10px] text-zinc-500 uppercase tracking-widest">
-        <span>{data.total} users</span>
+      <div className="flex items-center justify-between text-[10px] text-[var(--text-tertiary)] uppercase tracking-widest">
+        <span className="tabular-nums">{data.total} users</span>
         <div className="flex gap-2">
-          <button disabled={cursors.history.length === 0} onClick={() => setCursors(prev => { const h = [...prev.history]; const c = h.pop() || null; return { history: h, current: c }; })} className="px-3 py-1.5 bg-black/50 border border-black rounded disabled:opacity-40">Prev</button>
-          <button disabled={!data.nextCursor} onClick={() => setCursors(prev => ({ history: [...prev.history, prev.current], current: data.nextCursor }))} className="px-3 py-1.5 bg-black/50 border border-black rounded disabled:opacity-40">Next</button>
+          <button disabled={cursors.history.length === 0} onClick={() => setCursors(prev => { const h = [...prev.history]; const c = h.pop() || null; return { history: h, current: c }; })} className="px-3 py-1.5 bg-[var(--surface-2)] border border-[var(--border)] rounded hover:border-[var(--border-strong)] disabled:opacity-40 disabled:hover:border-[var(--border)] transition-colors">Prev</button>
+          <button disabled={!data.nextCursor} onClick={() => setCursors(prev => ({ history: [...prev.history, prev.current], current: data.nextCursor }))} className="px-3 py-1.5 bg-[var(--surface-2)] border border-[var(--border)] rounded hover:border-[var(--border-strong)] disabled:opacity-40 disabled:hover:border-[var(--border)] transition-colors">Next</button>
         </div>
       </div>
     </div>
@@ -297,27 +300,27 @@ function AuditTab() {
   const [entries, setEntries] = useState<any[]>([]);
   useEffect(() => { api('/api/admin/audit').then((d) => setEntries(d.entries || [])).catch(() => {}); }, []);
   return (
-    <div className="bg-black border border-black rounded-lg overflow-x-auto animate-fadeIn">
+    <div className={`${CARD} overflow-x-auto animate-fadeIn`}>
       <table className="w-full text-[10.5px]">
         <thead>
-          <tr className="text-zinc-600 uppercase tracking-widest text-[8.5px] border-b border-black">
-            <th className="text-left p-3">Timestamp</th><th className="text-left p-3">Admin</th>
-            <th className="text-left p-3">Action</th><th className="text-left p-3">Target</th>
-            <th className="text-left p-3">Method</th><th className="text-left p-3">IP</th>
+          <tr className="border-b border-[var(--border)]">
+            <th className={TH}>Timestamp</th><th className={TH}>Admin</th>
+            <th className={TH}>Action</th><th className={TH}>Target</th>
+            <th className={TH}>Method</th><th className={TH}>IP</th>
           </tr>
         </thead>
         <tbody>
           {entries.map((e) => (
-            <tr key={e.id} className="border-b border-black">
-              <td className="p-3 text-zinc-500">{formatDateTime(e.timestamp)}</td>
+            <tr key={e.id} className="border-b border-[var(--border)] hover:bg-[var(--surface-2)] transition-colors">
+              <td className="p-3 text-[var(--text-tertiary)] whitespace-nowrap">{formatDateTime(e.timestamp)}</td>
               <td className="p-3 text-[#4ADE80]">{e.admin_email}</td>
-              <td className="p-3 text-amber-400 font-bold">{e.action_taken}</td>
-              <td className="p-3 text-zinc-400">{e.target_id}</td>
-              <td className="p-3 text-zinc-500">{e.method}</td>
-              <td className="p-3 text-zinc-600">{e.ip_address}</td>
+              <td className="p-3 text-[#FBBF24] font-bold">{e.action_taken}</td>
+              <td className="p-3 text-[var(--text-secondary)]">{e.target_id}</td>
+              <td className="p-3 text-[var(--text-tertiary)]">{e.method}</td>
+              <td className="p-3 text-[var(--text-tertiary)] tabular-nums">{e.ip_address}</td>
             </tr>
           ))}
-          {entries.length === 0 && <tr><td colSpan={6} className="p-8 text-center text-zinc-600 uppercase tracking-widest">No audit entries yet</td></tr>}
+          {entries.length === 0 && <tr><td colSpan={6} className="p-8 text-center text-[var(--text-tertiary)] uppercase tracking-widest text-[10px]">No audit entries yet</td></tr>}
         </tbody>
       </table>
     </div>
@@ -337,46 +340,46 @@ function CouponsTab() {
   };
   return (
     <div className="space-y-4 animate-fadeIn">
-      <div className="bg-black border border-black rounded-lg p-5 space-y-3">
-        <div className="text-sm font-bold text-[#E5E5E5]">Generate Coupon</div>
+      <div className={`${CARD} p-5 space-y-4`}>
+        <SectionHeader icon={Ticket} title="Generate Coupon" />
         <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
           <input placeholder="CODE (A-Z 0-9)" value={form.code} onChange={(e) => setForm({ ...form, code: e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '') })}
-            className="bg-black/50 border border-black rounded-md px-3 py-2 text-[11px] text-[#E5E5E5] uppercase placeholder:text-zinc-600 focus:outline-none focus:border-black" />
+            className={`${FIELD} uppercase`} />
           <select value={form.discount_type} onChange={(e) => setForm({ ...form, discount_type: e.target.value })}
-            className="bg-black/50 border border-black rounded-md px-3 py-2 text-[11px] text-[#E5E5E5] focus:outline-none">
+            className={FIELD}>
             <option value="PERCENT">Percent %</option><option value="FIXED">Fixed $</option>
           </select>
           <input type="number" placeholder="Value" value={form.discount_value} onChange={(e) => setForm({ ...form, discount_value: Number(e.target.value) })}
-            className="bg-black/50 border border-black rounded-md px-3 py-2 text-[11px] text-[#E5E5E5] focus:outline-none focus:border-black" />
+            className={FIELD} />
           <input type="number" placeholder="Redemption limit" value={form.redemption_limit} onChange={(e) => setForm({ ...form, redemption_limit: Number(e.target.value) })}
-            className="bg-black/50 border border-black rounded-md px-3 py-2 text-[11px] text-[#E5E5E5] focus:outline-none focus:border-black" />
+            className={FIELD} />
           <input placeholder="User restriction (email, optional)" value={form.user_restriction} onChange={(e) => setForm({ ...form, user_restriction: e.target.value })}
-            className="bg-black/50 border border-black rounded-md px-3 py-2 text-[11px] text-[#E5E5E5] placeholder:text-zinc-600 focus:outline-none focus:border-black" />
+            className={FIELD} />
           <input type="date" value={form.expires_at} onChange={(e) => setForm({ ...form, expires_at: e.target.value })}
-            className="bg-black/50 border border-black rounded-md px-3 py-2 text-[11px] text-[#E5E5E5] focus:outline-none focus:border-black" />
+            className={FIELD} />
         </div>
         <div className="flex items-center gap-3">
-          <button onClick={create} className="px-4 py-2 bg-black/40 border border-black text-[#4ADE80] rounded-md text-[11px] font-bold uppercase tracking-widest hover:bg-black/40">Generate</button>
-          {msg && <span className="text-[10px] text-zinc-400">{msg}</span>}
+          <button onClick={create} className="px-4 py-2 bg-[#4ADE80]/10 border border-[#4ADE80]/30 text-[#4ADE80] rounded-md text-[11px] font-bold uppercase tracking-widest hover:bg-[#4ADE80]/20 transition-colors">Generate</button>
+          {msg && <span className="text-[10px] text-[var(--text-secondary)]">{msg}</span>}
         </div>
       </div>
 
-      <div className="bg-black border border-black rounded-lg overflow-x-auto">
+      <div className={`${CARD} overflow-x-auto`}>
         <table className="w-full text-[10.5px]">
-          <thead><tr className="text-zinc-600 uppercase tracking-widest text-[8.5px] border-b border-black">
-            <th className="text-left p-3">Code</th><th className="text-left p-3">Discount</th><th className="text-left p-3">Limit</th><th className="text-left p-3">Restriction</th><th className="text-left p-3">Expires</th>
+          <thead><tr className="border-b border-[var(--border)]">
+            <th className={TH}>Code</th><th className={TH}>Discount</th><th className={TH}>Limit</th><th className={TH}>Restriction</th><th className={TH}>Expires</th>
           </tr></thead>
           <tbody>
             {coupons.map((c) => (
-              <tr key={c.code} className="border-b border-black">
-                <td className="p-3 text-[#E5E5E5] font-bold">{c.code}</td>
+              <tr key={c.code} className="border-b border-[var(--border)] hover:bg-[var(--surface-2)] transition-colors">
+                <td className="p-3 text-[var(--text-primary)] font-bold">{c.code}</td>
                 <td className="p-3 text-[#4ADE80]">{c.discount_type === 'PERCENT' ? `${c.discount_value}%` : `$${c.discount_value}`}</td>
-                <td className="p-3 text-zinc-400">{c.redemptions}/{c.redemption_limit || '∞'}</td>
-                <td className="p-3 text-zinc-500">{c.user_restriction || 'any'}</td>
-                <td className="p-3 text-zinc-500">{c.expires_at || 'never'}</td>
+                <td className="p-3 text-[var(--text-secondary)] tabular-nums">{c.redemptions}/{c.redemption_limit || '∞'}</td>
+                <td className="p-3 text-[var(--text-tertiary)]">{c.user_restriction || 'any'}</td>
+                <td className="p-3 text-[var(--text-tertiary)]">{c.expires_at || 'never'}</td>
               </tr>
             ))}
-            {coupons.length === 0 && <tr><td colSpan={5} className="p-8 text-center text-zinc-600 uppercase tracking-widest">No coupons yet</td></tr>}
+            {coupons.length === 0 && <tr><td colSpan={5} className="p-8 text-center text-[var(--text-tertiary)] uppercase tracking-widest text-[10px]">No coupons yet</td></tr>}
           </tbody>
         </table>
       </div>
