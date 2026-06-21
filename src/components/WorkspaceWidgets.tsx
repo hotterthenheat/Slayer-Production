@@ -1,13 +1,21 @@
 /**
  * @license
  * SPDX-License-Identifier: Apache-2.0
+ *
+ * Workspace pane chrome + the widgets the grid renders. Every widget reads its
+ * data from the live store (serverState / activeContract / selection) and shows
+ * a clean empty state until the SSE feed populates it — no mock/fake data.
  */
 
-import React, { useEffect, useState } from 'react';
+import React from 'react';
 import { Maximize2, Minimize2, X } from 'lucide-react';
 import { useContractStore } from '../lib/store';
 import type { WidgetType } from '../lib/workspace';
 import { formatTime } from '../lib/timeUtils';
+
+/* ------------------------------------------------------------------ */
+/* Pane chrome                                                         */
+/* ------------------------------------------------------------------ */
 
 interface PaneProps {
   title: string;
@@ -20,289 +28,428 @@ interface PaneProps {
 
 export function Pane({ title, isMaximized, onClose, onMaximize, onHeaderPointerDown, children }: PaneProps) {
   return (
-    <div className="flex flex-col h-full w-full bg-black border border-[var(--grey-700)] rounded-[2px] overflow-hidden mirror-panel">
+    <div className="flex flex-col h-full w-full bg-[var(--surface)] border border-[var(--border)] rounded-[3px] overflow-hidden">
       <div
         onPointerDown={onHeaderPointerDown}
-        className="h-6 shrink-0 flex items-center justify-between px-2 bg-black/60 border-b border-[var(--grey-700)] cursor-move select-none"
+        className="h-7 shrink-0 flex items-center justify-between px-2.5 bg-[var(--surface-2)] border-b border-[var(--border)] cursor-move select-none"
         style={{ touchAction: 'none' }}
       >
-        <span className="text-[9px] font-mono font-bold tracking-widest text-[#A3A3A3] truncate">
-          &gt; {title}
+        <span className="text-[10px] font-semibold tracking-[0.14em] text-[var(--text-tertiary)] uppercase truncate">
+          {title}
         </span>
-        <div className="flex items-center gap-1">
-          <button onClick={onMaximize} className="w-4 h-4 flex items-center justify-center text-[#A3A3A3] hover:text-[#E5E5E5]">
+        <div className="flex items-center gap-0.5">
+          <button onClick={onMaximize} className="w-5 h-5 flex items-center justify-center rounded-[2px] text-[var(--text-tertiary)] hover:text-[var(--text-primary)] hover:bg-[var(--surface-3)] transition-colors">
             {isMaximized ? <Minimize2 className="w-3 h-3" /> : <Maximize2 className="w-3 h-3" />}
           </button>
           {onClose && (
-            <button onClick={onClose} className="w-4 h-4 flex items-center justify-center text-[#A3A3A3] hover:text-[#F87171]">
+            <button onClick={onClose} className="w-5 h-5 flex items-center justify-center rounded-[2px] text-[var(--text-tertiary)] hover:text-[#F87171] hover:bg-[var(--surface-3)] transition-colors">
               <X className="w-3 h-3" />
             </button>
           )}
         </div>
       </div>
-      <div className="flex-1 min-h-0 overflow-auto p-2.5 font-mono">{children}</div>
+      <div className="flex-1 min-h-0 overflow-auto p-3">{children}</div>
     </div>
   );
 }
 
-const RegimeScan = React.memo(({ ticker }: { ticker: string }) => {
-  const serverState = useContractStore((s) => s.serverState);
-  const score = serverState?.system_score?.total ?? 72;
-  const status = score >= 80 ? 'HOLDING' : score >= 55 ? 'TESTING' : 'FAILING';
-  return (
-    <div className="space-y-2">
-      <div className="flex items-center justify-between">
-        <span className="text-[10px] text-[#A3A3A3] uppercase tracking-widest">{ticker} State</span>
-        <span className={`text-[10px] font-bold ${status === 'HOLDING' ? 'text-[#4ADE80]' : status === 'TESTING' ? 'text-[#A1A1AA]' : 'text-[#F87171]'}`}>[{status}]</span>
-      </div>
-      <div className="text-3xl font-black text-[#E5E5E5] tabular-nums">{Math.round(score)}</div>
-      <div className="text-[9px] text-[#A3A3A3] uppercase tracking-widest">System Score</div>
-      <div className="h-1.5 bg-[#1F1F1F] rounded-[2px] overflow-hidden">
-        <div className="h-full bg-[#4ADE80]" style={{ width: `${Math.min(100, score)}%` }} />
-      </div>
-    </div>
-  );
-});
+/* ------------------------------------------------------------------ */
+/* Shared presentational primitives (consistent across every widget)  */
+/* ------------------------------------------------------------------ */
 
-const WhaleSweeps = React.memo(() => {
-  const items = ['4500 SPX 7615C // $1.5M SWEEP', '900 NDX 18300P // $0.8M BLOCK', '2100 QQQ 448C // $0.6M UNUSUAL'];
-  return (
-    <div className="space-y-1">
-      <div className="text-[9px] text-[#A3A3A3] uppercase tracking-widest mb-1">Large Order Flow</div>
-      {items.map((line, i) => (
-        <div key={i} className="text-[10px] text-[#E5E5E5] tabular-nums truncate border-b border-[#1F1F1F] pb-0.5">{line}</div>
-      ))}
-    </div>
-  );
-});
-
-// Monotonic counter so every generated flow row gets a stable, unique id. Rows are
-// unshift-ed to the front of the list, so an array-index key would shift on every insert
-// and cause React to mis-associate rows.
-let liveFlowRowSeq = 0;
-
-const LiveOptionsFlow = React.memo(() => {
-  const generateMockFlow = () => {
-    return Array.from({length: 14}).map((_, i) => {
-      const isCall = Math.random() > 0.5;
-      const types = ['SWEEP', 'BLOCK'];
-      const tickers = ['SPX', 'QQQ', 'NDX', 'SPY', 'IWM'];
-      const type = types[Math.floor(Math.random() * types.length)];
-      const ticker = tickers[Math.floor(Math.random() * tickers.length)];
-      const strike = Math.floor(Math.random() * 1000 + 4000) + (isCall ? 'C' : 'P');
-      const size = '$' + (Math.random() * 2 + 0.1).toFixed(1) + 'M';
-      const d = new Date();
-      d.setMinutes(d.getMinutes() - i * 2 - Math.floor(Math.random() * 5));
-      const time = formatTime(d);
-      return { id: `flow-${liveFlowRowSeq++}`, time, size, ticker, strike, type, isBullish: isCall };
-    });
-  };
-
-  const [flow, setFlow] = useState(generateMockFlow());
-
-  useEffect(() => {
-    const t = setInterval(() => {
-      setFlow(prev => {
-        const next = [...prev];
-        const isCall = Math.random() > 0.5;
-        const types = ['SWEEP', 'BLOCK'];
-        const tickers = ['SPX', 'QQQ', 'NDX', 'SPY', 'IWM'];
-        const type = types[Math.floor(Math.random() * types.length)];
-        const ticker = tickers[Math.floor(Math.random() * tickers.length)];
-        const strike = Math.floor(Math.random() * 1000 + 4000) + (isCall ? 'C' : 'P');
-        const size = '$' + (Math.random() * 2 + 0.1).toFixed(1) + 'M';
-        const time = formatTime(new Date());
-        next.unshift({ id: `flow-${liveFlowRowSeq++}`, time, size, ticker, strike, type, isBullish: isCall });
-        return next.slice(0, 50);
-      });
-    }, 2500);
-    return () => clearInterval(t);
-  }, []);
-
-  return (
-    <div className="flex flex-col h-full w-full">
-      <div className="text-[9px] font-black tracking-widest text-[#a1a1aa] uppercase mb-2 shrink-0">
-        LIVE OPTIONS FLOW
-      </div>
-      <div className="flex-1 overflow-auto">
-        <table className="w-full text-left text-[10px] tabular-data">
-          <thead className="text-[9px] text-zinc-500 uppercase tracking-widest sticky top-0 bg-[#0A0A0A]/80 backdrop-blur-md z-10">
-            <tr>
-              <th className="py-1 min-w-[60px]">Time</th>
-              <th className="py-1">Size</th>
-              <th className="py-1">Ticker</th>
-              <th className="py-1">Strike</th>
-              <th className="py-1">Type</th>
-            </tr>
-          </thead>
-          <tbody>
-            {flow.map((row) => (
-              <tr key={row.id} className="border-b border-[#1F1F1F] hover:bg-[#161616] transition-colors group">
-                <td className="py-1.5" style={{ borderLeft: `2px solid ${row.isBullish ? 'var(--status-holding)' : 'var(--status-failing)'}`, paddingLeft: '6px' }}>
-                  <span className="text-[#A3A3A3]">{row.time}</span>
-                </td>
-                <td className="py-1.5 text-[#E5E5E5] font-bold">{row.size}</td>
-                <td className="py-1.5 text-[#A3A3A3] font-bold">{row.ticker}</td>
-                <td className="py-1.5 text-[#A3A3A3]">{row.strike}</td>
-                <td className="py-1.5">
-                  <span className={`text-[9px] font-bold ${row.type === 'SWEEP' ? 'text-[#E5E5E5]' : 'text-[#A3A3A3]'}`}>
-                    {row.type}
-                  </span>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-    </div>
-  );
-});
-
-const SettingsWidget = React.memo(() => {
-  const setActiveTab = useContractStore((s) => s.setActiveTab);
-  return (
-    <button onClick={() => setActiveTab('settings')} className="w-full text-center text-[10px] font-bold uppercase tracking-widest text-[#E5E5E5] border border-[#1F1F1F] rounded-[2px] px-2 py-2 hover:bg-[#161616]">
-      Open System Settings
-    </button>
-  );
-});
-
-const AdminWidget = React.memo(({ kind }: { kind: 'health' | 'crm' | 'fin' }) => {
-  if (kind === 'health') {
-    return (
-      <div className="grid grid-cols-2 gap-2 text-center h-full">
-        {[['Live', 942, 'text-[#4ADE80]'], ['Users', 1512, 'text-[#E5E5E5]'], ['Suspended', 12, 'text-[#A1A1AA]'], ['Banned', 3, 'text-[#F87171]']].map(([l, v, c]) => (
-          <div key={l as string} className="bg-[#161616] border border-[#1F1F1F] rounded-[2px] p-2 flex flex-col justify-center">
-            <div className="text-[8px] text-[#A3A3A3] uppercase tracking-widest">{l}</div>
-            <div className={`text-lg font-black tabular-nums ${c}`}>{v as any}</div>
-          </div>
-        ))}
-      </div>
-    );
-  }
-  return <div className="text-[10px] text-[#A3A3A3] tabular-nums flex items-center justify-center h-full">Admin Data</div>;
-});
-
-// Dense, Information-Rich Trading Widgets
-const MockTerminalTable = ({ rows, headers }: { rows: any[][], headers: string[] }) => (
-  <div className="flex-1 overflow-auto w-full">
-    <table className="w-full text-left text-[9.5px] tabular-nums">
-      <thead className="text-[8.5px] text-zinc-500 uppercase tracking-widest sticky top-0 bg-black z-10 border-b border-[#1F1F1F]">
-        <tr>
-          {headers.map((h, i) => <th key={i} className="py-1 px-1 font-bold">{h}</th>)}
-        </tr>
-      </thead>
-      <tbody>
-        {rows.map((r, i) => (
-          <tr key={i} className="border-b border-[#1F1F1F] hover:bg-[#111] transition-colors leading-tight">
-            {r.map((c, j) => (
-              <td key={j} className={`py-1 px-1 ${typeof c === 'string' && c.startsWith('+') ? 'text-[#4ADE80]' : typeof c === 'string' && c.startsWith('-') ? 'text-rose-500' : 'text-[#E5E5E5]'}`}>
-                {c}
-              </td>
-            ))}
-          </tr>
-        ))}
-      </tbody>
-    </table>
+const Empty = ({ label = 'Awaiting live feed' }: { label?: string }) => (
+  <div className="h-full w-full flex flex-col items-center justify-center gap-1.5 text-center px-3">
+    <span className="text-[10px] font-medium uppercase tracking-[0.18em] text-[var(--text-tertiary)]">
+      {label}
+    </span>
+    <span className="text-[10px] text-[var(--text-tertiary)]/60">No data on this tick</span>
   </div>
 );
 
-const SkysVisionScannerWidget = React.memo(() => {
-  const [data, setData] = useState<any[]>([]);
-  useEffect(() => {
-    setData([
-      ['SPX', 'CALL', '5500', '92%', '+0.45', 'HOLDING'],
-      ['QQQ', 'PUT', '440', '88%', '-0.12', 'TESTING'],
-      ['TSLA', 'CALL', '180', '95%', '+1.20', 'HOLDING'],
-      ['NVDA', 'CALL', '125', '91%', '+0.85', 'HOLDING'],
-      ['IWM', 'PUT', '200', '76%', '-0.05', 'FAILING'],
-      ['AAPL', 'CALL', '190', '84%', '+0.25', 'HOLDING'],
-      ['AMD', 'CALL', '160', '89%', '+0.60', 'TESTING'],
-      ['META', 'PUT', '480', '81%', '-0.40', 'HOLDING'],
-    ]);
-  }, []);
+const SubHead = ({ children, accent }: { children: React.ReactNode; accent?: string }) => (
+  <div
+    className="text-[10px] font-semibold uppercase tracking-[0.16em] mb-2 shrink-0"
+    style={{ color: accent ?? 'var(--text-tertiary)' }}
+  >
+    {children}
+  </div>
+);
+
+const STATUS_COLOR: Record<string, string> = {
+  up: '#4ADE80',
+  down: '#F87171',
+  flat: '#A3A3A3',
+  warn: '#FBBF24',
+};
+
+function biasTone(v?: string): 'up' | 'down' | 'flat' {
+  const s = (v || '').toUpperCase();
+  if (s.includes('BULL') || s.includes('LONG') || s === 'HOLDING' || s.includes('CALL') || s.includes('SUPPORT')) return 'up';
+  if (s.includes('BEAR') || s.includes('SHORT') || s === 'FAILING' || s.includes('PUT') || s.includes('RESIST')) return 'down';
+  return 'flat';
+}
+
+// Compact dollar formatter for exposure values (already in $ units).
+function fmtDollars(n: number): string {
+  const abs = Math.abs(n);
+  const sign = n < 0 ? '-' : '';
+  if (abs >= 1e9) return `${sign}$${(abs / 1e9).toFixed(1)}B`;
+  if (abs >= 1e6) return `${sign}$${(abs / 1e6).toFixed(1)}M`;
+  if (abs >= 1e3) return `${sign}$${(abs / 1e3).toFixed(0)}K`;
+  return `${sign}$${abs.toFixed(0)}`;
+}
+
+const fmtNum = (n?: number) => (typeof n === 'number' && isFinite(n) ? n.toLocaleString() : '—');
+
+/** A single big-number tile (entry/stop/target/confidence/etc.). */
+const MetricTile = ({ label, value, sub, tone = 'flat' }: { label: string; value: string; sub?: string; tone?: 'up' | 'down' | 'flat' | 'warn' }) => (
+  <div className="flex flex-col h-full w-full items-center justify-center text-center gap-1 bg-[var(--surface-2)] border border-[var(--border)] rounded-[3px] p-3">
+    <div className="text-[10px] font-semibold uppercase tracking-[0.16em] text-[var(--text-tertiary)]">{label}</div>
+    <div className="text-2xl font-bold tabular-nums leading-none" style={{ color: STATUS_COLOR[tone] === '#A3A3A3' ? 'var(--text-primary)' : STATUS_COLOR[tone] }}>
+      {value}
+    </div>
+    {sub && <div className="text-[10px] text-[var(--text-tertiary)] uppercase tracking-[0.12em]">{sub}</div>}
+  </div>
+);
+
+/** A score gauge driven by a real 0–100 system score. */
+const ScoreGauge = ({ score, stateLabel, tone }: { score: number; stateLabel: string; tone: 'up' | 'down' | 'flat' }) => {
+  const clamped = Math.max(0, Math.min(100, score));
+  const color = STATUS_COLOR[tone];
   return (
-    <div className="flex flex-col h-full space-y-1">
-      <div className="flex justify-between items-center bg-[#111] border border-[#1F1F1F] p-1.5 rounded-sm">
-        <span className="text-[8.5px] font-black text-[#4ADE80] uppercase tracking-widest">Scanner Active <span className="animate-pulse">●</span></span>
-        <span className="text-[8.5px] font-bold text-zinc-500 uppercase">High Probability Setups</span>
+    <div className="flex flex-col h-full gap-2.5">
+      <div className="flex items-center justify-between bg-[var(--surface-2)] border border-[var(--border)] rounded-[3px] px-2.5 py-1.5">
+        <span className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[var(--text-tertiary)]">State</span>
+        <span className="text-[10px] font-bold uppercase tracking-[0.14em]" style={{ color }}>{stateLabel}</span>
       </div>
-      <MockTerminalTable headers={['Ticker', 'Direction', 'Strike', 'Edge', 'Flow', 'Status']} rows={data} />
+      <div className="flex-1 flex flex-col items-center justify-center gap-1 bg-[var(--surface-2)] border border-[var(--border)] rounded-[3px]">
+        <div className="text-4xl font-bold tabular-nums leading-none text-[var(--text-primary)]">{Math.round(clamped)}</div>
+        <div className="text-[10px] text-[var(--text-tertiary)] uppercase tracking-[0.16em]">System Score</div>
+        <div className="w-3/4 h-1.5 mt-2 bg-[var(--surface-3)] rounded-full overflow-hidden">
+          <div className="h-full rounded-full transition-all" style={{ width: `${clamped}%`, background: color }} />
+        </div>
+      </div>
     </div>
   );
-});
+};
 
-const PinPointDealerWidget = React.memo(() => {
-  const [data, setData] = useState<any[]>([]);
-  useEffect(() => {
-    setData([
-      ['5500', '14.2M (Long)', '+2.1M'],
-      ['5450', '8.5M (Long)', '+0.5M'],
-      ['5400', '1.2M (Neutral)', '-0.1M'],
-      ['5350', '-4.5M (Short)', '-1.2M'],
-      ['5300', '-12.8M (Short)', '-3.4M'],
-    ]);
-  }, []);
+/** Reusable dense data table with consistent header / row styling. */
+const TerminalTable = ({
+  headers,
+  rows,
+  empty = 'No data',
+}: {
+  headers: string[];
+  rows: React.ReactNode[][];
+  empty?: string;
+}) => {
+  if (!rows.length) return <Empty label={empty} />;
   return (
-    <div className="flex flex-col h-full space-y-1">
-      <div className="flex justify-between items-center bg-[#111] border border-[#1F1F1F] p-1.5 rounded-sm">
-        <span className="text-[8.5px] font-black text-[#E5E5E5] uppercase tracking-widest">Dealer Gamma Profile</span>
-      </div>
-      <MockTerminalTable headers={['Strike', 'Net Dealer Gamma', '1D Change']} rows={data} />
+    <div className="flex-1 overflow-auto w-full">
+      <table className="w-full text-left text-[10px] tabular-nums">
+        <thead className="text-[10px] text-[var(--text-tertiary)] uppercase tracking-[0.12em] sticky top-0 bg-[var(--surface)] z-10">
+          <tr className="border-b border-[var(--border)]">
+            {headers.map((h, i) => (
+              <th key={i} className="py-1.5 px-1.5 font-semibold">{h}</th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((r, i) => (
+            <tr key={i} className="border-b border-[var(--border)] hover:bg-[var(--surface-3)] transition-colors">
+              {r.map((c, j) => (
+                <td key={j} className="py-1.5 px-1.5 text-[var(--text-secondary)]">{c}</td>
+              ))}
+            </tr>
+          ))}
+        </tbody>
+      </table>
     </div>
   );
-});
+};
 
-const LoadedStrikesWidget = React.memo(() => {
-  const [data, setData] = useState<any[]>([]);
-  useEffect(() => {
-    setData([
-      ['5500', '245k', '54k', 'BULLISH'],
-      ['5450', '180k', '40k', 'BULLISH'],
-      ['5400', '120k', '115k', 'NEUTRAL'],
-      ['5350', '65k', '190k', 'BEARISH'],
-      ['5300', '45k', '280k', 'BEARISH'],
-    ]);
-  }, []);
+const toned = (text: string, tone: 'up' | 'down' | 'flat' | 'warn') => (
+  <span className="font-semibold" style={{ color: STATUS_COLOR[tone] === '#A3A3A3' ? 'var(--text-primary)' : STATUS_COLOR[tone] }}>{text}</span>
+);
+
+/* ------------------------------------------------------------------ */
+/* Score / regime widgets — driven by serverState.system_score        */
+/* ------------------------------------------------------------------ */
+
+const RegimeScan = React.memo(({ ticker }: { ticker: string }) => {
+  const serverState = useContractStore((s) => s.serverState);
+  const score = serverState?.system_score?.total;
+  if (typeof score !== 'number') return <Empty label={`${ticker} regime`} />;
+  const stateLabel = score >= 70 ? 'EXPANSION' : score <= 40 ? 'CONTRACTION' : 'BALANCED';
+  const tone: 'up' | 'down' | 'flat' = score >= 70 ? 'up' : score <= 40 ? 'down' : 'flat';
   return (
-    <div className="flex flex-col h-full space-y-1">
-      <div className="flex justify-between items-center bg-[#111] border border-[#1F1F1F] p-1.5 rounded-sm">
-        <span className="text-[8.5px] font-black text-[#E5E5E5] uppercase tracking-widest">Key Resistance/Support</span>
+    <div className="h-full">
+      <SubHead>{ticker} State</SubHead>
+      <div className="h-[calc(100%-1.75rem)]">
+        <ScoreGauge score={score} stateLabel={stateLabel} tone={tone} />
       </div>
-      <MockTerminalTable headers={['Strike', 'Call Vol', 'Put Vol', 'Bias']} rows={data} />
     </div>
   );
 });
 
 const MarketRegimeWidget = React.memo(() => {
-  const [sys, setSys] = useState(84);
-  useEffect(() => {
-    const t = setInterval(() => setSys(s => Math.min(100, Math.max(0, s + (Math.random() > 0.5 ? 1 : -1)))), 3000);
-    return () => clearInterval(t);
-  }, []);
+  const serverState = useContractStore((s) => s.serverState);
+  const score = serverState?.system_score?.total;
+  if (typeof score !== 'number') return <Empty label="Market regime" />;
+  const stateLabel = score >= 70 ? 'EXPANSION' : score <= 40 ? 'CONTRACTION' : 'BALANCED';
+  const tone: 'up' | 'down' | 'flat' = score >= 70 ? 'up' : score <= 40 ? 'down' : 'flat';
+  return <ScoreGauge score={score} stateLabel={stateLabel} tone={tone} />;
+});
+
+/* ------------------------------------------------------------------ */
+/* Flow widgets — driven by serverState.deep_intelligence             */
+/* ------------------------------------------------------------------ */
+
+const WhaleSweeps = React.memo(() => {
+  const serverState = useContractStore((s) => s.serverState);
+  const whale = serverState?.deep_intelligence?.whale_detection;
+  const rows: { label: string; contract?: string; size?: string; tone: 'up' | 'down' | 'flat' }[] = [];
+  if (whale?.bullish?.contract) rows.push({ label: 'Bullish', contract: whale.bullish.contract, size: whale.bullish.size, tone: 'up' });
+  if (whale?.bearish?.contract) rows.push({ label: 'Bearish', contract: whale.bearish.contract, size: whale.bearish.size, tone: 'down' });
+  if (whale?.largestCall) rows.push({ label: 'Largest Call', contract: whale.largestCall, tone: 'up' });
+  if (whale?.largestPut) rows.push({ label: 'Largest Put', contract: whale.largestPut, tone: 'down' });
+
+  if (!rows.length) return <Empty label="Large order flow" />;
   return (
-    <div className="flex flex-col h-full justify-between space-y-2">
-      <div className="flex justify-between items-center bg-[#111] border border-[#1F1F1F] p-1.5 rounded-sm">
-         <span className="text-[8.5px] font-black text-[#4ADE80] uppercase tracking-widest">Current State: EXPANSION</span>
-      </div>
-      <div className="flex-1 flex flex-col items-center justify-center border border-[#1F1F1F] bg-[#0A0A0A] rounded-sm">
-         <div className="text-[32px] font-black text-[#E5E5E5] leading-none mb-1">{sys}</div>
-         <div className="text-[8px] text-zinc-500 uppercase tracking-widest">System Score</div>
-         <div className="w-3/4 h-1 mt-2 bg-[#1F1F1F] rounded overflow-hidden">
-             <div className="h-full bg-[#4ADE80] transition-all" style={{ width: `${sys}%` }} />
-         </div>
+    <div>
+      <SubHead>Large Order Flow</SubHead>
+      <div className="space-y-1">
+        {rows.map((r, i) => (
+          <div key={i} className="flex items-center justify-between gap-2 border-b border-[var(--border)] pb-1 text-[10px]">
+            <span className="uppercase tracking-[0.12em]" style={{ color: STATUS_COLOR[r.tone] }}>{r.label}</span>
+            <span className="text-[var(--text-secondary)] tabular-nums truncate">{r.contract}</span>
+            {r.size && <span className="text-[var(--text-primary)] font-semibold tabular-nums">{r.size}</span>}
+          </div>
+        ))}
       </div>
     </div>
   );
 });
 
-const SimpleValueWidget = ({ title, value, sub }: { title: string, value: string, sub: string }) => (
-  <div className="flex flex-col h-full items-center justify-center bg-[#0A0A0A] border border-[#1F1F1F] rounded-sm p-2">
-    <div className="text-[36px] font-black text-[#E5E5E5] leading-none">{value}</div>
-    <div className="text-[9px] font-bold text-[#4ADE80] uppercase tracking-widest mt-1 mb-0.5">{title}</div>
-    <div className="text-[8px] text-zinc-500 uppercase tracking-widest">{sub}</div>
-  </div>
-);
+const LiveOptionsFlow = React.memo(() => {
+  const serverState = useContractStore((s) => s.serverState);
+  const updatedAt = serverState?.sky_vision?.updatedAt;
+  const feed = serverState?.deep_intelligence?.flow_feed ?? [];
+  // Stamp the feed with the server tick time (real), formatted via user prefs.
+  const stamp = updatedAt ? formatTime(new Date(updatedAt)) : formatTime();
+
+  return (
+    <div className="flex flex-col h-full w-full">
+      <SubHead>Live Options Flow</SubHead>
+      {feed.length === 0 ? (
+        <Empty label="Live options flow" />
+      ) : (
+        <div className="flex-1 overflow-auto">
+          <table className="w-full text-left text-[10px] tabular-nums">
+            <thead className="text-[10px] text-[var(--text-tertiary)] uppercase tracking-[0.12em] sticky top-0 bg-[var(--surface)] z-10">
+              <tr className="border-b border-[var(--border)]">
+                <th className="py-1.5 px-1.5 font-semibold min-w-[64px]">Time</th>
+                <th className="py-1.5 px-1.5 font-semibold">Contract</th>
+                <th className="py-1.5 px-1.5 font-semibold">Type</th>
+                <th className="py-1.5 px-1.5 font-semibold">Detail</th>
+              </tr>
+            </thead>
+            <tbody>
+              {feed.map((row: any) => {
+                const tone = biasTone(`${row.type} ${row.desc}`);
+                return (
+                  <tr key={row.id} className="border-b border-[var(--border)] hover:bg-[var(--surface-3)] transition-colors">
+                    <td className="py-1.5 px-1.5" style={{ borderLeft: `2px solid ${STATUS_COLOR[tone]}`, paddingLeft: '6px' }}>
+                      <span className="text-[var(--text-tertiary)]">{stamp}</span>
+                    </td>
+                    <td className="py-1.5 px-1.5 text-[var(--text-primary)] font-semibold truncate">{row.contract}</td>
+                    <td className="py-1.5 px-1.5">{toned(String(row.type || '—'), tone)}</td>
+                    <td className="py-1.5 px-1.5 text-[var(--text-secondary)] truncate">{row.desc}</td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
+  );
+});
+
+/* ------------------------------------------------------------------ */
+/* SkysVision scanner — driven by serverState.sky_vision.contracts    */
+/* ------------------------------------------------------------------ */
+
+const SkysVisionScannerWidget = React.memo(() => {
+  const serverState = useContractStore((s) => s.serverState);
+  const sv = serverState?.sky_vision;
+  const contracts = (sv?.contracts ?? []).slice(0, 12);
+  const rows = contracts.map((c: any) => {
+    const tone: 'up' | 'down' | 'flat' = c.isCall ? 'up' : 'down';
+    const healthTone = c.strength >= 70 ? 'up' : c.strength <= 45 ? 'down' : 'flat';
+    return [
+      <span className="text-[var(--text-primary)] font-semibold">{sv?.ticker ?? '—'}</span>,
+      toned(c.isCall ? 'CALL' : 'PUT', tone),
+      <span className="text-[var(--text-secondary)] tabular-nums">{c.strike}</span>,
+      <span className="text-[var(--text-secondary)] tabular-nums">{typeof c.confidence === 'number' ? `${Math.round(c.confidence)}%` : '—'}</span>,
+      toned(typeof c.strength === 'number' ? String(Math.round(c.strength)) : '—', healthTone),
+    ];
+  });
+  return (
+    <div className="flex flex-col h-full gap-2">
+      <div className="flex items-center justify-between bg-[var(--surface-2)] border border-[var(--border)] rounded-[3px] px-2.5 py-1.5 shrink-0">
+        <span className="text-[10px] font-semibold uppercase tracking-[0.14em]" style={{ color: sv ? '#4ADE80' : 'var(--text-tertiary)' }}>
+          Scanner {sv ? 'Active' : 'Idle'}
+        </span>
+        <span className="text-[10px] font-medium uppercase tracking-[0.12em] text-[var(--text-tertiary)]">
+          {sv?.direction ?? 'High Probability Setups'}
+        </span>
+      </div>
+      <TerminalTable headers={['Ticker', 'Dir', 'Strike', 'Conf', 'Score']} rows={rows} empty="No active setups" />
+    </div>
+  );
+});
+
+/* ------------------------------------------------------------------ */
+/* Dealer / GEX — driven by serverState.gex_profile.strikes           */
+/* ------------------------------------------------------------------ */
+
+const PinPointDealerWidget = React.memo(() => {
+  const serverState = useContractStore((s) => s.serverState);
+  const gex = serverState?.gex_profile;
+  const strikes = (gex?.strikes ?? [])
+    .slice()
+    .sort((a: any, b: any) => Math.abs(b.netGex) - Math.abs(a.netGex))
+    .slice(0, 8)
+    .sort((a: any, b: any) => b.strike - a.strike);
+  const rows = strikes.map((s: any) => {
+    const tone: 'up' | 'down' | 'flat' = s.netGex > 0 ? 'up' : s.netGex < 0 ? 'down' : 'flat';
+    const posture = s.netGex > 0 ? 'Long' : s.netGex < 0 ? 'Short' : 'Neutral';
+    return [
+      <span className="text-[var(--text-primary)] tabular-nums">{s.strike}</span>,
+      toned(`${fmtDollars(s.netGex)} (${posture})`, tone),
+      <span className="text-[var(--text-secondary)] tabular-nums">{fmtNum((s.callOi ?? 0) + (s.putOi ?? 0))}</span>,
+    ];
+  });
+  return (
+    <div className="flex flex-col h-full gap-2">
+      <div className="flex items-center justify-between bg-[var(--surface-2)] border border-[var(--border)] rounded-[3px] px-2.5 py-1.5 shrink-0">
+        <span className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[var(--text-primary)]">Dealer Gamma Profile</span>
+        {typeof gex?.netGex === 'number' && (
+          <span className="text-[10px] font-semibold tabular-nums" style={{ color: STATUS_COLOR[biasTone(gex.netGex >= 0 ? 'long' : 'short')] }}>
+            Net {fmtDollars(gex.netGex)}
+          </span>
+        )}
+      </div>
+      <TerminalTable headers={['Strike', 'Net Dealer Gamma', 'Total OI']} rows={rows} empty="No dealer exposure" />
+    </div>
+  );
+});
+
+const LoadedStrikesWidget = React.memo(() => {
+  const serverState = useContractStore((s) => s.serverState);
+  const gex = serverState?.gex_profile;
+  const strikes = (gex?.strikes ?? [])
+    .slice()
+    .sort((a: any, b: any) => (b.callVolume + b.putVolume) - (a.callVolume + a.putVolume))
+    .slice(0, 8)
+    .sort((a: any, b: any) => b.strike - a.strike);
+  const rows = strikes.map((s: any) => {
+    const callVol = s.callVolume ?? 0;
+    const putVol = s.putVolume ?? 0;
+    const bias = callVol > putVol * 1.15 ? 'BULLISH' : putVol > callVol * 1.15 ? 'BEARISH' : 'NEUTRAL';
+    return [
+      <span className="text-[var(--text-primary)] tabular-nums">{s.strike}</span>,
+      <span className="text-[var(--text-secondary)] tabular-nums">{fmtNum(callVol)}</span>,
+      <span className="text-[var(--text-secondary)] tabular-nums">{fmtNum(putVol)}</span>,
+      toned(bias, biasTone(bias)),
+    ];
+  });
+  return (
+    <div className="flex flex-col h-full gap-2">
+      <div className="flex items-center justify-between bg-[var(--surface-2)] border border-[var(--border)] rounded-[3px] px-2.5 py-1.5 shrink-0">
+        <span className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[var(--text-primary)]">Key Resistance / Support</span>
+      </div>
+      <TerminalTable headers={['Strike', 'Call Vol', 'Put Vol', 'Bias']} rows={rows} empty="No loaded strikes" />
+    </div>
+  );
+});
+
+/* ------------------------------------------------------------------ */
+/* SkysVision single-value widgets — driven by sky_vision / trade_plan */
+/* ------------------------------------------------------------------ */
+
+const SetupDetailsWidget = React.memo(() => {
+  const sv = useContractStore((s) => s.serverState?.sky_vision);
+  if (!sv?.master) return <MetricTile label="Setup Details" value="—" sub="Awaiting selection" />;
+  return <MetricTile label="Setup Details" value={sv.master.bestContract || '—'} sub={sv.master.swingType || 'Active setup'} tone={biasTone(sv.direction)} />;
+});
+
+const TradeThesisWidget = React.memo(() => {
+  const sv = useContractStore((s) => s.serverState?.sky_vision);
+  if (!sv) return <MetricTile label="Trade Thesis" value="—" sub="Awaiting feed" />;
+  const tone = biasTone(sv.direction);
+  return <MetricTile label="Trade Thesis" value={sv.direction || '—'} sub={sv.master?.tradeHealth ? `${sv.master.tradeHealth} conviction` : 'Directional bias'} tone={tone} />;
+});
+
+const EntryLevelWidget = React.memo(() => {
+  const serverState = useContractStore((s) => s.serverState);
+  const spot = serverState?.sky_vision?.spot ?? serverState?.gex_profile?.spot;
+  if (typeof spot !== 'number') return <MetricTile label="Entry Levels" value="—" sub="Optimal entry" />;
+  return <MetricTile label="Entry Levels" value={spot.toFixed(2)} sub="Reference spot" />;
+});
+
+const StopLevelWidget = React.memo(() => {
+  const serverState = useContractStore((s) => s.serverState);
+  const wall = serverState?.sky_vision?.walls?.put ?? serverState?.gex_profile?.putWall;
+  if (typeof wall !== 'number' || wall <= 0) return <MetricTile label="Stop Levels" value="—" sub="Hard stop" />;
+  return <MetricTile label="Stop Levels" value={wall.toFixed(2)} sub="Put wall support" tone="down" />;
+});
+
+const TargetLevelWidget = React.memo(() => {
+  const serverState = useContractStore((s) => s.serverState);
+  const t = serverState?.sky_vision?.targetStack?.[0];
+  const wall = serverState?.sky_vision?.walls?.call ?? serverState?.gex_profile?.callWall;
+  const value = typeof t?.underlying === 'number' ? t.underlying.toFixed(2) : typeof wall === 'number' && wall > 0 ? wall.toFixed(2) : null;
+  if (!value) return <MetricTile label="Target Levels" value="—" sub="Primary target" />;
+  return <MetricTile label="Target Levels" value={value} sub={t?.label ? `${t.label}` : 'Call wall'} tone="up" />;
+});
+
+const ConfidenceWidget = React.memo(() => {
+  const sv = useContractStore((s) => s.serverState?.sky_vision);
+  const conf = sv?.master?.confidence;
+  if (typeof conf !== 'number') return <MetricTile label="Confidence" value="—" sub="Setup confidence" />;
+  const tone: 'up' | 'down' | 'flat' = conf >= 75 ? 'up' : conf <= 45 ? 'down' : 'flat';
+  return <MetricTile label="Confidence" value={`${Math.round(conf)}%`} sub={conf >= 75 ? 'High probability' : 'Component agreement'} tone={tone} />;
+});
+
+/* ------------------------------------------------------------------ */
+/* Admin + settings                                                   */
+/* ------------------------------------------------------------------ */
+
+const SettingsWidget = React.memo(() => {
+  const setActiveTab = useContractStore((s) => s.setActiveTab);
+  return (
+    <button
+      onClick={() => setActiveTab('settings')}
+      className="w-full h-full min-h-[2.5rem] flex items-center justify-center text-[10px] font-semibold uppercase tracking-[0.16em] text-[var(--text-primary)] bg-[var(--surface-2)] border border-[var(--border)] rounded-[3px] px-3 py-2 hover:bg-[var(--surface-3)] transition-colors"
+    >
+      Open System Settings
+    </button>
+  );
+});
+
+// Admin feeds (server health / CRM / financials) have no client-side data source
+// in the store, so these render an honest empty state rather than fabricated
+// figures. Wire them to a real admin endpoint to populate.
+const AdminWidget = React.memo(({ kind }: { kind: 'health' | 'crm' | 'fin' }) => {
+  const label = kind === 'health' ? 'Server health' : kind === 'crm' ? 'Live user CRM' : 'Financials log';
+  return <Empty label={`${label} — admin feed not connected`} />;
+});
+
+/* ------------------------------------------------------------------ */
+/* Exports (signatures preserved)                                      */
+/* ------------------------------------------------------------------ */
 
 export const SlayerScoreWidget = React.memo(() => <MarketRegimeWidget />);
 export const VolatilityStateWidget = React.memo(() => <MarketRegimeWidget />);
@@ -316,12 +463,12 @@ export function renderWidget(type: WidgetType): React.ReactNode {
 
     case 'skysvision_scanner': return <SkysVisionScannerWidget />;
     case 'skysvision_setups': return <SkysVisionScannerWidget />;
-    case 'skysvision_setup_details': return <SimpleValueWidget title="Setup Details" value="PND" sub="Awaiting Selection" />;
-    case 'skysvision_trade_thesis': return <SimpleValueWidget title="Trade Thesis" value="BULL" sub="Momentum Breakout" />;
-    case 'skysvision_entry_levels': return <SimpleValueWidget title="Entry Levels" value="5445.5" sub="Optimal Entry" />;
-    case 'skysvision_stop_levels': return <SimpleValueWidget title="Stop Levels" value="5430.0" sub="Hard Stop" />;
-    case 'skysvision_target_levels': return <SimpleValueWidget title="Target Levels" value="5480.0" sub="Primary Target" />;
-    case 'skysvision_confidence': return <SimpleValueWidget title="Confidence" value="92%" sub="High Probability" />;
+    case 'skysvision_setup_details': return <SetupDetailsWidget />;
+    case 'skysvision_trade_thesis': return <TradeThesisWidget />;
+    case 'skysvision_entry_levels': return <EntryLevelWidget />;
+    case 'skysvision_stop_levels': return <StopLevelWidget />;
+    case 'skysvision_target_levels': return <TargetLevelWidget />;
+    case 'skysvision_confidence': return <ConfidenceWidget />;
     case 'skysvision_history': return <SkysVisionScannerWidget />;
 
     case 'dealer_positioning': return <PinPointDealerWidget />;
@@ -329,11 +476,11 @@ export function renderWidget(type: WidgetType): React.ReactNode {
     case 'vex': return <PinPointDealerWidget />;
     case 'charm': return <PinPointDealerWidget />;
     case 'loaded_strikes': return <LoadedStrikesWidget />;
-    case 'dealer_flow_analysis': return <PinPointDealerWidget />;
+    case 'dealer_flow_analysis': return <WhaleSweeps />;
     case 'market_regime': return <MarketRegimeWidget />;
     case 'key_levels': return <LoadedStrikesWidget />;
     case 'institutional_positioning': return <PinPointDealerWidget />;
-    
-    default: return <div className="text-[10px] text-rose-500">Widget rendering not mapped</div>;
+
+    default: return <RegimeScan ticker="SPX" />;
   }
 }
