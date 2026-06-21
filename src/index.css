@@ -40,12 +40,82 @@ html, body, #root {
   --grey-900: #161616;         /* Hover States */
 
   /* INSTITUTIONAL STATUS COLORS (Desaturated/Matte) */
-  --status-holding: #4ADE80; 
+  --status-holding: #4ADE80;
   --status-holding-bg: rgba(74, 222, 128, 0.1);
-  --status-failing: #F87171; 
+  --status-failing: #F87171;
   --status-failing-bg: rgba(248, 113, 113, 0.1);
   --status-testing: #A1A1AA;
   --status-testing-bg: rgba(161, 161, 170, 0.1);
+
+  /* ====================================================================
+     SEMANTIC DESIGN TOKENS — single source of truth for theming.
+     Components should reference these (var(--text-primary), var(--surface)…)
+     instead of hardcoded hex. Named themes (.light-theme, [data-theme=…])
+     override them; anything not overridden falls back to these dark defaults.
+     Contrast tuned for WCAG AA+ on the dark surfaces.
+     ==================================================================== */
+  --primary: #4ADE80;            /* brand / positive accent */
+  --primary-contrast: #04140A;   /* text on a primary fill */
+  --secondary: #60A5FA;          /* secondary accent (info) */
+  --background: var(--bg-base);  /* app background */
+  --surface: #141414;            /* card / panel surface */
+  --surface-2: #1C1C1C;          /* nested surface */
+  --surface-3: #242424;          /* hover / raised */
+  --border: rgba(255, 255, 255, 0.10);
+  --border-strong: rgba(255, 255, 255, 0.18);
+  --text-primary: #E5E5E5;       /* ~13:1 on surface */
+  --text-secondary: #C4C4C4;     /* ~11:1 on surface (AAA) */
+  --text-tertiary: #A3A3A3;      /* ~7:1 on surface (AA) */
+  --success: #4ADE80;
+  --warning: #FBBF24;
+  --danger: #F87171;
+  --info: #60A5FA;
+  --accent-color: #4ADE80;
+
+  /* ====================================================================
+     TYPOGRAPHY SCALE — responsive via clamp() so it scales cleanly from
+     1080p → 1440p → 4K without stretching or blur. Metrics use tabular-nums
+     for fast, aligned scanning of trading numbers.
+     ==================================================================== */
+  --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, 'SF Mono', monospace;
+  --fs-h-xl: clamp(1.5rem, 1.05rem + 1.3vw, 2.4rem);
+  --fs-h-l:  clamp(1.25rem, 1.0rem + 0.8vw, 1.8rem);
+  --fs-h-m:  clamp(1.05rem, 0.95rem + 0.35vw, 1.4rem);
+  --fs-body-lg: clamp(0.9rem, 0.85rem + 0.18vw, 1.05rem);
+  --fs-body:    clamp(0.8rem, 0.77rem + 0.12vw, 0.95rem);
+  --fs-body-sm: clamp(0.72rem, 0.7rem + 0.07vw, 0.82rem);
+  --fs-metric-lg: clamp(1.4rem, 1.05rem + 1.1vw, 2.2rem);
+  --fs-metric:    clamp(1.05rem, 0.92rem + 0.45vw, 1.45rem);
+  --fs-metric-sm: clamp(0.85rem, 0.8rem + 0.18vw, 1.05rem);
+}
+
+/* ===== TYPOGRAPHY SCALE — opt-in utility classes (token-driven, 4K-aware) ===== */
+.sv-h-xl { font-family: var(--font-sans); font-size: var(--fs-h-xl); font-weight: 800; line-height: 1.08; letter-spacing: -0.01em; color: var(--text-primary); }
+.sv-h-l  { font-family: var(--font-sans); font-size: var(--fs-h-l);  font-weight: 800; line-height: 1.12; letter-spacing: -0.005em; color: var(--text-primary); }
+.sv-h-m  { font-family: var(--font-sans); font-size: var(--fs-h-m);  font-weight: 700; line-height: 1.18; color: var(--text-primary); }
+.sv-body-lg { font-size: var(--fs-body-lg); line-height: 1.5; color: var(--text-secondary); }
+.sv-body    { font-size: var(--fs-body);    line-height: 1.5; color: var(--text-secondary); }
+.sv-body-sm { font-size: var(--fs-body-sm); line-height: 1.45; color: var(--text-tertiary); }
+.sv-metric-lg { font-family: var(--font-mono); font-size: var(--fs-metric-lg); font-weight: 800; line-height: 1; font-variant-numeric: tabular-nums; letter-spacing: -0.01em; }
+.sv-metric    { font-family: var(--font-mono); font-size: var(--fs-metric);    font-weight: 700; line-height: 1.05; font-variant-numeric: tabular-nums; }
+.sv-metric-sm { font-family: var(--font-mono); font-size: var(--fs-metric-sm); font-weight: 600; line-height: 1.1;  font-variant-numeric: tabular-nums; }
+.sv-label { font-size: var(--fs-body-sm); font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-tertiary); }
+
+/* ===== SEMANTIC SURFACE / TEXT HELPERS (reference tokens, never hex) ===== */
+.sv-surface   { background: var(--surface);   border: 1px solid var(--border); border-radius: 0.75rem; }
+.sv-surface-2 { background: var(--surface-2); border: 1px solid var(--border); border-radius: 0.5rem; }
+.sv-text       { color: var(--text-primary); }
+.sv-text-dim   { color: var(--text-secondary); }
+.sv-text-faint { color: var(--text-tertiary); }
+.sv-success { color: var(--success); } .sv-warning { color: var(--warning); } .sv-danger { color: var(--danger); }
+
+/* ===== PERFORMANCE: skip layout+paint for heavy offscreen sections ===== */
+.sv-contain { content-visibility: auto; contain-intrinsic-size: 0 720px; }
+
+/* ===== 4K / ultrawide: keep readable line length + density on huge monitors ===== */
+@media (min-width: 2560px) {
+  .sv-maxw { max-width: 2200px; margin-inline: auto; }
 }
 
 .mirror-panel {
@@ -732,6 +802,25 @@ body.light-theme ::-webkit-scrollbar-thumb:hover {
 }
 
 .light-theme {
+  /* Semantic design tokens — light-mode values (WCAG AA+ on light surfaces). */
+  --background: #F4F4F5;
+  --surface: #FFFFFF;
+  --surface-2: #F4F4F5;
+  --surface-3: #E9E9EC;
+  --border: rgba(0, 0, 0, 0.12);
+  --border-strong: rgba(0, 0, 0, 0.22);
+  --text-primary: #18181B;     /* near-black on white ≈ 16:1 */
+  --text-secondary: #3F3F46;   /* ≈ 10:1 */
+  --text-tertiary: #52525B;    /* ≈ 7:1 (AA) */
+  --primary: #16A34A;          /* darker green for contrast on white */
+  --primary-contrast: #FFFFFF;
+  --secondary: #2563EB;
+  --success: #16A34A;
+  --warning: #B45309;
+  --danger: #DC2626;
+  --info: #2563EB;
+  --accent-color: #16A34A;
+
   /* Redefine Tailwind's custom theme variables for light mode */
   --color-black: #ffffff;
   --color-zinc-950: #000000;
