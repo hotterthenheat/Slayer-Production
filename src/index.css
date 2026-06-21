@@ -155,10 +155,10 @@ body {
      glass panels). Now a clear 3-step ramp: dim → label → bright, all comfortably
      legible on near-black glass. The .light-theme block below redefines these for
      light mode, so light mode is unaffected. */
-  --color-zinc-650: #ABABB2;
-  --color-zinc-600: #ABABB2;
-  --color-zinc-550: #C4C4C4;
-  --color-zinc-500: #C4C4C4;
+  --color-zinc-650: #B4B4BB;
+  --color-zinc-600: #B4B4BB;
+  --color-zinc-550: #CECECE;
+  --color-zinc-500: #CECECE;
   --color-zinc-400: #D4D4D4;
   --color-zinc-305: #D4D4D4;
   --color-zinc-300: #D4D4D4;
@@ -1829,35 +1829,27 @@ button:disabled, [aria-disabled="true"] { opacity: 0.5; cursor: not-allowed !imp
 html { -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; text-rendering: optimizeLegibility; }
 
 /* ──────────────────────────────────────────────────────────────────────────
-   PINPOINT AI — READABILITY FLOOR
-   The Pinpoint panels pack labels at 7–9.5px, which forces users to squint.
-   Scope a minimum readable size to this page ONLY (so other pages' tight
-   tables are untouched), and nudge the dim label greys a touch brighter so the
-   small uppercase/mono labels read cleanly on the near-black glass surfaces.
-   Font-size is theme-independent, so this applies in light mode too.
+   PLATFORM-WIDE READABILITY FLOOR
+   Many panels pack labels at 6–9.5px, which forces users to squint. Floor every
+   small label class to a readable minimum across ALL pages and subpages. This is
+   the same treatment proven on the Pinpoint AI page, generalised platform-wide.
+   Font-size is theme-independent, so it applies in every theme (incl. light mode).
+   Colored labels keep their color — only size/leading is touched here; the label
+   GREY brightness is handled once in the :root ramp above (single source of
+   truth), so dark/light/named themes each resolve their own palette.
    ────────────────────────────────────────────────────────────────────────── */
-#pinpoint-page .text-\[6px\],
-#pinpoint-page .text-\[6\.5px\],
-#pinpoint-page .text-\[7px\],
-#pinpoint-page .text-\[7\.5px\],
-#pinpoint-page .text-\[8px\],
-#pinpoint-page .text-\[8\.5px\] {
+.text-\[6px\],
+.text-\[6\.5px\],
+.text-\[7px\],
+.text-\[7\.5px\],
+.text-\[8px\],
+.text-\[8\.5px\] {
   font-size: 10px !important;
   line-height: 1.35 !important;
   letter-spacing: 0.01em;
 }
-#pinpoint-page .text-\[9px\],
-#pinpoint-page .text-\[9\.5px\] {
+.text-\[9px\],
+.text-\[9\.5px\] {
   font-size: 10.5px !important;
   line-height: 1.35 !important;
-}
-/* Extra contrast nudge for the dim tier on this page specifically.
-   (zinc-700 is left as-is — it is only used for faint "|" separators.) */
-#pinpoint-page .text-zinc-600,
-#pinpoint-page .text-zinc-650 {
-  color: #B4B4BB !important;
-}
-#pinpoint-page .text-zinc-500,
-#pinpoint-page .text-zinc-550 {
-  color: #CECECE !important;
 }
