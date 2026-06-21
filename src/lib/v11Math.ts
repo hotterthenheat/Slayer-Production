@@ -1338,7 +1338,8 @@ export function calculateV11Metrics(
   optionPremiumFloat: number,
   optionStrike?: number,
   liveChain?: ChainContract[],
-  liveSpot?: number
+  liveSpot?: number,
+  dteDays = 1 // real days-to-expiry for the nearest contract (1 = 0DTE/daily; threaded for weeklies)
 ): V11MathResult {
   const dir = isCall ? 1 : -1;
   const spotUsed = liveSpot || asset.defaultPrice;
@@ -1347,7 +1348,10 @@ export function calculateV11Metrics(
 
   // Use the live options chain if provided, otherwise generate a mathematically conforming mock chain
   const actualChain = liveChain || generateMockOptionsChain(spotUsed, asset.volatility);
-  const dealerRes = computeDealerInventory(actualChain, spotUsed, dir);
+  // Thread the real DTE so the gamma-flip grid solver and expected-move re-price
+  // gamma at the chain's actual expiry instead of a hardcoded 1-day assumption
+  // (which understated EM and misplaced the flip for weekly contracts).
+  const dealerRes = computeDealerInventory(actualChain, spotUsed, dir, dteDays);
 
   // 1. Data Integrity Score
   const reasons: string[] = [];
@@ -1460,7 +1464,7 @@ export function calculateV11Metrics(
         .reduce((mx, g) => (Math.abs(g.gex) > Math.abs(mx) ? g.gex : mx), 0);
     const convexityChain = actualChain.map((c) => ({
       gamma: c.gamma,
-      speed: calculateAnalyticGreeks(spotUsed, c.strike, 1, c.iv, c.type === 'call').speed,
+      speed: calculateAnalyticGreeks(spotUsed, c.strike, dteDays, c.iv, c.type === 'call').speed,
       vanna: c.vanna,
       charm: c.charm,
       oi: c.openInterest,
@@ -1634,7 +1638,7 @@ export function calculateV11Metrics(
   const xgbAdjustPct = Number(((systemScore.total - 75) * 0.08).toFixed(2));
 
   // Compute option pricing using real Black-Scholes metrics for fair value valuation
-  const optionModelPrice = computeBlackScholesPrice(spotUsed, determinedStrike, 1, asset.volatility, isCall);
+  const optionModelPrice = computeBlackScholesPrice(spotUsed, determinedStrike, dteDays, asset.volatility, isCall);
   const premiumSurchargePct = Number((((optionPremiumFloat - optionModelPrice) / (optionModelPrice || 1)) * 100).toFixed(2));
   
   let valuationLabel: 'UNDERVALUED' | 'FAIRLY_PRICED' | 'OVERVALUED' = 'FAIRLY_PRICED';
@@ -1696,9 +1700,10 @@ export function calculateV10Metrics(
   optionPremiumFloat: number,
   optionStrike?: number,
   liveChain?: ChainContract[],
-  liveSpot?: number
+  liveSpot?: number,
+  dteDays = 1
 ) {
-  const v11 = calculateV11Metrics(asset, isCall, systemScore, optionPremiumFloat, optionStrike, liveChain, liveSpot);
+  const v11 = calculateV11Metrics(asset, isCall, systemScore, optionPremiumFloat, optionStrike, liveChain, liveSpot, dteDays);
   
   // Dynamic offset decomposition to prevent credibility gaps
   const baseWin = Number(v11.baseWinRate.toFixed(1));

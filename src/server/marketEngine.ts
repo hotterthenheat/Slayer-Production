@@ -6,7 +6,7 @@
  * synthetic sandbox walk), and assembles the Universal SSE payload. Importing
  * this module starts the ticker and seeds candles. No external API key required.
  */
-import { ASSET_LIST, generateInitialCandles, TIMEFRAMES, calculateFVGs, calculateLiquidityEvents, optionExpiryLabel } from '../data';
+import { ASSET_LIST, generateInitialCandles, TIMEFRAMES, calculateFVGs, calculateLiquidityEvents, optionExpiryLabel, optionDteDays } from '../data';
 import {
   calculateSystemScoreFromCandles,
   calculateV11Metrics,
@@ -170,21 +170,38 @@ function windowChainAroundSpot(chain: ChainContract[], spot: number, perSide = 2
   return chain.filter((c) => c.strike >= lo && c.strike <= hi);
 }
 
-function liveChainToContracts(live: any[], fallbackIv: number): ChainContract[] {
-  return live.map((c: any) => ({
-    strike: c.strike,
-    type: (c.type === 'C' || c.type === 'call') ? 'call' : 'put',
-    openInterest: c.oi || c.openInterest || 0,
-    iv: c.impliedVolatility || c.iv || fallbackIv,
-    bid: c.bid || 0, ask: c.ask || 0,
-    delta: c.greeks?.delta ?? c.delta ?? 0,
-    gamma: c.greeks?.gamma ?? c.gamma ?? 0,
-    vega: c.greeks?.vega ?? c.vega ?? 0,
-    theta: c.greeks?.theta ?? c.theta ?? 0,
-    vanna: c.greeks?.vanna ?? c.vanna ?? 0,
-    charm: c.greeks?.charm ?? c.charm ?? 0,
-    volume: c.volume ?? c.vol ?? c.day?.volume ?? 0,
-  }));
+function liveChainToContracts(live: any[], fallbackIv: number, spot?: number, dteDays?: number): ChainContract[] {
+  return live.map((c: any) => {
+    const type: 'call' | 'put' = (c.type === 'C' || c.type === 'call') ? 'call' : 'put';
+    const strike = c.strike;
+    const iv = c.impliedVolatility || c.iv || fallbackIv;
+    let vanna = c.greeks?.vanna ?? c.vanna;
+    let charm = c.greeks?.charm ?? c.charm;
+    // Standard option feeds (Polygon/Tradier) return delta/gamma/theta/vega but
+    // NOT vanna/charm. Left at 0 they silently collapse netVex/netCharm and the
+    // Vanna/Charm dynamics engines to zero on live data (works on the mock chain,
+    // dead on real). Derive them analytically from the same BSM inputs the feed
+    // already provides whenever the feed omits them.
+    if ((vanna == null || charm == null) && typeof spot === 'number' && typeof dteDays === 'number') {
+      const g = calculateAnalyticGreeks(spot, strike, dteDays, iv, type === 'call');
+      if (vanna == null) vanna = g.vanna;
+      if (charm == null) charm = g.charm;
+    }
+    return {
+      strike,
+      type,
+      openInterest: c.oi || c.openInterest || 0,
+      iv,
+      bid: c.bid || 0, ask: c.ask || 0,
+      delta: c.greeks?.delta ?? c.delta ?? 0,
+      gamma: c.greeks?.gamma ?? c.gamma ?? 0,
+      vega: c.greeks?.vega ?? c.vega ?? 0,
+      theta: c.greeks?.theta ?? c.theta ?? 0,
+      vanna: vanna ?? 0,
+      charm: charm ?? 0,
+      volume: c.volume ?? c.vol ?? c.day?.volume ?? 0,
+    };
+  });
 }
 
 function refreshEdgeCache() {
@@ -192,12 +209,13 @@ function refreshEdgeCache() {
     try {
       const spot = db.liveSpotPrices[asset.ticker] || asset.defaultPrice;
       const live = db.liveOptionChains[asset.ticker];
+      const dteDays = optionDteDays(asset);
       const chain: ChainContract[] = (live && live.length > 0)
-        ? liveChainToContracts(live, asset.volatility)
+        ? liveChainToContracts(live, asset.volatility, spot, dteDays)
         : generateMockOptionsChain(spot, asset.volatility);
       chainCache[asset.ticker] = chain;
       const candles = db.candles[`${asset.ticker}-5m`] || [];
-      const dealerInv = computeDealerInventory(chain, spot, 1);
+      const dealerInv = computeDealerInventory(chain, spot, 1, dteDays);
       if (!edgeHistory[asset.ticker]) edgeHistory[asset.ticker] = { rr: [], bf: [] };
       edgeCache[asset.ticker] = computeAssetEdge({
         chain, candles, spot, rndDteDays: RND_DTE_DAYS,
@@ -725,9 +743,18 @@ export const constructPayload = (params: {
     : (liveSpot * 0.0035) / Math.exp(normalizedDistance * 65);
   const optionPremiumFloat = Math.max(0.20, Number((premiumBase * (1 + volBuffer)).toFixed(2)));
 
-  // Calculate V11 / V10 structures (routing physical live chain and spot)
-  const metricsV11 = calculateV11Metrics(asset, isCall, systemScore, optionPremiumFloat, optionStrike, liveChain || undefined, liveSpot);
-  const metricsV10 = calculateV10Metrics(asset, isCall, systemScore, optionPremiumFloat, optionStrike, liveChain || undefined, liveSpot);
+  // Calculate V11 / V10 structures (routing physical live chain and spot).
+  // CRITICAL: the live chain is in raw provider shape (oi / impliedVolatility /
+  // nested greeks, no vanna/charm). It MUST be normalized to ChainContract before
+  // the dealer-inventory math runs — otherwise computeDealerInventory reads
+  // undefined flat fields and every GEX/wall/flip metric is NaN/zero on real data.
+  // Passing undefined lets the engines build their deterministic model chain.
+  const optDteDays = optionDteDays(asset);
+  const chainForMetrics: ChainContract[] | undefined = (liveChain && liveChain.length > 0)
+    ? liveChainToContracts(liveChain, asset.volatility, liveSpot, optDteDays)
+    : undefined;
+  const metricsV11 = calculateV11Metrics(asset, isCall, systemScore, optionPremiumFloat, optionStrike, chainForMetrics, liveSpot, optDteDays);
+  const metricsV10 = calculateV10Metrics(asset, isCall, systemScore, optionPremiumFloat, optionStrike, chainForMetrics, liveSpot, optDteDays);
 
   // Strict mapping: decision can only be: 'ENTER', 'HOLD', 'REDUCE', 'EXIT'
   // Let's resolve what decision to emit
