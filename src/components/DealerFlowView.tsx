@@ -675,7 +675,7 @@ export function DealerFlowView() {
   };
 
   return (
-    <div className="w-full space-y-4 tabular-data" id="dealerflow-main-workspace-view">
+    <div className="w-full space-y-6 tabular-data" id="dealerflow-main-workspace-view">
       {/* Ticker Bar (Image Matched) */}
       <div className="flex justify-center items-center w-full mb-2 relative z-10">
         <div className="bg-black/90 backdrop-blur-md border border-black rounded-[10px] flex items-center p-1 gap-0.5 shadow-inner">

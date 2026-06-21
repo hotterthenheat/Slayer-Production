@@ -56,7 +56,7 @@ export function RegimeMatrixPanel() {
   const regimeTone = reg.state === 'TAIL_RISK' ? '#F87171' : reg.state === 'TREND_EXPANSION' ? '#4ADE80' : '#60A5FA';
 
   return (
-    <div className="rounded-lg border border-black/60 bg-black/30 p-4 flex flex-col gap-4 shadow-inner">
+    <div className="rounded-xl border bg-white/[0.02] p-5 flex flex-col gap-4 shadow-lg" style={{ borderColor: 'rgba(56,189,248,0.22)', borderLeftColor: 'rgba(56,189,248,0.9)', borderLeftWidth: '3px' }}>
       <div className="flex items-center gap-2">
         <Radar className="w-4 h-4 text-[#4ADE80]" />
         <h2 className="text-xs font-black tracking-widest uppercase text-[#E5E5E5]">Market State — {selectedAsset?.ticker}</h2>

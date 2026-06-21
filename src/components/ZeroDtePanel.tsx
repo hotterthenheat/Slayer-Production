@@ -50,7 +50,7 @@ export function ZeroDtePanel() {
   );
 
   return (
-    <div className="rounded-lg border border-black/60 bg-black/30 p-4 flex flex-col gap-4 shadow-inner">
+    <div className="rounded-xl border bg-white/[0.02] p-5 flex flex-col gap-4 shadow-lg" style={{ borderColor: 'rgba(251,191,36,0.22)', borderLeftColor: 'rgba(251,191,36,0.9)', borderLeftWidth: '3px' }}>
       <div className="flex items-center gap-2">
         <Timer className="w-4 h-4 text-[#60A5FA]" />
         <h2 className="text-xs font-black tracking-widest uppercase text-[#E5E5E5]">0DTE Probabilities — {selectedAsset?.ticker}</h2>

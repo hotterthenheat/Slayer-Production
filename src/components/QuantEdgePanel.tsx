@@ -89,7 +89,7 @@ export function QuantEdgePanel() {
   const richTone = vrp?.richness === 'IV RICH' ? '#4ADE80' : vrp?.richness === 'IV CHEAP' ? '#F87171' : '#A1A1AA';
 
   return (
-    <div className="flex flex-col gap-3">
+    <div className="rounded-xl border bg-white/[0.02] p-5 flex flex-col gap-3 shadow-lg" style={{ borderColor: 'rgba(74,222,128,0.22)', borderLeftColor: 'rgba(74,222,128,0.9)', borderLeftWidth: '3px' }}>
       <div className="flex items-center gap-2">
         <Sigma className="w-4 h-4 text-[#4ADE80]" />
         <h2 className="text-xs font-black tracking-widest uppercase text-[#E5E5E5]">Edge Analytics — {selectedAsset?.ticker}</h2>

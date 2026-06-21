@@ -25,7 +25,7 @@ export function InstitutionalDashboard() {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         
         {/* REPLICATING: Feature #1 & #5 Market Regime Engine + Dealer Behavior Engine */}
-        <div className="bg-black/80 border border-black p-4 rounded-lg flex flex-col justify-between hover:border-zinc-800 transition-colors shadow-lg">
+        <div className="bg-black/80 border border-white/10 p-4 rounded-lg flex flex-col justify-between hover:border-zinc-800 transition-colors shadow-lg">
           <div className="flex justify-between items-center mb-3 border-b border-black/60 pb-2">
             <div className="flex items-center gap-2">
               <Hexagon className="w-4 h-4 text-sky-400" />
@@ -74,7 +74,7 @@ export function InstitutionalDashboard() {
         </div>
 
         {/* REPLICATING: Feature #3 Forced Hedging Detector */}
-        <div className="bg-black/80 border border-black p-4 rounded-lg flex flex-col justify-between hover:border-zinc-800 transition-colors shadow-lg">
+        <div className="bg-black/80 border border-white/10 p-4 rounded-lg flex flex-col justify-between hover:border-zinc-800 transition-colors shadow-lg">
           <div className="flex justify-between items-center mb-3 border-b border-black/60 pb-2">
             <div className="flex items-center gap-2">
               <Activity className="w-4 h-4 text-amber-500" />
@@ -112,7 +112,7 @@ export function InstitutionalDashboard() {
         {/* REPLICATING: Feature #6 Liquidity Magnet & Feature #7 Dealer Stress */}
         <div className="flex flex-col gap-3 h-full">
           {/* Liquidity Magnet */}
-          <div className="bg-black/80 border border-black p-3.5 rounded-lg flex-1 shadow-lg flex flex-col justify-center">
+          <div className="bg-black/80 border border-white/10 p-3.5 rounded-lg flex-1 shadow-lg flex flex-col justify-center">
             <div className="flex justify-between items-center mb-2 border-b border-black/60 pb-1.5">
               <span className="text-[9px] font-black tracking-widest uppercase text-sky-400 flex items-center gap-1.5"><Magnet className="w-3.5 h-3.5" /> LIQUIDITY MAGNET</span>
             </div>
@@ -129,7 +129,7 @@ export function InstitutionalDashboard() {
           </div>
           
           {/* Dealer Stress Meter */}
-          <div className="bg-black/80 border border-black p-3.5 rounded-lg flex-1 shadow-lg flex flex-col justify-center">
+          <div className="bg-black/80 border border-white/10 p-3.5 rounded-lg flex-1 shadow-lg flex flex-col justify-center">
             <div className="flex justify-between items-center mb-2 border-b border-black/60 pb-1.5">
               <span className="text-[9px] font-black tracking-widest uppercase text-rose-500 flex items-center gap-1.5"><ShieldAlert className="w-3.5 h-3.5" /> DEALER STRESS METER</span>
             </div>
@@ -147,7 +147,7 @@ export function InstitutionalDashboard() {
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         {/* REPLICATING: Feature #2 Strike Accumulation Engine */}
-        <div className="bg-[#0a0a0c] border border-black p-4 rounded-lg shadow-lg">
+        <div className="bg-[#0a0a0c] border border-white/10 p-4 rounded-lg shadow-lg">
           <div className="flex items-center gap-2 mb-4 border-b border-black/60 pb-2">
             <TrendingUp className="w-4 h-4 text-[#4ADE80]" />
             <span className="text-[10px] font-black tracking-widest uppercase text-[#4ADE80]">STRIKE ACCUMULATION</span>
@@ -190,7 +190,7 @@ export function InstitutionalDashboard() {
         </div>
 
         {/* REPLICATING: Feature #8 Position Simulator */}
-        <div className="bg-[#0a0a0c] border border-black p-4 rounded-lg flex flex-col shadow-lg">
+        <div className="bg-[#0a0a0c] border border-white/10 p-4 rounded-lg flex flex-col shadow-lg">
           <div className="flex items-center gap-2 mb-4 border-b border-black/60 pb-2">
             <Layers className="w-4 h-4 text-indigo-400" />
             <span className="text-[10px] font-black tracking-widest uppercase text-indigo-400">POSITION SIMULATOR</span>
@@ -247,7 +247,7 @@ export function InstitutionalDashboard() {
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
 
         {/* REPLICATING: Feature #4 Catalyst Engine */}
-        <div className="bg-[#0a0a0c] border border-black p-4 rounded-lg flex flex-col shadow-lg">
+        <div className="bg-[#0a0a0c] border border-white/10 p-4 rounded-lg flex flex-col shadow-lg">
           <div className="flex items-center gap-2 mb-4 border-b border-black/60 pb-2">
             <Activity className="w-4 h-4 text-orange-500" />
             <span className="text-[10px] font-black tracking-widest uppercase text-orange-500">CATALYSTS</span>
@@ -303,7 +303,7 @@ export function InstitutionalDashboard() {
         </div>
         
         {/* Institutional Raw Metrics (2 cols wide) */}
-        <div className="lg:col-span-2 bg-[#0a0a0c] border border-black p-4 rounded-lg shadow-lg">
+        <div className="lg:col-span-2 bg-[#0a0a0c] border border-white/10 p-4 rounded-lg shadow-lg">
           <div className="flex items-center gap-2 mb-4 border-b border-black/60 pb-2">
             <Terminal className="w-4 h-4 text-zinc-400" />
             <span className="text-[10px] font-black tracking-widest uppercase text-zinc-300">DEALER EXPOSURES</span>
