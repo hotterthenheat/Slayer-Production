@@ -9,8 +9,12 @@ import {
   scoreContract,
   rankContractStrengths,
   snapshotFromMarket,
+  computeEmaLadder,
+  buildTargetStack,
+  projectTargetPremiums,
   type ContractSnapshot,
 } from '../src/lib/skyVisionEngine';
+import { emaLast } from '../src/lib/technicalEngine';
 
 /** Build a window of snapshots where each metric ramps linearly from→to. */
 function ramp(opts: {
@@ -111,6 +115,55 @@ console.log('Testing snapshotFromMarket (BSM bridge)...');
   assert.ok(snap.delta > 0.4 && snap.delta < 0.65, `ATM call delta ~0.5, got ${snap.delta}`);
   assert.ok(snap.gamma > 0, 'gamma positive');
   console.log(`✔ snapshotFromMarket: premium=${snap.premium} delta=${snap.delta} gamma=${snap.gamma} iv=${snap.iv}`);
+}
+
+// 7. EMA soundness — hand-computed check + constant-series invariant.
+console.log('Testing Layer 3 — EMA correctness...');
+{
+  // values [10,11,12,13,14], period 3, k=0.5: seed=SMA(10,11,12)=11; e3=13*.5+11*.5=12; e4=14*.5+12*.5=13.
+  assert.strictEqual(Number(emaLast([10, 11, 12, 13, 14], 3).toFixed(6)), 13, 'hand-computed EMA(3) should be 13');
+  const flat = new Array(250).fill(100);
+  const ladder = computeEmaLadder(flat);
+  assert.ok([ladder.ema15, ladder.ema20, ladder.ema50, ladder.ema200].every((v) => Math.abs(v - 100) < 1e-6), 'EMA of a constant series is the constant');
+  assert.strictEqual(ladder.converged200, true, 'converged200 true with 250 bars');
+  console.log(`✔ EMA: hand-check=13, constant-series ladder=100, converged200=${ladder.converged200}`);
+}
+
+// 8. Target stack — in-direction, nearest-first, correct ladder (calls).
+console.log('Testing Layer 3 — target stack (calls)...');
+{
+  const spot = 620.25;
+  const emas = { ema15: 621.1, ema20: 621.45, ema50: 622.9, ema200: 626.1, converged200: true };
+  const stack = buildTargetStack({ spot, isCall: true, emas, walls: { gamma: 624.0, call: 627.0 }, emHigh: 623.7, emLow: 616.8 });
+  assert.ok(stack.every((t) => t.underlying > spot), 'all call targets above spot');
+  for (let i = 1; i < stack.length; i++) assert.ok(stack[i].underlying >= stack[i - 1].underlying, 'ascending order');
+  assert.strictEqual(stack[0].kind, 'EMA15', 'T1 = EMA15 (nearest)');
+  assert.strictEqual(stack[1].kind, 'EMA20', 'T2 = EMA20');
+  assert.strictEqual(stack[2].kind, 'EMA50', 'T3 = EMA50');
+  assert.ok(stack.some((t) => t.kind === 'CALL_WALL') && stack.some((t) => t.kind === 'EXPECTED_MOVE'), 'wall + EM present');
+  console.log(`✔ call stack: ${stack.map((t) => `${t.label}=${t.underlying}`).join(' → ')}`);
+
+  // Premium projection rises with target distance (calls gain as price climbs).
+  const proj = projectTargetPremiums(stack, { spot, strike: 620, dteDays: 0.5, iv: 0.15, isCall: true });
+  assert.ok(proj.every((p) => p.projectedPremium > 0), 'projected premiums positive');
+  assert.ok(proj[0].projectedPremium < proj[2].projectedPremium, 'T1 premium < T3 premium for a call');
+  assert.ok(proj[0].projectedGainPct > 0, 'nearest favorable target shows a gain');
+  assert.deepStrictEqual(proj.map((p) => p.rank), proj.map((_, i) => i + 1), 'ranks sequential');
+  console.log(`✔ projections: ${proj.slice(0, 4).map((p) => `T${p.rank} ${p.label}=${p.underlying}→$${p.projectedPremium} (${p.projectedGainPct > 0 ? '+' : ''}${p.projectedGainPct}%)`).join('  ')}`);
+}
+
+// 9. Target stack — puts run downward.
+console.log('Testing Layer 3 — target stack (puts)...');
+{
+  const spot = 620.25;
+  const emas = { ema15: 619.6, ema20: 619.1, ema50: 617.9, ema200: 613.4, converged200: true };
+  const stack = buildTargetStack({ spot, isCall: false, emas, walls: { gamma: 616.0, put: 612.0 }, emHigh: 623.7, emLow: 616.8 });
+  assert.ok(stack.every((t) => t.underlying < spot), 'all put targets below spot');
+  for (let i = 1; i < stack.length; i++) assert.ok(stack[i].underlying <= stack[i - 1].underlying, 'descending (nearest-below first)');
+  assert.strictEqual(stack[0].kind, 'EMA15', 'T1 = EMA15 (nearest below)');
+  const proj = projectTargetPremiums(stack, { spot, strike: 620, dteDays: 0.5, iv: 0.15, isCall: false });
+  assert.ok(proj[0].projectedPremium < proj[2].projectedPremium, 'put premium grows as price falls toward T3');
+  console.log(`✔ put stack: ${stack.map((t) => `${t.label}=${t.underlying}`).join(' → ')}`);
 }
 
 console.log('\n=============================================');

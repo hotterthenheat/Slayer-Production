@@ -19,6 +19,7 @@
  * master score) build on these primitives and land in follow-up passes.
  */
 import { computeBlackScholesPrice, calculateAnalyticGreeks } from './v11Math';
+import { emaLast } from './technicalEngine';
 
 /** Layer 1: one timestamped reading of a single option contract. */
 export interface ContractSnapshot {
@@ -174,6 +175,128 @@ export function rankContractStrengths(items: ScoredContract[]): RankedContract[]
     (a, b) => b.strength.score - a.strength.score || b.strength.confidence - a.strength.confidence
   );
   return sorted.map((it, i) => ({ ...it, rank: i + 1, strongest: i === 0 }));
+}
+
+// ============================================================================
+// LAYER 3 — EMA TARGET STACK (15 / 20 / 50 / 200) + dealer walls + expected move,
+// with Black-Scholes option-premium projection layered at each level.
+// ============================================================================
+
+export interface EmaLadder {
+  ema15: number;
+  ema20: number;
+  ema50: number;
+  ema200: number;
+  /** EMA200 needs ~200 bars to fully converge; below that it's an approximation. */
+  converged200: boolean;
+}
+
+/** Compute the 15/20/50/200 EMA ladder from a close series (reuses the shared EMA). */
+export function computeEmaLadder(closes: number[]): EmaLadder {
+  return {
+    ema15: Number(emaLast(closes, 15).toFixed(4)),
+    ema20: Number(emaLast(closes, 20).toFixed(4)),
+    ema50: Number(emaLast(closes, 50).toFixed(4)),
+    ema200: Number(emaLast(closes, 200).toFixed(4)),
+    converged200: closes.length >= 200,
+  };
+}
+
+export type TargetKind =
+  | 'EMA15' | 'EMA20' | 'EMA50' | 'EMA200'
+  | 'GAMMA_WALL' | 'CALL_WALL' | 'PUT_WALL'
+  | 'EXPECTED_MOVE';
+
+export interface TargetLevel {
+  kind: TargetKind;
+  label: string;
+  tier: 1 | 2 | 3 | 4 | 5; // 1 scalp · 2 trend · 3 major · 4 dealer · 5 options
+  underlying: number; // the price level
+  distancePct: number; // (level - spot) / spot, signed
+}
+
+/**
+ * Build the in-direction target ladder: only levels the trade can actually run to
+ * (calls → above spot; puts → below), ordered nearest-first and de-duplicated.
+ */
+export function buildTargetStack(params: {
+  spot: number;
+  isCall: boolean;
+  emas: EmaLadder;
+  walls?: { gamma?: number; call?: number; put?: number };
+  emHigh?: number;
+  emLow?: number;
+}): TargetLevel[] {
+  const { spot, isCall, emas, walls = {}, emHigh, emLow } = params;
+  const dir = isCall ? 1 : -1;
+
+  const candidates: { kind: TargetKind; label: string; tier: TargetLevel['tier']; price?: number }[] = [
+    { kind: 'EMA15', label: 'EMA 15', tier: 1, price: emas.ema15 },
+    { kind: 'EMA20', label: 'EMA 20', tier: 1, price: emas.ema20 },
+    { kind: 'EMA50', label: 'EMA 50', tier: 2, price: emas.ema50 },
+    { kind: 'EMA200', label: 'EMA 200', tier: 3, price: emas.ema200 },
+    { kind: 'GAMMA_WALL', label: 'Gamma Wall', tier: 4, price: walls.gamma },
+    isCall
+      ? { kind: 'CALL_WALL', label: 'Call Wall', tier: 4, price: walls.call }
+      : { kind: 'PUT_WALL', label: 'Put Wall', tier: 4, price: walls.put },
+    { kind: 'EXPECTED_MOVE', label: isCall ? 'Expected Move High' : 'Expected Move Low', tier: 5, price: isCall ? emHigh : emLow },
+  ];
+
+  const ahead = candidates
+    .filter(
+      (c): c is { kind: TargetKind; label: string; tier: TargetLevel['tier']; price: number } =>
+        c.price != null && isFinite(c.price) && c.price > 0 && (dir > 0 ? c.price > spot : c.price < spot)
+    )
+    .sort((a, b) => (dir > 0 ? a.price - b.price : b.price - a.price));
+
+  // Only collapse levels that are essentially the same price (e.g. a wall sitting
+  // on an EMA); keep genuinely distinct scalp levels like EMA 15 vs EMA 20.
+  const dedupeGap = Math.max(spot * 0.0002, 0.01);
+  const out: TargetLevel[] = [];
+  for (const c of ahead) {
+    if (out.some((o) => Math.abs(o.underlying - c.price) < dedupeGap)) continue;
+    out.push({ kind: c.kind, label: c.label, tier: c.tier, underlying: Number(c.price.toFixed(2)), distancePct: Number(((c.price - spot) / spot).toFixed(5)) });
+  }
+  return out;
+}
+
+export interface ProjectedTarget extends TargetLevel {
+  rank: number; // T1, T2, ...
+  projectedPremium: number; // BSM option value when price reaches this level
+  projectedGainPct: number; // vs entry premium
+}
+
+/**
+ * Project the option premium at each target level (the "layered on top" piece).
+ *
+ * Time-decay model: under GBM, distance travelled scales with sqrt(time), so the
+ * expected time to reach a level scales with distance². We therefore decay the
+ * remaining DTE by (distance / 1σ-expected-move)², capped so a far target still
+ * keeps some extrinsic value (you'd exit before true expiry). Premium is then the
+ * Black-Scholes value at the level's underlying with that reduced DTE. This makes
+ * near targets keep more time value and far/slow targets reflect real theta drag.
+ */
+export function projectTargetPremiums(
+  stack: TargetLevel[],
+  params: { spot: number; strike: number; dteDays: number; iv: number; isCall: boolean; entryPremium?: number; r?: number }
+): ProjectedTarget[] {
+  const { spot, strike, iv, isCall, r = 0.05 } = params;
+  const dte = Math.max(0.02, params.dteDays);
+  const entry = Math.max(0.01, params.entryPremium ?? computeBlackScholesPrice(spot, strike, dte, iv, isCall, r));
+  const em = spot * iv * Math.sqrt(dte / 365); // 1σ over the horizon
+
+  return stack.map((lvl, i) => {
+    const distEm = em > 0 ? Math.abs(lvl.underlying - spot) / em : 0;
+    const elapsedFrac = clamp(distEm * distEm, 0, 0.85); // keep ≥15% time value
+    const remDte = Math.max(0.0007, dte * (1 - elapsedFrac));
+    const prem = Math.max(0.01, computeBlackScholesPrice(lvl.underlying, strike, remDte, iv, isCall, r));
+    return {
+      ...lvl,
+      rank: i + 1,
+      projectedPremium: Number(prem.toFixed(2)),
+      projectedGainPct: Number((((prem - entry) / entry) * 100).toFixed(1)),
+    };
+  });
 }
 
 /**
