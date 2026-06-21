@@ -330,3 +330,176 @@ export function snapshotFromMarket(params: {
     iv,
   };
 }
+
+// ============================================================================
+// LAYER 4 — SWING DETECTION (short-term scalp vs long-term trend)
+// ============================================================================
+
+export type SwingDirection = 'BULLISH' | 'BEARISH' | 'NONE';
+
+export interface SwingLeg {
+  detected: boolean;
+  direction: SwingDirection;
+  strength: number; // 0..100
+  expectedDuration: string;
+  reasons: string[];
+}
+
+export interface SwingRead {
+  shortTerm: SwingLeg;
+  longTerm: SwingLeg;
+}
+
+/**
+ * Detect a short-term scalp swing (EMA15 vs EMA20 + delta acceleration + volume +
+ * premium expansion) and a long-term trend swing (EMA50 vs EMA200 + IV support +
+ * dealer alignment + OI build) for the contract's own direction.
+ */
+export function detectSwings(params: {
+  isCall: boolean;
+  emas: EmaLadder;
+  history: ContractSnapshot[];
+  dealerAligned?: boolean; // dealer positioning backs the direction (optional override)
+}): SwingRead {
+  const { isCall, emas, history } = params;
+  const dir = isCall ? 1 : -1;
+  const w = history.slice(-WINDOW);
+  const hasHist = w.length >= 3;
+
+  const deltaDir = w.map((s) => (isCall ? s.delta : -s.delta));
+  const half = Math.max(2, Math.floor(w.length / 2));
+  // delta "accelerating" = the recent half's slope exceeds the earlier half's.
+  const deltaAccel = hasHist && netRel(deltaDir.slice(-half)) > netRel(deltaDir.slice(0, half));
+  const volumeUp = hasHist && netRel(w.map((s) => s.volume)) > 0.02;
+  const premiumExpand = hasHist && netRel(w.map((s) => s.premium)) > 0.02;
+  const oiBuild = hasHist && netRel(w.map((s) => s.oi)) > 0.01;
+  const ivUp = hasHist && netRel(w.map((s) => s.iv)) > 0.005;
+
+  // --- Short-term scalp ---
+  const fastAligned = dir > 0 ? emas.ema15 > emas.ema20 : emas.ema15 < emas.ema20;
+  const stConds = [fastAligned, deltaAccel, volumeUp, premiumExpand];
+  const stCount = stConds.filter(Boolean).length;
+  const stStrength = Math.round((100 * stCount) / stConds.length);
+  const stDetected = fastAligned && stCount >= 3;
+  const stReasons: string[] = [];
+  if (fastAligned) stReasons.push(`EMA15 ${dir > 0 ? '>' : '<'} EMA20`);
+  if (deltaAccel) stReasons.push('delta accelerating');
+  if (volumeUp) stReasons.push('volume rising');
+  if (premiumExpand) stReasons.push('premium expanding');
+  const stDuration = !stDetected ? '—' : stStrength >= 90 ? '45-60 min' : stStrength >= 75 ? '30-45 min' : '5-15 min';
+
+  // --- Long-term trend ---
+  const slowAligned = dir > 0 ? emas.ema50 > emas.ema200 : emas.ema50 < emas.ema200;
+  const dealerAligned = params.dealerAligned ?? oiBuild; // proxy when not supplied
+  const ltConds = [slowAligned, ivUp, dealerAligned, oiBuild];
+  const ltCount = ltConds.filter(Boolean).length;
+  const ltStrength = Math.round((100 * ltCount) / ltConds.length);
+  const ltDetected = slowAligned && ltCount >= 3;
+  const ltReasons: string[] = [];
+  if (slowAligned) ltReasons.push(`EMA50 ${dir > 0 ? '>' : '<'} EMA200`);
+  if (ivUp) ltReasons.push('IV supportive');
+  if (dealerAligned) ltReasons.push('dealer aligned');
+  if (oiBuild) ltReasons.push('OI building');
+  const ltDuration = !ltDetected ? '—' : ltStrength >= 90 ? '1-2 weeks' : ltStrength >= 75 ? '3-7 days' : '1-2 days';
+
+  const sd: SwingDirection = dir > 0 ? 'BULLISH' : 'BEARISH';
+  return {
+    shortTerm: { detected: stDetected, direction: stDetected ? sd : 'NONE', strength: stStrength, expectedDuration: stDuration, reasons: stReasons },
+    longTerm: { detected: ltDetected, direction: ltDetected ? sd : 'NONE', strength: ltStrength, expectedDuration: ltDuration, reasons: ltReasons },
+  };
+}
+
+/**
+ * EMA structure score (0..100): how cleanly the EMA stack is aligned in-direction
+ * (bull: spot > EMA15 > EMA20 > EMA50 > EMA200). The EMA200 rung is only counted
+ * when it has converged, so a short history doesn't unfairly penalize the score.
+ */
+export function emaStructureScore(spot: number, emas: EmaLadder, isCall: boolean): number {
+  const up = isCall;
+  const conds: boolean[] = [
+    up ? spot > emas.ema15 : spot < emas.ema15,
+    up ? emas.ema15 > emas.ema20 : emas.ema15 < emas.ema20,
+    up ? emas.ema20 > emas.ema50 : emas.ema20 < emas.ema50,
+  ];
+  if (emas.converged200) conds.push(up ? emas.ema50 > emas.ema200 : emas.ema50 < emas.ema200);
+  return Math.round((100 * conds.filter(Boolean).length) / conds.length);
+}
+
+// ============================================================================
+// LAYER 7 — SKY VISION MASTER SCORE (weighted verdict)
+// ============================================================================
+
+export interface MasterScoreInput {
+  contractStrength: number; // 0..100 (Layer 2)
+  flowStrength: number; // 0..100 (order-flow / sweep pressure)
+  dealerPositioning: number; // 0..100 (dealer alignment)
+  emaStructure: number; // 0..100 (Layer 3 structure)
+  volumeProfile: number; // 0..100
+  ivStructure: number; // 0..100
+  swingEngine: number; // 0..100 (Layer 4)
+  direction: 'BULLISH' | 'BEARISH' | 'NEUTRAL';
+  bestContract?: string;
+  swingType?: string;
+  target?: string;
+}
+
+export interface MasterScore {
+  score: number; // 0..100
+  direction: 'BULLISH' | 'BEARISH' | 'NEUTRAL';
+  confidence: number; // 0..100 (component agreement)
+  bestContract: string;
+  swingType: string;
+  target: string;
+  tradeHealth: string;
+  components: Record<string, number>;
+}
+
+const MASTER_WEIGHTS = {
+  contractStrength: 0.25,
+  flowStrength: 0.2,
+  dealerPositioning: 0.15,
+  emaStructure: 0.15,
+  volumeProfile: 0.1,
+  ivStructure: 0.1,
+  swingEngine: 0.05,
+};
+
+/** Blend the seven layer sub-scores into the single Sky Vision verdict. */
+export function computeMasterScore(inp: MasterScoreInput): MasterScore {
+  const c = (v: number) => clamp(v, 0, 100);
+  const components: Record<string, number> = {
+    contractStrength: c(inp.contractStrength),
+    flowStrength: c(inp.flowStrength),
+    dealerPositioning: c(inp.dealerPositioning),
+    emaStructure: c(inp.emaStructure),
+    volumeProfile: c(inp.volumeProfile),
+    ivStructure: c(inp.ivStructure),
+    swingEngine: c(inp.swingEngine),
+  };
+  const score = Math.round(
+    MASTER_WEIGHTS.contractStrength * components.contractStrength +
+      MASTER_WEIGHTS.flowStrength * components.flowStrength +
+      MASTER_WEIGHTS.dealerPositioning * components.dealerPositioning +
+      MASTER_WEIGHTS.emaStructure * components.emaStructure +
+      MASTER_WEIGHTS.volumeProfile * components.volumeProfile +
+      MASTER_WEIGHTS.ivStructure * components.ivStructure +
+      MASTER_WEIGHTS.swingEngine * components.swingEngine
+  );
+  // Confidence from component agreement: a tight cluster (low dispersion) means
+  // the layers concur, so we trust the verdict more.
+  const vals = Object.values(components);
+  const mean = vals.reduce((a, b) => a + b, 0) / vals.length;
+  const sd = Math.sqrt(vals.reduce((a, b) => a + (b - mean) ** 2, 0) / vals.length);
+  const confidence = Math.round(clamp(100 - sd * 1.2, 30, 99));
+  const tradeHealth = score >= 80 ? 'Strong' : score >= 60 ? 'Healthy' : score >= 45 ? 'Mixed' : 'Weak';
+  return {
+    score,
+    direction: inp.direction,
+    confidence,
+    bestContract: inp.bestContract ?? '—',
+    swingType: inp.swingType ?? '—',
+    target: inp.target ?? '—',
+    tradeHealth,
+    components,
+  };
+}

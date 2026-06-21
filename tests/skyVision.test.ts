@@ -12,7 +12,11 @@ import {
   computeEmaLadder,
   buildTargetStack,
   projectTargetPremiums,
+  detectSwings,
+  emaStructureScore,
+  computeMasterScore,
   type ContractSnapshot,
+  type EmaLadder,
 } from '../src/lib/skyVisionEngine';
 import { emaLast } from '../src/lib/technicalEngine';
 
@@ -164,6 +168,47 @@ console.log('Testing Layer 3 — target stack (puts)...');
   const proj = projectTargetPremiums(stack, { spot, strike: 620, dteDays: 0.5, iv: 0.15, isCall: false });
   assert.ok(proj[0].projectedPremium < proj[2].projectedPremium, 'put premium grows as price falls toward T3');
   console.log(`✔ put stack: ${stack.map((t) => `${t.label}=${t.underlying}`).join(' → ')}`);
+}
+
+// 10. EMA structure score — clean bull stack = 100; same stack scored as a put = 0.
+console.log('Testing Layer 3 — EMA structure score...');
+{
+  const emas: EmaLadder = { ema15: 621.5, ema20: 621.0, ema50: 620.0, ema200: 615.0, converged200: true };
+  assert.strictEqual(emaStructureScore(622, emas, true), 100, 'clean bull stack scores 100 for a call');
+  assert.strictEqual(emaStructureScore(622, emas, false), 0, 'a bull stack is 0 for a put');
+  console.log('✔ EMA structure: bull stack call=100, put=0');
+}
+
+// 11. Swing detection — strengthening call fires both short- and long-term swings.
+console.log('Testing Layer 4 — swing detection...');
+{
+  const emas: EmaLadder = { ema15: 621.5, ema20: 621.0, ema50: 620.0, ema200: 615.0, converged200: true };
+  const hist = ramp({ premium: [1.0, 3.0], delta: [0.45, 0.62], gamma: [0.018, 0.030], volume: [120, 900], oi: [1000, 1600], iv: [0.14, 0.20] });
+  const sw = detectSwings({ isCall: true, emas, history: hist, dealerAligned: true });
+  assert.ok(sw.shortTerm.detected && sw.shortTerm.direction === 'BULLISH', 'short-term bullish swing detected');
+  assert.ok(sw.longTerm.detected && sw.longTerm.direction === 'BULLISH', 'long-term bullish swing detected');
+  console.log(`✔ swing: ST ${sw.shortTerm.strength} ${sw.shortTerm.expectedDuration} [${sw.shortTerm.reasons.join(', ')}] | LT ${sw.longTerm.strength} ${sw.longTerm.expectedDuration}`);
+
+  // No EMA alignment → no swing.
+  const flatEmas: EmaLadder = { ema15: 619.0, ema20: 620.0, ema50: 621.0, ema200: 622.0, converged200: true };
+  const sw2 = detectSwings({ isCall: true, emas: flatEmas, history: hist });
+  assert.ok(!sw2.shortTerm.detected, 'no short-term swing without EMA15>EMA20');
+  console.log(`✔ no-swing case: ST detected=${sw2.shortTerm.detected}`);
+}
+
+// 12. Master score — exact weighted blend + health + confidence behavior.
+console.log('Testing Layer 7 — master score...');
+{
+  const all80 = computeMasterScore({ contractStrength: 80, flowStrength: 80, dealerPositioning: 80, emaStructure: 80, volumeProfile: 80, ivStructure: 80, swingEngine: 80, direction: 'BULLISH' });
+  assert.strictEqual(all80.score, 80, 'uniform 80s blend to 80');
+  assert.strictEqual(all80.tradeHealth, 'Strong', 'score 80 = Strong');
+  assert.ok(all80.confidence >= 95, 'zero dispersion → high confidence');
+
+  // 0.25*90 + 0.20*30 + 0.15*50 + 0.15*50 + 0.10*50 + 0.10*50 + 0.05*50 = 56
+  const mixed = computeMasterScore({ contractStrength: 90, flowStrength: 30, dealerPositioning: 50, emaStructure: 50, volumeProfile: 50, ivStructure: 50, swingEngine: 50, direction: 'BULLISH' });
+  assert.strictEqual(mixed.score, 56, `weighted blend should be 56, got ${mixed.score}`);
+  assert.ok(mixed.confidence < all80.confidence, 'dispersed components → lower confidence');
+  console.log(`✔ master: uniform80 → ${all80.score} ${all80.tradeHealth} conf=${all80.confidence}; mixed → ${mixed.score} ${mixed.tradeHealth} conf=${mixed.confidence}`);
 }
 
 console.log('\n=============================================');
