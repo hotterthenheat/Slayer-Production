@@ -43,6 +43,8 @@ import {
 } from './src/server/auth';
 import { db, sse, type SSEClient, type SSEDiscoveryClient } from './src/server/state';
 import { constructPayload, broadcastSSE, broadcastDiscoverySSE, gatePayloadByTier, accessTierToLevel } from './src/server/marketEngine';
+import { getTradeStore, MAX_OPEN_TRADES_PER_USER, type TradeRow } from './src/server/tradeStore';
+import { buildTrade, startTradeEngine } from './src/server/tradeEngine';
 
 const app = express();
 // Trust only the configured number of proxy hops (Render/most PaaS = 1) rather
@@ -2248,11 +2250,135 @@ app.post('/api/trades/add', async (req, res) => {
   };
 
   db.v8Trades.unshift(newTrade);
-  
+
   // Instantly broadcast update
   broadcastSSE();
 
   res.json({ success: true, trade: newTrade });
+});
+
+// ==========================================
+// PER-USER TRACKED CONTRACTS (SQLite-backed; max 10 OPEN per user)
+// The user adds a setup's contract here; tradeEngine computes the exit plan from
+// the quant math and auto-closes on the earliest of target/stop/time/model-edge.
+// Kept separate from the legacy global db.v8Trades demo archive above.
+// ==========================================
+
+// Shape a stored TradeRow for the Trade History UI (live P&L when still open).
+function serializeTracked(t: TradeRow) {
+  const livePnlPct = ((t.currentPrice - t.entryPrice) / t.entryPrice) * 100;
+  const pnlPct = t.status === 'CLOSED' ? (t.pnlPct ?? 0) : livePnlPct;
+  const pnl = t.status === 'CLOSED' ? (t.pnl ?? 0) : Number((t.currentPrice - t.entryPrice).toFixed(2));
+  return {
+    id: t.id,
+    underlying: t.underlying,
+    contract: t.contract,
+    strike: t.strike,
+    isCall: t.isCall,
+    direction: t.direction,
+    category: t.category,
+    entryPrice: t.entryPrice,
+    currentPrice: t.currentPrice,
+    target1: t.target1,
+    target2: t.target2,
+    stopLoss: t.stopLoss,
+    iv: t.iv,
+    delta: t.delta, gamma: t.gamma, theta: t.theta, vega: t.vega,
+    status: t.status,
+    pnl,
+    pnlPct: Number(pnlPct.toFixed(1)),
+    maxGain: t.maxGain,
+    maxDrawdown: t.maxDrawdown,
+    exitReason: t.exitReason,
+    outcome: t.outcome,
+    elapsedMin: t.elapsedMin,
+    timeStopMin: t.timeStopMin,
+    openedAt: t.openedAt,
+    closedAt: t.closedAt,
+  };
+}
+
+// List the signed-in user's tracked contracts (open + closed).
+app.get('/api/tracked', async (req, res) => {
+  const session = await getSessionFromCookies(req.headers.cookie);
+  if (!session || !session.email) return res.status(401).json({ error: 'Unauthorized' });
+  const email = session.email.toLowerCase().trim();
+  try {
+    const rows = await getTradeStore().listByUser(email);
+    const openCount = rows.filter(r => r.status === 'OPEN').length;
+    res.json({ trades: rows.map(serializeTracked), openCount, maxOpen: MAX_OPEN_TRADES_PER_USER });
+  } catch (e) {
+    console.error('[tracked] list failed:', e);
+    res.status(500).json({ error: 'Could not load your tracked contracts.' });
+  }
+});
+
+// Add a contract to the user's Trade History (enforces the 10-open cap).
+app.post('/api/tracked/add', express.json(), async (req, res) => {
+  const session = await getSessionFromCookies(req.headers.cookie);
+  if (!session || !session.email) return res.status(401).json({ error: 'Unauthorized' });
+  const email = session.email.toLowerCase().trim();
+  const store = getTradeStore();
+  try {
+    const openCount = await store.countOpenByUser(email);
+    if (openCount >= MAX_OPEN_TRADES_PER_USER) {
+      return res.status(409).json({
+        error: `You can track at most ${MAX_OPEN_TRADES_PER_USER} open contracts at once. Close one (or let it auto-exit) to add another.`,
+        openCount, maxOpen: MAX_OPEN_TRADES_PER_USER,
+      });
+    }
+
+    const b = req.body || {};
+    const underlying = String(b.underlying || '').toUpperCase().trim();
+    const strike = Number(b.strike);
+    const isCall = !!b.isCall;
+    const category = ['top_opportunity', 'discounted', 'quickscalp', 'manual'].includes(b.category) ? b.category : 'manual';
+    if (!underlying || !Number.isFinite(strike) || strike <= 0) {
+      return res.status(400).json({ error: 'A valid underlying and strike are required.' });
+    }
+
+    const asset = ASSET_LIST.find(a => a.ticker === underlying);
+    const spot = Number(b.spot) > 0 ? Number(b.spot) : (db.liveSpotPrices[underlying] || asset?.defaultPrice || strike);
+    // Accept IV as either a decimal (0.15) or a percent (15).
+    const rawIv = Number(b.iv);
+    const iv = rawIv > 0 ? (rawIv > 3 ? rawIv / 100 : rawIv) : 0.15;
+    const dteDays = Number.isFinite(Number(b.dteDays)) && Number(b.dteDays) >= 0 ? Number(b.dteDays) : 0;
+    const entryPrice = Number(b.entryPrice) > 0 ? Number(b.entryPrice) : undefined;
+
+    const trade = buildTrade({ userEmail: email, underlying, strike, isCall, spot, iv, dteDays, category, entryPrice });
+    await store.add(trade);
+    res.json({ success: true, trade: serializeTracked(trade), openCount: openCount + 1, maxOpen: MAX_OPEN_TRADES_PER_USER });
+  } catch (e) {
+    console.error('[tracked] add failed:', e);
+    res.status(500).json({ error: 'Could not add the contract. Please retry.' });
+  }
+});
+
+// Manually close one of the user's open contracts (frees a slot immediately).
+app.post('/api/tracked/:id/close', express.json(), async (req, res) => {
+  const session = await getSessionFromCookies(req.headers.cookie);
+  if (!session || !session.email) return res.status(401).json({ error: 'Unauthorized' });
+  const email = session.email.toLowerCase().trim();
+  const id = String(req.params.id || '');
+  try {
+    const store = getTradeStore();
+    const t = await store.getById(id);
+    if (!t || t.userEmail !== email) return res.status(404).json({ error: 'Contract not found.' });
+    if (t.status !== 'OPEN') return res.status(409).json({ error: 'Contract is already closed.' });
+    const pnlPct = ((t.currentPrice - t.entryPrice) / t.entryPrice) * 100;
+    await store.close(id, {
+      exitPrice: t.currentPrice,
+      exitReason: 'MANUAL',
+      pnl: Number((t.currentPrice - t.entryPrice).toFixed(2)),
+      pnlPct: Number(pnlPct.toFixed(1)),
+      outcome: pnlPct > 1 ? 'WIN' : pnlPct < -1 ? 'LOSS' : 'SCRATCH',
+      closedAt: Date.now(),
+    });
+    res.json({ success: true });
+  } catch (e) {
+    console.error('[tracked] close failed:', e);
+    res.status(500).json({ error: 'Could not close the contract.' });
+  }
 });
 
 // Clear trades array endpoint
@@ -2597,6 +2723,16 @@ async function startServer() {
   // ensureSchema() no-ops when SQL_HOST is unset and swallows connection errors,
   // so this is safe in keyless/sandbox mode too.
   await ensureSchema();
+
+  // Per-user tracked-contract store (SQLite now, Postgres-swappable behind the
+  // TradeStore interface) + the exit-tracking engine. Isolated try/catch so a
+  // storage hiccup can't stop the rest of the server from booting.
+  try {
+    await getTradeStore().init();
+    startTradeEngine();
+  } catch (e) {
+    console.error('[tradeStore] init failed; tracked-contract feature disabled:', e);
+  }
 
 // ==========================================
 // QUANT CO-PILOT — local, deterministic options-structure analysis.
