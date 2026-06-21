@@ -914,18 +914,15 @@ export function DiscoveryView({
     return () => { clearInterval(tickInterval); flashTimers.forEach(clearTimeout); };
   }, []);
 
-  // Manual fast-scale scan refresh handler (forces immediate dynamic ticks and adds simulated live options activity)
+  // Manual scan refresh: re-ticks local contract premiums and appends a fresh
+  // tape entry. Server-streamed metrics (GEX / accuracy / scan-rate) are left
+  // untouched — they update on their own via the discovery SSE stream.
   const triggerManualScannerRefresh = () => {
     if (isMockScanning) return;
     setIsMockScanning(true);
     setLastScanMessage('Running a fresh scan...');
 
     setTimeout(() => {
-      // Slightly randomize values
-      setGlobalGex(prev => prev + (Math.random() > 0.5 ? 2.4 : -1.8));
-      setBrierScore(prev => Math.max(0.010, prev - 0.0004));
-      setScanRate(prev => 15.0 + Math.random() * 2);
-
       let scannedCount = 0;
       setContracts(prev => {
         scannedCount = prev.length;
@@ -965,7 +962,7 @@ export function DiscoveryView({
       setFeedLogs(prev => [newLog, ...prev.slice(0, 11)]);
       setIsMockScanning(false);
       setScanHistoryCount(prev => prev + 1);
-      setLastScanMessage(`Done! Scanned ${scannedCount} options. 3 new setups added.`);
+      setLastScanMessage(`Scan complete. ${scannedCount} contracts re-priced.`);
     }, 1000);
   };
 
@@ -1031,6 +1028,24 @@ export function DiscoveryView({
     };
   }, [contracts]);
 
+  // Largest trades derived from the live tape (feedLogs) rather than hardcoded.
+  // Premiums arrive as formatted strings ("$504,000") so we parse to compare.
+  const topFlows = useMemo(() => {
+    const parsePremium = (p: string) => Number(String(p).replace(/[^0-9.]/g, '')) || 0;
+    let bullish: typeof feedLogs[number] | null = null;
+    let hedge: typeof feedLogs[number] | null = null;
+    for (const log of feedLogs) {
+      if (log.tag === 'BULLISH') {
+        if (!bullish || parsePremium(log.premium) > parsePremium(bullish.premium)) bullish = log;
+      } else {
+        if (!hedge || parsePremium(log.premium) > parsePremium(hedge.premium)) hedge = log;
+      }
+    }
+    const largestOverall = feedLogs.reduce<typeof feedLogs[number] | null>((max, log) =>
+      !max || parsePremium(log.premium) > parsePremium(max.premium) ? log : max, null);
+    return { bullish, hedge, largestOverall };
+  }, [feedLogs]);
+
   // Match corresponding AssetInfo object to trigger selection
   const handleSelectWithMatch = (ticker: string, strike: number, isCall: boolean) => {
     const asset = ASSET_LIST.find(a => a.ticker === ticker);
@@ -1056,44 +1071,38 @@ export function DiscoveryView({
   return (
     <div className={`w-full flex flex-col font-mono select-none antialiased space-y-6 max-w-6xl mx-auto pt-2 pb-12 ${c_textColor}`}>
       
-      {/* 1. TOP DENSE STATUS BAR (Same as Skyeyes Core Cockpit styling) */}
-      <div className={`flex flex-col md:flex-row justify-between items-stretch md:items-center p-4 rounded-xl gap-4 md:gap-2 relative overflow-hidden border ${c_cardBg}`}>
-        
-        {/* Glow corner element */}
-        <div className="absolute top-0 left-0 w-16 h-16 bg-white/5 blur-xl pointer-events-none" />
+      {/* 1. TOP STATUS BAR */}
+      <div className={`flex flex-col md:flex-row justify-between items-stretch md:items-center p-4 rounded-xl gap-4 md:gap-2 border ${c_cardBg}`}>
 
-        <div className="flex items-center gap-2.5 relative z-10">
-          <div className="relative flex items-center justify-center">
-            <span className="w-2.5 h-2.5 bg-[#4ADE80] text-black rounded-full animate-ping absolute" />
-            <span className="w-2.5 h-2.5 bg-black/40 rounded-full relative z-10" />
-          </div>
+        <div className="flex items-center gap-2.5">
+          <Target className="w-4 h-4 text-[#4ADE80] shrink-0" />
           <div>
             <h1 className={`text-xs font-black tracking-widest uppercase ${c_textWhite}`}>
-              TRADE FINDER <span className="text-zinc-500">/ LIVE OPTIONS SCANNER</span>
+              Trade Finder <span className="text-[var(--text-tertiary)]">/ Live Options Scanner</span>
             </h1>
-            <p className="text-[9.5px] text-zinc-500 mt-0.5 uppercase tracking-wide">
-              LIVE SETUPS • UPDATING IN REAL TIME
+            <p className="text-[9.5px] text-[var(--text-tertiary)] mt-0.5 uppercase tracking-wide">
+              Live setups, updating in real time
             </p>
           </div>
         </div>
 
-        {/* Live Cockpit Statistics Panel */}
-        <div className={`flex items-center gap-4 flex-wrap text-left text-[10px] md:border-l md:pl-5 ${isLight ? 'border-black' : 'border-black'}`}>
+        {/* Live statistics (server-streamed) */}
+        <div className="flex items-center gap-5 flex-wrap text-left text-[10px] md:border-l md:pl-5 border-[var(--border)]">
           <div className="space-y-0.5">
-            <span className="text-[7.5px] text-zinc-500 uppercase block tracking-wider font-extrabold">DEALER SUPPORT</span>
-            <span className="text-[#4ADE80] font-bold block transition-all duration-300">
+            <span className="text-[7.5px] text-[var(--text-tertiary)] uppercase block tracking-wider font-extrabold">Dealer Support</span>
+            <span className="text-[#4ADE80] font-bold block font-mono">
               +{globalGex.toFixed(1)}M
             </span>
           </div>
           <div className="space-y-0.5">
-            <span className="text-[7.5px] text-zinc-500 uppercase block tracking-wider font-extrabold">MODEL ACCURACY</span>
-            <span className={`font-mono font-bold block transition-all duration-300 ${c_textWhite}`}>
+            <span className="text-[7.5px] text-[var(--text-tertiary)] uppercase block tracking-wider font-extrabold">Model Accuracy</span>
+            <span className={`font-mono font-bold block ${c_textWhite}`}>
               {brierScore.toFixed(4)}
             </span>
           </div>
           <div className="space-y-0.5">
-            <span className="text-[7.5px] text-zinc-500 uppercase block tracking-wider font-extrabold">SCAN SPEED</span>
-            <span className={`text-[#4f8cff] font-bold block transition-all duration-300 ${isMockScanning || metricsPulse ? 'animate-bounce text-[#4ADE80]' : ''}`}>
+            <span className="text-[7.5px] text-[var(--text-tertiary)] uppercase block tracking-wider font-extrabold">Scan Rate</span>
+            <span className="text-[#60A5FA] font-bold block font-mono">
               {scanRate.toFixed(1)}/s
             </span>
           </div>
@@ -1101,7 +1110,7 @@ export function DiscoveryView({
 
       </div>
 
-      {/* 2. DUSTING BENTO-COMPLIANT CONTROLS BAR (Segmented Selection, Filters, Search) */}
+      {/* 2. CONTROLS BAR (Segmented Selection, Filters, Search) */}
       <div className={`grid grid-cols-1 md:grid-cols-12 gap-3 items-center rounded-lg border ${c_glassBg}`}>
         
         {/* Navigation Categories Tabs */}
@@ -1289,9 +1298,9 @@ export function DiscoveryView({
         
         <div className={`flex justify-between items-center cursor-pointer select-none pb-2 border-b ${isLight ? 'border-black' : 'border-black/60'}`} onClick={() => setIsStrategyExpanded(!isStrategyExpanded)}>
           <div className="flex items-center gap-2">
-            <Info className="w-4 h-4 text-[#4f8cff]" />
-            <span className={`text-[10px] font-extrabold uppercase tracking-widest ${isLight ? 'text-zinc-600' : 'text-[#4ADE80]'}`}>
-              STRATEGY DECONSTRUCTION: WHY THESE ARE THE BEST ACTIVE TRADES
+            <Info className="w-4 h-4 text-[#60A5FA]" />
+            <span className={`text-[10px] font-extrabold uppercase tracking-widest ${isLight ? 'text-zinc-600' : 'text-[var(--text-secondary)]'}`}>
+              How This Category Works
             </span>
           </div>
           <div className={`flex items-center gap-1.5 py-0.5 px-2 rounded border ${isLight ? 'bg-zinc-50 border-black text-zinc-850 font-bold' : 'bg-black/40 border-black text-zinc-350'}`}>
@@ -1353,17 +1362,14 @@ export function DiscoveryView({
         </AnimatePresence>
       </div>
 
-      {/* 2C. LIVE SCANNER CONTROL INTERFACE */}
+      {/* 2C. SCANNER CONTROL */}
       <div className={`w-full p-3.5 rounded-xl flex flex-col sm:flex-row justify-between items-center gap-4 text-xs border ${c_glassBg}`}>
         <div className="flex items-center gap-3">
-          <div className="relative">
-            <span className={`w-3 h-3 rounded-full bg-black/40 absolute block ${isMockScanning ? 'animate-ping opacity-75' : ''}`} />
-            <span className="w-3 h-3 rounded-full bg-black/40 border border-black relative block" />
-          </div>
+          <span className={`w-2.5 h-2.5 rounded-full shrink-0 ${isMockScanning ? 'bg-[#FBBF24]' : 'bg-[#4ADE80]'}`} />
           <div className="text-left">
-            <span className="text-[10px] text-zinc-500 block font-bold uppercase">LIVE SCANNER</span>
-            <span className={`text-[10.5px] font-black ${isMockScanning ? 'text-[#4ADE80] font-bold' : (isLight ? 'text-zinc-700 font-extrabold' : 'text-zinc-400')}`}>
-              STATUS: {lastScanMessage}
+            <span className="text-[10px] text-[var(--text-tertiary)] block font-bold uppercase tracking-wider">Scanner</span>
+            <span className={`text-[10.5px] font-black ${isMockScanning ? 'text-[#FBBF24]' : 'text-[var(--text-secondary)]'}`}>
+              {lastScanMessage}
             </span>
           </div>
         </div>
@@ -1371,42 +1377,36 @@ export function DiscoveryView({
         <button
           onClick={triggerManualScannerRefresh}
           disabled={isMockScanning}
-          className={`px-5 py-2.5 rounded-lg border text-[10px] font-extrabold uppercase tracking-widest cursor-pointer shadow-xl transition-all flex items-center gap-2 ${
-            isMockScanning 
-              ? (isLight ? 'bg-black text-zinc-400 border-black' : 'bg-black text-zinc-650 border-black') 
-              : (isLight ? 'bg-black text-[#E5E5E5] hover:bg-black border-black font-extrabold shadow-sm' : 'bg-white text-black hover:bg-black border-white font-extrabold')
+          className={`px-5 py-2.5 rounded-lg border text-[10px] font-extrabold uppercase tracking-widest cursor-pointer transition-colors flex items-center gap-2 ${
+            isMockScanning
+              ? 'bg-[var(--surface-2)] text-[var(--text-tertiary)] border-[var(--border)]'
+              : 'bg-[var(--surface-2)] text-[var(--text-primary)] hover:bg-[var(--surface-3)] border-[var(--border-strong)]'
           }`}
         >
           {isMockScanning ? (
             <>
               <RefreshCw className="w-3.5 h-3.5 animate-spin text-[#4ADE80]" />
-              <span>SCANNING...</span>
+              <span>Scanning…</span>
             </>
           ) : (
             <>
               <RefreshCw className="w-3.5 h-3.5" />
-              <span>REFRESH SCAN ({scanHistoryCount})</span>
+              <span>Refresh Scan ({scanHistoryCount})</span>
             </>
           )}
         </button>
       </div>
 
-      {/* 3. CORE DUAL-COLUMN HIGH-PERFORMANCE WORKSPACE */}
+      {/* 3. CORE DUAL-COLUMN WORKSPACE */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start w-full">
-        
-        {/* ==========================================
-            LEFT COLUMN: THE EXCURSION GRID GROUPED PER TICKER (8 COLS)
-            ========================================== */}
+
+        {/* LEFT COLUMN: GROUPED PER TICKER (8 COLS) */}
         <div className="lg:col-span-8 flex flex-col gap-5 w-full">
-          
+
           <div className="flex justify-between items-center px-1">
-            <span className={`text-[11px] font-extrabold uppercase tracking-wider ${isLight ? 'text-zinc-700' : 'text-zinc-400'}`}>
-              SHOWING {filteredContracts.length} OF {contracts.length} SETUPS
+            <span className="text-[11px] font-extrabold uppercase tracking-wider text-[var(--text-secondary)]">
+              Showing {filteredContracts.length} of {contracts.length} setups
             </span>
-            <div className="flex items-center gap-1.5 text-[9px] text-[#A1A1AA] uppercase">
-              <span className="w-1.5 h-1.5 rounded-full bg-blue-400 animate-ping" />
-              <span>LIVE FREQUENCY LOCK</span>
-            </div>
           </div>
 
           <div className="flex flex-col gap-6 w-full">
@@ -1414,50 +1414,46 @@ export function DiscoveryView({
               {sortedTickers.map((ticker) => {
                 const tickerContracts = groupedByTickerAndSorted[ticker];
                 return (
-                  <div key={ticker} className={`space-y-3 p-4 rounded-xl relative overflow-hidden text-left border ${isLight ? 'bg-zinc-50 border-black' : 'bg-black/20 border-black'}`}>
-                    {/* Glowing side anchor per ticker */}
-                    <div className="absolute top-0 bottom-0 left-0 w-1 bg-gradient-to-b from-[#4f8cff]/20 to-transparent" />
+                  <div key={ticker} className="space-y-3 p-4 rounded-xl text-left border bg-[var(--surface)] border-[var(--border)]">
 
                     {/* Ticker Section Title segment */}
-                    <div className={`flex items-center justify-between border-b pb-2 mb-1 pl-1 ${isLight ? 'border-black' : 'border-black/60'}`}>
+                    <div className="flex items-center justify-between border-b pb-2.5 mb-1 border-[var(--border)]">
                       <div className="flex items-center gap-2">
-                        <span className={`text-xs font-black tracking-widest uppercase font-mono ${c_textWhite}`}>{ticker} SETUPS</span>
-                        <span className="bg-[#4f8cff]/10 border border-[#4f8cff]/20 text-[#4f8cff] text-[8px] font-bold px-1.5 py-0.2 rounded font-sans uppercase">
-                          {tickerContracts.length} SETUPS FOUND
+                        <span className={`text-xs font-black tracking-widest uppercase font-mono ${c_textWhite}`}>{ticker}</span>
+                        <span className="bg-[#60A5FA]/10 border border-[#60A5FA]/20 text-[#60A5FA] text-[8px] font-bold px-1.5 py-0.5 rounded uppercase tracking-wider">
+                          {tickerContracts.length} found
                         </span>
                       </div>
-                      <span className="text-[7.5px] text-zinc-500 uppercase tracking-widest font-black">
-                        SORTED: STRONGEST → WEAKEST
+                      <span className="text-[7.5px] text-[var(--text-tertiary)] uppercase tracking-widest font-black">
+                        Strongest → Weakest
                       </span>
                     </div>
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-start">
                       {tickerContracts.map((c, idx) => {
-                        const actionColor = c.action === 'ENTER' 
-                          ? 'text-[#4ADE80] border-[#4ADE80]/20 bg-[#d4d4d8]/5' 
-                          : c.action === 'SELL' 
-                            ? 'text-[#F87171] border-rose-400/20 bg-rose-400/5' 
-                            : 'text-amber-400 border-amber-400/20 bg-amber-400/5';
-                        
+                        const actionColor = c.action === 'ENTER'
+                          ? 'text-[#4ADE80] border-[#4ADE80]/20 bg-[#4ADE80]/5'
+                          : c.action === 'SELL'
+                            ? 'text-[#F87171] border-[#F87171]/20 bg-[#F87171]/5'
+                            : 'text-[#FBBF24] border-[#FBBF24]/20 bg-[#FBBF24]/5';
+
                         const isFlashing = lastFlashingId === c.id;
-                        const highlightBg = isFlashing 
-                          ? (flashDirection === 'up' ? 'bg-black/40 border-black' : 'bg-rose-500/10 border-rose-400/35')
-                          : (isLight 
-                              ? 'bg-white hover:bg-zinc-50/50 hover:border-black border-black text-zinc-900 shadow-sm' 
-                              : 'bg-black hover:border-black hover:bg-black border-black text-zinc-100 shadow-xl');
 
                         // Classification tags: Core vs Fast Scalps vs Rebound Recoveries
-                        let classBadgeLabel = "💎 TOP OPPORTUNITY";
-                        let classBadgeStyle = "bg-[#4f8cff]/10 text-[#4f8cff] border-[#4f8cff]/20";
+                        let classBadgeLabel = "TOP OPPORTUNITY";
+                        let classBadgeStyle = "bg-[#60A5FA]/10 text-[#60A5FA] border-[#60A5FA]/20";
                         if (c.shelf === 'improved') {
-                          classBadgeLabel = "⚡ QUICKSCALP";
-                          classBadgeStyle = "bg-amber-400/10 text-amber-300 border-amber-400/20";
+                          classBadgeLabel = "QUICKSCALP";
+                          classBadgeStyle = "bg-[#FBBF24]/10 text-[#FBBF24] border-[#FBBF24]/20";
                         } else if (c.shelf === 'invalidation') {
-                          classBadgeLabel = "↩️ REBOUND";
-                          classBadgeStyle = "bg-rose-500/10 text-[#F87171] border-rose-500/20";
+                          classBadgeLabel = "REBOUND";
+                          classBadgeStyle = "bg-[#F87171]/10 text-[#F87171] border-[#F87171]/20";
                         } else if (c.shelf === 'mispriced') {
-                          classBadgeLabel = "💵 DISCOUNTED PRICE";
-                          classBadgeStyle = "bg-black/40 text-[#d4d4d8] border-black";
+                          classBadgeLabel = "DISCOUNTED";
+                          classBadgeStyle = "bg-[var(--surface-3)] text-[var(--text-secondary)] border-[var(--border)]";
+                        } else if (c.shelf === 'whale') {
+                          classBadgeLabel = "WHALE";
+                          classBadgeStyle = "bg-[#4ADE80]/10 text-[#4ADE80] border-[#4ADE80]/20";
                         }
 
                         // Strongest indicator of this group (top sorted card is ALWAYS idx === 0 within its ticker)
@@ -1479,52 +1475,49 @@ export function DiscoveryView({
                             animate={{ opacity: 1, y: 0 }}
                             exit={{ opacity: 0, scale: 0.95 }}
                             transition={{ duration: 0.25 }}
-                            className={`p-4 border rounded-xl flex flex-col gap-2.5 text-left relative overflow-hidden shadow-xl transition-all duration-300 cursor-pointer ${
-                              isCardExpanded 
-                                ? `${highlightBg} ring-1 ring-zinc-700/50` 
-                                : `${isLight ? 'bg-white hover:bg-zinc-50 border-black' : 'bg-black/40 hover:bg-black border-black'} hover:border-black`
+                            className={`p-4 border rounded-xl flex flex-col gap-2.5 text-left transition-colors cursor-pointer ${
+                              isFlashing
+                                ? (flashDirection === 'up' ? 'bg-[#4ADE80]/5 border-[#4ADE80]/30' : 'bg-[#F87171]/5 border-[#F87171]/30')
+                                : isCardExpanded
+                                  ? 'bg-[var(--surface-2)] border-[var(--border-strong)]'
+                                  : 'bg-[var(--surface-2)] hover:bg-[var(--surface-3)] border-[var(--border)]'
                             }`}
-                            onClick={(e) => {
+                            onClick={() => {
                               setExpandedContracts(prev => ({
                                 ...prev,
                                 [c.id]: !prev[c.id]
                               }));
                             }}
                           >
-                            
-                            {/* Tiny neon glider strip */}
-                            <div className={`absolute top-0 left-0 right-0 h-[2px] transition-colors duration-300 ${
-                              c.isCall ? 'bg-black/40' : 'bg-rose-500/40'
-                            }`} />
 
                             {/* Top Contract Badge & Header */}
                             <div className="flex justify-between items-start">
                               <div className="space-y-1">
                                 <div className="flex items-center gap-1.5 flex-wrap">
                                   <span className={`text-xs font-black font-sans px-2.5 py-0.5 rounded-md border uppercase inline-block ${
-                                    c.isCall 
-                                      ? 'bg-black/40 text-[#d4d4d8] border-black' 
-                                      : 'bg-rose-950/20 text-[#F87171] border-rose-900/45'
+                                    c.isCall
+                                      ? 'bg-[#4ADE80]/10 text-[#4ADE80] border-[#4ADE80]/25'
+                                      : 'bg-[#F87171]/10 text-[#F87171] border-[#F87171]/25'
                                   }`}>
                                     {c.ticker} {c.strike}{c.isCall ? 'C' : 'P'}
                                   </span>
-                                  <span className={`text-[7.5px] px-1.5 py-0.5 rounded font-bold uppercase tracking-widest border ${classBadgeStyle}`}>
+                                  <span className={`text-[8px] px-1.5 py-0.5 rounded font-bold uppercase tracking-widest border ${classBadgeStyle}`}>
                                     {classBadgeLabel}
                                   </span>
                                 </div>
                                 <div className="flex items-center gap-1.5 pt-0.5">
-                                  <span className="text-[7.5px] uppercase tracking-wider text-zinc-500 font-extrabold font-mono">
-                                    HEURISTIC: {c.health} SCORE
+                                  <span className="text-[7.5px] uppercase tracking-wider text-[var(--text-tertiary)] font-extrabold font-mono">
+                                    Score {c.health}
                                   </span>
-                                  <span className="text-zinc-650">•</span>
+                                  <span className="text-[var(--text-tertiary)]">•</span>
                                   <span className={`text-[7.5px] uppercase tracking-wider font-extrabold ${actionColor}`}>
                                     {c.action}
                                   </span>
                                   {isPrimaryPeak && (
                                     <>
-                                      <span className="text-zinc-655">•</span>
-                                      <span className="text-[7px] text-amber-400 font-bold bg-amber-500/10 border border-amber-500/20 px-1 rounded uppercase">
-                                        🏆 TEAM LEADER
+                                      <span className="text-[var(--text-tertiary)]">•</span>
+                                      <span className="text-[7px] text-[#4ADE80] font-bold bg-[#4ADE80]/10 border border-[#4ADE80]/20 px-1 rounded uppercase tracking-wider">
+                                        Top Rated
                                       </span>
                                     </>
                                   )}
@@ -1534,96 +1527,96 @@ export function DiscoveryView({
                               {/* Expected Return */}
                               <div className="text-right flex items-start gap-3">
                                 <div className="space-y-0.5">
-                                  <span className="text-[7.5px] text-zinc-650 tracking-wider block font-bold uppercase">EXPECTED ARR</span>
-                                  <span className={`text-sm font-black tracking-tight ${c.health >= 55 ? 'text-[#4ADE80]' : 'text-[#F87171]'}`}>
+                                  <span className="text-[7.5px] text-[var(--text-tertiary)] tracking-wider block font-bold uppercase">Expected Move</span>
+                                  <span className={`text-sm font-black tracking-tight font-mono ${c.health >= 55 ? 'text-[#4ADE80]' : 'text-[#F87171]'}`}>
                                     {c.expectedMove}
                                   </span>
                                 </div>
-                                <div className="pt-1 select-none text-zinc-500">
+                                <div className="pt-1 select-none text-[var(--text-tertiary)]">
                                   {isCardExpanded ? (
-                                    <ChevronUp className="w-4 h-4 text-zinc-400 transition-transform duration-250" />
+                                    <ChevronUp className="w-4 h-4" />
                                   ) : (
-                                    <ChevronDown className="w-4 h-4 text-zinc-600 hover:text-zinc-450 transition-transform duration-250" />
+                                    <ChevronDown className="w-4 h-4" />
                                   )}
                                 </div>
                               </div>
                             </div>
 
-                            {/* COMPRESSED GRID SEGMENT EXPANDED ONLY INLINE */}
+                            {/* EXPANDED DETAIL */}
                             {isCardExpanded && (
-                              <div className="space-y-3 mt-1 pt-3 border-t border-black/40 animate-fadeIn">
-                                {/* DOUBLE TARGETS (Institutional Swing vs Volatility Scalp Targets) */}
-                                <div className={`grid grid-cols-2 gap-2 p-2 rounded-lg text-center text-[10px] border ${c_pillBg}`}>
-                                  <div className={`border-r text-left pl-1 ${isLight ? 'border-black' : 'border-black'}`}>
-                                    <div className="text-[7px] text-zinc-550 uppercase tracking-widest font-black block">🎯 SWING TARGET</div>
+                              <div className="space-y-3 mt-1 pt-3 border-t border-[var(--border)] animate-fadeIn">
+                                {/* Targets: swing vs scalp */}
+                                <div className="grid grid-cols-2 gap-2 p-2 rounded-lg text-center text-[10px] border bg-[var(--surface)] border-[var(--border)]">
+                                  <div className="border-r text-left pl-1 border-[var(--border)]">
+                                    <div className="text-[7.5px] text-[var(--text-tertiary)] uppercase tracking-widest font-black block">Swing Target</div>
                                     <span className={`font-extrabold font-mono block text-xs ${c_textWhite}`}>
                                       ${coreSwingTarget.toFixed(2)}
                                     </span>
                                     <span className="text-[7.5px] text-[#4ADE80] font-bold font-mono">
-                                      +{coreSwingGain}% GAIN
+                                      +{coreSwingGain}%
                                     </span>
                                   </div>
                                   <div className="text-left pl-2">
-                                    <div className="text-[7px] text-zinc-550 uppercase tracking-widest font-black block">⚡ SCALP EXITS</div>
-                                    <span className="text-amber-500 font-extrabold font-mono block text-xs">
+                                    <div className="text-[7.5px] text-[var(--text-tertiary)] uppercase tracking-widest font-black block">Scalp Exit</div>
+                                    <span className="text-[#FBBF24] font-extrabold font-mono block text-xs">
                                       ${quickScalpTarget.toFixed(2)}
                                     </span>
-                                    <span className="text-[7.5px] text-amber-500 font-bold font-mono">
-                                      +{quickScalpGain}% GAIN
+                                    <span className="text-[7.5px] text-[#FBBF24] font-bold font-mono">
+                                      +{quickScalpGain}%
                                     </span>
                                   </div>
                                 </div>
 
-                                {/* Plain English explanation why this trade is selected (simple words!) */}
-                                <div className={`p-2.5 rounded-lg text-[9.5px]/[14.5px] tracking-wide text-left flex gap-1.5 items-start font-sans uppercase border ${c_innerCardBg} ${isLight ? 'text-zinc-650' : 'text-zinc-400'}`}>
-                                  <Info className="w-3.5 h-3.5 text-[#4f8cff] shrink-0 mt-0.5" />
+                                {/* Plain-English reasoning */}
+                                <div className="p-2.5 rounded-lg text-[9.5px]/[14.5px] tracking-wide text-left flex gap-1.5 items-start font-sans border bg-[var(--surface)] border-[var(--border)] text-[var(--text-secondary)]">
+                                  <Info className="w-3.5 h-3.5 text-[#60A5FA] shrink-0 mt-0.5" />
                                   <div className="font-medium tracking-wide">
-                                    <span className="text-[#4f8cff] font-extrabold mr-1">WHY THE BEST:</span>
+                                    <span className="text-[#60A5FA] font-extrabold mr-1 uppercase">Why:</span>
                                     {getSimpleWordReason(c)}
                                   </div>
                                 </div>
 
-                                {/* Short Analytical Narrative */}
-                                <p className={`text-[10px] font-sans tracking-wide leading-relaxed uppercase border-t pt-2.5 ${isLight ? 'border-black text-zinc-600' : 'border-black/50 text-zinc-450'}`}>
+                                {/* Narrative */}
+                                <p className="text-[10px] font-sans tracking-wide leading-relaxed border-t pt-2.5 border-[var(--border)] text-[var(--text-secondary)]">
                                   {c.narrative}
                                 </p>
 
-                                {/* Quantitative Stats Matrix */}
-                                <div className={`border rounded-lg p-2.5 grid grid-cols-4 gap-2 text-center text-[10px] font-mono ${isLight ? 'bg-zinc-50 border-black text-zinc-700' : 'bg-black/40 border-black/50 text-zinc-400'}`}>
+                                {/* Greeks */}
+                                <div className="border rounded-lg p-2.5 grid grid-cols-4 gap-2 text-center text-[10px] font-mono bg-[var(--surface)] border-[var(--border)] text-[var(--text-secondary)]">
                                   <div>
-                                    <span className="block text-[7.5px] text-zinc-550 mb-0.5 tracking-wider uppercase">DELTA</span>
-                                    <span className={`font-bold block ${c.isCall ? 'text-[#4ADE80]' : 'text-rose-500/80'}`}>{c.delta}</span>
+                                    <span className="block text-[7.5px] text-[var(--text-tertiary)] mb-0.5 tracking-wider uppercase">Delta</span>
+                                    <span className={`font-bold block ${c.isCall ? 'text-[#4ADE80]' : 'text-[#F87171]'}`}>{c.delta}</span>
                                   </div>
                                   <div>
-                                    <span className="block text-[7.5px] text-zinc-550 mb-0.5 tracking-wider uppercase">GAMMA</span>
-                                    <span className={`font-bold block ${isLight ? 'text-zinc-800' : 'text-[#E5E5E5]'}`}>{c.gamma}</span>
+                                    <span className="block text-[7.5px] text-[var(--text-tertiary)] mb-0.5 tracking-wider uppercase">Gamma</span>
+                                    <span className="font-bold block text-[var(--text-primary)]">{c.gamma}</span>
                                   </div>
                                   <div>
-                                    <span className="block text-[7.5px] text-zinc-550 mb-0.5 tracking-wider uppercase">THETA</span>
-                                    <span className="text-amber-500/80 font-bold block">{c.theta}</span>
+                                    <span className="block text-[7.5px] text-[var(--text-tertiary)] mb-0.5 tracking-wider uppercase">Theta</span>
+                                    <span className="text-[#FBBF24] font-bold block">{c.theta}</span>
                                   </div>
                                   <div>
-                                    <span className="block text-[7.5px] text-zinc-550 mb-0.5 tracking-wider uppercase">VOLATILITY</span>
-                                    <span className={`font-bold block ${isLight ? 'text-zinc-850' : 'text-zinc-400'}`}>{(c.vega * 100).toFixed(1)}%</span>
+                                    <span className="block text-[7.5px] text-[var(--text-tertiary)] mb-0.5 tracking-wider uppercase">IV</span>
+                                    <span className="font-bold block text-[var(--text-secondary)]">{(c.vega * 100).toFixed(1)}%</span>
                                   </div>
                                 </div>
 
-                                {/* Pricing Segment */}
-                                <div className="flex justify-between items-center pt-2.5 border-t border-black/50 text-[10.5px]">
+                                {/* Pricing */}
+                                <div className="flex justify-between items-center pt-2.5 border-t border-[var(--border)] text-[10.5px]">
                                   <div className="space-y-0.5">
-                                    <span className="text-[7.5px] text-zinc-650 uppercase block tracking-wider font-bold">SPREAD SENSITIVITY</span>
-                                    <span className="text-zinc-500 font-mono font-bold block">
-                                      ${c.bid.toFixed(2)} - ${c.ask.toFixed(2)}
+                                    <span className="text-[7.5px] text-[var(--text-tertiary)] uppercase block tracking-wider font-bold">Bid / Ask</span>
+                                    <span className="text-[var(--text-secondary)] font-mono font-bold block">
+                                      ${c.bid.toFixed(2)} – ${c.ask.toFixed(2)}
                                     </span>
                                   </div>
                                   <div className="text-right">
-                                    <span className="text-[7.5px] text-zinc-500 uppercase block tracking-wider font-bold">LIVE MID PREMIUM</span>
-                                    <motion.span 
-                                      animate={isFlashing ? { scale: [1, 1.15, 1] } : {}}
-                                      className={`text-xs font-black block transition-all duration-300 ${
-                                        isFlashing 
+                                    <span className="text-[7.5px] text-[var(--text-tertiary)] uppercase block tracking-wider font-bold">Live Mid</span>
+                                    <motion.span
+                                      animate={isFlashing ? { scale: [1, 1.1, 1] } : {}}
+                                      className={`text-xs font-black block font-mono ${
+                                        isFlashing
                                           ? (flashDirection === 'up' ? 'text-[#4ADE80]' : 'text-[#F87171]')
-                                          : 'text-[#E5E5E5]'
+                                          : 'text-[var(--text-primary)]'
                                       }`}
                                     >
                                       ${c.price.toFixed(2)}
@@ -1631,33 +1624,26 @@ export function DiscoveryView({
                                   </div>
                                 </div>
 
-                                {/* Action Button matching Skyeyes Call to Action */}
+                                {/* Action: open deep assessment */}
                                 <button
                                   type="button"
                                   onClick={(e) => {
                                     e.stopPropagation();
                                     handleSelectWithMatch(c.ticker, c.strike, c.isCall);
                                   }}
-                                  className="w-full py-2.5 bg-gradient-to-r from-zinc-900 to-black hover:from-white hover:to-white hover:text-black border border-black text-[8.5px] text-zinc-400 hover:text-black font-extrabold uppercase tracking-widest rounded-md mt-1 transition-all duration-300 cursor-pointer flex items-center justify-center gap-1 shadow-md hover:shadow-lg hover:-translate-y-[1px]"
+                                  className="w-full py-2.5 bg-[#4ADE80] hover:bg-[#3fce72] border border-[#4ADE80] text-[8.5px] text-[#04140A] font-extrabold uppercase tracking-widest rounded-md mt-1 transition-colors cursor-pointer flex items-center justify-center gap-1.5"
                                 >
-                                  <span>LAUNCH DEEP SKYEYES ASSESSMENT</span>
+                                  <span>Open Full Analysis</span>
                                   <ArrowRight className="w-2.5 h-2.5" />
                                 </button>
                               </div>
                             )}
 
-                            {/* Click to expand/collapse hint always visible at bottom */}
-                            <div className="flex justify-between items-center text-[7.5px] font-sans text-zinc-500 uppercase tracking-wider pt-2 border-t border-black/10 dark:border-black/20 w-full mt-2.5 select-none">
-                              <span className="flex items-center gap-1 font-bold">
-                                {isCardExpanded ? (
-                                  <>⚡ CLICK TO COLLAPSE</>
-                                ) : (
-                                  <>⚡ CLICK TO EXPAND </>
-                                )}
-                              </span>
-                              <span className="flex items-center gap-0.5 hover:text-[#4ADE80]">
-                                {isCardExpanded ? "COLLAPSE" : "DETAILS"}
-                                <ChevronDown className={`w-3.5 h-3.5 text-zinc-500 transition-transform duration-300 ${isCardExpanded ? 'rotate-180 text-amber-500' : ''}`} />
+                            {/* Expand/collapse hint */}
+                            <div className="flex justify-end items-center text-[7.5px] font-sans text-[var(--text-tertiary)] uppercase tracking-wider pt-2 border-t border-[var(--border)] w-full mt-2.5 select-none">
+                              <span className="flex items-center gap-0.5 font-bold">
+                                {isCardExpanded ? "Collapse" : "Details"}
+                                <ChevronDown className={`w-3.5 h-3.5 transition-transform duration-300 ${isCardExpanded ? 'rotate-180' : ''}`} />
                               </span>
                             </div>
 
@@ -1698,107 +1684,114 @@ export function DiscoveryView({
 
           </div>
 
-          {/* EXCURSION GRID SUMMARY */}
-          <div className={`w-full rounded-xl p-5 text-left flex flex-col md:flex-row justify-between items-start md:items-center gap-4 shadow-2xl border ${c_cardBg}`}>
+          {/* GRID SUMMARY */}
+          <div className={`w-full rounded-xl p-5 text-left flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border ${c_cardBg}`}>
             <div className="space-y-1">
-              <span className="text-[8.5px] text-[#4f8cff] tracking-widest uppercase font-black block">HOW THIS WORKS</span>
-              <p className={`text-[10px] uppercase tracking-wide leading-relaxed font-sans font-medium ${isLight ? 'text-zinc-600' : 'text-zinc-400'}`}>
+              <span className="text-[8.5px] text-[#60A5FA] tracking-widest uppercase font-black block">How This Works</span>
+              <p className="text-[10px] tracking-wide leading-relaxed font-sans font-medium text-[var(--text-secondary)]">
                 We scan dealer positioning, expected moves, and option pricing across thousands of contracts in real time. Tap any contract above to see its price targets.
               </p>
             </div>
-            <div className={`flex gap-4 shrink-0 text-left border-t md:border-t-0 md:border-l pt-3 md:pt-0 md:pl-5 ${isLight ? 'border-black' : 'border-black/60'}`}>
+            <div className="flex gap-5 shrink-0 text-left border-t md:border-t-0 md:border-l pt-3 md:pt-0 md:pl-5 border-[var(--border)]">
               <div>
-                <span className="text-[7px] text-zinc-500 uppercase font-black tracking-widest block">BUY SIGNALS</span>
-                <span className={`text-sm font-black ${c_textWhite}`}>{(metricsOverview.totalCount > 0 ? (metricsOverview.enterCount / metricsOverview.totalCount) * 100 : 0).toFixed(1)}%</span>
+                <span className="text-[7.5px] text-[var(--text-tertiary)] uppercase font-black tracking-widest block">Buy Signals</span>
+                <span className={`text-sm font-black font-mono ${c_textWhite}`}>{(metricsOverview.totalCount > 0 ? (metricsOverview.enterCount / metricsOverview.totalCount) * 100 : 0).toFixed(1)}%</span>
               </div>
               <div>
-                <span className="text-[7px] text-zinc-500 uppercase font-black tracking-widest block">BIGGEST TRADES</span>
-                <span className="text-sm font-black text-[#4ADE80]">+{metricsOverview.extremeEV} Blocks</span>
+                <span className="text-[7.5px] text-[var(--text-tertiary)] uppercase font-black tracking-widest block">High Conviction</span>
+                <span className="text-sm font-black text-[#4ADE80] font-mono">{metricsOverview.extremeEV}</span>
               </div>
             </div>
           </div>
 
         </div>
 
-        {/* ==========================================
-            RIGHT COLUMN: INSTITUTIONAL FLOW FEED & WHALE COGNITION (4 COLS)
-            ========================================== */}
+        {/* RIGHT COLUMN: FLOW FEED & LARGEST TRADES (4 COLS) */}
         <div className="lg:col-span-4 flex flex-col gap-4 w-full">
-          
-          {/* A. WHALE DETECTION PANEL */}
-          <div className={`border rounded-xl p-4.5 text-left relative overflow-hidden shadow-2xl flex flex-col gap-3.5 ${c_cardBg}`}>
-            
-            <div className="absolute top-0 right-0 w-24 h-24 bg-rose-500/5 blur-2xl pointer-events-none" />
 
-            <div className={`flex items-center gap-2 border-b pb-2 ${isLight ? 'border-black' : 'border-black'}`}>
-              <Flame className="w-4 h-4 text-[#F87171] animate-pulse" />
+          {/* A. LARGEST TRADES (derived from live tape) */}
+          <div className={`border rounded-xl p-4.5 text-left flex flex-col gap-3.5 ${c_cardBg}`}>
+
+            <div className="flex items-center gap-2 border-b pb-2.5 border-[var(--border)]">
+              <Flame className="w-4 h-4 text-[#F87171]" />
               <h2 className={`text-[10.5px] font-black uppercase tracking-widest ${c_textWhite}`}>
-                BIGGEST TRADES (SMART MONEY)
+                Largest Trades
               </h2>
             </div>
 
             <div className="space-y-2.5">
-              
-              {/* Bullish position */}
-              <div className={`border p-2.5 rounded-lg flex justify-between items-center text-[10px] ${c_pillBg}`}>
-                <div className="space-y-0.5">
-                  <span className={`text-[7px] uppercase block font-black ${isLight ? 'text-zinc-500' : 'text-zinc-650'}`}>LARGEST BULLISH BLOCK</span>
-                  <span className="text-[#d4d4d8] font-bold block">SPX 7700C (Call)</span>
-                  <span className={`text-[8px] font-sans uppercase ${isLight ? 'text-zinc-600' : 'text-zinc-400'}`}>Premium: $14.2M Notional</span>
-                </div>
-                <div className="text-right space-y-0.5">
-                  <span className={`text-[7px] block uppercase font-bold ${isLight ? 'text-zinc-500' : 'text-zinc-650'}`}>DEALER IMPACT</span>
-                  <span className={`block font-black font-mono ${c_textWhite}`}>CRITICAL</span>
-                  <span className="text-[8.5px] px-1 py-0.2 bg-black/40 border border-black text-[#d4d4d8] rounded font-bold">HIGH DELTA</span>
-                </div>
+
+              {/* Largest bullish */}
+              <div className="border p-2.5 rounded-lg flex justify-between items-center text-[10px] bg-[var(--surface-2)] border-[var(--border)]">
+                {topFlows.bullish ? (
+                  <>
+                    <div className="space-y-0.5">
+                      <span className="text-[7.5px] uppercase block font-black text-[var(--text-tertiary)]">Largest Bullish</span>
+                      <span className="text-[#4ADE80] font-bold block">{topFlows.bullish.ticker} {topFlows.bullish.strike}{topFlows.bullish.type}</span>
+                      <span className="text-[8px] font-sans uppercase text-[var(--text-secondary)]">{topFlows.bullish.size}</span>
+                    </div>
+                    <div className="text-right space-y-0.5">
+                      <span className="text-[7.5px] block uppercase font-bold text-[var(--text-tertiary)]">Premium</span>
+                      <span className={`block font-black font-mono ${c_textWhite}`}>{topFlows.bullish.premium}</span>
+                    </div>
+                  </>
+                ) : (
+                  <span className="text-[9px] text-[var(--text-tertiary)] italic">Awaiting bullish flow…</span>
+                )}
               </div>
 
-              {/* Bearish Position */}
-              <div className={`border p-2.5 rounded-lg flex justify-between items-center text-[10px] ${c_pillBg}`}>
-                <div className="space-y-0.5">
-                  <span className={`text-[7px] uppercase block font-black ${isLight ? 'text-zinc-500' : 'text-zinc-650'}`}>LARGEST HEDGE PUT Sweep</span>
-                  <span className="text-[#F87171] font-bold block">SPX 7500P (Put)</span>
-                  <span className={`text-[8px] font-sans uppercase ${isLight ? 'text-zinc-600' : 'text-zinc-400'}`}>Premium: $22.4M Notional</span>
-                </div>
-                <div className="text-right space-y-0.5">
-                  <span className={`text-[7px] block uppercase font-bold ${isLight ? 'text-zinc-500' : 'text-zinc-650'}`}>DEALER IMPACT</span>
-                  <span className={`block font-black font-mono ${c_textWhite}`}>MODERATE</span>
-                  <span className="text-[8.5px] px-1 py-0.2 bg-rose-500/10 border border-rose-500/20 text-rose-455 rounded font-bold">WALL ANCHOR</span>
-                </div>
+              {/* Largest hedge / bearish */}
+              <div className="border p-2.5 rounded-lg flex justify-between items-center text-[10px] bg-[var(--surface-2)] border-[var(--border)]">
+                {topFlows.hedge ? (
+                  <>
+                    <div className="space-y-0.5">
+                      <span className="text-[7.5px] uppercase block font-black text-[var(--text-tertiary)]">Largest Hedge</span>
+                      <span className="text-[#F87171] font-bold block">{topFlows.hedge.ticker} {topFlows.hedge.strike}{topFlows.hedge.type}</span>
+                      <span className="text-[8px] font-sans uppercase text-[var(--text-secondary)]">{topFlows.hedge.size}</span>
+                    </div>
+                    <div className="text-right space-y-0.5">
+                      <span className="text-[7.5px] block uppercase font-bold text-[var(--text-tertiary)]">Premium</span>
+                      <span className={`block font-black font-mono ${c_textWhite}`}>{topFlows.hedge.premium}</span>
+                    </div>
+                  </>
+                ) : (
+                  <span className="text-[9px] text-[var(--text-tertiary)] italic">Awaiting hedge flow…</span>
+                )}
               </div>
 
-              {/* QQQ Outflow */}
-              <div className={`border p-2.5 rounded-lg flex justify-between items-center text-[10px] ${c_pillBg}`}>
-                <div className="space-y-0.5">
-                  <span className={`text-[7px] uppercase block font-black ${isLight ? 'text-zinc-500' : 'text-zinc-650'}`}>LARGEST SPECULATIVE BLOCKS</span>
-                  <span className="text-[#4f8cff] font-bold block">NDX 18500C (Call)</span>
-                  <span className={`text-[8px] font-sans uppercase ${isLight ? 'text-zinc-600' : 'text-zinc-400'}`}>Premium: $8.9M Notional</span>
-                </div>
-                <div className="text-right space-y-0.5">
-                  <span className={`text-[7px] block uppercase font-bold ${isLight ? 'text-zinc-500' : 'text-zinc-650'}`}>GEX BIAS</span>
-                  <span className={`block font-black font-mono ${c_textWhite}`}>SUPPRESSED</span>
-                  <span className="text-[8.5px] px-1 py-0.2 bg-[#4f8cff]/10 border border-[#4f8cff]/10 text-[#4f8cff] rounded font-bold">VOL SQUEEZE</span>
-                </div>
+              {/* Largest overall */}
+              <div className="border p-2.5 rounded-lg flex justify-between items-center text-[10px] bg-[var(--surface-2)] border-[var(--border)]">
+                {topFlows.largestOverall ? (
+                  <>
+                    <div className="space-y-0.5">
+                      <span className="text-[7.5px] uppercase block font-black text-[var(--text-tertiary)]">Largest Overall</span>
+                      <span className="text-[#60A5FA] font-bold block">{topFlows.largestOverall.ticker} {topFlows.largestOverall.strike}{topFlows.largestOverall.type}</span>
+                      <span className="text-[8px] font-sans uppercase text-[var(--text-secondary)]">{topFlows.largestOverall.side}</span>
+                    </div>
+                    <div className="text-right space-y-0.5">
+                      <span className="text-[7.5px] block uppercase font-bold text-[var(--text-tertiary)]">Premium</span>
+                      <span className={`block font-black font-mono ${c_textWhite}`}>{topFlows.largestOverall.premium}</span>
+                    </div>
+                  </>
+                ) : (
+                  <span className="text-[9px] text-[var(--text-tertiary)] italic">Awaiting flow…</span>
+                )}
               </div>
 
             </div>
 
           </div>
 
-          {/* B. INSTITUTIONAL FLOW FEED (REAL-TIME SCROLLING WORKSPACE) */}
-          <div className={`border rounded-xl p-4.5 text-left relative overflow-hidden shadow-2xl flex flex-col gap-3.5 ${c_cardBg}`}>
-            
-            <div className={`flex items-center justify-between border-b pb-2 ${isLight ? 'border-black' : 'border-black'}`}>
+          {/* B. LIVE FLOW FEED */}
+          <div className={`border rounded-xl p-4.5 text-left flex flex-col gap-3.5 ${c_cardBg}`}>
+
+            <div className="flex items-center justify-between border-b pb-2.5 border-[var(--border)]">
               <div className="flex items-center gap-2">
-                <div className="w-2.5 h-2.5 rounded-full bg-[#4f8cff] animate-ping absolute" />
-                <Database className="w-4 h-4 text-[#4f8cff] relative z-10" />
-                <h2 className={`text-[10.5px] font-black uppercase tracking-widest pl-1 ${c_textWhite}`}>
-                  LIVE OPTION FLOW SECURE TAPE
+                <Database className="w-4 h-4 text-[#60A5FA]" />
+                <h2 className={`text-[10.5px] font-black uppercase tracking-widest ${c_textWhite}`}>
+                  Live Option Flow
                 </h2>
               </div>
-              <span className="text-[7.5px] text-[#A1A1AA] uppercase tracking-widest font-black bg-[#4f8cff]/15 px-1.5 py-0.5 border border-[#4f8cff]/25 rounded">
-                SECURE STREAM
-              </span>
             </div>
 
             {/* Scrolling Tape Container */}
