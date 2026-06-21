@@ -5,7 +5,7 @@ import { InteractiveChart } from './InteractiveChart';
 import { StrikeGravityPanel } from './StrikeGravityPanel';
 import { TradePlanCard } from './TradePlanCard';
 import { ASSET_LIST } from '../data';
-import { Zap, Percent, HelpCircle, FileText, CheckCircle2, Bot, Search, Maximize2, Minimize2 } from 'lucide-react';
+import { Zap, FileText, CheckCircle2, Maximize2, Minimize2 } from 'lucide-react';
 import { DiscoveryView } from './DiscoveryView';
 import { SkyVisionV2Panel } from './SkyVisionV2Panel';
 
@@ -575,37 +575,6 @@ export function SkyVisionView() {
             ))}
           </div>
 
-          {/* STAGE 2.5: OPTION CHAIN ACTUAL GREEKS & INFO */}
-          <div 
-            className="w-full bg-black border border-black p-4 rounded-md text-left flex flex-col gap-3 relative overflow-hidden"
-          >
-            <div className="flex justify-between items-center border-b border-black/50 pb-2">
-              <span className="text-[10px] font-mono font-black uppercase tracking-[0.2em] text-zinc-500">Contract Greeks {'&'} Volume Info</span>
-            </div>
-            <div className="grid grid-cols-5 gap-2 text-[10px] font-mono">
-              <div>
-                <span className="block text-[8px] text-zinc-600 mb-0.5 tracking-widest">DELTA</span>
-                <span className={`font-bold ${selectedOptionType === 'C' ? 'text-[#4ADE80]' : 'text-[#F87171]'}`}>{selectedOptionType === 'C' ? '0.54' : '-0.46'}</span>
-              </div>
-              <div>
-                <span className="block text-[8px] text-zinc-600 mb-0.5 tracking-widest">GAMMA</span>
-                <span className="text-[#E5E5E5] font-bold">{selectedOptionType === 'C' ? '0.024' : '0.028'}</span>
-              </div>
-              <div>
-                <span className="block text-[8px] text-zinc-600 mb-0.5 tracking-widest">THETA</span>
-                <span className="text-amber-400 font-bold">{selectedOptionType === 'C' ? '-0.81' : '-0.68'}</span>
-              </div>
-              <div>
-                <span className="block text-[8px] text-zinc-600 mb-0.5 tracking-widest">VEGA</span>
-                <span className="text-[#E5E5E5] font-bold">{selectedOptionType === 'C' ? '0.14' : '0.18'}</span>
-              </div>
-              <div className="border-l border-black pl-3">
-                <span className="block text-[8px] text-zinc-600 mb-0.5 tracking-widest">VOLUME</span>
-                <span className="text-[#E5E5E5] font-bold">{selectedOptionType === 'C' ? '14,204' : '22,401'}</span>
-              </div>
-            </div>
-          </div>
-
           {/* STAGE 2.75: STRIKE GRAVITY MAP — dealer-pressure ranking & zones */}
           <StrikeGravityPanel />
 
@@ -646,49 +615,6 @@ export function SkyVisionView() {
               <CheckCircle2 className="w-3 h-3 text-[#4ADE80]" />
               <span>CHECKED ACROSS MULTIPLE TIMEFRAMES</span>
             </div>
-          </div>
-
-          {/* NEW LIVE ORDER BOOK FEED LOCATION */}
-          <div className="w-full bg-black border border-black p-4 rounded-2xl flex flex-col text-left mb-2">
-             <div className="border-b border-black pb-2 mb-3">
-                <span className="text-[10px] font-mono font-black uppercase tracking-[0.2em] text-zinc-500 flex items-center gap-2">
-                  <span className="w-1.5 h-1.5 bg-[#4f8cff] rounded-full animate-pulse"></span> Live Order Book Feed (Filtered: {selectedAsset.ticker} {activeStrike}{selectedOptionType})
-                </span>
-             </div>
-             <div className="flex flex-col gap-2 overflow-hidden text-[9.5px] font-mono">
-                
-                <div className={`flex flex-col gap-1.5 bg-black/80 p-2 rounded border border-black/60 transition-colors hover:border-${selectedOptionType === 'C' ? '[#4ADE80]' : 'rose-400'}/30`}>
-                  <div className="flex justify-between items-center">
-                    <span className={`${selectedOptionType === 'C' ? 'text-[#4ADE80]' : 'text-[#F87171]'} font-bold`}>+1.2M BLOCK {selectedOptionType === 'C' ? 'BUY' : 'SELL'}</span>
-                    <span className="text-[#E5E5E5] font-black">{selectedAsset.ticker} {activeStrike}{selectedOptionType}</span>
-                  </div>
-                  <span className="text-[8px] text-zinc-500 block">Dealer Desk • 2 Seconds Ago</span>
-                </div>
-
-                <div className={`flex flex-col gap-1.5 bg-black/80 p-2 rounded border border-black/60 transition-colors hover:border-${selectedOptionType === 'C' ? '[#4ADE80]' : 'rose-400'}/30`}>
-                  <div className="flex justify-between items-center">
-                    <span className={`${selectedOptionType === 'C' ? 'text-[#4ADE80]' : 'text-[#F87171]'} font-bold`}>+840K BLOCK {selectedOptionType === 'C' ? 'BUY' : 'SELL'}</span>
-                    <span className="text-[#E5E5E5] font-black">{selectedAsset.ticker} {activeStrike}{selectedOptionType}</span>
-                  </div>
-                  <span className="text-[8px] text-zinc-500 block">VWAP Buy • 12 Seconds Ago</span>
-                </div>
-
-                <div className={`flex flex-col gap-1.5 bg-black/80 p-2 rounded border border-black/60 transition-colors hover:border-${selectedOptionType === 'C' ? 'rose-400' : 'zinc-300'}/30`}>
-                  <div className="flex justify-between items-center">
-                    <span className={`${selectedOptionType === 'C' ? 'text-[#F87171]' : 'text-[#4ADE80]'} font-bold`}>-400K REJECT</span>
-                    <span className="text-[#E5E5E5] font-black">{selectedAsset.ticker} {activeStrike}{selectedOptionType}</span>
-                  </div>
-                  <span className="text-[8px] text-zinc-500 block">Dealer Fade • 45 Seconds Ago</span>
-                </div>
-
-                <div className={`flex flex-col gap-1.5 bg-black/80 p-2 rounded border border-black/60 transition-colors hover:border-${selectedOptionType === 'C' ? '[#4ADE80]' : 'rose-400'}/30`}>
-                  <div className="flex justify-between items-center">
-                    <span className={`${selectedOptionType === 'C' ? 'text-[#4ADE80]' : 'text-[#F87171]'} font-bold`}>+3.5M SWEEP</span>
-                    <span className="text-[#E5E5E5] font-black">{selectedAsset.ticker} {activeStrike}{selectedOptionType}</span>
-                  </div>
-                  <span className="text-[8px] text-zinc-500 block">Large Sweep • 1 Min Ago</span>
-                </div>
-             </div>
           </div>
 
         </div>
@@ -1043,29 +969,13 @@ export function SkyVisionView() {
 
       </div>
 
-      {/* FOOTER: TRADINGVIEW WEBHOOK STATUS */}
-      <div className="w-full mt-4 bg-black border border-black p-3 rounded-sm flex items-center justify-between text-[9px] font-mono select-none">
-        <div className="flex items-center gap-3">
-          <div className="flex items-center gap-1.5 px-2 py-1 bg-black/40 border border-black rounded text-[#4ADE80] font-bold uppercase">
-            <span className="w-1.5 h-1.5 rounded-full bg-black/40 animate-pulse"></span>
-            Chart Feed Active
-          </div>
-          <span className="text-zinc-500 uppercase tracking-widest hidden md:inline-block">Connected • Live data</span>
+      {/* FOOTER: FEED STATUS */}
+      <div className="w-full mt-4 bg-black border border-black p-3 rounded-sm flex items-center gap-3 text-[9px] font-mono select-none">
+        <div className="flex items-center gap-1.5 px-2 py-1 bg-black/40 border border-black rounded text-[#4ADE80] font-bold uppercase">
+          <span className="w-1.5 h-1.5 rounded-full bg-[#4ADE80]"></span>
+          Chart Feed Active
         </div>
-        <div className="flex items-center gap-4 text-zinc-400">
-          <div className="flex items-center gap-1">
-            <span className="text-zinc-600">IN/SEC:</span>
-            <span className="font-bold text-[#E5E5E5]">12.4 MB/s</span>
-          </div>
-          <div className="flex items-center gap-1">
-            <span className="text-zinc-600">LATENCY:</span>
-            <span className="font-bold text-[#d4d4d8]">14ms</span>
-          </div>
-          <div className="flex items-center gap-1">
-            <span className="text-zinc-600">DEALER FLOW:</span>
-            <span className="font-bold text-[#E5E5E5]">SYNCED</span>
-          </div>
-        </div>
+        <span className="text-zinc-500 uppercase tracking-widest hidden md:inline-block">Connected • Live data</span>
       </div>
 
     </div>

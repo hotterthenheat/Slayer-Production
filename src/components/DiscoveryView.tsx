@@ -1,27 +1,16 @@
 import React, { useMemo, useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { 
-  ArrowRight, 
-  Award, 
-  AlertTriangle, 
-  Percent, 
-  Activity, 
-  Zap, 
-  Search, 
-  ShieldAlert, 
-  Flame, 
+import {
+  ArrowRight,
+  Search,
+  ShieldAlert,
+  Flame,
   Database,
   RefreshCw,
-  Sliders,
-  DollarSign,
-  Volume2,
   ChevronDown,
   ChevronUp,
-  Clock,
   Target,
-  Info,
-  Sparkles,
-  Layers
+  Info
 } from 'lucide-react';
 import { AssetInfo } from '../types';
 import { ASSET_LIST } from '../data';
@@ -1107,10 +1096,6 @@ export function DiscoveryView({
             <span className={`text-[#4f8cff] font-bold block transition-all duration-300 ${isMockScanning || metricsPulse ? 'animate-bounce text-[#4ADE80]' : ''}`}>
               {scanRate.toFixed(1)}/s
             </span>
-          </div>
-          <div className="space-y-0.5">
-            <span className="text-[7.5px] text-zinc-500 uppercase block tracking-wider font-extrabold">LATENCY</span>
-            <span className="text-[#4ADE80] font-bold block">12ms (STREAM ON)</span>
           </div>
         </div>
 

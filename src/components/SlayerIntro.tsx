@@ -3,36 +3,13 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState, useEffect, useRef } from 'react';
-import { motion, AnimatePresence } from 'motion/react';
+import React, { useState, useEffect } from 'react';
+import { motion } from 'motion/react';
 import { BrandHeader } from './BrandLogo';
 import { useContractStore } from '../lib/store';
 import { FeatureMatrix } from './FeatureMatrix';
 import { SubscriptionPricing } from './SubscriptionPricing';
-import { 
-  ArrowRight, 
-  Check, 
-  Sparkles, 
-  Compass, 
-  Dna, 
-  Database,
-  Layers,
-  MessageSquare,
-  Sliders,
-  CheckCircle2,
-  ShieldCheck,
-  Eye,
-  Activity,
-  Bot,
-  ExternalLink,
-  Lock,
-  Search,
-  Bell,
-  CreditCard,
-  X,
-  Mail,
-  User
-} from 'lucide-react';
+import { ArrowRight, Eye, Search } from 'lucide-react';
 import { AssetInfo, TimeframeVal, SystemScore, V8TradeRecord } from '../types';
 import { ASSET_LIST } from '../data';
 
@@ -98,62 +75,6 @@ export default function SlayerIntro({
     }
   }, [selectedAsset]);
   
-  // Animation state matching direct timestamps:
-  // 0.00s: Homepage is visible and interactive.
-  // 0.05s: Ripple.
-  // 0.15s: Words appear.
-  // 0.15s - 0.60s: Interactive Mouse Move bend/distortion.
-  // 0.70s: Ghost words dissolve.
-  // 0.80s: Animation overlay gone.
-  const [animStage, setAnimStage] = useState<'visible' | 'ripple' | 'words' | 'dissolving' | 'completed'>('visible');
-  const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
-  const containerRef = useRef<HTMLDivElement>(null);
-
-
-  // Distortive word array
-  const introWords = ['Momentum', 'Liquidity', 'Positioning', 'Conviction', 'Strength', 'Support', 'Resistance'];
-
-  useEffect(() => {
-    // 0.05s Ripple trigger
-    const rippleTimer = setTimeout(() => {
-      setAnimStage('ripple');
-    }, 50);
-
-    // 0.15s Words appear
-    const wordsTimer = setTimeout(() => {
-      setAnimStage('words');
-    }, 150);
-
-    // 0.70s Words dissolve
-    const dissolveTimer = setTimeout(() => {
-      setAnimStage('dissolving');
-    }, 700);
-
-    // 0.80s Gone
-    const completeTimer = setTimeout(() => {
-      setAnimStage('completed');
-    }, 800);
-
-    return () => {
-      clearTimeout(rippleTimer);
-      clearTimeout(wordsTimer);
-      clearTimeout(dissolveTimer);
-      clearTimeout(completeTimer);
-    };
-  }, []);
-
-  // Soft track mouse position for 2-4px non-heavy organic bending/distortion
-  const handleMouseMove = (e: React.MouseEvent) => {
-    if (animStage === 'completed') return;
-    if (containerRef.current) {
-      const rect = containerRef.current.getBoundingClientRect();
-      setMousePos({
-        x: e.clientX - rect.left,
-        y: e.clientY - rect.top,
-      });
-    }
-  };
-
   // Pricing membership structures
   const pricingTab = 'PROFESSIONAL';
 
@@ -175,93 +96,13 @@ export default function SlayerIntro({
   };
 
   return (
-    <div 
-      ref={containerRef}
-      onMouseMove={handleMouseMove}
-      id="slayer-ecosystem-landing" 
+    <div
+      id="slayer-ecosystem-landing"
       className="w-full bg-transparent text-[#D4D4D8] flex flex-col font-sans selection:bg-white selection:text-black relative pb-0 antialiased scroll-smooth"
     >
       <div className="fixed inset-0 z-0 pointer-events-none" style={{ background: 'radial-gradient(ellipse 72% 62% at 50% 44%, rgba(8,9,10,.9) 0%, rgba(8,9,10,.55) 44%, transparent 78%)' }}></div>
       <div className="fixed inset-0 z-0 pointer-events-none" style={{ boxShadow: 'inset 0 0 260px 70px rgba(0,0,0,.92)', background: 'radial-gradient(ellipse at center, transparent 52%, rgba(0,0,0,.62) 100%)' }}></div>
       
-      {/* ==================================================
-          GPU-ACCELERATED RIPPLE & DISTORTION INTRO LAYER (GONE BY 0.8s)
-          ================================================== */}
-      {animStage !== 'completed' && (
-        <div className="absolute inset-0 z-50 pointer-events-none overflow-hidden h-full w-full">
-          {/* 0.05s SINGLE RIPPLE RING */}
-          {(animStage === 'ripple' || animStage === 'words' || animStage === 'dissolving') && (
-            <motion.div
-              initial={{ scale: 0.1, opacity: 0.8 }}
-              animate={{ scale: 4.5, opacity: 0 }}
-              transition={{ duration: 0.74, ease: 'easeOut' }}
-              className="absolute w-[300px] h-[300px] max-w-full max-h-full rounded-full border border-black -translate-x-1/2 -translate-y-1/2 hidden sm:block"
-              style={{
-                left: mousePos.x || '50%',
-                top: mousePos.y || '40%',
-              }}
-            />
-          )}
-
-          {/* 0.15s GHOST WORDS BENDING COARDS */}
-          {(animStage === 'words' || animStage === 'dissolving') && (
-            <div className="absolute inset-0 flex flex-wrap items-center justify-center gap-12 px-10 pointer-events-none max-w-4xl mx-auto top-1/4">
-              <AnimatePresence>
-                {animStage !== 'dissolving' && (
-                  introWords.map((word, index) => {
-                    // Custom coordinate-based displacement calculations creating elegant 2-4px organic bend
-                    // words behave slightly magnetically to track pointer
-                    const elementId = `intro-word-${index}`;
-                    const element = document.getElementById(elementId);
-                    let dx = 0;
-                    let dy = 0;
-                    
-                    if (element && mousePos.x && mousePos.y) {
-                      const rect = element.getBoundingClientRect();
-                      const wordCenterX = rect.left + rect.width / 2;
-                      const wordCenterY = rect.top + rect.height / 2;
-                      const distX = mousePos.x - wordCenterX;
-                      const distY = mousePos.y - wordCenterY;
-                      const centerDist = Math.sqrt(distX * distX + distY * distY);
-                      
-                      if (centerDist < 300) {
-                        const pullFactor = (1 - centerDist / 300) * 4.5; // caps at 4.5px displacement
-                        dx = (distX / centerDist) * pullFactor;
-                        dy = (distY / centerDist) * pullFactor;
-                      }
-                    }
-
-                    return (
-                      <motion.span
-                        key={word}
-                        id={elementId}
-                        initial={{ opacity: 0, scale: 0.95 }}
-                        animate={{ 
-                          opacity: 0.35, 
-                          scale: 1,
-                          x: dx,
-                          y: dy,
-                        }}
-                        exit={{ opacity: 0, scale: 0.9, filter: 'blur(3px)' }}
-                        transition={{ 
-                          type: 'spring', 
-                          stiffness: 90, 
-                          damping: 10,
-                          opacity: { duration: 0.2 } 
-                        }}
-                        className="text-[#E5E5E5] text-xs font-mono font-black uppercase tracking-widest pointer-events-none block whitespace-nowrap select-none"
-                      >
-                        {word}
-                      </motion.span>
-                    );
-                  })
-                )}
-              </AnimatePresence>
-            </div>
-          )}
-        </div>
-      )}
-
       {/* ==================================================
           MAIN HERO (LEVEL 2 & LEVEL 3 INTELS - ABSOLUTE FOCUS)
           ================================================= */}
