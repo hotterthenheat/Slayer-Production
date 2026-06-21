@@ -1108,10 +1108,6 @@ export function DiscoveryView({
               {scanRate.toFixed(1)}/s
             </span>
           </div>
-          <div className="space-y-0.5">
-            <span className="text-[7.5px] text-zinc-500 uppercase block tracking-wider font-extrabold">LATENCY</span>
-            <span className="text-[#4ADE80] font-bold block">12ms (STREAM ON)</span>
-          </div>
         </div>
 
       </div>
