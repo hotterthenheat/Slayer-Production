@@ -690,6 +690,9 @@ app.post('/api/auth/verify-password', express.json(), async (req, res) => {
   }
 
   const { password } = req.body;
+  if (!password || typeof password !== 'string') {
+    return res.status(400).json({ error: 'Password is required.' });
+  }
   const verifyEmail = session.email.toLowerCase().trim();
   const user = await dbGetUser(verifyEmail);
   if (!user) {
@@ -730,6 +733,9 @@ app.post('/api/auth/change-password', express.json(), async (req, res) => {
   }
 
   if (user.passwordHash) {
+    if (!currentPassword || typeof currentPassword !== 'string') {
+      return res.status(400).json({ error: 'Current password is required.' });
+    }
     const match = bcrypt.compareSync(currentPassword, user.passwordHash);
     if (!match) {
       return res.status(400).json({ error: 'Current password provided is incorrect.' });

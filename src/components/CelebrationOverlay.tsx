@@ -221,8 +221,8 @@ export function CelebrationOverlay({ purchasedTier, isOpen, onComplete }: Celebr
             ctx.closePath();
             ctx.fill();
           } else {
-            // Rectangular or circular confetti
-            if (p.size % 2 === 0) {
+            // Rectangular or circular confetti (size is a float, so key off its integer part)
+            if (Math.floor(p.size) % 2 === 0) {
               ctx.fillRect(-p.size, -p.size / 2, p.size * 2, p.size);
             } else {
               ctx.beginPath();

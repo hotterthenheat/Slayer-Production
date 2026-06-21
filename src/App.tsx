@@ -513,6 +513,7 @@ export default function App() {
   }, []);
 
   const handleGlobalSearchKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (filterTickersList.length === 0) return; // nothing to navigate; avoids % 0 → NaN index
     if (e.key === 'ArrowDown') {
       e.preventDefault();
       setGlobalSearchIndex(prev => (prev + 1) % filterTickersList.length);
