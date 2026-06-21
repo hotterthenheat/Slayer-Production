@@ -1294,7 +1294,7 @@ export function DiscoveryView({
         <div className="flex justify-between items-center cursor-pointer select-none pb-2.5 border-b border-[var(--border)]" onClick={() => setIsStrategyExpanded(!isStrategyExpanded)}>
           <div className="flex items-center gap-2">
             <Info className="w-4 h-4 text-[#60A5FA]" />
-            <span className="text-[10px] font-extrabold uppercase tracking-widest text-[var(--text-secondary)]">
+            <span className="text-[11px] font-extrabold uppercase tracking-widest text-[var(--text-primary)]">
               How This Category Works
             </span>
           </div>
@@ -1320,10 +1320,10 @@ export function DiscoveryView({
                 {/* Justification Column */}
                 <div className="md:col-span-8 space-y-2.5">
                   <div className="p-3 rounded-xl border bg-[var(--surface-2)] border-[var(--border)]">
-                    <span className={`font-extrabold text-xs block mb-1 uppercase tracking-tight ${c_textWhite}`}>
+                    <span className={`font-extrabold text-sm block mb-1.5 uppercase tracking-tight ${c_textWhite}`}>
                       {currentManualText.title}
                     </span>
-                    <p className="leading-relaxed font-sans text-[10px]/[15px] text-[var(--text-secondary)]">
+                    <p className="leading-relaxed font-sans text-[13px] text-[var(--text-primary)] font-medium">
                       {currentManualText.whyItsBest}
                     </p>
                   </div>
