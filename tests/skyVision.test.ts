@@ -154,6 +154,8 @@ console.log('Testing Layer 3 — target stack (calls)...');
   assert.ok(proj.every((p) => p.projectedPremium > 0), 'projected premiums positive');
   assert.ok(proj[0].projectedPremium < proj[2].projectedPremium, 'T1 premium < T3 premium for a call');
   assert.ok(proj[0].projectedGainPct > 0, 'nearest favorable target shows a gain');
+  assert.ok(proj.every((p) => p.touchProb >= 0 && p.touchProb <= 1), 'P(hit) in [0,1]');
+  assert.ok(proj[0].touchProb >= proj[proj.length - 1].touchProb, 'nearer target is at least as likely as the farthest');
   assert.deepStrictEqual(proj.map((p) => p.rank), proj.map((_, i) => i + 1), 'ranks sequential');
   console.log(`✔ projections: ${proj.slice(0, 4).map((p) => `T${p.rank} ${p.label}=${p.underlying}→$${p.projectedPremium} (${p.projectedGainPct > 0 ? '+' : ''}${p.projectedGainPct}%)`).join('  ')}`);
 }
