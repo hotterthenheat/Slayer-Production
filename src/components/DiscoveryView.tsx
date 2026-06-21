@@ -1050,24 +1050,6 @@ export function DiscoveryView({
     }
   };
 
-  // Add a setup's contract to the per-user Trade History (server computes the exit plan
-  // and tracks it). Category maps the shelf to the tracked-trade category.
-  const addToTrackedHistory = async (c: any) => {
-    const category = c.shelf === 'mispriced' ? 'discounted' : c.shelf === 'improved' ? 'quickscalp' : 'top_opportunity';
-    try {
-      const res = await fetch('/api/tracked/add', {
-        method: 'POST',
-        credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ underlying: c.ticker, strike: c.strike, isCall: c.isCall, dteDays: 1, category, entryPrice: c.price }),
-      });
-      const data = await res.json().catch(() => ({}));
-      setLastScanMessage(res.ok ? `Added ${c.ticker} ${c.strike}${c.isCall ? 'C' : 'P'} to Trade History.` : (data.error || 'Could not add to Trade History.'));
-    } catch {
-      setLastScanMessage('Network error adding to Trade History.');
-    }
-  };
-
   const currentManualText = SHELF_EXPLANATIONS[activeShelf];
 
   // Dynamic light mode theme classes mapping
@@ -1675,14 +1657,6 @@ export function DiscoveryView({
                                 >
                                   <span>LAUNCH DEEP SKYEYES ASSESSMENT</span>
                                   <ArrowRight className="w-2.5 h-2.5" />
-                                </button>
-                                <button
-                                  type="button"
-                                  onClick={(e) => { e.stopPropagation(); addToTrackedHistory(c); }}
-                                  className="w-full py-2 mt-1.5 rounded-md text-[9px] font-black uppercase tracking-wider flex items-center justify-center gap-1 transition-colors cursor-pointer hover:brightness-125"
-                                  style={{ background: 'rgba(74,222,128,0.12)', color: '#4ADE80', border: '1px solid rgba(74,222,128,0.4)' }}
-                                >
-                                  + Add to Trade History
                                 </button>
                               </div>
                             )}

@@ -1,5 +1,4 @@
 import React, { useState, useMemo } from 'react';
-import { MyTrackedContracts } from './MyTrackedContracts';
 import { 
   TrendingUp, 
   TrendingDown, 
@@ -855,9 +854,6 @@ export function QuantAuditView({
           </div>
         </div>
       </div>
-
-      {/* MY TRACKED CONTRACTS — the user's live positions (auto-exit engine) */}
-      <MyTrackedContracts />
 
       {/* 2. PERFORMANCE SUMMARY (5 CARDS GRID) */}
       <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
