@@ -46,7 +46,8 @@ export function AnalyticsSection({
   const prevCandle = candles[candles.length - 2] || currentCandle;
 
   // 1. CALCULATE CORES ON DISPLACEMENT
-  const bodyMultiple = Number((Math.abs(currentCandle.close - currentCandle.open) / (prevCandle.close * selectedAsset.volatility * 0.001) || 1.1).toFixed(2));
+  const bodyDenom = prevCandle.close * selectedAsset.volatility * 0.001;
+  const bodyMultiple = Number(((bodyDenom > 0 ? Math.abs(currentCandle.close - currentCandle.open) / bodyDenom : 0) || 1.1).toFixed(2));
   const rangeMultiple = Number(((currentCandle.high - currentCandle.low) / (prevCandle.high - prevCandle.low || 1)).toFixed(2));
   const ATRRatio = Number((rangeMultiple * 0.85).toFixed(2));
   const displacementVelocity = Number((bodyMultiple * 1.4).toFixed(1));
@@ -56,9 +57,9 @@ export function AnalyticsSection({
   const priceVelocity = (currentCandle.close > currentCandle.open) ? 'Positive Accelerating' : 'Negative Accelerating';
   
   // Decide Classification
-  let displacementClass: 'Weak' | 'Moderate' | 'Strong' | 'Aggressive' | 'Institutional' = 'Weak';
-  if (score.total >= 90) displacementClass = 'Institutional';
-  else if (score.total >= 80) displacementClass = 'Aggressive';
+  let displacementClass: 'Weak' | 'Moderate' | 'Strong' | 'Very Strong' | 'Extreme' = 'Weak';
+  if (score.total >= 90) displacementClass = 'Extreme';
+  else if (score.total >= 80) displacementClass = 'Very Strong';
   else if (score.total >= 70) displacementClass = 'Strong';
   else if (score.total >= 60) displacementClass = 'Moderate';
 
@@ -135,18 +136,18 @@ export function AnalyticsSection({
   const dealingRangeDiff = Math.max(highRangePrice - lowRangePrice, 1e-9);
   const pricePositionPct = Math.round(((currentCandle.close - lowRangePrice) / dealingRangeDiff) * 100);
 
-  let optimumTradingZone = 'Neutral Zone';
-  if (pricePositionPct < 30) optimumTradingZone = 'Optimal Long Zone';
-  else if (pricePositionPct > 70) optimumTradingZone = 'Optimal Short Zone';
+  let optimumTradingZone = 'Neutral';
+  if (pricePositionPct < 30) optimumTradingZone = 'Good Long Zone';
+  else if (pricePositionPct > 70) optimumTradingZone = 'Good Short Zone';
 
   // EMA Targets
   const baseClose = currentCandle.close;
   const targetsProjection = [
-    { name: 'EMA 5 Fast Slope', price: baseClose * (currentCandle.close > currentCandle.open ? 1.0025 : 0.9975), type: 'High Probability' },
-    { name: 'EMA 9 Trend Line', price: baseClose * (currentCandle.close > currentCandle.open ? 1.0045 : 0.9955), type: 'High Probability' },
-    { name: 'EMA 20 Pivot', price: baseClose * (currentCandle.close > currentCandle.open ? 1.008 : 0.992), type: 'Moderate Probability' },
-    { name: 'EMA 50 Institutional', price: baseClose * (currentCandle.close > currentCandle.open ? 1.015 : 0.985), type: 'Moderate Probability' },
-    { name: 'EMA 200 Anchor Support', price: baseClose * (currentCandle.close > currentCandle.open ? 1.025 : 0.975), type: 'Stretch Target' }
+    { name: 'EMA 5', price: baseClose * (currentCandle.close > currentCandle.open ? 1.0025 : 0.9975), type: 'High Probability' },
+    { name: 'EMA 9', price: baseClose * (currentCandle.close > currentCandle.open ? 1.0045 : 0.9955), type: 'High Probability' },
+    { name: 'EMA 20', price: baseClose * (currentCandle.close > currentCandle.open ? 1.008 : 0.992), type: 'Moderate Probability' },
+    { name: 'EMA 50', price: baseClose * (currentCandle.close > currentCandle.open ? 1.015 : 0.985), type: 'Moderate Probability' },
+    { name: 'EMA 200', price: baseClose * (currentCandle.close > currentCandle.open ? 1.025 : 0.975), type: 'Stretch Target' }
   ];
 
   return (
@@ -182,20 +183,20 @@ export function AnalyticsSection({
             </div>
             <div className="flex justify-between">
               <span>Displacement Velocity:</span>
-              <span className="text-zinc-200">{displacementVelocity} m/s</span>
+              <span className="text-zinc-200">{displacementVelocity}x</span>
             </div>
             <div className="flex justify-between">
-              <span>Efficiency Index Ratio:</span>
+              <span>Body/Range Efficiency:</span>
               <span className="text-zinc-200">{efficiencyRatio}%</span>
             </div>
             <div className="flex justify-between">
-              <span>Price Velocity Bias:</span>
+              <span>Price Direction:</span>
               <span className="text-zinc-200">{priceVelocity}</span>
             </div>
           </div>
         </div>
         <div className="mt-3.5 bg-black/40 p-2 rounded border border-black text-[10px] font-mono text-zinc-500 leading-normal">
-          Calculates full candle body mass relative to absolute price variance to identify authentic orders.
+          Measures candle body size vs. range to spot strong, directional price moves.
         </div>
       </div>
 
@@ -206,7 +207,7 @@ export function AnalyticsSection({
             <div className="flex items-center gap-2">
               <Zap className="w-4 text-amber-500 animate-pulse" />
               <h4 className="font-display font-semibold text-xs tracking-wide text-zinc-100 uppercase">
-                RSI Cascade Engine
+                RSI Multi-Timeframe
               </h4>
             </div>
             <span className="text-[10px] font-mono font-bold uppercase text-amber-400 bg-amber-950/30 px-1.5 py-0.5 rounded">
@@ -217,7 +218,7 @@ export function AnalyticsSection({
           <div className="space-y-2 mt-1">
             <div className="space-y-1">
               <div className="flex justify-between text-[10px] font-mono text-zinc-500">
-                <span>1M Short Horizon RSI:</span>
+                <span>1-min RSI:</span>
                 <span className="text-[#4ADE80]">{rsi1m}</span>
               </div>
               <div className="w-full bg-black h-1 rounded-full overflow-hidden">
@@ -227,7 +228,7 @@ export function AnalyticsSection({
 
             <div className="space-y-1">
               <div className="flex justify-between text-[10px] font-mono text-zinc-500">
-                <span>5M Core Trigger RSI:</span>
+                <span>5-min RSI:</span>
                 <span className="text-[#4ADE80]">{rsi5m}</span>
               </div>
               <div className="w-full bg-black h-1 rounded-full overflow-hidden">
@@ -237,7 +238,7 @@ export function AnalyticsSection({
 
             <div className="space-y-1">
               <div className="flex justify-between text-[10px] font-mono text-zinc-500">
-                <span>15M Macro Check RSI:</span>
+                <span>15-min RSI:</span>
                 <span className="text-[#4ADE80]">{rsi15m}</span>
               </div>
               <div className="w-full bg-black h-1 rounded-full overflow-hidden">
@@ -247,7 +248,7 @@ export function AnalyticsSection({
 
             <div className="space-y-1">
               <div className="flex justify-between text-[10px] font-mono text-zinc-500">
-                <span>1H Anchor Horizon RSI:</span>
+                <span>1-hour RSI:</span>
                 <span className="text-[#4ADE80]">{rsi1h}</span>
               </div>
               <div className="w-full bg-black h-1 rounded-full overflow-hidden">
@@ -257,7 +258,7 @@ export function AnalyticsSection({
           </div>
         </div>
         <div className="bg-black/40 p-2 rounded border border-black text-[10px] font-mono text-zinc-500 leading-normal mt-3">
-          Synthesizes short and long lookback momentum zones to emit early warnings before structural break.
+          RSI across four timeframes — alignment across all four is a stronger signal.
         </div>
       </div>
 
@@ -268,7 +269,7 @@ export function AnalyticsSection({
             <div className="flex items-center gap-2">
               <BarChart4 className="w-4 text-[#4ADE80]" />
               <h4 className="font-display font-semibold text-xs tracking-wide text-zinc-100 uppercase">
-                VWAP & Volume Intelligence
+                VWAP & Volume
               </h4>
             </div>
             <span className="text-[10px] font-mono font-bold uppercase text-zinc-400 bg-black px-1.5 py-0.5 rounded">
@@ -278,11 +279,11 @@ export function AnalyticsSection({
 
           <div className="space-y-2 font-mono text-[11px] text-zinc-400">
             <div className="flex justify-between">
-              <span>Slope Vector:</span>
+              <span>VWAP Slope:</span>
               <span className="text-zinc-200">{vwapSlope}</span>
             </div>
             <div className="flex justify-between">
-              <span>Distance to average:</span>
+              <span>Distance to VWAP:</span>
               <span className="text-zinc-200">{distancePct}%</span>
             </div>
             <div className="flex justify-between">
@@ -290,7 +291,7 @@ export function AnalyticsSection({
               <span className="text-zinc-200">{vwapRejection}</span>
             </div>
             <div className="flex justify-between">
-              <span>Institutional Bias:</span>
+              <span>VWAP Bias:</span>
               <span className="text-zinc-200 font-bold">{vwapBias}</span>
             </div>
             <div className="flex justify-between border-t border-black/60 pt-2 mt-1">
@@ -298,13 +299,13 @@ export function AnalyticsSection({
               <span className="text-zinc-200">{relativeVolume}x</span>
             </div>
             <div className="flex justify-between">
-              <span>Estimated Share Pool:</span>
-              <span className="text-zinc-200">{volConfidence} Trust</span>
+              <span>Volume Confidence:</span>
+              <span className="text-zinc-200">{volConfidence}</span>
             </div>
           </div>
         </div>
         <div className="mt-3.5 bg-black/40 p-2 rounded border border-black text-[10px] font-mono text-zinc-500 leading-normal">
-          Locks volume weights on real-time transaction points instead of raw ticks to identify smart money.
+          Compares price to the volume-weighted average and shows whether buying or selling pressure dominates.
         </div>
       </div>
 
@@ -315,7 +316,7 @@ export function AnalyticsSection({
             <div className="flex items-center gap-2">
               <Layers className="w-4 text-zinc-400" />
               <h4 className="font-display font-semibold text-xs tracking-wide text-zinc-100 uppercase">
-                Market Structure Matrix
+                Market Structure
               </h4>
             </div>
             <span className="text-[10px] font-mono font-bold uppercase text-zinc-3 py-0.5 px-1.5 bg-black rounded">
@@ -326,24 +327,24 @@ export function AnalyticsSection({
           <div className="space-y-2 font-mono text-[11px] text-zinc-405">
             <div className="flex justify-between">
               <span>Structure Velocity:</span>
-              <span className="text-zinc-250">{(score.structureQuality * 1.3).toFixed(1)}x / s</span>
+              <span className="text-zinc-250">{(score.structureQuality * 1.3).toFixed(1)}x</span>
             </div>
             <div className="flex justify-between">
-              <span>Sequence Position:</span>
-              <span className="text-zinc-250">Higher Highs / Lows verified</span>
+              <span>Swing Pattern:</span>
+              <span className="text-zinc-250">Higher highs and lows confirmed</span>
             </div>
             <div className="flex justify-between">
               <span>Breakout Strength:</span>
               <span className="text-[#4ADE80] font-bold">{score.structureQuality >= 6 ? 'Sustained Expansion' : 'Absorbed'}</span>
             </div>
             <div className="flex justify-between">
-              <span>Trend Persistence Index:</span>
+              <span>Trend Persistence:</span>
               <span className="text-zinc-250 font-mono">{(score.structureQuality * 10).toFixed(0)}%</span>
             </div>
           </div>
         </div>
         <div className="bg-black/40 p-2 rounded border border-black text-[10px] font-mono text-zinc-500 leading-normal mt-3">
-          Verifies higher/lower peaks automatically bypassing retail trendline draw limits.
+          Tracks swing highs and lows to confirm the current trend direction.
         </div>
       </div>
 
@@ -354,7 +355,7 @@ export function AnalyticsSection({
             <div className="flex items-center gap-2">
               <Clock className="w-4 text-blue-450" />
               <h4 className="font-display font-semibold text-xs tracking-wide text-zinc-100 uppercase">
-                Aggregate Alignments
+                Timeframe Alignment
               </h4>
             </div>
             <span className="text-[10px] font-mono font-bold uppercase text-blue-450 bg-blue-950/30 px-1.5 py-0.5 rounded">
@@ -368,21 +369,21 @@ export function AnalyticsSection({
               <span className="text-[#3b82f6] font-bold">{htfRating}</span>
             </div>
             <div className="flex justify-between">
-              <span>Volatility Regime index:</span>
+              <span>Volatility State:</span>
               <span className="text-zinc-200">{volRegime}</span>
             </div>
             <div className="flex justify-between">
-              <span>Dealing Range Position %:</span>
-              <span className="text-zinc-200">{pricePositionPct}% Position</span>
+              <span>Range Position:</span>
+              <span className="text-zinc-200">{pricePositionPct}%</span>
             </div>
             <div className="flex justify-between">
-              <span>Optimum Trading Zone:</span>
+              <span>Best Entry Zone:</span>
               <span className="text-zinc-200 font-semibold">{optimumTradingZone}</span>
             </div>
           </div>
         </div>
         <div className="mt-3.5 bg-black/40 p-2 rounded border border-black text-[10px] font-mono text-zinc-500 leading-normal">
-          Tracks alignment across 1m, 5m, 15m, 1h, 4h, and Daily to isolate multi-scale correlation layers.
+          Checks trend direction across 1m, 5m, 15m, 1h, 4h, and daily. More agreement means a stronger signal.
         </div>
       </div>
 
@@ -418,9 +419,9 @@ export function AnalyticsSection({
         </div>
         <div className="bg-rose-950/20 p-2 rounded border border-[#F87171]/30 text-[9.5px] font-mono text-zinc-500 leading-snug">
           {invalidationTriggered ? (
-            <span className="text-[#F87171]">🚨 Invalidation triggered due to price closing beyond structural invalidation levels. Avoid entry!</span>
+            <span className="text-[#F87171]">STOP: Price closed beyond the invalidation level. Skip this setup.</span>
           ) : (
-            <span>Auto-monitors FVG closures, volume collapse, and VWAP breaks to cancel trade setup dynamically.</span>
+            <span>Watches for FVG fills, volume drop-off, and VWAP breaks that would cancel the setup.</span>
           )}
         </div>
       </div>

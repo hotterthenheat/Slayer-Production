@@ -1,6 +1,7 @@
 import React, { useMemo } from 'react';
 import { useContractStore } from '../lib/store';
 import { Activity, Gauge, Sigma, Layers, Target, Clock } from 'lucide-react';
+import { PanelSkeleton } from './PanelSkeleton';
 
 const pct = (v: any, d = 1) => (typeof v === 'number' && isFinite(v) ? `${(v * 100).toFixed(d)}%` : '—');
 const num = (v: any, d = 2) => (typeof v === 'number' && isFinite(v) ? v.toFixed(d) : '—');
@@ -75,11 +76,7 @@ export function QuantEdgePanel() {
   const edge = serverState?.quant_edge;
 
   if (!edge) {
-    return (
-      <div className="rounded-lg border border-black/60 bg-black/40 p-5 text-center">
-        <p className="text-[10px] uppercase tracking-widest text-zinc-500 animate-pulse">Computing edge analytics…</p>
-      </div>
-    );
+    return <PanelSkeleton label="Quant Edge" />;
   }
 
   const rnd = edge.rnd;
@@ -92,17 +89,17 @@ export function QuantEdgePanel() {
   const richTone = vrp?.richness === 'IV RICH' ? '#4ADE80' : vrp?.richness === 'IV CHEAP' ? '#F87171' : '#A1A1AA';
 
   return (
-    <div className="flex flex-col gap-3">
+    <div className="rounded-xl border bg-white/[0.02] p-5 flex flex-col gap-3 shadow-lg" style={{ borderColor: 'rgba(74,222,128,0.22)', borderLeftColor: 'rgba(74,222,128,0.9)', borderLeftWidth: '3px' }}>
       <div className="flex items-center gap-2">
         <Sigma className="w-4 h-4 text-[#4ADE80]" />
-        <h2 className="text-xs font-black tracking-widest uppercase text-[#E5E5E5]">Quant Edge — {selectedAsset?.ticker}</h2>
-        <span className="text-[8px] text-zinc-500 uppercase tracking-widest ml-auto">live · keyless</span>
+        <h2 className="text-xs font-black tracking-widest uppercase text-[#E5E5E5]">Edge Analytics — {selectedAsset?.ticker}</h2>
+        <span className="text-[8px] text-zinc-500 uppercase tracking-widest ml-auto">live</span>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
         {/* Risk-Neutral Density */}
         {rnd && (
-          <Card title="Market-Implied Probability (RND)" icon={<Activity className="w-3.5 h-3.5 text-[#4ADE80]" />} accent="#4ADE80">
+          <Card title="Market-Implied Probability Distribution" icon={<Activity className="w-3.5 h-3.5 text-[#4ADE80]" />} accent="#4ADE80">
             <DensityCurve density={rnd.density} spot={selectedAsset?.defaultPrice || rnd.percentiles?.p50 || 0} p25={rnd.percentiles?.p25 || 0} p75={rnd.percentiles?.p75 || 0} />
             <div className="grid grid-cols-3 gap-2">
               <Stat label="P(up by exp)" value={pct(rnd.pAboveSpot)} tone={rnd.pAboveSpot >= 0.5 ? '#4ADE80' : '#F87171'} />
@@ -116,13 +113,13 @@ export function QuantEdgePanel() {
                 </span>
               ))}
             </div>
-            <span className="text-[8px] text-zinc-500 uppercase tracking-widest">Fat-tail vs lognormal: {num(rnd.fatTailRatio, 2)}×</span>
+            <span className="text-[8px] text-zinc-500 uppercase tracking-widest">Tail risk vs normal: {num(rnd.fatTailRatio, 2)}x</span>
           </Card>
         )}
 
         {/* Realized Vol + VRP */}
         {vrp && rv && (
-          <Card title="Realized Vol & Variance Risk Premium" icon={<Gauge className="w-3.5 h-3.5 text-[#60A5FA]" />} accent="#60A5FA">
+          <Card title="Realized Vol and Variance Risk Premium" icon={<Gauge className="w-3.5 h-3.5 text-[#60A5FA]" />} accent="#60A5FA">
             <div className="grid grid-cols-3 gap-2">
               <Stat label="Implied (ATM)" value={pct(vrp.iv)} />
               <Stat label="Realized (YZ)" value={pct(vrp.rv)} />
@@ -130,7 +127,7 @@ export function QuantEdgePanel() {
             </div>
             <div className="flex items-center gap-2">
               <span className="text-[9px] font-black tracking-widest px-2 py-0.5 rounded" style={{ color: richTone, border: `1px solid ${richTone}`, background: `${richTone}14` }}>{vrp.richness}</span>
-              <span className="text-[9px] text-zinc-500 uppercase tracking-widest">IV/RV {num(vrp.ratio, 2)}× · RV pctile {num(vrp.rvPercentile, 0)}</span>
+              <span className="text-[9px] text-zinc-500 uppercase tracking-widest">IV/RV {num(vrp.ratio, 2)}x · RV pctile {num(vrp.rvPercentile, 0)}</span>
             </div>
             <div className="grid grid-cols-4 gap-1.5 mt-0.5">
               <Stat label="Parkinson" value={pct(rv.parkinson)} />
@@ -159,7 +156,7 @@ export function QuantEdgePanel() {
 
         {/* Scenario matrix */}
         {sc && (
-          <Card title="Scenario P&L — Spot × IV Shock" icon={<Target className="w-3.5 h-3.5 text-[#FBBF24]" />} accent="#FBBF24">
+          <Card title="Scenario P&L: Spot vs IV Change" icon={<Target className="w-3.5 h-3.5 text-[#FBBF24]" />} accent="#FBBF24">
             <div className="overflow-x-auto">
               <table className="w-full border-separate" style={{ borderSpacing: 2 }}>
                 <thead>
@@ -187,7 +184,7 @@ export function QuantEdgePanel() {
             <div className="flex items-center gap-3">
               <Stat label="Best" value={`${sc.best.pnlPct > 0 ? '+' : ''}${num(sc.best.pnlPct, 0)}%`} tone="#4ADE80" />
               <Stat label="Worst" value={`${num(sc.worst.pnlPct, 0)}%`} tone="#F87171" />
-              <span className="text-[8px] text-zinc-500 uppercase tracking-widest ml-auto">−{sc.daysForward}d decay</span>
+              <span className="text-[8px] text-zinc-500 uppercase tracking-widest ml-auto">{sc.daysForward}d theta decay</span>
             </div>
           </Card>
         )}
@@ -200,7 +197,7 @@ export function QuantEdgePanel() {
             <div className="grid grid-cols-4 gap-2">
               <Stat label="Half-Kelly" value={pct(kelly.recommended, 1)} tone="#34D399" />
               <Stat label="Full Kelly" value={pct(kelly.kelly, 1)} />
-              <Stat label="Payoff" value={`${num(kelly.payoffRatio, 2)}×`} />
+              <Stat label="Payoff" value={`${num(kelly.payoffRatio, 2)}x`} />
               <Stat label="Verdict" value={kelly.verdict} tone={kelly.verdict === 'STRONG' ? '#4ADE80' : kelly.verdict === 'NO EDGE' ? '#F87171' : '#A1A1AA'} />
             </div>
             <div className="h-1.5 w-full rounded-full bg-black/60 overflow-hidden">
@@ -209,7 +206,7 @@ export function QuantEdgePanel() {
           </Card>
         )}
         {clock && (
-          <Card title="Intraday Charm/Vanna Clock" icon={<Clock className="w-3.5 h-3.5 text-[#F472B6]" />} accent="#F472B6">
+          <Card title="Intraday Dealer Hedging Clock (Charm/Vanna)" icon={<Clock className="w-3.5 h-3.5 text-[#F472B6]" />} accent="#F472B6">
             <div className="grid grid-cols-3 gap-2">
               <Stat label="Session" value={clock.session?.replace('_', ' ')} tone="#F472B6" />
               <Stat label="Hedge ramp" value={pct(clock.weight, 0)} />

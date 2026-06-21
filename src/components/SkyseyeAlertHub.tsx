@@ -316,7 +316,7 @@ export function SkyseyeAlertHub() {
   return (
     <div 
       id="skyseye-alert-container" 
-      className="fixed bottom-6 right-6 z-[120] flex flex-col gap-3 max-w-sm w-[350px] pointer-events-auto font-mono selection:bg-[#4ADE80] text-black/30"
+      className="fixed bottom-6 right-6 z-[120] flex flex-col gap-3 w-[350px] max-w-[calc(100vw-32px)] pointer-events-auto font-mono selection:bg-[#4ADE80] text-black/30"
     >
       <AnimatePresence mode="popLayout">
         {toasts.map((toast) => {
@@ -379,10 +379,10 @@ export function SkyseyeAlertHub() {
                   </div>
                   <div className="flex flex-col text-left">
                     <span className="text-[10px] font-black text-[#E5E5E5]/95 uppercase tracking-widest flex items-center gap-1.5">
-                      {toast.rating === 'GOOD' ? 'OPTIMAL INTEL TRIGGER' : 'CONTRACT FEED SYNCED'}
+                      {toast.rating === 'GOOD' ? 'TRADE ALERT' : 'FLOW UPDATE'}
                     </span>
                     <span className="text-[8px] text-zinc-500 tracking-wider font-mono">
-                      {toast.timestamp} • REAL-TIME DECISION ENGINE
+                      {toast.timestamp} • LIVE
                     </span>
                   </div>
                 </div>
@@ -413,11 +413,11 @@ export function SkyseyeAlertHub() {
                   )}
                   {toast.type === 'MULTIPLE' ? (
                     <span className={`text-[10px] font-black ${accentText}`}>
-                      CONVICTION: 100%
+                      SCORE: 100%
                     </span>
                   ) : (
                     <span className={`text-[10px] font-black ${accentText}`}>
-                      HEALTH: {toast.health} / 100
+                      SCORE: {toast.health} / 100
                     </span>
                   )}
                 </div>
@@ -439,7 +439,7 @@ export function SkyseyeAlertHub() {
                 {/* Quantitative statistics / Summary list */}
                 {toast.type === 'MULTIPLE' ? (
                   <div className="text-[9.5px] font-mono text-[#4ADE80] border-t border-black/60 pt-2 mt-1 leading-normal max-h-[60px] overflow-y-auto">
-                    <span className="text-[#4ADE80] font-bold block mb-1">► DETECTED INSTANT SELECTION OVER-FLOW:</span>
+                    <span className="text-[#4ADE80] font-bold block mb-1">Multiple setups found:</span>
                     <span className="text-zinc-400 block">{toast.tradesSummary}</span>
                   </div>
                 ) : (
@@ -460,19 +460,19 @@ export function SkyseyeAlertHub() {
               <div className="text-[9px] text-zinc-400 text-left leading-relaxed font-sans px-0.5">
                 {toast.type === 'MULTIPLE' ? (
                   <span className="text-[#4ADE80] font-mono font-medium">
-                    ⚡ <strong>Multi-trigger event detected.</strong> Click here to open Slayer Cockpit and inspect all active setups.
+                    ⚡ <strong>Multiple setups flagged.</strong> Click to open SkyVision and review all alerts.
                   </span>
                 ) : toast.rating === 'GOOD' ? (
                   <span className="text-[#4ADE80] font-mono font-medium">
-                    ⚡ <strong>Bayesian drift confirms edge.</strong> Click to inspect. Dealers have heavy delta support.
+                    ⚡ <strong>Strong setup detected.</strong> Click to review. Dealers are holding heavy delta support.
                   </span>
                 ) : toast.rating === 'WEAK' ? (
                   <span className="text-[#F87171]/90 font-mono font-medium">
-                    ⚠ <strong>Low positioning support.</strong> Click to view. Hedging limits upside margins.
+                    ⚠ <strong>Weak setup.</strong> Click to view. Dealer hedging is limiting upside.
                   </span>
                 ) : (
                   <span className="text-[#4ADE80]/90 font-mono font-medium text-left">
-                    ✦ <strong>In range consolidation.</strong> Click to inspect. Balanced call/put ratio.
+                    ✦ <strong>Consolidating.</strong> Click to review. Balanced call/put ratio.
                   </span>
                 )}
               </div>

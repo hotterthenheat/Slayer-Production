@@ -31,6 +31,7 @@ interface AppShellProps {
   tierInfo: any;
   onUpgradeClick: () => void;
   setShowAuthModal: (open: boolean) => void;
+  feedStatus?: 'connecting' | 'live' | 'offline';
 }
 
 // Dynamic nav context. NavItem is hoisted to module scope (a stable component
@@ -62,7 +63,7 @@ function NavItem({ id, label, icon: Icon, adminOnly = false, activeColor = 'text
         setActiveTab(id);
         closeMobile();
       }}
-      className={`w-full flex items-center gap-3 px-3 py-2 rounded-sm text-[10px] font-bold uppercase tracking-wider transition-colors border ${
+      className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-colors border ${
         isActive
           ? adminOnly
             ? 'bg-rose-950/40 text-[#E5E5E5] border-rose-500/50'
@@ -77,7 +78,27 @@ function NavItem({ id, label, icon: Icon, adminOnly = false, activeColor = 'text
   );
 }
 
-export function AppShell({ children, session, onLogout, tierInfo, onUpgradeClick, setShowAuthModal }: AppShellProps) {
+// Live data-feed status indicator (driven by the SSE connection state).
+function FeedPill({ status, compact = false }: { status?: 'connecting' | 'live' | 'offline'; compact?: boolean }) {
+  const s = status || 'connecting';
+  const map = {
+    live: { c: '#4ADE80', t: 'LIVE' },
+    connecting: { c: '#FBBF24', t: 'CONNECTING' },
+    offline: { c: '#F87171', t: 'OFFLINE' },
+  } as const;
+  const cfg = map[s];
+  return (
+    <div className="flex items-center gap-1.5" title={`Data feed: ${cfg.t}`}>
+      <span className="relative flex h-1.5 w-1.5 shrink-0">
+        {s === 'live' && <span className="animate-ping absolute inline-flex h-full w-full rounded-full opacity-75" style={{ background: cfg.c }} />}
+        <span className="relative inline-flex rounded-full h-1.5 w-1.5" style={{ background: cfg.c }} />
+      </span>
+      {!compact && <span className="text-[8px] font-black uppercase tracking-widest" style={{ color: cfg.c }}>{cfg.t}</span>}
+    </div>
+  );
+}
+
+export function AppShell({ children, session, onLogout, tierInfo, onUpgradeClick, setShowAuthModal, feedStatus }: AppShellProps) {
   const activeTab = useContractStore(s => s.activeTab);
   const setActiveTab = useContractStore(s => s.setActiveTab);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -112,29 +133,32 @@ export function AppShell({ children, session, onLogout, tierInfo, onUpgradeClick
           style={{ WebkitOverflowScrolling: 'touch' }}
         >
           <div className={`text-[8px] text-zinc-600 font-black tracking-widest px-2 py-1 uppercase mb-1 whitespace-nowrap overflow-hidden transition-all duration-300 ${isSidebarExpanded ? 'opacity-100' : 'opacity-0 h-0 py-0 mb-0 pointer-events-none'}`}>
-            Cognitive Core
+            Main Views
           </div>
           
-          <NavItem id="home" label="Ecosystem" icon={Home} activeColor="text-[#F4F5F6]" />
-          <NavItem id="skyvision" label="SkysVision" icon={Sparkles} activeColor="text-[#6A93B5]" />
-          <NavItem id="pinpoint" label="Pinpoint AI" icon={Dna} activeColor="text-[#C79350]" />
+          <NavItem id="home" label="Home" icon={Home} activeColor="text-[#F4F5F6]" />
+          <NavItem id="skyvision" label="SkyVision" icon={Sparkles} activeColor="text-[#6A93B5]" />
+          <NavItem id="pinpoint" label="Pinpoint GEX" icon={Dna} activeColor="text-[#C79350]" />
           <NavItem id="quant" label="Quant Lab" icon={LineChart} activeColor="text-[#D9A15C]" />
-          <NavItem id="auditor" label="Trust Archive" icon={Database} />
+          <NavItem id="auditor" label="Trade History" icon={Database} />
           
           <div className={`text-[8px] text-zinc-600 font-black tracking-widest px-2 py-1 uppercase mt-4 mb-1 whitespace-nowrap overflow-hidden transition-all duration-300 ${isSidebarExpanded ? 'opacity-100' : 'opacity-0 h-0 py-0 mb-0 mt-0 pointer-events-none'}`}>
-            Tools & Assets
+            Tools
           </div>
-          
-          <NavItem id="workspace" label="Terminal" icon={LayoutGrid} />
-          <NavItem id="community" label="Research" icon={GraduationCap} activeColor="text-[#3F9C79]" />
+
+          <NavItem id="workspace" label="Workspace" icon={LayoutGrid} />
+          <NavItem id="community" label="Community" icon={GraduationCap} activeColor="text-[#3F9C79]" />
           
           <div className="mt-auto pt-4 flex flex-col gap-1.5 border-t border-[#1F1F1F] mt-2">
             <NavItem id="settings" label="Settings" icon={SlidersHorizontal} />
-            <NavItem id="admin" label="Overseer Panel" icon={Lock} adminOnly />
+            <NavItem id="admin" label="Admin Panel" icon={Lock} adminOnly />
           </div>
         </div>
 
         <div className={`p-4 border-t border-[#1F1F1F] bg-[#020202] overflow-hidden whitespace-nowrap transition-[padding] duration-300 ${isSidebarExpanded ? 'px-4' : 'px-2'}`}>
+           <div className={`flex mb-3 ${isSidebarExpanded ? 'justify-start px-1' : 'justify-center'}`}>
+             <FeedPill status={feedStatus} compact={!isSidebarExpanded} />
+           </div>
            {/* Tier Info */}
            <div 
              onClick={onUpgradeClick}
@@ -160,7 +184,7 @@ export function AppShell({ children, session, onLogout, tierInfo, onUpgradeClick
                    <span className={`text-[10px] font-black uppercase truncate text-zinc-400 transition-all duration-300 ${isSidebarExpanded ? 'opacity-100 max-w-[120px]' : 'opacity-0 max-w-0'}`}>{session.name}</span>
                 </div>
                 {isSidebarExpanded && (
-                  <button onClick={onLogout} className="text-zinc-500 hover:text-amber-500 transition-colors p-1" title="Logout">
+                  <button onClick={onLogout} className="text-zinc-500 hover:text-amber-500 transition-colors p-2" title="Logout">
                     <LogOut className="w-4 h-4 shrink-0" />
                   </button>
                 )}
@@ -168,7 +192,7 @@ export function AppShell({ children, session, onLogout, tierInfo, onUpgradeClick
            ) : (
               <button
                 onClick={() => setShowAuthModal(true)}
-                className={`w-full px-3 py-2 border border-[#1f1f1f] hover:border-[#333] bg-black text-[#4ADE80] hover:text-[#E5E5E5] uppercase font-black transition-all flex items-center justify-center gap-1.5 text-[9px] rounded-xs cursor-pointer active:scale-95 ${isSidebarExpanded ? '' : 'px-0'}`}
+                className={`w-full px-3 py-2 border border-[#1f1f1f] hover:border-[#333] bg-black text-[#4ADE80] hover:text-[#E5E5E5] uppercase font-black transition-all flex items-center justify-center gap-1.5 text-[9px] rounded-lg cursor-pointer active:scale-95 ${isSidebarExpanded ? '' : 'px-0'}`}
                 title="LOGIN"
               >
                 {isSidebarExpanded ? 'LOGIN / CREATE ACCOUNT' : <Lock className="w-4 h-4" />}
@@ -182,9 +206,12 @@ export function AppShell({ children, session, onLogout, tierInfo, onUpgradeClick
          <div className="cursor-pointer scale-[0.85] origin-left" onClick={() => setActiveTab('home')}>
              <BrandHeader />
          </div>
-         <button onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)} className="text-zinc-400 p-1">
+         <div className="flex items-center gap-3">
+           <FeedPill status={feedStatus} />
+           <button onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)} className="text-zinc-400 p-2">
              {isMobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
-         </button>
+           </button>
+         </div>
       </div>
 
       {/* Mobile Menu Dropdown */}
@@ -195,34 +222,34 @@ export function AppShell({ children, session, onLogout, tierInfo, onUpgradeClick
         >
           <div className="p-4 flex flex-col gap-2">
             <div className="text-[8px] text-zinc-600 font-black tracking-widest px-2 py-1 uppercase mb-2">
-              Cognitive Core
+              Main Views
             </div>
-            <NavItem id="home" label="Ecosystem" icon={Home} activeColor="text-[#F4F5F6]" isMobile />
-            <NavItem id="skyvision" label="SkysVision" icon={Sparkles} activeColor="text-[#6A93B5]" isMobile />
-            <NavItem id="pinpoint" label="Pinpoint AI" icon={Dna} activeColor="text-[#C79350]" isMobile />
+            <NavItem id="home" label="Home" icon={Home} activeColor="text-[#F4F5F6]" isMobile />
+            <NavItem id="skyvision" label="SkyVision" icon={Sparkles} activeColor="text-[#6A93B5]" isMobile />
+            <NavItem id="pinpoint" label="Pinpoint GEX" icon={Dna} activeColor="text-[#C79350]" isMobile />
             <NavItem id="quant" label="Quant Lab" icon={LineChart} activeColor="text-[#D9A15C]" isMobile />
-            <NavItem id="auditor" label="Trust Archive" icon={Database} isMobile />
-            
+            <NavItem id="auditor" label="Trade History" icon={Database} isMobile />
+
             <div className="text-[8px] text-zinc-600 font-black tracking-widest px-2 py-1 uppercase mt-6 mb-2">
-              Tools & Assets
+              Tools
             </div>
-            
-            <NavItem id="workspace" label="Terminal" icon={LayoutGrid} isMobile />
-            <NavItem id="community" label="Research" icon={GraduationCap} activeColor="text-[#3F9C79]" isMobile />
+
+            <NavItem id="workspace" label="Workspace" icon={LayoutGrid} isMobile />
+            <NavItem id="community" label="Community" icon={GraduationCap} activeColor="text-[#3F9C79]" isMobile />
             <NavItem id="settings" label="Settings" icon={SlidersHorizontal} isMobile />
-            <NavItem id="admin" label="Overseer Panel" icon={Lock} adminOnly isMobile />
+            <NavItem id="admin" label="Admin Panel" icon={Lock} adminOnly isMobile />
             
             {session?.authenticated ? (
               <button 
                 onClick={() => { onLogout(); setIsMobileMenuOpen(false); }} 
-                className="w-full flex items-center gap-3 px-3 py-3 rounded-sm text-[10px] font-bold uppercase tracking-wider text-amber-500 bg-amber-500/10 border border-amber-500/20 mt-6 justify-center"
+                className="w-full flex items-center gap-3 px-3 py-3 rounded-lg text-[10px] font-bold uppercase tracking-wider text-amber-500 bg-amber-500/10 border border-amber-500/20 mt-6 justify-center"
               >
                 <LogOut className="w-4 h-4" /> LOGOUT
               </button>
             ) : (
               <button
                 onClick={() => { setShowAuthModal(true); setIsMobileMenuOpen(false); }}
-                className="w-full px-3 py-3 mt-6 border border-[#1f1f1f] bg-[#111] text-[#4ADE80] uppercase font-black transition-all flex items-center justify-center gap-1.5 text-[10px] rounded-sm tracking-widest"
+                className="w-full px-3 py-3 mt-6 border border-[#1f1f1f] bg-[#111] text-[#4ADE80] uppercase font-black transition-all flex items-center justify-center gap-1.5 text-[10px] rounded-lg tracking-widest"
               >
                 LOGIN / CREATE ACCOUNT
               </button>

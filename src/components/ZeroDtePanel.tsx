@@ -3,6 +3,7 @@ import { useContractStore } from '../lib/store';
 import { Timer, Crosshair, Magnet, AlertTriangle } from 'lucide-react';
 import type { ZeroDteResult } from '../lib/zeroDte';
 import { probExpireITM, probabilityOfTouch } from '../lib/zeroDte';
+import { PanelSkeleton } from './PanelSkeleton';
 
 /**
  * 0DTE Probabilities — expected-move bands, strike-pinning probability, end-of-day
@@ -20,11 +21,7 @@ export function ZeroDtePanel() {
   const pct = (v: number) => `${Math.round(v * 100)}%`;
 
   if (!z || !gex || !(gex.spot > 0)) {
-    return (
-      <div className="rounded-lg border border-black/60 bg-black/40 p-4 text-center">
-        <p className="text-[10px] uppercase tracking-widest text-zinc-500 animate-pulse">Computing 0DTE probabilities…</p>
-      </div>
-    );
+    return <PanelSkeleton label="0DTE Probabilities" />;
   }
 
   const spot = gex.spot;
@@ -53,7 +50,7 @@ export function ZeroDtePanel() {
   );
 
   return (
-    <div className="rounded-lg border border-black/60 bg-black/30 p-4 flex flex-col gap-4 shadow-inner">
+    <div className="rounded-xl border bg-white/[0.02] p-5 flex flex-col gap-4 shadow-lg" style={{ borderColor: 'rgba(251,191,36,0.22)', borderLeftColor: 'rgba(251,191,36,0.9)', borderLeftWidth: '3px' }}>
       <div className="flex items-center gap-2">
         <Timer className="w-4 h-4 text-[#60A5FA]" />
         <h2 className="text-xs font-black tracking-widest uppercase text-[#E5E5E5]">0DTE Probabilities — {selectedAsset?.ticker}</h2>
@@ -71,14 +68,14 @@ export function ZeroDtePanel() {
       {/* Pin / magnet / settlement */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
         <Cell label="Strike Pin Probability" value={pct(z.pin.pinProbability)} sub={`magnet ${fmt(z.pin.magnet)}`} tone={z.pin.pinProbability >= 0.5 ? '#4ADE80' : '#FBBF24'} />
-        <Cell label="EOD Magnet Target" value={fmt(z.eodMagnet)} sub="positive-γ center of mass" tone="#D9A15C" />
-        <Cell label="ATM P(expire ITM)" value={pct(atmCallITM)} sub="risk-neutral N(d2)" />
+        <Cell label="EOD Pin Target" value={fmt(z.eodMagnet)} sub="positive-gamma gravity zone" tone="#D9A15C" />
+        <Cell label="ATM chance of expiring ITM" value={pct(atmCallITM)} sub="risk-neutral probability" />
         <Cell label="Settlement Risk" value={pct(z.settlementRiskPct)} sub="P(|move| > 1 EM)" tone="#FB923C" />
       </div>
 
       {/* Probability of touch to the walls */}
       <div className="flex flex-col gap-2">
-        <div className="flex items-center gap-2"><Crosshair className="w-3 h-3 text-zinc-400" /><h3 className="text-[9px] font-black tracking-widest uppercase text-zinc-400">Probability of Touch (to dealer walls)</h3></div>
+        <div className="flex items-center gap-2"><Crosshair className="w-3 h-3 text-zinc-400" /><h3 className="text-[9px] font-black tracking-widest uppercase text-zinc-400">Chance of price reaching dealer walls today</h3></div>
         {walls.length === 0 && <span className="text-[9px] text-zinc-600">Dealer walls not yet resolved.</span>}
         {walls.map(({ label, strike, p, tone }) => (
           <div key={label} className="flex items-center gap-2">
@@ -93,7 +90,7 @@ export function ZeroDtePanel() {
 
       {z.pin.pinProbability >= 0.55 && (
         <div className="flex items-center gap-2 text-[10px] font-bold text-[#4ADE80] bg-[#4ADE80]/10 border border-[#4ADE80]/40 rounded px-3 py-2">
-          <Magnet className="w-3.5 h-3.5" /> Elevated pin risk into the close — price gravitating to {fmt(z.pin.magnet)}.
+          <Magnet className="w-3.5 h-3.5" /> High pin risk into the close — price likely to gravitate toward {fmt(z.pin.magnet)}.
         </div>
       )}
       {z.settlementRiskPct > 0.4 && (

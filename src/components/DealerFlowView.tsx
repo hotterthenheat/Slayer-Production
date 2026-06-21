@@ -16,7 +16,6 @@ import { InteractiveChart } from './InteractiveChart';
 import { InstitutionalPhysicsDashboard } from './InstitutionalPhysicsDashboard';
 import { IntradayTargetsView } from './IntradayTargetsView';
 import { InstitutionalDashboard } from './InstitutionalDashboard';
-import { AiIntelligenceLayer } from './AiIntelligenceLayer';
 import { QuantEdgePanel } from './QuantEdgePanel';
 import { RegimeMatrixPanel } from './RegimeMatrixPanel';
 import { DealerDynamicsPanel } from './DealerDynamicsPanel';
@@ -252,8 +251,8 @@ function ExposureProfileChart({ profile, decimals, type }: { profile: any; decim
                         ? type === 'gex' ? 'text-rose-600' : type === 'dex' ? 'text-amber-600' : 'text-fuchsia-600'
                         : type === 'gex' ? 'text-[#F87171]' : type === 'dex' ? 'text-amber-300' : 'text-fuchsia-300'
                     }`}>{fmtGreek(r.putValue)}</span></div>
-                    <div>Open Interest: <span className={`font-bold ${isLight ? 'text-zinc-800' : 'text-zinc-100'}`}>{r.putOi.toLocaleString()}</span></div>
-                    <div>Volume: <span className={`font-bold ${isLight ? 'text-zinc-800' : 'text-zinc-100'}`}>{r.putVolume.toLocaleString()}</span></div>
+                    <div>Open Interest: <span className={`font-bold ${isLight ? 'text-zinc-800' : 'text-zinc-100'}`}>{(r.putOi ?? 0).toLocaleString()}</span></div>
+                    <div>Volume: <span className={`font-bold ${isLight ? 'text-zinc-800' : 'text-zinc-100'}`}>{(r.putVolume ?? 0).toLocaleString()}</span></div>
                   </div>
                 </div>
               </div>
@@ -295,8 +294,8 @@ function ExposureProfileChart({ profile, decimals, type }: { profile: any; decim
                         ? type === 'gex' ? 'text-[#4ADE80]' : type === 'dex' ? 'text-sky-600' : 'text-indigo-600'
                         : type === 'gex' ? 'text-[#4ADE80]' : type === 'dex' ? 'text-sky-300' : 'text-indigo-300'
                     }`}>{fmtGreek(r.callValue)}</span></div>
-                    <div>Open Interest: <span className={`font-bold ${isLight ? 'text-zinc-800' : 'text-zinc-100'}`}>{r.callOi.toLocaleString()}</span></div>
-                    <div>Volume: <span className={`font-bold ${isLight ? 'text-zinc-800' : 'text-zinc-100'}`}>{r.callVolume.toLocaleString()}</span></div>
+                    <div>Open Interest: <span className={`font-bold ${isLight ? 'text-zinc-800' : 'text-zinc-100'}`}>{(r.callOi ?? 0).toLocaleString()}</span></div>
+                    <div>Volume: <span className={`font-bold ${isLight ? 'text-zinc-800' : 'text-zinc-100'}`}>{(r.callVolume ?? 0).toLocaleString()}</span></div>
                   </div>
                 </div>
               </div>
@@ -643,16 +642,16 @@ export function DealerFlowView() {
         </div>
         <div className="space-y-1.5">
           <h2 className="text-[11px] font-black tracking-widest text-[#E5E5E5] uppercase font-sans">
-            DEALER FLOW REGISTRATION PENDING
+            LOADING DEALER FLOW DATA
           </h2>
           <p className="text-[9px] text-zinc-500 uppercase tracking-widest leading-relaxed max-w-sm mx-auto">
-            Acquiring real-time hedging profiles, order flow matrices, and displacement zones. Select any strike or option type to boot the provider.
+            Loading hedging profiles, order flow, and price zones. Select any strike or option type to start the feed.
           </p>
         </div>
         <div className="flex items-center gap-2 justify-center">
           <span className="w-1.5 h-1.5 rounded-full bg-amber-500 inline-block" />
           <span className="text-[8px] font-mono tracking-widest text-zinc-400 font-bold uppercase">
-            CONNECTING TO STREAM PROVIDER...
+            CONNECTING TO LIVE FEED...
           </span>
         </div>
       </div>
@@ -676,7 +675,7 @@ export function DealerFlowView() {
   };
 
   return (
-    <div className="w-full space-y-4 tabular-data" id="dealerflow-main-workspace-view">
+    <div className="w-full space-y-6 tabular-data" id="dealerflow-main-workspace-view">
       {/* Ticker Bar (Image Matched) */}
       <div className="flex justify-center items-center w-full mb-2 relative z-10">
         <div className="bg-black/90 backdrop-blur-md border border-black rounded-[10px] flex items-center p-1 gap-0.5 shadow-inner">
@@ -713,12 +712,12 @@ export function DealerFlowView() {
               <FeedChip feed={profile?.feed} />
             </div>
             <p className="text-[9px] text-zinc-500 uppercase tracking-widest mt-0.5">
-              Gamma exposure · hedging pressure · displacement zones · volatility engine · {selectedTimeframe}
+              Gamma exposure · hedging pressure · price zones · volatility · {selectedTimeframe}
             </p>
           </div>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2.5">
+        <div className="flex flex-nowrap overflow-x-auto scrollbar-none items-center gap-2.5 pb-0.5">
           {[
             { label: 'Net GEX', value: profile ? fmtBn(profile.netGex) : '-', tone: profile?.netGex >= 0 ? 'text-[#4ADE80] font-bold' : 'text-[#F87171] font-bold', icon: <Layers className="w-3 h-3" /> },
             { label: 'Call Wall', value: profile?.callWall?.toFixed(0) ?? '-', tone: 'text-[#4ADE80] font-bold', icon: <Layers className="w-3 h-3" /> },
@@ -726,7 +725,7 @@ export function DealerFlowView() {
             { label: 'γ-Flip', value: profile?.gammaFlip?.toFixed(0) ?? '-', tone: 'text-amber-400 font-bold', icon: <Crosshair className="w-3 h-3" /> },
             { label: 'Pin Magnet', value: profile?.magnet?.toFixed(0) ?? '-', tone: 'text-sky-400 font-bold', icon: <Magnet className="w-3 h-3" /> },
           ].map(card => (
-            <div key={card.label} className="bg-black/50 border border-black/60 rounded-md px-3 py-2 min-w-[86px]" id={`card-${card.label.toLowerCase().replace(/\s+/g, '-')}`}>
+            <div key={card.label} className="bg-black/50 border border-black/60 rounded-md px-3 py-2 min-w-[86px] shrink-0" id={`card-${card.label.toLowerCase().replace(/\s+/g, '-')}`}>
               <div className="flex items-center gap-1 text-[7.5px] font-black tracking-widest text-zinc-500 uppercase">
                 {card.icon}
                 {card.label}
@@ -743,7 +742,7 @@ export function DealerFlowView() {
           <span className="text-[8px] font-bold tracking-widest text-[#a1a1aa] uppercase mb-2 flex items-center gap-1.5"><Activity className="w-3 h-3 text-amber-500" /> Acceleration Flow</span>
           <div>
             <div className="text-[14px] font-mono font-black text-amber-400 mb-0.5">+4.2x / hr</div>
-            <div className="text-[9px] text-zinc-500 uppercase tracking-wide leading-snug">Gamma Expansion</div>
+            <div className="text-[9px] text-zinc-500 uppercase tracking-wide leading-snug">Gamma Acceleration</div>
           </div>
         </div>
         
@@ -751,7 +750,7 @@ export function DealerFlowView() {
           <span className="text-[8px] font-bold tracking-widest text-[#a1a1aa] uppercase mb-2 flex items-center gap-1.5"><Crosshair className="w-3 h-3 text-sky-400" /> Distance to Flip</span>
           <div>
             <div className="text-[14px] font-mono font-black text-[#E5E5E5] mb-0.5">{profile?.gammaFlip ? `${Math.abs(profile.spot - profile.gammaFlip).toFixed(1)} pts` : '--'}</div>
-            <div className="text-[9px] text-zinc-500 uppercase tracking-wide leading-snug">Structural Inversion Prox</div>
+            <div className="text-[9px] text-zinc-500 uppercase tracking-wide leading-snug">Distance to Gamma Flip</div>
           </div>
         </div>
 
@@ -762,46 +761,29 @@ export function DealerFlowView() {
            <span className="text-[8px] font-bold tracking-widest text-[#4ADE80] uppercase mb-2 flex items-center gap-1.5 relative z-10"><Clock className="w-3 h-3" /> Statistical Edge</span>
            <div className="relative z-10">
             <div className="text-[14px] font-mono font-black text-[#4ADE80] mb-0.5 leading-snug">72.4% Win Rate</div>
-            <div className="text-[8.5px] text-[#4ADE80] uppercase tracking-widest font-black">Cluster Probability</div>
+            <div className="text-[8.5px] text-[#4ADE80] uppercase tracking-widest font-black">Historical Win Rate</div>
           </div>
         </div>
       </div>
 
-      {/* AI INTELLIGENCE LAYER */}
-      <AiIntelligenceLayer />
-
-      {/* QUANT EDGE — RND / VRP / skew / scenario / Kelly / dealer clock */}
-      <QuantEdgePanel />
-
-      {/* REGIME MATRIX — HMM / Hurst / OU / vol regimes / VPIN / Kyle / PCA */}
-      <RegimeMatrixPanel />
-
-      {/* DEALER DYNAMICS — vanna/charm flow, strike migration, gamma velocity,
-          liquidity vacuums, wall strength */}
-      <DealerDynamicsPanel />
-
-      {/* 0DTE PROBABILITIES — expected-move bands, pin probability, EOD magnet,
-          probability-of-touch to walls, settlement risk */}
-      <ZeroDtePanel />
-
       {/* ============== SUB-TABS SELECTOR SEAMLESS GRIDS ============== */}
-      <div className="flex flex-wrap gap-2.5 justify-start items-center" id="dealerflow-subtabs-bar">
+      <div className="flex flex-nowrap overflow-x-auto scrollbar-none gap-2.5 justify-start items-center pb-0.5" id="dealerflow-subtabs-bar">
         <button
           onClick={() => setActiveEngineView('profile')}
-          className={`flex items-center gap-2 px-4.5 py-2.5 font-mono text-[9px] font-black uppercase tracking-wider border rounded transition-all cursor-pointer ${
+          className={`flex shrink-0 items-center gap-2 px-4.5 py-3 font-mono text-[9px] font-black uppercase tracking-wider border rounded-lg transition-all cursor-pointer ${
             activeEngineView === 'profile'
-              ? theme.buttonActive
+              ? theme.buttonActive + ' border-b-2 border-b-[#4ADE80]'
               : theme.buttonInactive
           }`}
         >
           <Layers className="w-3.5 h-3.5" />
-          HEDGING PROFILE & LIQUIDITY MATRIX
+          HEDGING PROFILE & LIQUIDITY LEVELS
         </button>
         <button
           onClick={() => setActiveEngineView('targets')}
-          className={`flex items-center gap-2 px-4.5 py-2.5 font-mono text-[9px] font-black uppercase tracking-wider border rounded transition-all cursor-pointer ${
+          className={`flex shrink-0 items-center gap-2 px-4.5 py-3 font-mono text-[9px] font-black uppercase tracking-wider border rounded-lg transition-all cursor-pointer ${
             activeEngineView === 'targets'
-              ? 'bg-rose-500/10 border-rose-500 text-[#E5E5E5] shadow-[0_0_12px_rgba(244,63,94,0.12)]'
+              ? 'bg-rose-500/10 border-rose-500 border-b-2 border-b-rose-400 text-[#E5E5E5] shadow-[0_0_12px_rgba(244,63,94,0.12)]'
               : 'bg-black/45 border-black text-zinc-500 hover:text-[#4ADE80] hover:border-black'
           }`}
         >
@@ -810,36 +792,36 @@ export function DealerFlowView() {
         </button>
         <button
           onClick={() => setActiveEngineView('physics')}
-          className={`flex items-center gap-2 px-4.5 py-2.5 font-mono text-[9px] font-black uppercase tracking-wider border rounded transition-all cursor-pointer ${
+          className={`flex shrink-0 items-center gap-2 px-4.5 py-3 font-mono text-[9px] font-black uppercase tracking-wider border rounded-lg transition-all cursor-pointer ${
             activeEngineView === 'physics'
-              ? 'bg-amber-500/10 border-amber-500 text-[#E5E5E5] shadow-[0_0_12px_rgba(245,158,11,0.12)]'
+              ? 'bg-amber-500/10 border-amber-500 border-b-2 border-b-amber-400 text-[#E5E5E5] shadow-[0_0_12px_rgba(245,158,11,0.12)]'
               : 'bg-black/45 border-black text-zinc-500 hover:text-[#4ADE80] hover:border-black'
           }`}
         >
           <Zap className="w-3.5 h-3.5 text-amber-400" />
-          SLAYER INST. PHYSICS ENGINE & CASCADES
+          DEALER MECHANICS
         </button>
         <button
           onClick={() => setActiveEngineView('institutional')}
-          className={`flex items-center gap-2 px-4.5 py-2.5 font-mono text-[9px] font-black uppercase tracking-wider border rounded transition-all cursor-pointer ${
+          className={`flex shrink-0 items-center gap-2 px-4.5 py-3 font-mono text-[9px] font-black uppercase tracking-wider border rounded-lg transition-all cursor-pointer ${
             activeEngineView === 'institutional'
-              ? 'bg-fuchsia-500/10 border-fuchsia-500 text-[#E5E5E5] shadow-[0_0_12px_rgba(217,70,239,0.12)]'
+              ? 'bg-fuchsia-500/10 border-fuchsia-500 border-b-2 border-b-fuchsia-400 text-[#E5E5E5] shadow-[0_0_12px_rgba(217,70,239,0.12)]'
               : 'bg-black/45 border-black text-zinc-500 hover:text-[#4ADE80] hover:border-black'
           }`}
         >
           <Activity className="w-3.5 h-3.5 text-fuchsia-400" />
-          INSTITUTIONAL METRICS HUD
+          INSTITUTIONAL METRICS
         </button>
         <button
           onClick={() => setActiveEngineView('microstructure')}
-          className={`flex items-center gap-2 px-4.5 py-2.5 font-mono text-[9px] font-black uppercase tracking-wider border rounded transition-all cursor-pointer ${
+          className={`flex shrink-0 items-center gap-2 px-4.5 py-3 font-mono text-[9px] font-black uppercase tracking-wider border rounded-lg transition-all cursor-pointer ${
             activeEngineView === 'microstructure'
-              ? 'bg-cyan-500/10 border-cyan-500 text-[#E5E5E5] shadow-[0_0_12px_rgba(6,182,212,0.12)]'
+              ? 'bg-cyan-500/10 border-cyan-500 border-b-2 border-b-cyan-400 text-[#E5E5E5] shadow-[0_0_12px_rgba(6,182,212,0.12)]'
               : 'bg-black/45 border-black text-zinc-500 hover:text-[#4ADE80] hover:border-black'
           }`}
         >
           <Waves className="w-3.5 h-3.5 text-cyan-400" />
-          L2/L3 ORDER FLOW & MICROSTRUCTURE
+          ORDER FLOW
         </button>
       </div>
 
@@ -852,7 +834,7 @@ export function DealerFlowView() {
                 <Layers className={`w-3.5 h-3.5 ${theme.iconColor}`} />
                 Dealer Net Gamma Map
                 <span className="text-zinc-700">|</span>
-                <span className="text-zinc-550">Visualizing Inventory & Pinning Levels</span>
+                <span className="text-zinc-550">Dealer inventory & pin levels by strike</span>
               </div>
             </div>
             <DealerFlowMap profile={profile} decimals={selectedAsset.decimals} />
@@ -965,7 +947,7 @@ export function DealerFlowView() {
             <div className="flex items-center justify-between mb-3 shrink-0">
               <div className="flex items-center gap-2 text-[9px] font-black tracking-widest text-[#a1a1aa] uppercase">
                 <ShieldAlert className={`w-3.5 h-3.5 ${theme.iconColor}`} />
-                Price Action — Displacement & Imbalance Overlay
+                Price Action — Supply/Demand & Imbalance Overlay
               </div>
               <FeedChip feed={serverState?.candle_feed} />
             </div>
@@ -982,7 +964,7 @@ export function DealerFlowView() {
                 showFVGs={true}
                 showLiquiditySweeps={true}
                 showDisplacementEvents={true}
-                watermarkText="PRICE ACTION — DISPLACEMENT & IMBALANCE OVERLAY"
+                watermarkText="PRICE ACTION — SUPPLY/DEMAND & IMBALANCE OVERLAY"
               />
             </div>
           </div>
@@ -1002,6 +984,21 @@ export function DealerFlowView() {
           />
         </div>
       )}
+
+      {/* ============== DEEPER ANALYTICS (supplementary, below the core views) ============== */}
+      {/* QUANT EDGE — RND / VRP / skew / scenario / Kelly / dealer clock */}
+      <QuantEdgePanel />
+
+      {/* REGIME MATRIX — HMM / Hurst / OU / vol regimes / VPIN / Kyle / PCA */}
+      <RegimeMatrixPanel />
+
+      {/* DEALER DYNAMICS — vanna/charm flow, strike migration, gamma velocity,
+          liquidity vacuums, wall strength */}
+      <DealerDynamicsPanel />
+
+      {/* 0DTE PROBABILITIES — expected-move bands, pin probability, EOD magnet,
+          probability-of-touch to walls, settlement risk */}
+      <ZeroDtePanel />
     </div>
   );
 }

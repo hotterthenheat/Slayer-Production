@@ -203,7 +203,7 @@ export function modulateDecision(
       reason:
         `${decResult.reason} [Dealer veto: trap ${signals.dealerTrapScore.toFixed(0)} ≥ ${cfg.trapHighThreshold} ` +
         `and gamma-flip proximity ${signals.gammaFlipProximity.toFixed(2)} ≥ ${cfg.flipNearThreshold} — ` +
-        `caged/unstable regime, standing down fresh entry.]`,
+        `caged/unstable market, standing down fresh entry.]`,
       sizeMultiplier,
       modulated: true,
     };

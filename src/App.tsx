@@ -56,23 +56,25 @@ import {
 } from 'lucide-react';
 
 const TickerTape = memo(() => {
-  const staticTickers = [
-    { ticker: 'SPX', name: 'S&P 500 Index', price: 7623.00, change: '+0.88%', isUp: true, vol: '14.2%' },
-    { ticker: 'NDX', name: 'NASDAQ 100 Index', price: 18250.00, change: '+1.42%', isUp: true, vol: '21.0%' },
-    { ticker: 'QQQ', name: 'NASDAQ ETF', price: 445.50, change: '+1.24%', isUp: true, vol: '18.5%' },
-    { ticker: 'SPY', name: 'S&P 505 ETF', price: 512.30, change: '+0.65%', isUp: true, vol: '12.8%' },
-    { ticker: 'RUT', name: 'Russell 2000 Index', price: 2025.00, change: '+0.92%', isUp: true, vol: '16.4%' },
-    { ticker: 'SPX', name: 'S&P 500 Index', price: 7623.00, change: '+0.88%', isUp: true, vol: '14.2%' },
-    { ticker: 'NDX', name: 'NASDAQ 100 Index', price: 18250.00, change: '+1.42%', isUp: true, vol: '21.0%' },
-    { ticker: 'QQQ', name: 'NASDAQ ETF', price: 445.50, change: '+1.24%', isUp: true, vol: '18.5%' },
-    { ticker: 'SPY', name: 'S&P 505 ETF', price: 512.30, change: '+0.65%', isUp: true, vol: '12.8%' },
-    { ticker: 'RUT', name: 'Russell 2000 Index', price: 2025.00, change: '+0.92%', isUp: true, vol: '16.4%' },
-    { ticker: 'SPX', name: 'S&P 500 Index', price: 7623.00, change: '+0.88%', isUp: true, vol: '14.2%' },
-    { ticker: 'NDX', name: 'NASDAQ 100 Index', price: 18250.00, change: '+1.42%', isUp: true, vol: '21.0%' },
-    { ticker: 'QQQ', name: 'NASDAQ ETF', price: 445.50, change: '+1.24%', isUp: true, vol: '18.5%' },
-    { ticker: 'SPY', name: 'S&P 505 ETF', price: 512.30, change: '+0.65%', isUp: true, vol: '12.8%' },
-    { ticker: 'RUT', name: 'Russell 2000 Index', price: 2025.00, change: '+0.92%', isUp: true, vol: '16.4%' }
+  const liveSpot = useContractStore((s) => s.serverState?.liveSpotPrices) as Record<string, number> | undefined;
+  const prevRef = React.useRef<Record<string, number>>({});
+  const meta = [
+    { ticker: 'SPX', name: 'S&P 500 Index', fallback: 7623 },
+    { ticker: 'NDX', name: 'NASDAQ 100 Index', fallback: 18250 },
+    { ticker: 'QQQ', name: 'NASDAQ 100 ETF', fallback: 445.5 },
+    { ticker: 'SPY', name: 'S&P 500 ETF', fallback: 512.3 },
+    { ticker: 'RUT', name: 'Russell 2000 Index', fallback: 2025 },
   ];
+  const items = meta.map((m) => {
+    const v = liveSpot ? liveSpot[m.ticker] : undefined;
+    const live = typeof v === 'number' && v > 0;
+    const price = live ? (v as number) : m.fallback;
+    const prev = prevRef.current[m.ticker];
+    const isUp = prev === undefined ? true : price >= prev;
+    return { ...m, price, isUp, live };
+  });
+  React.useEffect(() => { items.forEach((it) => { prevRef.current[it.ticker] = it.price; }); });
+  const staticTickers = [...items, ...items, ...items];
 
   return (
     <div className="w-full bg-black/75 border-b border-black/50 backdrop-blur-xl overflow-hidden py-1.5 relative z-40 select-none">
@@ -86,12 +88,9 @@ const TickerTape = memo(() => {
               >
                 <span className="font-black text-[#E5E5E5] tracking-widest">{t.ticker}</span>
                 <span className="text-zinc-500 text-[8.5px] uppercase">{t.name}</span>
-                <span className="font-extrabold text-[#f4f4f5]">${t.price.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
-                <span className={`font-bold flex items-center gap-0.5 ${t.isUp ? 'text-[#4ADE80]' : 'text-[#F87171]'}`}>
-                  {t.isUp ? '' : ''}{t.change}
-                </span>
-                <span className="text-zinc-650 text-[8px] font-black border border-black bg-black/60 px-1 rounded-xs uppercase">
-                  VOL: {t.vol}
+                <span className={`font-extrabold tabular-nums ${t.isUp ? 'text-[#4ADE80]' : 'text-[#F87171]'}`}>${t.price.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                <span className={`text-[8px] font-black ${t.isUp ? 'text-[#4ADE80]' : 'text-[#F87171]'}`}>
+                  {t.isUp ? '▲' : '▼'}
                 </span>
               </div>
             ))}
@@ -197,6 +196,7 @@ export default function App() {
   // INJECT: VIEWPORT SIMULATION STATE
   const [originalAdminSession, setOriginalAdminSession] = useState<any | null>(null);
   const [isSimulating, setIsSimulating] = useState(false);
+  const [feedStatus, setFeedStatus] = useState<'connecting' | 'live' | 'offline'>('connecting');
 
   const handleSimulateTier = (targetTier: string, targetTierNum: number) => {
     // Save the real admin session in the background before overriding
@@ -373,9 +373,9 @@ export default function App() {
     const mergedContracts = [...convertedLive, ...staticContracts];
 
     const toolsItems = [
-      { ticker: 'SVI', name: 'SVI Volatility Solver', pnl: 'Physics Module', id: 'svi-solver', isTool: true },
-      { ticker: 'G3D', name: '3D Gamma Topography', pnl: 'Visualizer', id: 'gamma-surface', isTool: true },
-      { ticker: 'VPIN', name: 'Order Flow Toxicity', pnl: 'Microstructure', id: 'vpin-tracker', isTool: true }
+      { ticker: 'SVI', name: 'SVI Volatility Solver', pnl: 'Volatility Tool', id: 'svi-solver', isTool: true },
+      { ticker: 'G3D', name: '3D Gamma Map', pnl: 'Visualizer', id: 'gamma-surface', isTool: true },
+      { ticker: 'VPIN', name: 'Order Flow Toxicity', pnl: 'Order Flow', id: 'vpin-tracker', isTool: true }
     ];
 
     const navItems = [
@@ -624,17 +624,19 @@ export default function App() {
   useEffect(() => {
     fetchSession();
     (window as any).refreshSlayerSession = fetchSession;
-    
-    // Check for referral link
+
+    // Check for referral link — route to subscription. Single cleanup path so the
+    // refreshSlayerSession global is always removed (the previous early return on the
+    // /join/ path skipped that cleanup and leaked the global).
+    let joinTimer: ReturnType<typeof setTimeout> | undefined;
     if (window.location.pathname.startsWith('/join/')) {
-      // Just take them to the subscription page directly as requested
-      const timer = setTimeout(() => {
+      joinTimer = setTimeout(() => {
         setActiveTab('subscription');
       }, 100);
-      return () => clearTimeout(timer);
     }
-    
+
     return () => {
+      if (joinTimer) clearTimeout(joinTimer);
       delete (window as any).refreshSlayerSession;
     };
   }, []);
@@ -678,6 +680,8 @@ export default function App() {
     const url = `/api/stream?asset=${assetParam}&timeframe=${tfParam}&isCall=${isCall}${strikeParam}${posParam}`;
     
     const eventSource = new EventSource(url);
+    setFeedStatus('connecting');
+    eventSource.onopen = () => setFeedStatus('live');
     let latestPayload: any = null;
     let flushInterval: any = null;
 
@@ -702,8 +706,10 @@ export default function App() {
     
     // Throttle SSE flushes to ~7/sec. Candle/greek data doesn't need 60fps, and
     // flushing on every animation frame forced a full app-tree reconcile (jank).
+    let cancelled = false;
     let lastFlush = 0;
     const flushData = (ts: number) => {
+      if (cancelled) return;
       if (latestPayload && ts - lastFlush >= 150) {
         updateFromSSE(latestPayload);
         latestPayload = null;
@@ -716,9 +722,11 @@ export default function App() {
 
     eventSource.onerror = (err) => {
       console.error('[SkyVision Client] Stream Connection Error', err);
+      setFeedStatus('offline');
     };
 
     return () => {
+      cancelled = true;
       eventSource.close();
       if (flushInterval) cancelAnimationFrame(flushInterval);
     };
@@ -891,6 +899,7 @@ export default function App() {
       session={session} 
       onLogout={handleLogout}
       tierInfo={tierInfo}
+      feedStatus={feedStatus}
       onUpgradeClick={handleUpgradeClick}
       setShowAuthModal={setShowAuthModal}
     >
@@ -1102,23 +1111,14 @@ export default function App() {
 
       {/* Terminal Footer Status Bar */}
       {activeTab !== 'workspace' && (
-        <footer className="mt-auto border-t border-black bg-black px-6 py-3.5 flex flex-col sm:flex-row items-center justify-between text-[9px] text-zinc-550 font-mono tracking-widest uppercase gap-2">
-        <div className="flex flex-wrap gap-4 sm:gap-6 justify-center sm:justify-start items-center">
-          <span>SYSTEM STATUS: OPTIMAL</span>
-          <span className="text-zinc-850">|</span>
-          <span>LATENCY: ACTIVE (SSE SYNC)</span>
-          <span className="text-zinc-850">|</span>
-          <span>FEED: CME GROUP DIRECT FEED</span>
-          <span className="text-zinc-850">|</span>
-          <span className="flex items-center gap-1"><span className="text-zinc-600">CLOCK (NY):</span> <FooterClock /></span>
-          <span className="text-zinc-850">|</span>
-          <span>PROVENANCE TRAIL ACTIVE</span>
-          <span className="text-zinc-850">|</span>
-          <span className="text-[#E5E5E5]">AUDIT: {serverState?.provenance?.audit_id || 'AUD-991A'}</span>
+        <footer className="mt-auto border-t border-white/5 bg-black px-6 py-3.5 flex flex-col sm:flex-row items-center justify-between text-[9px] text-zinc-500 font-mono tracking-widest uppercase gap-2">
+        <div className="flex items-center gap-2">
+          <span className="text-zinc-500">NY</span>
+          <FooterClock />
         </div>
         <div className="flex items-center gap-2 mt-2 sm:mt-0">
-          <div className="w-1.5 h-1.5 bg-black/40 rounded-full animate-pulse"></div>
-          <span className="text-zinc-400 font-bold">SERVER LIVE FEED STREAMING</span>
+          <div className="w-1.5 h-1.5 bg-[#4ADE80] rounded-full animate-pulse"></div>
+          <span className="text-zinc-400 font-bold">{serverState?.data_source === 'SANDBOX_SYNTHETIC' ? 'Sandbox Feed' : 'Live Feed'}</span>
         </div>
       </footer>
       )}
@@ -1190,7 +1190,7 @@ export default function App() {
               </div>
 
               <div className="p-3 max-h-[320px] overflow-y-auto hide-scrollbar">
-                <div className="text-[7.5px] text-[#000000] font-extrabold uppercase px-3 py-1 tracking-wider mb-1">
+                <div className="text-[7.5px] text-zinc-500 font-extrabold uppercase px-3 py-1 tracking-wider mb-1">
                   {prismFilter === 'All' ? 'GLOBAL REGISTRY' : prismFilter.toUpperCase()}
                 </div>
 

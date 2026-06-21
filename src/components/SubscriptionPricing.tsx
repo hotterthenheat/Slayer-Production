@@ -100,6 +100,7 @@ export function SubscriptionPricing({ onUpgradeComplete, onEnterApp, session, on
   const setCheckoutPlan = useContractStore(s => s.setCheckoutPlan);
 
   const [isPaymentInFlight, setIsPaymentInFlight] = useState(false);
+  const [checkoutError, setCheckoutError] = useState<string>('');
   const checkoutPayloadRef = useRef<{
     plan: string;
     address: string;
@@ -127,6 +128,7 @@ export function SubscriptionPricing({ onUpgradeComplete, onEnterApp, session, on
     setMockEmail(session?.email || '');
     setIsValidatingSuccess(false);
     setIsSuccessValidatedDone(false);
+    setCheckoutError('');
   };
 
   useEffect(() => {
@@ -157,9 +159,11 @@ export function SubscriptionPricing({ onUpgradeComplete, onEnterApp, session, on
         return;
       }
       // Non-ok or missing url: surface a lightweight error to the user.
-      alert(data?.error || 'Unable to start checkout. Please try again.');
+      setCheckoutError(data?.error || 'Unable to start checkout. Please try again.');
+      setSelectedPlanForCheckout(planKey);
     } catch (e) {
-      alert('Unable to reach the payment service. Please try again.');
+      setCheckoutError('Unable to reach the payment service. Please try again.');
+      setSelectedPlanForCheckout(planKey);
     }
   }
 
@@ -229,7 +233,7 @@ export function SubscriptionPricing({ onUpgradeComplete, onEnterApp, session, on
               }
             } else {
               setIsPaymentInFlight(false);
-              alert("Payment Authorization Refused: " + (data.error || "Please verify your subscription parameters."));
+              setCheckoutError("Payment Authorization Refused: " + (data.error || "Please verify your subscription parameters."));
               setCheckoutStep('details');
             }
           })
@@ -307,7 +311,7 @@ export function SubscriptionPricing({ onUpgradeComplete, onEnterApp, session, on
       >
         <div className="text-center space-y-2 mb-10">
           <span className="text-zinc-500 text-[10px] font-mono uppercase tracking-[0.3em] block">
-            SUBSCRIPTION MODELS & PLATFORM SERVICES
+            PLANS & PRICING
           </span>
           <h2 className="text-2xl font-black text-[#E5E5E5] uppercase tracking-tight font-sans">
             Simple Subscriptions
@@ -330,7 +334,7 @@ export function SubscriptionPricing({ onUpgradeComplete, onEnterApp, session, on
                 billingCycle === 'annual' ? 'bg-black text-[#E5E5E5]' : 'text-zinc-500 hover:text-[#E5E5E5] hover:bg-black'
               }`}
             >
-              Annual <span className="text-[9px] bg-black/20 text-[#4ADE80] px-1.5 py-0.5 rounded-sm">Save ~20%</span>
+              Annual <span className="text-[9px] bg-[#4ADE80]/15 text-[#4ADE80] px-1.5 py-0.5 rounded-full font-black">Save ~20%</span>
             </button>
           </div>
         </div>
@@ -349,7 +353,7 @@ export function SubscriptionPricing({ onUpgradeComplete, onEnterApp, session, on
               opacity: { duration: 0.6, delay: 0.1 }
             }}
             whileHover={{ scale: 1.05, y: -10, boxShadow: "0 30px 60px -15px rgba(52, 199, 89, 0.12)" }}
-            className="group apple-glass rounded-2xl p-6 flex flex-col justify-between relative transition-all duration-150 w-full sm:w-[calc(50%-12px)] lg:w-[calc(33.33%-16px)] xl:w-[calc(20%-20px)] min-w-[240px] max-w-[280px] lg:order-1 xl:order-1"
+            className="group apple-glass rounded-2xl p-6 flex flex-col justify-between relative transition-all duration-150 w-full sm:w-[calc(50%-12px)] lg:w-[calc(33.33%-16px)] xl:w-[calc(20%-20px)] sm:min-w-[240px] sm:max-w-[280px] lg:order-1 xl:order-1"
           >
             <div className="space-y-4 relative z-10">
               <div className="flex justify-between items-baseline border-b border-black/40 pb-4">
@@ -386,7 +390,7 @@ export function SubscriptionPricing({ onUpgradeComplete, onEnterApp, session, on
             <div className="pt-6">
               <button
                 onClick={() => handleStripeCheckout('discord')}
-                className="w-full py-4 bg-black/90 hover:bg-white hover:text-black border border-black text-zinc-350 font-bold uppercase tracking-widest text-[11px] rounded-lg transition-all duration-150 cursor-pointer shadow-lg"
+                className="w-full py-4 bg-white text-black hover:bg-zinc-100 font-black uppercase tracking-widest text-[11px] rounded-lg transition-all duration-150 cursor-pointer shadow-lg"
               >
                 Select Plan
               </button>
@@ -405,13 +409,13 @@ export function SubscriptionPricing({ onUpgradeComplete, onEnterApp, session, on
               opacity: { duration: 0.6, delay: 0.2 }
             }}
             whileHover={{ scale: 1.07, y: -12, boxShadow: "0 30px 60px -15px rgba(99, 102, 241, 0.25)" }}
-            className="group apple-glass rounded-2xl p-6 flex flex-col justify-between relative transition-all duration-150 w-full sm:w-[calc(50%-12px)] lg:w-[calc(33.33%-16px)] xl:w-[calc(20%-20px)] min-w-[240px] max-w-[280px] lg:order-3 xl:order-2"
+            className="group apple-glass rounded-2xl p-6 flex flex-col justify-between relative transition-all duration-150 w-full sm:w-[calc(50%-12px)] lg:w-[calc(33.33%-16px)] xl:w-[calc(20%-20px)] sm:min-w-[240px] sm:max-w-[280px] lg:order-3 xl:order-2"
           >
             <div className="space-y-4 relative z-10">
               <div className="flex justify-between items-baseline border-b border-black/40 pb-4">
                 <div>
                   <span className="text-zinc-500 text-[10px] uppercase tracking-wider block font-bold">Dashboard</span>
-                  <span className="text-[12px] font-mono font-black text-indigo-400 block mt-1 uppercase">DECISION ENGINE</span>
+                  <span className="text-[12px] font-mono font-black text-indigo-400 block mt-1 uppercase">FULL DASHBOARD</span>
                 </div>
                 <div className="text-right">
                   <span className="text-[#E5E5E5] text-xs font-black inline-flex items-center gap-1.5 transition-transform group-hover:scale-105">ASSASSIN <NeedleSword className="group-hover:rotate-45" /></span>
@@ -433,11 +437,11 @@ export function SubscriptionPricing({ onUpgradeComplete, onEnterApp, session, on
                   </li>
                   <li className="flex gap-2.5 items-center">
                     <Check className="w-4 h-4 text-[#4ADE80] shrink-0" />
-                    <span>Real-time Trade Health Indexes</span>
+                    <span>Live trade health scores</span>
                   </li>
                   <li className="flex gap-2.5 items-center">
                     <Check className="w-4 h-4 text-[#4ADE80] shrink-0" />
-                    <span>Live Dealer Hedging Models</span>
+                    <span>Live volatility surface</span>
                   </li>
                 </ul>
               </div>
@@ -446,7 +450,7 @@ export function SubscriptionPricing({ onUpgradeComplete, onEnterApp, session, on
             <div className="pt-6">
               <button
                 onClick={() => handleStripeCheckout('skyvision')}
-                className="w-full py-4 bg-black/90 hover:bg-white hover:text-black border border-black text-zinc-350 font-bold uppercase tracking-widest text-[11px] rounded-lg transition-all duration-150 cursor-pointer shadow-lg"
+                className="w-full py-4 bg-white text-black hover:bg-zinc-100 font-black uppercase tracking-widest text-[11px] rounded-lg transition-all duration-150 cursor-pointer shadow-lg"
               >
                 Select Plan
               </button>
@@ -465,10 +469,10 @@ export function SubscriptionPricing({ onUpgradeComplete, onEnterApp, session, on
               opacity: { duration: 0.6, delay: 0.3 }
             }}
             whileHover={{ scale: 1.08, y: -12, boxShadow: "0 30px 60px -10px rgba(48, 209, 88, 0.3)" }}
-            className="group apple-glass-bright rounded-2xl p-6 flex flex-col justify-between relative transition-all duration-150 border-2 border-black shadow-[0_0_25px_rgba(48,209,88,0.15)] w-full sm:w-[calc(50%-12px)] lg:w-[calc(33.33%-16px)] xl:w-[calc(20%-20px)] min-w-[240px] max-w-[280px] lg:order-2 xl:order-3"
+            className="group apple-glass-bright rounded-2xl pt-10 px-6 pb-6 flex flex-col justify-between relative transition-all duration-150 border-2 border-black shadow-[0_0_25px_rgba(48,209,88,0.15)] w-full sm:w-[calc(50%-12px)] lg:w-[calc(33.33%-16px)] xl:w-[calc(20%-20px)] sm:min-w-[240px] sm:max-w-[280px] lg:order-2 xl:order-3"
           >
-            <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-gradient-to-r from-zinc-300 to-zinc-300 text-[#000000] text-[9.5px] font-black uppercase tracking-widest px-3.5 py-1.5 rounded-full shadow-lg whitespace-nowrap z-10 border border-black">
-              🔥 BEST VALUE // MOST SUBSCRIBED
+            <div className="absolute top-3 left-1/2 -translate-x-1/2 bg-zinc-300 text-[#000000] text-[9.5px] font-black uppercase tracking-widest px-3.5 py-1.5 rounded-full shadow-lg whitespace-nowrap z-10 border border-black">
+              BEST VALUE // MOST SUBSCRIBED
             </div>
 
             <div className="space-y-4 relative z-10">
@@ -493,15 +497,15 @@ export function SubscriptionPricing({ onUpgradeComplete, onEnterApp, session, on
                   </li>
                   <li className="flex gap-2.5 items-center">
                     <Check className="w-4 h-4 text-[#4ADE80] shrink-0" />
-                    <span>Pinpoint Gexbot Live Feed</span>
+                    <span>Live dealer positioning (GEX)</span>
                   </li>
                   <li className="flex gap-2.5 items-center">
                     <Check className="w-4 h-4 text-[#4ADE80] shrink-0" />
-                    <span>Institutional Tape Tracking</span>
+                    <span>Institutional order flow tape</span>
                   </li>
                   <li className="flex gap-2.5 items-center">
                     <Check className="w-4 h-4 text-[#4ADE80] shrink-0" />
-                    <span>Gamma Exposure Visualizer</span>
+                    <span>GEX chart by strike</span>
                   </li>
                 </ul>
               </div>
@@ -510,7 +514,7 @@ export function SubscriptionPricing({ onUpgradeComplete, onEnterApp, session, on
             <div className="pt-6">
               <button
                 onClick={() => handleStripeCheckout('pinpoint')}
-                className="w-full py-4 bg-gradient-to-r from-zinc-300 to-zinc-300 hover:from-zinc-300 hover:to-zinc-300 text-[#000000] font-black uppercase tracking-widest text-[11px] rounded-lg transition-all duration-150 cursor-pointer shadow-[0_10px_30px_rgba(48,209,88,0.25)] hover:scale-[1.01]"
+                className="w-full py-4 bg-white text-black hover:bg-zinc-100 font-black uppercase tracking-widest text-[11px] rounded-lg transition-all duration-150 cursor-pointer shadow-[0_10px_30px_rgba(48,209,88,0.25)] hover:scale-[1.01]"
               >
                 SELECT GEXBOT
               </button>
@@ -529,7 +533,7 @@ export function SubscriptionPricing({ onUpgradeComplete, onEnterApp, session, on
               opacity: { duration: 0.6, delay: 0.4 }
             }}
             whileHover={{ scale: 1.05, y: -10, boxShadow: "0 30px 60px -15px rgba(251, 191, 36, 0.12)" }}
-            className="group apple-glass rounded-2xl p-6 flex flex-col justify-between relative transition-all duration-150 w-full sm:w-[calc(50%-12px)] lg:w-[calc(33.33%-16px)] xl:w-[calc(20%-20px)] min-w-[240px] max-w-[280px] lg:order-4 xl:order-4"
+            className="group apple-glass rounded-2xl p-6 flex flex-col justify-between relative transition-all duration-150 w-full sm:w-[calc(50%-12px)] lg:w-[calc(33.33%-16px)] xl:w-[calc(20%-20px)] sm:min-w-[240px] sm:max-w-[280px] lg:order-4 xl:order-4"
           >
             <div className="space-y-4 relative z-10">
               <div className="flex justify-between items-baseline border-b border-black/40 pb-4">
@@ -553,15 +557,15 @@ export function SubscriptionPricing({ onUpgradeComplete, onEnterApp, session, on
                   </li>
                   <li className="flex gap-2.5 items-center">
                     <Check className="w-4 h-4 text-amber-400 shrink-0" />
-                    <span className="font-medium text-[#E5E5E5]">Full Quant Engine Access</span>
+                    <span className="font-medium text-[#E5E5E5]">Full Quant Suite</span>
                   </li>
                   <li className="flex gap-2.5 items-center">
                     <Check className="w-4 h-4 text-[#4ADE80] shrink-0" />
-                    <span>Dealer Flow Tracking</span>
+                    <span>Live order-flow monitor</span>
                   </li>
                   <li className="flex gap-2.5 items-center">
                     <Check className="w-4 h-4 text-[#4ADE80] shrink-0" />
-                    <span>Trust Archive & Registry</span>
+                    <span>Trade history archive</span>
                   </li>
                 </ul>
               </div>
@@ -570,7 +574,7 @@ export function SubscriptionPricing({ onUpgradeComplete, onEnterApp, session, on
             <div className="pt-6">
               <button
                 onClick={() => handleStripeCheckout('quant')}
-                className="w-full py-4 bg-black/90 hover:bg-white hover:text-black border border-black text-zinc-350 font-bold uppercase tracking-widest text-[11px] rounded-lg transition-all duration-150 cursor-pointer shadow-lg"
+                className="w-full py-4 bg-white text-black hover:bg-zinc-100 font-black uppercase tracking-widest text-[11px] rounded-lg transition-all duration-150 cursor-pointer shadow-lg"
               >
                 Select Plan
               </button>
@@ -589,7 +593,7 @@ export function SubscriptionPricing({ onUpgradeComplete, onEnterApp, session, on
               opacity: { duration: 0.6, delay: 0.5 }
             }}
             whileHover={{ scale: 1.05, y: -10, boxShadow: "0 30px 60px -15px rgba(255, 255, 255, 0.12)" }}
-            className="group apple-glass rounded-2xl p-6 flex flex-col justify-between relative transition-all duration-150 w-full sm:w-[calc(50%-12px)] lg:w-[calc(33.33%-16px)] xl:w-[calc(20%-20px)] min-w-[240px] max-w-[280px] lg:order-5 xl:order-5"
+            className="group apple-glass rounded-2xl p-6 flex flex-col justify-between relative transition-all duration-150 w-full sm:w-[calc(50%-12px)] lg:w-[calc(33.33%-16px)] xl:w-[calc(20%-20px)] sm:min-w-[240px] sm:max-w-[280px] lg:order-5 xl:order-5"
           >
             <div className="space-y-4 relative z-10">
               <div className="flex justify-between items-baseline border-b border-black/40 pb-4">
@@ -632,7 +636,7 @@ export function SubscriptionPricing({ onUpgradeComplete, onEnterApp, session, on
             <div className="pt-6">
               <button
                 onClick={() => handleStripeCheckout('lifetime')}
-                className="w-full py-4 bg-black/90 hover:bg-white hover:text-black border border-black text-zinc-350 font-bold uppercase tracking-widest text-[11px] rounded-lg transition-all duration-150 cursor-pointer shadow-lg"
+                className="w-full py-4 bg-white text-black hover:bg-zinc-100 font-black uppercase tracking-widest text-[11px] rounded-lg transition-all duration-150 cursor-pointer shadow-lg"
               >
                 CONTACT US
               </button>
@@ -652,7 +656,7 @@ export function SubscriptionPricing({ onUpgradeComplete, onEnterApp, session, on
       >
         <p>&copy; 2026 slayertrade. ALL RIGHTS RESERVED.</p>
         <p className="mt-1 text-[8px] text-zinc-650 uppercase tracking-widest">
-          Slayer provides real-time mathematical decision guidelines. No investment advising is rendered.
+          Slayer provides real-time data and analysis tools. Not investment advice.
         </p>
       </motion.footer>
 
@@ -677,7 +681,7 @@ export function SubscriptionPricing({ onUpgradeComplete, onEnterApp, session, on
                 <div className="flex items-center gap-2">
                   <div className="w-2 h-2 rounded-full bg-[#4ADE80] hover:bg-[#4ADE80]/90 text-black shadow-[0_0_15px_rgba(0,255,136,0.5)] animate-pulse" />
                   <span className="text-[10px] uppercase font-black tracking-widest text-[#a1a1aa]">
-                    SECURE SSL PLATFORM UPGRADE HANDSHAKE
+                    SECURE CHECKOUT
                   </span>
                 </div>
                 {checkoutStep !== 'processing' ? (
@@ -689,7 +693,7 @@ export function SubscriptionPricing({ onUpgradeComplete, onEnterApp, session, on
                     <X className="w-4 h-4" />
                   </button>
                 ) : (
-                  <span className="text-[8px] text-indigo-400 font-bold uppercase tracking-widest animate-pulse">LOCK ACTIVE</span>
+                  <span className="text-[8px] text-indigo-400 font-bold uppercase tracking-widest animate-pulse">PROCESSING</span>
                 )}
               </div>
 
@@ -700,7 +704,7 @@ export function SubscriptionPricing({ onUpgradeComplete, onEnterApp, session, on
                 <div className="bg-black border border-black p-5 rounded-xl space-y-3">
                   <div className="flex justify-between items-start">
                     <div>
-                      <span className="text-[10px] text-zinc-500 uppercase tracking-widest block font-bold">SELECTED CLASSIFICATION</span>
+                      <span className="text-[10px] text-zinc-500 uppercase tracking-widest block font-bold">YOUR PLAN</span>
                       <h3 className="text-xl font-black text-[#E5E5E5] mt-1 uppercase tracking-tight font-sans">
                         {selectedPlanForCheckout === 'discord' && "Squire"}
                         {selectedPlanForCheckout === 'skyvision' && "Assassin"}
@@ -709,15 +713,15 @@ export function SubscriptionPricing({ onUpgradeComplete, onEnterApp, session, on
                         {selectedPlanForCheckout === 'lifetime' && "Immortal Pass"}
                       </h3>
                       <p className="text-[10px] text-[#A1A1AA] mt-1 tracking-wider uppercase font-mono">
-                        {selectedPlanForCheckout === 'discord' && "REAL-TIME ALERTS FEED & CHAT"}
-                        {selectedPlanForCheckout === 'skyvision' && "DECISION Cockpit & PERFORMANCE TRACKER"}
-                        {selectedPlanForCheckout === 'pinpoint' && "GAMMA AND POSITIONING ANALYSIS FEED"}
-                        {selectedPlanForCheckout === 'quant' && "BACKTESTING SANDBOX & ALGORITHMIC METRICS"}
-                        {selectedPlanForCheckout === 'lifetime' && "PERMANENT ALL-ACCESS PASS"}
+                        {selectedPlanForCheckout === 'discord' && "LIVE ALERTS & DISCORD COMMUNITY"}
+                        {selectedPlanForCheckout === 'skyvision' && "FULL TRADE DASHBOARD & IV SURFACE"}
+                        {selectedPlanForCheckout === 'pinpoint' && "LIVE DEALER POSITIONING (GEX)"}
+                        {selectedPlanForCheckout === 'quant' && "BACKTESTER, ORDER FLOW & MOMENTUM GAUGES"}
+                        {selectedPlanForCheckout === 'lifetime' && "ALL FEATURES, PERMANENT ACCESS"}
                       </p>
                     </div>
                     <div className="text-right">
-                      <span className="text-[10px] text-indigo-400 block tracking-widest font-black">RATE</span>
+                      <span className="text-[10px] text-indigo-400 block tracking-widest font-black">PRICE</span>
                       <span className={`${selectedPlanForCheckout === 'lifetime' ? 'text-[11px] font-mono font-bold tracking-widest text-[#4ADE80] uppercase bg-black/40 px-3 py-1.5 border border-black rounded-md' : 'text-2xl font-black text-[#E5E5E5] font-mono'}`}>
                         {selectedPlanForCheckout === 'lifetime' 
                           ? 'Quote Needed' 
@@ -736,11 +740,19 @@ export function SubscriptionPricing({ onUpgradeComplete, onEnterApp, session, on
                     <div className="text-[10px] text-[#4ADE80] bg-black/40 border border-black rounded-lg p-2 flex items-center justify-between">
                       <span className="uppercase font-bold tracking-widest">Billing Schedule:</span>
                       <span className="font-extrabold uppercase">
-                        {billingCycle === 'monthly' ? "Renew Monthly" : "Annually (20% Savings Loaded)"}
+                        {billingCycle === 'monthly' ? "Billed Monthly" : "Billed Annually (Save 20%)"}
                       </span>
                     </div>
                   )}
                 </div>
+
+                {checkoutError && checkoutStep === 'details' && (
+                  <div className="rounded-lg border border-[#F87171]/40 bg-[#F87171]/10 text-[#F87171] px-4 py-3 text-[11px] font-mono flex items-start gap-2">
+                    <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
+                    <span>{checkoutError}</span>
+                    <button onClick={() => setCheckoutError('')} className="ml-auto shrink-0 hover:opacity-70 transition-opacity"><X className="w-3.5 h-3.5" /></button>
+                  </div>
+                )}
 
                 {checkoutStep === 'details' && (
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-5 animate-fadeIn animate-duration-150">
@@ -983,7 +995,7 @@ export function SubscriptionPricing({ onUpgradeComplete, onEnterApp, session, on
                             }}
                             className={`w-full mt-4 py-3 rounded-lg bg-black/40 hover:bg-black/40 text-neutral-950 font-black text-[10px] uppercase tracking-widest shadow-xl flex items-center justify-center gap-1.5 transition-all cursor-pointer transform hover:scale-[1.01] ${isPaymentInFlight ? 'opacity-50 cursor-not-allowed' : ''}`}
                           >
-                            <span>{isPaymentInFlight ? 'PROBING PIPELINE...' : 'SUBMIT MESSAGE'}</span>
+                            <span>{isPaymentInFlight ? 'SENDING...' : 'SEND MESSAGE'}</span>
                           </button>
                         </div>
                       ) : (
@@ -1325,7 +1337,7 @@ export function SubscriptionPricing({ onUpgradeComplete, onEnterApp, session, on
                     <div className="order-2 md:order-1 space-y-4">
                       <div className="bg-black border border-black/80 p-4 rounded-xl space-y-3">
                         <div>
-                          <span className="text-[9px] text-zinc-500 uppercase tracking-widest block font-bold">SELECTED PLAN</span>
+                          <span className="text-[9px] text-zinc-500 uppercase tracking-widest block font-bold">YOUR PLAN</span>
                           <h3 className="text-lg font-black text-[#E5E5E5] mt-1 uppercase tracking-tight font-sans">
                             {selectedPlanForCheckout === 'discord' && "Discord Plan"}
                             {selectedPlanForCheckout === 'skyvision' && "SkyVision Cockpit"}
@@ -1349,7 +1361,7 @@ export function SubscriptionPricing({ onUpgradeComplete, onEnterApp, session, on
                         <div className="flex justify-between items-center border-t border-black pt-2 text-[10px]">
                           <span className="text-zinc-550">Billing Cycle:</span>
                           <span className="text-[#4ADE80] font-black uppercase font-mono">
-                            {selectedPlanForCheckout === 'lifetime' ? 'PERMANENT ALL-ACCESS' : (billingCycle === 'monthly' ? "RENEW MONTHLY" : "ANNUAL (20% OFF)")}
+                            {selectedPlanForCheckout === 'lifetime' ? 'PERMANENT ACCESS' : (billingCycle === 'monthly' ? "BILLED MONTHLY" : "BILLED ANNUALLY (20% OFF)")}
                           </span>
                         </div>
                       </div>
@@ -1358,45 +1370,45 @@ export function SubscriptionPricing({ onUpgradeComplete, onEnterApp, session, on
                       <div className="space-y-2">
                         <div className="flex items-center gap-1.5 text-[9px] uppercase font-black tracking-widest text-[#a1a1aa]">
                           <ShieldCheck className="w-3.5 h-3.5 text-[#4ADE80] shrink-0" />
-                          <span>GUARANTEED PLAN FEATURES</span>
+                          <span>WHAT IS INCLUDED</span>
                         </div>
                         <p className="text-[9px] text-zinc-500 leading-relaxed font-mono uppercase">
-                          ALL TIERS ARE INCLUSIVE. YOUR SUBSCRIPTION AUTOMATICALLY UNLOCKS:
+                          ALL TIERS STACK. YOUR PLAN UNLOCKS:
                         </p>
                         <div className="bg-black/60 border border-black/65 rounded-xl p-3.5 space-y-1.5 text-[10px] font-mono">
                           {selectedPlanForCheckout === 'discord' && (
                             <>
-                              <div className="flex items-center gap-1.5 text-[#4ADE80]"><Check className="w-3.5 h-3.5 shrink-0" /> Discord Live Alerts ($65 Value)</div>
-                              <div className="flex items-center gap-1.5 text-zinc-650 line-through"><X className="w-3.5 h-3.5 shrink-0" /> SkyVision Decision Core</div>
-                              <div className="flex items-center gap-1.5 text-zinc-650 line-through"><X className="w-3.5 h-3.5 shrink-0" /> Pinpoint Gexbot Feed</div>
+                              <div className="flex items-center gap-1.5 text-[#4ADE80]"><Check className="w-3.5 h-3.5 shrink-0" /> Discord alerts and community ($65 value)</div>
+                              <div className="flex items-center gap-1.5 text-zinc-650 line-through"><X className="w-3.5 h-3.5 shrink-0" /> SkyVision dashboard</div>
+                              <div className="flex items-center gap-1.5 text-zinc-650 line-through"><X className="w-3.5 h-3.5 shrink-0" /> Pinpoint GEX feed</div>
                             </>
                           )}
                           {selectedPlanForCheckout === 'skyvision' && (
                             <>
-                              <div className="flex items-center gap-1.5 text-[#4ADE80]"><Check className="w-3.5 h-3.5 shrink-0" /> Discord Chat & Alerts (Included)</div>
-                              <div className="flex items-center gap-1.5 text-[#4ADE80]"><Check className="w-3.5 h-3.5 shrink-0" /> SkyVision Decision Cockpit ($350)</div>
-                              <div className="flex items-center gap-1.5 text-zinc-650 line-through"><X className="w-3.5 h-3.5 shrink-0" /> Pinpoint Gexbot Feed</div>
+                              <div className="flex items-center gap-1.5 text-[#4ADE80]"><Check className="w-3.5 h-3.5 shrink-0" /> Discord alerts (included)</div>
+                              <div className="flex items-center gap-1.5 text-[#4ADE80]"><Check className="w-3.5 h-3.5 shrink-0" /> SkyVision dashboard ($350)</div>
+                              <div className="flex items-center gap-1.5 text-zinc-650 line-through"><X className="w-3.5 h-3.5 shrink-0" /> Pinpoint GEX feed</div>
                             </>
                           )}
                           {selectedPlanForCheckout === 'pinpoint' && (
                             <>
-                              <div className="flex items-center gap-1.5 text-[#4ADE80]"><Check className="w-3.5 h-3.5 shrink-0" /> Discord Chat + SkyVision Cockpit</div>
-                              <div className="flex items-center gap-1.5 text-[#4ADE80]"><Check className="w-3.5 h-3.5 shrink-0" /> Pinpoint Gexbot Exposure Feed ($500)</div>
-                              <div className="flex items-center gap-1.5 text-zinc-650 line-through"><X className="w-3.5 h-3.5 shrink-0" /> Full Quant Engine suite</div>
+                              <div className="flex items-center gap-1.5 text-[#4ADE80]"><Check className="w-3.5 h-3.5 shrink-0" /> Discord and SkyVision (included)</div>
+                              <div className="flex items-center gap-1.5 text-[#4ADE80]"><Check className="w-3.5 h-3.5 shrink-0" /> Live dealer positioning GEX ($500)</div>
+                              <div className="flex items-center gap-1.5 text-zinc-650 line-through"><X className="w-3.5 h-3.5 shrink-0" /> Quant suite</div>
                             </>
                           )}
                           {selectedPlanForCheckout === 'quant' && (
                             <>
-                              <div className="flex items-center gap-1.5 text-[#4ADE80]"><Check className="w-3.5 h-3.5 shrink-0" /> Discord + SkyVision + Pinpoint</div>
-                              <div className="flex items-center gap-1.5 text-[#4ADE80]"><Check className="w-3.5 h-3.5 shrink-0" /> Institutional Quant Auditor ($1500)</div>
-                              <div className="flex items-center gap-1.5 text-[#4ADE80]"><Check className="w-3.5 h-3.5 shrink-0" /> Real-time Dealer Flow Heatmaps</div>
+                              <div className="flex items-center gap-1.5 text-[#4ADE80]"><Check className="w-3.5 h-3.5 shrink-0" /> Discord, SkyVision, Pinpoint GEX</div>
+                              <div className="flex items-center gap-1.5 text-[#4ADE80]"><Check className="w-3.5 h-3.5 shrink-0" /> Quant backtester ($1500)</div>
+                              <div className="flex items-center gap-1.5 text-[#4ADE80]"><Check className="w-3.5 h-3.5 shrink-0" /> Live order-flow monitor</div>
                             </>
                           )}
                           {selectedPlanForCheckout === 'lifetime' && (
                             <>
-                              <div className="flex items-center gap-1.5 text-[#4ADE80]"><Check className="w-3.5 h-3.5 shrink-0" /> Permanent Lifetime Access (All Tiers)</div>
-                              <div className="flex items-center gap-1.5 text-[#4ADE80]"><Check className="w-3.5 h-3.5 shrink-0" /> Private 1-on-1 Strategy Setup</div>
-                              <div className="flex items-center gap-1.5 text-[#4ADE80]"><Check className="w-3.5 h-3.5 shrink-0" /> Priority Custom API Bridges</div>
+                              <div className="flex items-center gap-1.5 text-[#4ADE80]"><Check className="w-3.5 h-3.5 shrink-0" /> All features, permanent access</div>
+                              <div className="flex items-center gap-1.5 text-[#4ADE80]"><Check className="w-3.5 h-3.5 shrink-0" /> Private 1-on-1 onboarding call</div>
+                              <div className="flex items-center gap-1.5 text-[#4ADE80]"><Check className="w-3.5 h-3.5 shrink-0" /> Priority API access</div>
                             </>
                           )}
                         </div>
@@ -1413,7 +1425,7 @@ export function SubscriptionPricing({ onUpgradeComplete, onEnterApp, session, on
                     </div>
 
                     <div className="w-full bg-black/60 rounded-lg p-4 font-mono text-[9px] text-[#a1a1aa] leading-released border border-black space-y-1.5 bg-black min-h-[140px]">
-                      <div className="text-zinc-650 text-[8px] font-black border-b border-black/50 pb-1 mb-2 uppercase">SECURE PAYMENT PIPELINE CONSOLE</div>
+                      <div className="text-zinc-650 text-[8px] font-black border-b border-black/50 pb-1 mb-2 uppercase">PAYMENT STATUS</div>
                       {processingLogs.map((log, idx) => (
                         <div key={idx} className="flex gap-2">
                           <span className="text-indigo-400 shrink-0">&gt;&gt;</span>
@@ -1431,11 +1443,11 @@ export function SubscriptionPricing({ onUpgradeComplete, onEnterApp, session, on
                       <div className="flex items-center gap-2">
                         <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse" />
                         <span className="text-[#a1a1aa] uppercase font-black tracking-widest">
-                          WEBHOOK GATEWAY ACTIVE
+                          CONFIRMING PAYMENT
                         </span>
                       </div>
                       <span className="font-black uppercase tracking-wider text-amber-400">
-                        PENDING WEBHOOK...
+                        PENDING...
                       </span>
                     </div>
 
@@ -1449,17 +1461,17 @@ export function SubscriptionPricing({ onUpgradeComplete, onEnterApp, session, on
 
                     <div className="text-center space-y-1 max-w-md mx-auto">
                       <h4 className="text-sm font-black text-[#E5E5E5] uppercase tracking-tight font-sans">
-                        LISTENING FOR GATEWAY CLEARANCE
+                        WAITING FOR PAYMENT CONFIRMATION
                       </h4>
                       <p className="text-zinc-400 text-[10.5px]">
-                        Waiting for payment confirmation event signature from Stripe networks to propagate and settle.
+                        Waiting for Stripe to confirm your payment. This usually takes a few seconds.
                       </p>
                     </div>
 
                     {/* Console Logs */}
                     <div className="w-full bg-black border border-black rounded-xl p-4 font-mono text-[9px] text-[#8e8e93] leading-relaxed text-left space-y-1.5 min-h-[140px]">
                       <div className="text-zinc-650 text-[8px] font-black tracking-widest uppercase border-b border-black/40 pb-1 mb-2">
-                        DECENTRALIZED MEMPOOL TRANSACTION LISTENERS
+                        PAYMENT VERIFICATION LOG
                       </div>
                       {successValidationLogs.map((log, index) => (
                         <div key={index} className="flex gap-2 items-center">
@@ -1468,7 +1480,7 @@ export function SubscriptionPricing({ onUpgradeComplete, onEnterApp, session, on
                         </div>
                       ))}
                       <div className="flex gap-2 items-center text-amber-450 text-[8px] font-black uppercase tracking-wider pl-5 mt-1 animate-pulse">
-                        <span>ESTABLISHING WEBHOOK VERIFICATION CONTEXT...</span>
+                        <span>VERIFYING...</span>
                       </div>
                     </div>
                   </div>
@@ -1481,7 +1493,7 @@ export function SubscriptionPricing({ onUpgradeComplete, onEnterApp, session, on
                       <div className="flex items-center gap-2">
                         <span className="w-1.5 h-1.5 rounded-full bg-black/40" />
                         <span className="text-[#a1a1aa] uppercase font-black tracking-widest">
-                          VALIDATION COMPLETE
+                          PAYMENT CONFIRMED
                         </span>
                       </div>
                       <span className="font-black uppercase tracking-wider text-[#4ADE80]">
@@ -1503,19 +1515,19 @@ export function SubscriptionPricing({ onUpgradeComplete, onEnterApp, session, on
                     {/* Status descriptions */}
                     <div className="text-center space-y-1.5 max-w-md mx-auto">
                       <h4 className="text-base font-black text-[#E5E5E5] uppercase tracking-tight font-sans">
-                        SUBSCRIPTION LEVEL ENGAGED
+                        SUBSCRIPTION ACTIVE
                       </h4>
                       <p className="text-zinc-400 text-[11px] leading-relaxed">
-                        The validator successfully committed your purchase to the secure cloud database. Your clearance level has been securely synchronized across all platform endpoints.
+                        Your payment was confirmed and your plan is now active. All features for your tier are unlocked.
                       </p>
                     </div>
 
                     {/* Validation Pipeline Log Console Terminal */}
                     <div className="w-full bg-black border border-black rounded-xl p-4 font-mono text-[9px] text-[#8e8e93] leading-relaxed text-left space-y-1.5 relative overflow-hidden min-h-[150px]">
-                      <div className="absolute top-0 right-0 p-2 font-mono text-[8px] text-zinc-650 tracking-widest font-bold">ST-V8 ENGINE</div>
-                      
+                      <div className="absolute top-0 right-0 p-2 font-mono text-[8px] text-zinc-650 tracking-widest font-bold">STRIPE</div>
+
                       <div className="text-[8px] text-zinc-650 font-black tracking-widest uppercase border-b border-black/40 pb-1 mb-2">
-                        DATABASE RECONCILIATION AUDIT MATRIX
+                        ACTIVATION LOG
                       </div>
 
                       {successValidationLogs.map((log, index) => (
@@ -1529,9 +1541,9 @@ export function SubscriptionPricing({ onUpgradeComplete, onEnterApp, session, on
                     {/* Cleared Active Features grid */}
                     <div className="bg-black/40 border border-black p-4 rounded-xl w-full text-left space-y-2.5 animate-fadeIn">
                       <div className="text-[9.5px] text-zinc-450 font-extrabold uppercase border-b border-black/60 pb-1 flex justify-between">
-                        <span>Verified Subscriptions Access</span>
+                        <span>Your Active Features</span>
                         <span className="text-[#4ADE80] flex items-center gap-1">
-                          <CheckCircle2 className="w-3.5 h-3.5" /> CONFIRMED SECURE
+                          <CheckCircle2 className="w-3.5 h-3.5" /> ACTIVE
                         </span>
                       </div>
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-[10px] text-zinc-350 font-mono">
@@ -1544,11 +1556,11 @@ export function SubscriptionPricing({ onUpgradeComplete, onEnterApp, session, on
                           if (selectedPlanForCheckout === 'lifetime') tiersToShow.push('discord', 'skyvision', 'pinpoint', 'quant', 'lifetime');
 
                           const listLabels: Record<string, string> = {
-                            discord: "Discord Live Alerts & Chat",
-                            skyvision: "SkyVision Dashboard & PNL Core",
-                            pinpoint: "Pinpoint Gexbot & Position Heatmaps",
-                            quant: "Quant backtesting & Hedging Core",
-                            lifetime: "Lifetime Membership & Beta Feeds"
+                            discord: "Discord alerts and community chat",
+                            skyvision: "SkyVision dashboard and IV surface",
+                            pinpoint: "Pinpoint GEX and position charts",
+                            quant: "Quant backtester and order flow",
+                            lifetime: "Lifetime access and beta features"
                           };
 
                           return tiersToShow.map(key => (
@@ -1616,7 +1628,7 @@ export function SubscriptionPricing({ onUpgradeComplete, onEnterApp, session, on
                         : 'bg-[#4ADE80] hover:bg-[#4ADE80]/90 text-black shadow-[0_0_15px_rgba(0,255,136,0.5)]'
                     }`}
                   >
-                    <span>{isValidatingSuccess ? 'VALIDATING SECURITY CLEARANCES...' : 'VALIDATE ACCESS & ENTER WORKSPACE'}</span>
+                    <span>{isValidatingSuccess ? 'ACTIVATING...' : 'ENTER THE APP'}</span>
                     <ArrowRight className="w-4 h-4" />
                   </button>
                 )}

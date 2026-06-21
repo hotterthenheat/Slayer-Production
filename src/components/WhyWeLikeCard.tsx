@@ -40,7 +40,7 @@ export function WhyWeLikeCard({ score, isBullish = true, asset }: WhyWeLikeTrade
     {
       label: 'RSI Continuity',
       status: rsiContinuity,
-      description: 'Momentum flows across 1m, 5m and 15m frames are in perfect alignment.',
+      description: 'RSI is aligned across the 1m, 5m, and 15m timeframes.',
     },
     {
       label: isBullish ? 'Above VWAP Alignment' : 'Below VWAP Alignment',
@@ -50,22 +50,22 @@ export function WhyWeLikeCard({ score, isBullish = true, asset }: WhyWeLikeTrade
     {
       label: 'Strong Participation',
       status: strongParticipation,
-      description: 'Volume Expansion (RVOL) and high-velocity institutional size blocks identified.',
+      description: 'Above-average volume (RVOL) with large block trades confirmed.',
     },
     {
       label: 'Healthy Structure',
       status: healthyStructure,
-      description: 'Sustained Higher-Highs / Higher-Lows confirming structural trend continuation.',
+      description: 'Higher highs and higher lows in place, confirming trend continuation.',
     },
     {
       label: 'Strong Liquidity',
       status: strongLiquidity,
-      description: 'Key opposing pools swept, leaving the path cleared for trade expansion.',
+      description: 'Key opposing liquidity swept, clearing the path for a continued move.',
     },
     {
       label: 'Positive Historical Similar Setups',
       status: historicalPositive,
-      description: `V10 calibration aligns patterns to precedents. Estimated Bayesian likelihood is calibrated at ${metrics.posteriorWinRate}% based on historical backtest indicators.`,
+      description: `Similar setups have won ${metrics.posteriorWinRate}% of the time in historical backtests.`,
     },
   ];
 
@@ -77,11 +77,11 @@ export function WhyWeLikeCard({ score, isBullish = true, asset }: WhyWeLikeTrade
             <Info className="w-4 h-4 text-[#4ADE80]" />
             <span className="text-xs tracking-[0.2em] font-bold text-[#E0E0E0]">WHY SKYVISION LIKES THIS TRADE</span>
           </div>
-          <span className="text-[9px] text-[#888888] font-bold uppercase select-none border border-black px-2 bg-black/40 py-0.5">ALGORITHMIC LOGIC</span>
+          <span className="text-[9px] text-[#888888] font-bold uppercase select-none border border-black px-2 bg-black/40 py-0.5">SIGNAL LOGIC</span>
         </div>
 
         <p className="text-[11px] text-[#888888] leading-normal mb-4 font-sans">
-          The system actively scans and validates institutional order blocks. All checked parameters identify strong core agreement:
+          All checked factors below are in agreement for this setup:
         </p>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -109,7 +109,7 @@ export function WhyWeLikeCard({ score, isBullish = true, asset }: WhyWeLikeTrade
 
       <div className="mt-5 pt-3.5 border-t border-black text-[9.5px] text-zinc-650 italic flex items-center gap-1.5 leading-none">
         <ShieldAlert className="w-3.5 text-zinc-600" />
-        <span>No subjective bias. Purely data-driven mathematical thesis verification.</span>
+        <span>No opinion. Each factor is scored from live market data only.</span>
       </div>
     </div>
   );

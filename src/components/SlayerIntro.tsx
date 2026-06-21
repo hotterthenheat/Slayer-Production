@@ -195,7 +195,7 @@ export default function SlayerIntro({
               initial={{ scale: 0.1, opacity: 0.8 }}
               animate={{ scale: 4.5, opacity: 0 }}
               transition={{ duration: 0.74, ease: 'easeOut' }}
-              className="absolute w-[300px] h-[300px] rounded-full border border-black -translate-x-1/2 -translate-y-1/2"
+              className="absolute w-[300px] h-[300px] max-w-full max-h-full rounded-full border border-black -translate-x-1/2 -translate-y-1/2 hidden sm:block"
               style={{
                 left: mousePos.x || '50%',
                 top: mousePos.y || '40%',
@@ -276,26 +276,26 @@ export default function SlayerIntro({
             {/* STOP GUESSING LEVEL 2 LANDING TITLE */}
             <div className="space-y-4 w-full text-left font-mono tabular-data">
               <span className="text-[11px] font-black tracking-widest text-[#a1a1aa] mb-4 inline-block uppercase animate-rise opacity-0" style={{ animationDelay: '0.05s', animationFillMode: 'forwards' }}>
-                &gt; INSTITUTIONAL DECISION LAYER ACTIVE
+                &gt; LIVE DEALER POSITIONING ACTIVE
               </span>
-              <h1 className="text-[clamp(48px,7.5vw,90px)] font-[900] tracking-tighter text-[#E5E5E5] leading-[0.95] mb-8 animate-rise opacity-0 uppercase" style={{ animationDelay: '0.13s', animationFillMode: 'forwards' }}>
+              <h1 className="text-[clamp(48px,7.5vw,90px)] font-black tracking-tighter text-[#E5E5E5] leading-[0.95] mb-8 animate-rise opacity-0 uppercase" style={{ animationDelay: '0.13s', animationFillMode: 'forwards' }}>
                 ABSOLUTE<br/>SIGNAL.<br/>ZERO<br/>NOISE.
               </h1>
               <p className="text-[clamp(12px,1.4vw,14px)] font-bold text-[#a1a1aa] max-w-[50ch] leading-[1.8] mb-8 font-mono animate-rise opacity-0 tracking-wide" style={{ animationDelay: '0.3s', animationFillMode: 'forwards' }}>
-                Slayer decrypts dark pool order flow and active dealer gamma positioning. Cease retail speculation. Execute with the asymmetrical advantage of a market maker.
+                Slayer reads dealer gamma positioning and order flow in real time. Stop guessing. Trade with the same data a market maker uses.
               </p>
               <div className="flex gap-4 pt-4 animate-rise opacity-0" style={{ animationDelay: '0.4s', animationFillMode: 'forwards' }}>
-                <button onClick={() => onEnterApp('workspace')} className="bg-[#E5E5E5] text-[#050505] px-8 py-3.5 font-[900] uppercase text-xs tracking-widest rounded-sm hover:bg-white hover:scale-[1.02] transition-all duration-200">
-                  INITIALIZE TERMINAL
+                <button onClick={() => onEnterApp('workspace')} className="bg-white text-black px-8 py-3.5 font-black uppercase text-xs tracking-widest rounded-lg hover:bg-zinc-100 hover:scale-[1.02] transition-all duration-200">
+                  OPEN TERMINAL
                 </button>
                 <button onClick={() => {
                     document.getElementById('feature-matrix')?.scrollIntoView({ behavior: 'smooth' })
-                }} className="border border-[#333333] text-[#a1a1aa] bg-[#0A0A0A] px-8 py-3.5 font-[800] uppercase text-xs tracking-widest rounded-sm hover:bg-[#111] hover:text-[#E5E5E5] hover:border-[#555] transition-all duration-200">
-                  EXPLORE ARCHITECTURE
+                }} className="bg-black text-[#E5E5E5] border border-white/10 px-8 py-3.5 font-bold uppercase text-xs tracking-widest rounded-lg hover:border-white/20 hover:bg-[#111] transition-all duration-200">
+                  SEE HOW IT WORKS
                 </button>
               </div>
               <p className="text-[10px] text-[#52525B] pt-8 max-w-[60ch] uppercase tracking-widest font-black animate-rise opacity-0" style={{ animationDelay: '0.5s', animationFillMode: 'forwards' }}>
-                AUTHORIZED PERSONNEL ONLY. DEPLOYING MARKET MICROSTRUCTURE OPTICS...
+                LIVE DATA. NO GUESSWORK. NO LAG.
               </p>
             </div>
           </div>
@@ -361,7 +361,7 @@ export default function SlayerIntro({
             </span>
             <div className="flex items-center gap-1.5">
               <span className="w-1.5 h-1.5 rounded-full bg-black" />
-              <span className="text-[8px] text-[#4ADE80] font-extrabold uppercase">LIVE CALCULATED</span>
+              <span className="text-[8px] text-[#4ADE80] font-extrabold uppercase">LIVE</span>
             </div>
           </div>
 
@@ -372,19 +372,19 @@ export default function SlayerIntro({
                 {activeOpp.ticker}
               </span>
               <span className="text-[9.5px] text-zinc-500 uppercase block">
-                Target Index Frame: {activeHeroIdx}
+                Index: {activeHeroIdx}
               </span>
             </div>
 
-            <div className="bg-[#4ADE80] hover:bg-[#4ADE80]/90 text-black shadow-[0_0_15px_rgba(0,255,136,0.5)] font-black text-[10.5px] uppercase tracking-widest px-4 py-1.5 rounded-md border border-black shadow-lg">
-              {activeOpp.status === 'Strengthening' ? 'ENTER' : 'ENTER'}
+            <div className="bg-[#4ADE80] hover:bg-[#4ADE80]/90 text-black font-black text-[10.5px] uppercase tracking-widest px-4 py-1.5 rounded-md border border-black shadow-lg">
+              ENTER
             </div>
           </div>
 
           {/* DYNAMIC RATINGS TABS */}
           <div className="grid grid-cols-3 gap-3 mirror-panel p-3 rounded-xl relative z-10 mb-3">
             <div>
-              <span className="text-[8.5px] text-zinc-550 uppercase tracking-tight block">Decision Score</span>
+              <span className="text-[8.5px] text-zinc-550 uppercase tracking-tight block">Trade Score</span>
               <span className="text-base font-black text-[#4ADE80] mt-0.5 block">{activeOpp.health}</span>
             </div>
             <div>
@@ -441,8 +441,8 @@ export default function SlayerIntro({
             </div>
           ) : (
             <div className="flex flex-col items-center justify-center p-6 border border-zinc-900 border-dashed rounded-lg bg-black/40 text-[9px] text-[#A3A3A3] uppercase tracking-widest animate-pulse mb-4 h-[116px]">
-              <span>Awaiting Dealer positioning flow for {activeHeroIdx}...</span>
-              <span className="text-[8px] text-zinc-650 mt-1 uppercase font-mono">Syncing real-time market data</span>
+              <span>Awaiting dealer data for {activeHeroIdx}...</span>
+              <span className="text-[8px] text-zinc-650 mt-1 uppercase font-mono">Syncing live market data</span>
             </div>
           )}
 
@@ -453,7 +453,7 @@ export default function SlayerIntro({
                 e.stopPropagation();
                 handleLaunchToActiveOpportunity();
               }}
-              className="w-full py-3 bg-white hover:bg-[#F4F5F6] text-black font-[800] uppercase tracking-wide text-xs rounded-sm transition-all duration-300 cursor-pointer flex items-center justify-center gap-2 shadow-xl hover:scale-[1.01]"
+              className="w-full py-3 bg-white hover:bg-zinc-100 text-black font-black uppercase tracking-widest text-xs rounded-lg transition-all duration-300 cursor-pointer flex items-center justify-center gap-2 shadow-xl hover:scale-[1.01]"
             >
               <span>Launch Live Workspace</span>
               <ArrowRight className="w-3.5 h-3.5" />
@@ -475,7 +475,7 @@ export default function SlayerIntro({
           </div>
           <div>
             <span className="text-xl md:text-2xl font-black text-[#E5E5E5] block">4</span>
-            <span className="text-[8.5px] text-[#A1A1AA] uppercase tracking-wider block mt-0.5">Intelligence Engines</span>
+            <span className="text-[8.5px] text-[#A1A1AA] uppercase tracking-wider block mt-0.5">Analysis Engines</span>
           </div>
         </div>
 

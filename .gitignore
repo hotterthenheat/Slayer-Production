@@ -9,3 +9,10 @@ coverage/
 # Keyless-mode user store (file-based fallback when SQL_HOST is unset). Never commit user data.
 users-fallback.json
 users-fallback.json*
+
+# Local SQLite database (per-user tracked trades / backtesting). Never commit trade data.
+data/
+*.db
+*.db-journal
+*.db-wal
+*.db-shm

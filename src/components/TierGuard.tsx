@@ -22,47 +22,47 @@ const TIER_LOOKUP: Record<string, {
 }> = {
   discord: {
     badge: "Tier 1 // Discord Plan",
-    desc: "Gain entry to high-speed trade alerts and active trader community discussion channels.",
+    desc: "Get live trade alerts and join the active trader community on Discord.",
     features: [
-      "Real-time Discord Chat & Alerts Feed",
-      "Daily Options Discovery Reports",
-      "Verified Historical Trade Archives"
+      "Real-time Discord alerts and chat",
+      "Daily options discovery reports",
+      "Verified trade history archive"
     ],
     accentColor: "indigo",
     badgeBg: "bg-indigo-500/10 text-indigo-400 border-indigo-500/20"
   },
   skyvision: {
-    badge: "Tier 2 // SkyVision Cockpit",
-    desc: "Gain access to real-time Volatility Solvers and advanced expected P&L calculation dashboards.",
+    badge: "Tier 2 // SkyVision",
+    desc: "Access the live volatility surface, expected P&L models, and the full trade dashboard.",
     features: [
-      "SVI Volatility Surface Solver Engine",
-      "Live Strategy Health Tracking Indexes",
-      "Expected P&L Simulation Models",
-      "Full Discord Alert Suite Included"
+      "Live volatility surface",
+      "Trade health score tracker",
+      "Expected P&L models",
+      "Discord alerts included"
     ],
     accentColor: "blue",
     badgeBg: "bg-blue-500/10 text-blue-400 border-blue-500/20"
   },
   pinpoint: {
-    badge: "Tier 3 // Pinpoint Gexbot",
-    desc: "Track market maker position changes and key GEX trends.",
+    badge: "Tier 3 // Pinpoint GEX",
+    desc: "Track market maker positioning and key GEX levels in real time.",
     features: [
-      "Pinpoint Gexbot Exposure Tracker Feed",
-      "Live Gamma (GEX), Delta (DEX) & Vega (VEX) Strips",
-      "Interactive Dealer Spot Placement Grid",
-      "Includes Tiers 1 and 2 Access"
+      "Live dealer positioning (GEX, DEX, VEX)",
+      "Gamma exposure chart by strike",
+      "Interactive dealer positioning grid",
+      "Tiers 1 and 2 included"
     ],
     accentColor: "zinc",
     badgeBg: "bg-[#4ADE80] text-black/10 text-[#4ADE80] border-black"
   },
   quant: {
     badge: "Tier 4 // Quant Suite",
-    desc: "Empower your portfolio with high-speed order flow tapes, backtesting, and market microstructure tracking.",
+    desc: "Backtest strategies, track live order flow, and monitor momentum and speed gauges.",
     features: [
-      "Full Algorithmic Backtesting Sandbox",
-      "Displacement Valuations & Speed Gauges",
-      "High-Speed Microstructure Liquidity Monitor",
-      "All Premium Platform Tiers Unlocked"
+      "Strategy backtester",
+      "Momentum and speed gauges",
+      "Live order-flow monitor",
+      "All lower tiers included"
     ],
     accentColor: "violet",
     badgeBg: "bg-violet-500/10 text-violet-400 border-violet-500/20"
@@ -99,7 +99,7 @@ export default function TierGuard({
         initial={{ opacity: 0, y: 12 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.4, ease: "easeOut" }}
-        className="w-full max-w-3xl mx-auto my-12 border border-[#5865F2]/40 bg-black rounded-3xl relative overflow-hidden shadow-[0_25px_60px_-15px_rgba(88,101,242,0.15)] p-6 md:p-10"
+        className="w-full max-w-3xl mx-auto my-12 border border-[#5865F2]/40 bg-black rounded-2xl relative overflow-hidden shadow-[0_25px_60px_-15px_rgba(88,101,242,0.15)] p-6 md:p-10"
       >
         {/* Decorative mechanical and glow accents */}
         <div className="absolute top-0 right-0 w-80 h-80 bg-[#5865F2]/10 rounded-full blur-[125px] pointer-events-none -mr-40 -mt-40" />
@@ -117,25 +117,25 @@ export default function TierGuard({
 
           <div className="space-y-2">
             <h3 className="text-xl md:text-2xl font-black text-[#E5E5E5] uppercase tracking-tight font-sans flex items-center justify-center gap-2.5">
-              <span>EXCLUSIVE TRADER COMMUNITY PORTAL</span>
+              <span>DISCORD COMMUNITY ACCESS</span>
             </h3>
             <p className="text-xs text-zinc-400 max-w-lg leading-relaxed font-sans mt-1">
-              Your payments are fully verified! The <strong>Discord Tier</strong> grants exclusive real-time options sweep alerts, live trade setups, and active community discussion channels inside our terminal server.
+              Your subscription is active. The <strong>Discord Tier</strong> gives you live options sweep alerts, trade setups, and access to our active trader community server.
             </p>
           </div>
         </div>
 
         {/* Big Nice UI Style Discord Invitation Button Link */}
-        <div className="relative z-10 py-8 px-6 my-6 bg-gradient-to-br from-[#0c0c14] via-[#080910] to-[#040407] border border-[#5865F2]/20 rounded-2xl flex flex-col md:flex-row items-center justify-between gap-6 shadow-[inset_0_1px_3px_rgba(255,255,255,0.02)]">
+        <div className="relative z-10 py-8 px-6 my-6 bg-black border border-[#5865F2]/20 rounded-2xl flex flex-col md:flex-row items-center justify-between gap-6 shadow-[inset_0_1px_3px_rgba(255,255,255,0.02)]">
           <div className="space-y-1.5 text-center md:text-left flex-1">
             <span className="text-[9px] text-[#5865F2] font-mono font-black uppercase tracking-widest block">
-              SECURE VIP GATEWAY
+              JOIN THE SERVER
             </span>
             <h4 className="text-sm font-black text-[#E5E5E5] uppercase tracking-tight">
-              SKYSEYE INSTITUTIONAL DISCORD INVITE
+              SLAYER DISCORD INVITE LINK
             </h4>
             <p className="text-[11px] text-zinc-400 leading-normal max-w-md">
-              Click below to instantly sync with our high-speed institutional feeds. Ensure your Discord username is linked to receive full access to options sweeps alerts channels.
+              Click below to join. Make sure your Discord username matches your account so you receive full access to the alerts channels.
             </p>
           </div>
 
@@ -155,10 +155,10 @@ export default function TierGuard({
         <div className="relative z-10 border-t border-black/80 pt-6 text-center space-y-4">
           <div className="max-w-md mx-auto space-y-1">
             <span className="text-[9.5px] font-mono font-black text-zinc-500 uppercase tracking-widest block">
-              WANT FULL TERMINAL GRAPHS & GEX FLOWS?
+              WANT THE FULL DASHBOARD AND GEX CHARTS?
             </span>
             <p className="text-[10px] text-zinc-500 leading-normal font-sans">
-              You are currently viewing the platform with active Discord-only rights. Interactive expected move levels, Gexbot strike visualizations, and microsecond flow feeds require a <strong>Tier 2 (SkyVision Cockpit)</strong> workspace license or higher.
+              You are on the Discord-only plan. Expected move levels, GEX charts, and live order flow require a <strong>Tier 2 (SkyVision)</strong> plan or higher.
             </p>
           </div>
 
@@ -173,7 +173,7 @@ export default function TierGuard({
                 useContractStore.getState().setActiveTab('subscription');
                 window.scrollTo({ top: 0, behavior: 'auto' });
               }}
-              className="w-full sm:w-auto px-5 py-2 rounded-lg bg-black hover:bg-white hover:text-black text-[#4ADE80] border border-black font-bold text-[10px] uppercase tracking-widest transition-all cursor-pointer flex items-center justify-center gap-1.5"
+              className="w-full sm:w-auto px-5 py-2 rounded-lg bg-white text-black hover:bg-zinc-100 font-black text-[10px] uppercase tracking-widest transition-all cursor-pointer flex items-center justify-center gap-1.5"
             >
               <span>Upgrade Workspace</span>
               <ArrowRight className="w-3.5 h-3.5" />
@@ -240,7 +240,7 @@ export default function TierGuard({
       initial={{ opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.4, ease: "easeOut" }}
-      className="w-full max-w-3xl mx-auto my-12 border border-black/80 bg-gradient-to-b from-[#09090b] via-[#070709] to-[#040405] rounded-3xl relative overflow-hidden shadow-[0_25px_60px_-15px_rgba(0,0,0,0.8)] p-6 md:p-10"
+      className="w-full max-w-3xl mx-auto my-12 border border-black/80 bg-gradient-to-b from-[#09090b] via-[#070709] to-[#040405] rounded-2xl relative overflow-hidden shadow-[0_25px_60px_-15px_rgba(0,0,0,0.8)] p-6 md:p-10"
     >
       {/* Decorative mechanical accents */}
       <div className="absolute inset-x-0 top-0 h-[1px] bg-gradient-to-r from-transparent via-zinc-850 to-transparent" />
@@ -261,17 +261,17 @@ export default function TierGuard({
             <span>{tabKey.toUpperCase()} LEVEL ACCESS REQUIRED</span>
           </h3>
           <p className="text-xs text-zinc-400 max-w-lg leading-relaxed font-sans mt-1">
-            {details.desc} Purchase or upgrade your plan below to unlock this workspace tab.
+            {details.desc} Upgrade your plan below to unlock this tab.
           </p>
         </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-stretch relative z-10 py-6 my-2 border-y border-black/85">
         {/* Left Grid Section: Interactive features checklist of what they will unlock */}
-        <div className="bg-[#050556]/5 border border-black rounded-2xl p-5 flex flex-col justify-between space-y-4">
+        <div className="bg-black/40 border border-black rounded-2xl p-5 flex flex-col justify-between space-y-4">
           <div>
             <span className="text-[10px] text-zinc-500 font-bold uppercase tracking-widest font-mono block mb-3">
-              GUARANTEED TIER ACCESS INCLUSIONS
+              WHAT YOU GET
             </span>
             <div className="space-y-3">
               {details.features.map((feature, i) => (
@@ -287,7 +287,7 @@ export default function TierGuard({
 
           <div className="text-[10px] text-zinc-500 border-t border-black pt-3 flex items-center gap-1.5 uppercase font-mono">
             <ShieldCheck className="w-4 h-4 text-[#4ADE80]" />
-            <span>Cumulative access tier applies</span>
+            <span>Includes all lower tiers</span>
           </div>
         </div>
 
@@ -295,7 +295,7 @@ export default function TierGuard({
         <div className="mirror-panel rounded-2xl p-5 flex flex-col justify-between space-y-5">
           <div className="space-y-4">
             <span className="text-[10px] text-zinc-500 font-bold uppercase tracking-widest font-mono block">
-              SUBSCRIBER LEVEL DETAIL
+              PLAN LEVEL
             </span>
             
             <div className="space-y-3">
@@ -312,7 +312,7 @@ export default function TierGuard({
           </div>
 
           <div className="text-center pt-2">
-            <div className="text-[11px] font-mono text-zinc-500">SUBSCRIPTION PRICE:</div>
+            <div className="text-[11px] font-mono text-zinc-500">MONTHLY PRICE:</div>
             <div className="text-2xl font-black text-[#E5E5E5] font-sans mt-0.5">
               {planPrice} <span className="text-xs text-zinc-500 font-normal">/mo</span>
             </div>
@@ -325,9 +325,9 @@ export default function TierGuard({
         <button
           onClick={handleLiveCheckout}
           disabled={isProcessing}
-          className="w-full py-3.5 px-6 rounded-xl bg-indigo-505 hover:bg-white hover:text-black border border-black bg-black text-zinc-200 font-black text-[11px] uppercase tracking-widest shadow-lg flex items-center justify-center gap-2 transform hover:scale-[1.01] active:scale-95 transition-all cursor-pointer disabled:opacity-50"
+          className="w-full py-3.5 px-6 rounded-lg bg-white text-black hover:bg-zinc-100 font-black text-[11px] uppercase tracking-widest shadow-lg flex items-center justify-center gap-2 transform hover:scale-[1.01] active:scale-95 transition-all cursor-pointer disabled:opacity-50"
         >
-          <span>{isProcessing ? 'AUTHORIZING UPGRADE...' : (userHasAccount ? '1-CLICK UPGRADE NOW' : 'GO PREMIUM - ACTIVATE NOW')}</span>
+          <span>{isProcessing ? 'REDIRECTING TO CHECKOUT...' : (userHasAccount ? 'UPGRADE NOW' : 'SEE PLANS AND PRICING')}</span>
           {!isProcessing && <ArrowRight className="w-4 h-4" />}
         </button>
       </div>

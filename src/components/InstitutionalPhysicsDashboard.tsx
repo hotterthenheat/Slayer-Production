@@ -114,9 +114,9 @@ const TICKER_PROFILES: Record<string, TICKER_PROFILE_METRICS> = {
     vpin: '0.82 (HIGH)',
     vpinColor: 'text-[#F87171]',
     friction: 0.0014,
-    volState: 'DECAYING CLOUD',
+    volState: 'VOL FALLING',
     marketEnergy: '0.457 λ',
-    impliedRegime: 'STABLE RANGE PIN',
+    impliedRegime: 'RANGE-BOUND / PINNED',
     expectedMovePct: 0.015,
   },
   NDX: {
@@ -128,9 +128,9 @@ const TICKER_PROFILES: Record<string, TICKER_PROFILE_METRICS> = {
     vpin: '0.87 (HIGH)',
     vpinColor: 'text-[#F87171]',
     friction: 0.0021,
-    volState: 'EXPANDING BIAS',
+    volState: 'VOL EXPANDING',
     marketEnergy: '0.621 λ',
-    impliedRegime: 'SENSITIVE BREAKOUT',
+    impliedRegime: 'BREAKOUT WATCH',
     expectedMovePct: 0.022,
   },
   QQQ: {
@@ -142,9 +142,9 @@ const TICKER_PROFILES: Record<string, TICKER_PROFILE_METRICS> = {
     vpin: '0.74 (MODERATE)',
     vpinColor: 'text-amber-400',
     friction: 0.0008,
-    volState: 'DECAYING CLOUD',
+    volState: 'VOL FALLING',
     marketEnergy: '0.288 λ',
-    impliedRegime: 'EQUILIBRIUM COGNIZANCE',
+    impliedRegime: 'BALANCED',
     expectedMovePct: 0.018,
   },
   SPY: {
@@ -156,9 +156,9 @@ const TICKER_PROFILES: Record<string, TICKER_PROFILE_METRICS> = {
     vpin: '0.65 (MODERATE)',
     vpinColor: 'text-amber-400',
     friction: 0.0006,
-    volState: 'MUTED BASE',
+    volState: 'LOW VOL / QUIET',
     marketEnergy: '0.194 λ',
-    impliedRegime: 'STABLE SLATE PIN',
+    impliedRegime: 'STABLE / PINNED',
     expectedMovePct: 0.012,
   },
   RUT: {
@@ -170,9 +170,9 @@ const TICKER_PROFILES: Record<string, TICKER_PROFILE_METRICS> = {
     vpin: '0.89 (HIGH)',
     vpinColor: 'text-[#F87171]',
     friction: 0.0035,
-    volState: 'VOLATILE PIVOT',
+    volState: 'HIGH VOL / UNSTABLE',
     marketEnergy: '0.748 λ',
-    impliedRegime: 'DYNAMIC INSTABILITY',
+    impliedRegime: 'TRENDING / UNSTABLE',
     expectedMovePct: 0.025,
   }
 };
@@ -203,7 +203,7 @@ export function InstitutionalPhysicsDashboard({ profile: externalProfile, ticker
   // Local calculation states
   const [ticker, setTicker] = useState<string>(activeTicker);
   const [profile, setProfile] = useState<TICKER_PROFILE_METRICS>(customProfile);
-  const [systemState, setSystemState] = useState<'SYSTEM ACTIVE' | 'COMPUTING CASCADE...'>('SYSTEM ACTIVE');
+  const [systemState, setSystemState] = useState<'SYSTEM ACTIVE' | 'COMPUTING...'>('SYSTEM ACTIVE');
 
   // Control over surface topography model setting: 'call' | 'put' | 'neutral'
   const [surfaceMode, setSurfaceMode] = useState<'call' | 'put' | 'neutral'>('neutral');
@@ -268,7 +268,7 @@ export function InstitutionalPhysicsDashboard({ profile: externalProfile, ticker
 
   // Run autonomous quantitative computation simulation when switching tickers
   const handleSelectTickerObj = (selectedTk: string) => {
-    setSystemState('COMPUTING CASCADE...');
+    setSystemState('COMPUTING...');
     
     // Instant execution to remove slow rendering delays
     const asset = ASSET_LIST.find(a => a.ticker === selectedTk);
@@ -276,7 +276,7 @@ export function InstitutionalPhysicsDashboard({ profile: externalProfile, ticker
       storeSetAsset(asset);
     }
     setTicker(selectedTk);
-    setProfile(TICKER_PROFILES[selectedTk]);
+    setProfile(TICKER_PROFILES[selectedTk] ?? TICKER_PROFILES.SPX);
     setSystemState('SYSTEM ACTIVE');
   };
 
@@ -903,7 +903,7 @@ export function InstitutionalPhysicsDashboard({ profile: externalProfile, ticker
           <div className="flex items-center gap-2">
             <span className="w-2 h-2 rounded-full bg-black/40 animate-pulse" />
             <span className="text-[10px] font-black tracking-widest text-zinc-100 font-sans uppercase">
-              MASTER TELEMETRY
+              DEALER MAP
             </span>
           </div>
           <div className="h-4 w-px bg-black" />
@@ -917,7 +917,7 @@ export function InstitutionalPhysicsDashboard({ profile: externalProfile, ticker
         <div className="flex items-center gap-6 text-[9.5px]">
           {/* State Classifier indicator */}
           <div className="flex flex-col text-left">
-            <span className="text-zinc-650 font-extrabold uppercase text-[7px] tracking-wider leading-none mb-1">STATE_VECTOR</span>
+            <span className="text-zinc-650 font-extrabold uppercase text-[7px] tracking-wider leading-none mb-1">STATUS</span>
             <span className={`font-black tracking-wide leading-none text-[10px] ${systemState === 'SYSTEM ACTIVE' ? 'text-[#4ADE80]' : 'text-amber-500 animate-pulse'}`}>
               ● {systemState}
             </span>
@@ -926,14 +926,14 @@ export function InstitutionalPhysicsDashboard({ profile: externalProfile, ticker
           <div className="h-4 w-px bg-black" />
 
           <div className="flex flex-col text-left">
-            <span className="text-zinc-650 font-extrabold uppercase text-[7px] tracking-wider leading-none mb-1">MARKET ENERGY (E_t)</span>
+            <span className="text-zinc-650 font-extrabold uppercase text-[7px] tracking-wider leading-none mb-1">DEALER FLOW INTENSITY</span>
             <span className="text-zinc-200 font-bold leading-none text-[10px]">{profile.marketEnergy}</span>
           </div>
 
           <div className="h-4 w-px bg-black" />
 
           <div className="flex flex-col text-left">
-            <span className="text-zinc-650 font-extrabold uppercase text-[7px] tracking-wider leading-none mb-1">IMPLIED REGIME</span>
+            <span className="text-zinc-650 font-extrabold uppercase text-[7px] tracking-wider leading-none mb-1">MARKET CONDITION</span>
             <span className="text-sky-400 font-bold leading-none text-[10px]">{profile.impliedRegime}</span>
           </div>
         </div>
@@ -958,7 +958,7 @@ export function InstitutionalPhysicsDashboard({ profile: externalProfile, ticker
             
             <div className="grid grid-cols-1 gap-3.5">
               <div className="bg-black/45 p-3 border border-black rounded-sm">
-                <div className="hud-label">NET GEX (GAMMA EXPOSURE)</div>
+                <div className="hud-label">NET DEALER GAMMA (GEX)</div>
                 <div className="flex items-baseline gap-2">
                   <span className={`hud-value ${profile.netGex >= 0 ? 'text-[#4ADE80]' : 'text-[#F87171]'}`}>
                     {fmtBn(profile.netGex)}
@@ -968,7 +968,7 @@ export function InstitutionalPhysicsDashboard({ profile: externalProfile, ticker
               </div>
 
               <div className="bg-black/45 p-3 border border-black rounded-sm">
-                <div className="hud-label">NET VEX (VANNA EXPOSURE)</div>
+                <div className="hud-label">NET VANNA EXPOSURE (VEX)</div>
                 <div className="flex items-baseline gap-2">
                   <span className={`hud-value ${profile.netVex >= 0 ? 'text-[#4ADE80]' : 'text-[#F87171]'}`}>
                     {fmtBn(profile.netVex)}
@@ -978,7 +978,7 @@ export function InstitutionalPhysicsDashboard({ profile: externalProfile, ticker
               </div>
 
               <div className="bg-black/45 p-3 border border-black rounded-sm">
-                <div className="hud-label">NET CEX (CHARM EXPOSURE)</div>
+                <div className="hud-label">NET CHARM EXPOSURE (CEX)</div>
                 <div className="flex items-baseline gap-2">
                   <span className={`hud-value ${profile.netCex >= 0 ? 'text-[#4ADE80]' : 'text-[#F87171]'}`}>
                     {fmtBn(profile.netCex)}
@@ -1048,7 +1048,7 @@ export function InstitutionalPhysicsDashboard({ profile: externalProfile, ticker
             <div className="flex items-center gap-3">
               {isExpanded && (
                 <span className="text-[9px] font-black tracking-widest text-[#4ADE80] font-mono uppercase bg-[#4ADE80] text-black/10 border border-black px-2 py-1 rounded-sm">
-                  EXPANDED VIEWPORTS // QUANT COORDS
+                  FULLSCREEN VIEW
                 </span>
               )}
               <div className="flex gap-1 bg-black p-0.5 border border-black rounded-sm">
@@ -1057,29 +1057,29 @@ export function InstitutionalPhysicsDashboard({ profile: externalProfile, ticker
                   onClick={() => setSurfaceMode('neutral')}
                   className={`px-3 py-1 text-[8.5px] uppercase font-extrabold tracking-wider rounded-xs focus:outline-none transition-colors ${surfaceMode === 'neutral' ? 'bg-black text-zinc-200' : 'text-zinc-500 hover:text-zinc-400'}`}
                 >
-                  ● NEUTRAL TOPOGRAPHY
+                  ● NEUTRAL VIEW
                 </button>
                 <button
                   type="button"
                   onClick={() => setSurfaceMode('call')}
                   className={`px-3 py-1 text-[8.5px] uppercase font-extrabold tracking-wider rounded-xs focus:outline-none transition-colors ${surfaceMode === 'call' ? 'bg-black/40 border border-black text-[#4ADE80]' : 'text-zinc-500 hover:text-zinc-400'}`}
                 >
-                  CALL WALL Topography
+                  CALL WALL VIEW
                 </button>
                 <button
                   type="button"
                   onClick={() => setSurfaceMode('put')}
                   className={`px-3 py-1 text-[8.5px] uppercase font-extrabold tracking-wider rounded-xs focus:outline-none transition-colors ${surfaceMode === 'put' ? 'bg-rose-950 border border-rose-900 text-[#F87171]' : 'text-zinc-500 hover:text-zinc-400'}`}
                 >
-                  PUT WALL Topography
+                  PUT WALL VIEW
                 </button>
                 <button
                   type="button"
                   onClick={() => setShowRnd(!showRnd)}
                   className={`px-3 py-1 text-[8.5px] uppercase font-extrabold tracking-wider rounded-xs focus:outline-none transition-all ${showRnd ? 'bg-emerald-950/60 border border-emerald-900/50 text-[#4ADE80]' : 'text-zinc-500 hover:text-zinc-400'}`}
-                  title="Toggle Implied RND Breeden-Litzenberger Layer"
+                  title="Toggle Implied vs Historical Probability Density"
                 >
-                  {showRnd ? '● SHIELD RND' : '○ EXPOSE RND'}
+                  {showRnd ? '● HIDE DENSITY' : '○ SHOW DENSITY'}
                 </button>
               </div>
 
@@ -1091,7 +1091,7 @@ export function InstitutionalPhysicsDashboard({ profile: externalProfile, ticker
                     ? 'bg-emerald-950/20 border-emerald-900/50 text-[#4ADE80] hover:bg-emerald-950/30' 
                     : 'bg-[#120808]/40 border-rose-950/70 text-rose-500 hover:bg-rose-950/20'
                 }`}
-                title="Click to toggle high frequency options stream feed"
+                title="Click to toggle live options data feed"
               >
                 <span className={`w-1.5 h-1.5 rounded-full ${isStreaming ? 'bg-[#4ADE80] animate-pulse' : 'bg-rose-500'}`} />
                 <span className="text-[7.5px] font-black tracking-widest uppercase font-mono">
@@ -1102,7 +1102,7 @@ export function InstitutionalPhysicsDashboard({ profile: externalProfile, ticker
 
             <div className="flex items-center gap-2">
               <div className="text-[7px] text-zinc-550 border border-black bg-black px-2.5 py-1.5 rounded-sm uppercase tracking-wider font-extrabold">
-                DRAG CANVAS TO ROTATE TOPOGRAPHY VIEWPORT
+                DRAG TO ROTATE
               </div>
               <button
                 type="button"
@@ -1140,61 +1140,61 @@ export function InstitutionalPhysicsDashboard({ profile: externalProfile, ticker
                 <div>
                   <div className="text-[10px] font-black tracking-widest text-[#4ADE80] uppercase mb-2 flex items-center gap-1.5 border-b border-emerald-950 pb-1">
                     <Layers className="w-3.5 h-3.5" />
-                    <span>BREEDEN-LITZENBERGER RND INTEGRALS</span>
+                    <span>RISK-NEUTRAL DENSITY (RND)</span>
                   </div>
                   <p className="text-[7.5px] text-zinc-500 leading-normal mb-3">
-                    Solves the risk-neutral probability density function (RND) by double finite-differentiation of SVI surface call expectations: 
+                    Shows the market-implied probability of each price level at expiry, derived from option prices across strikes:
                     <span className="text-zinc-400 font-bold"> f(K) = e^(rT) ∂²C/∂K²</span>.
                   </p>
                 </div>
 
                 <div className="grid grid-cols-2 gap-3">
                   <div className="bg-black/60 p-2.5 border border-[#1e293b]/30 rounded-sm">
-                    <div className="text-[7px] text-zinc-500 uppercase tracking-widest font-black">Implied GEX Peak</div>
+                    <div className="text-[7px] text-zinc-500 uppercase tracking-widest font-black">Implied Gamma Peak</div>
                     <div className="text-[11px] font-black text-[#4ADE80] mt-0.5">
                       {rndAnalysis.gexConcentrationPeak.toFixed(1)} <span className="text-[7.5px] text-zinc-500 font-normal">pts</span>
                     </div>
                   </div>
 
                   <div className="bg-black/60 p-2.5 border border-[#1e293b]/30 rounded-sm">
-                    <div className="text-[7px] text-[#f43f5e] uppercase tracking-widest font-black">Relative Entropy</div>
+                    <div className="text-[7px] text-[#f43f5e] uppercase tracking-widest font-black">Implied vs Hist Divergence</div>
                     <div className="text-[11px] font-black text-[#f43f5e] mt-0.5">
                       {rndAnalysis.entropyDivergence.toFixed(4)} <span className="text-[7.5px] text-zinc-500 font-normal">nats</span>
                     </div>
                   </div>
 
                   <div className="bg-black/60 p-2.5 border border-[#1e293b]/30 rounded-sm">
-                    <div className="text-[7px] text-zinc-550 uppercase tracking-widest font-black">RND Expectation (Mean)</div>
+                    <div className="text-[7px] text-zinc-550 uppercase tracking-widest font-black">Implied Price Mean</div>
                     <div className="text-[10.5px] font-bold text-zinc-200 mt-0.5">
                       {rndAnalysis.impliedMean.toFixed(2)} <span className="text-[7.5px] text-zinc-500 font-normal">avg</span>
                     </div>
                   </div>
 
                   <div className="bg-[#1c1917]/20 p-2.5 border border-stone-800 rounded-sm">
-                    <div className="text-[7px] text-zinc-550 uppercase tracking-widest font-black">Hist Lognormal Exp</div>
+                    <div className="text-[7px] text-zinc-550 uppercase tracking-widest font-black">Hist Price Mean</div>
                     <div className="text-[10.5px] font-bold text-zinc-300 mt-0.5">
                       {rndAnalysis.historicalMean.toFixed(2)} <span className="text-[7.5px] text-zinc-500 font-normal">avg</span>
                     </div>
                   </div>
 
                   <div className="bg-black/60 p-2.5 border border-[#1e293b]/30 rounded-sm col-span-2">
-                    <div className="text-[7px] text-zinc-550 uppercase tracking-widest font-black">Implied Risk Dispersion (Risk Width σ)</div>
+                    <div className="text-[7px] text-zinc-550 uppercase tracking-widest font-black">Implied Price Range (1 Std Dev)</div>
                     <div className="flex justify-between items-baseline mt-0.5">
                       <span className="text-[11px] font-black text-[#4ADE80]">
                         ±{rndAnalysis.impliedStdDev.toFixed(1)} <span className="text-[7.5px] text-zinc-500 font-normal">pts</span>
                       </span>
                       <span className="text-[8px] text-rose-450 text-right">
-                        Realized Vol Spread: ±{rndAnalysis.historicalStdDev.toFixed(1)}
+                        Realized Vol Range: ±{rndAnalysis.historicalStdDev.toFixed(1)}
                       </span>
                     </div>
                   </div>
                 </div>
 
                 <div className="text-[7.5px] leading-relaxed text-zinc-400 border-l-2 border-emerald-500 pl-2 bg-emerald-950/10 py-1.5">
-                  <span className="font-extrabold text-[#4ADE80] text-[8px] uppercase block tracking-wider mb-0.5">Dealer Hedging Feedback Loop:</span>
+                  <span className="font-extrabold text-[#4ADE80] text-[8px] uppercase block tracking-wider mb-0.5">Dealer Hedging Read:</span>
                   {rndAnalysis.entropyDivergence > 0.04
-                    ? "Substantial implied volatility skew. Under the risk-neutral measure, traders are paying a heavy premium for down-side crash security relative to historical normal drift dynamics."
-                    : "Volatility expectations are symmetric and compressed. Relative entropy suggests tail pricing matches physical realized records with low premium expansion."
+                    ? "Heavy put skew. Traders are paying a large premium for downside protection relative to historical vol, signaling fear of a sharp drop."
+                    : "Vol expectations are balanced and tight. Implied tail pricing is close to realized vol with low extra premium."
                   }
                 </div>
               </div>
@@ -1202,10 +1202,10 @@ export function InstitutionalPhysicsDashboard({ profile: externalProfile, ticker
               {/* Graphical distribution density comparator block */}
               <div className="flex-1 min-h-[180px] bg-black/40 border border-[#1e293b]/30 p-2 rounded-sm flex flex-col">
                 <div className="text-[8px] font-black tracking-widest text-zinc-400 uppercase mb-2 flex justify-between items-center px-1 border-b border-black/80 pb-1.5">
-                  <span>DENSITY CURVES COMPARATIVE PORTRAIT (x: STRIKE / y: PROBABILITY)</span>
+                  <span>PRICE PROBABILITY BY STRIKE (x: STRIKE / y: PROBABILITY)</span>
                   <div className="flex gap-3">
-                    <span className="flex items-center gap-1 text-[8px] font-black uppercase"><span className="w-1.5 h-1.5 rounded-full bg-[#10b981]" /> SVI IMPLIED RND</span>
-                    <span className="flex items-center gap-1 text-[8px] font-black uppercase"><span className="w-1.5 h-1.5 rounded-full bg-[#f43f5e]" /> LOG-NORMAL HIST</span>
+                    <span className="flex items-center gap-1 text-[8px] font-black uppercase"><span className="w-1.5 h-1.5 rounded-full bg-[#10b981]" /> OPTION-IMPLIED</span>
+                    <span className="flex items-center gap-1 text-[8px] font-black uppercase"><span className="w-1.5 h-1.5 rounded-full bg-[#f43f5e]" /> HISTORICAL</span>
                   </div>
                 </div>
                 <div className="flex-1 relative min-h-[160px]">
@@ -1230,9 +1230,9 @@ export function InstitutionalPhysicsDashboard({ profile: externalProfile, ticker
                             return (
                               <div className="bg-[#09090b] border border-[#1e293b] p-2 text-mono text-[7.5px] space-y-1 rounded-sm shadow-xl">
                                 <div className="text-zinc-200 font-bold border-b border-[#27272a] pb-0.5 mb-1 text-[8.5px]">Strike: {Math.round(data.strike)}</div>
-                                <div className="text-[#10b981] flex justify-between gap-4"><span>Implied RND:</span> <span>{(data.impliedDensity * 100).toFixed(4)}%</span></div>
-                                <div className="text-[#f43f5e] flex justify-between gap-4"><span>Hist log-norm:</span> <span>{(data.historicalDensity * 100).toFixed(4)}%</span></div>
-                                <div className="text-sky-400 flex justify-between gap-4"><span>Implied SVI Vol:</span> <span>{(data.impliedVol * 100).toFixed(2)}%</span></div>
+                                <div className="text-[#10b981] flex justify-between gap-4"><span>Option-Implied:</span> <span>{(data.impliedDensity * 100).toFixed(4)}%</span></div>
+                                <div className="text-[#f43f5e] flex justify-between gap-4"><span>Historical:</span> <span>{(data.historicalDensity * 100).toFixed(4)}%</span></div>
+                                <div className="text-sky-400 flex justify-between gap-4"><span>Implied Vol:</span> <span>{(data.impliedVol * 100).toFixed(2)}%</span></div>
                               </div>
                             );
                           }
@@ -1281,13 +1281,13 @@ export function InstitutionalPhysicsDashboard({ profile: externalProfile, ticker
           {/* Module 1: Market Structuring parameters */}
           <div className="mb-4">
             <div className="panel-header-alt">
-              <span>VOLATILITY & MICROSTRUCTURE</span>
+              <span>VOLATILITY & ORDER FLOW</span>
               <ShieldAlert className="w-3.5 h-3.5 text-zinc-600" />
             </div>
 
             <div className="grid grid-cols-1 gap-3.5">
               <div className="bg-black/45 p-3 border border-black rounded-sm">
-                <div className="hud-label">FDA / FORWARD-VARIANCE</div>
+                <div className="hud-label">FORWARD VARIANCE (IV^2)</div>
                 <div className="flex items-baseline gap-2">
                   <span className="hud-value text-sky-400">
                     {profile.fwdVar.toFixed(4)}
@@ -1297,7 +1297,7 @@ export function InstitutionalPhysicsDashboard({ profile: externalProfile, ticker
               </div>
 
               <div className="bg-black/45 p-3 border border-black rounded-sm">
-                <div className="hud-label text-[#F87171]/90">ORDER FLOW TOXICITY (VPIN)</div>
+                <div className="hud-label text-[#F87171]/90">ORDER FLOW IMBALANCE (VPIN)</div>
                 <div className="flex items-baseline gap-2">
                   <span className={`hud-value ${profile.vpinColor}`}>
                     {profile.vpin}
@@ -1306,7 +1306,7 @@ export function InstitutionalPhysicsDashboard({ profile: externalProfile, ticker
               </div>
 
               <div className="bg-black/45 p-3 border border-black rounded-sm">
-                <div className="hud-label">LIQUIDITY FRICTION (Λ)</div>
+                <div className="hud-label">BID/ASK FRICTION (Λ)</div>
                 <div className="flex items-baseline gap-2">
                   <span className="hud-value text-zinc-100">
                     {profile.friction.toFixed(4)}
@@ -1320,22 +1320,22 @@ export function InstitutionalPhysicsDashboard({ profile: externalProfile, ticker
           {/* Module 2: Expected Propagation & target probability limits */}
           <div className="flex-1 flex flex-col justify-end" id="target-propagation-module">
             <div className="panel-header-alt mt-1.5">
-              <span>TARGET PROPAGATION (95% CI)</span>
+              <span>PRICE TARGET RANGE (95% CI)</span>
               <Compass className="w-3 h-3 text-zinc-600" />
             </div>
 
             <div className="bg-black/45 p-3 border border-black rounded-sm flex-1 flex flex-col justify-between">
               <div className="space-y-3">
                 <div className="flex justify-between items-center text-[9px] font-mono">
-                  <span className="text-zinc-500 font-black tracking-widest uppercase">Decay Velocity (Θ_rad)</span>
+                  <span className="text-zinc-500 font-black tracking-widest uppercase">Theta Decay Rate (per hr)</span>
                   <span className="text-[#4ADE80] font-bold">-0.842v / hr</span>
                 </div>
                 <div className="flex justify-between items-center text-[9px] font-mono">
-                  <span className="text-zinc-500 font-black tracking-widest uppercase">Local Friction (Λ)</span>
+                  <span className="text-zinc-500 font-black tracking-widest uppercase">Spread Friction (Λ)</span>
                   <span className="text-[#4ADE80] font-bold">1.22μ</span>
                 </div>
                 <div className="flex justify-between items-center text-[9px] font-mono">
-                  <span className="text-zinc-500 font-black tracking-widest uppercase">Dealer Hedging Pressure</span>
+                  <span className="text-zinc-500 font-black tracking-widest uppercase">Dealer Hedge Activity</span>
                   <span className="text-[#F87171] font-bold">94.2%</span>
                 </div>
                 <div className="h-px bg-black/60 my-1" />
@@ -1372,55 +1372,55 @@ export function InstitutionalPhysicsDashboard({ profile: externalProfile, ticker
             {/* CARD 1: SPOT DELTA INTEGRATION */}
             <div className="greek-card">
               <label>
-                <Activity className="w-3.5 h-3.5 text-[#4ADE80] icon-small" /> 
-                SPOT DELTA INTEGRATION
+                <Activity className="w-3.5 h-3.5 text-[#4ADE80] icon-small" />
+                DELTA
               </label>
               <span>
-                {calculatedGreeks.delta.toFixed(4)} <span className="unit">Δ_COEFF</span>
+                {calculatedGreeks.delta.toFixed(4)} <span className="unit">Δ</span>
               </span>
             </div>
 
             {/* CARD 2: SPOT GAMMA CONVEXITY */}
             <div className="greek-card">
               <label>
-                <GitCommit className="w-3.5 h-3.5 text-zinc-450 icon-small" /> 
-                SPOT GAMMA CONVEXITY
+                <GitCommit className="w-3.5 h-3.5 text-zinc-450 icon-small" />
+                GAMMA (how fast delta changes)
               </label>
               <span>
-                {calculatedGreeks.gamma.toFixed(6)} <span className="unit">Γ_COEFF</span>
+                {calculatedGreeks.gamma.toFixed(6)} <span className="unit">Γ</span>
               </span>
             </div>
 
             {/* CARD 3: VANNA COVARIANCE */}
             <div className="greek-card">
               <label>
-                <Percent className="w-3.5 h-3.5 text-[#F87171] icon-small" /> 
-                VANNA COVARIANCE (∂Δ/∂Σ)
+                <Percent className="w-3.5 h-3.5 text-[#F87171] icon-small" />
+                VANNA (delta shift per vol move)
               </label>
               <span>
-                {calculatedGreeks.vanna.toFixed(4)} <span className="unit">V_COEFF</span>
+                {calculatedGreeks.vanna.toFixed(4)} <span className="unit">∂Δ/∂Σ</span>
               </span>
             </div>
 
             {/* CARD 4: CHARM DECAY SPEED */}
             <div className="greek-card">
               <label>
-                <Clock className="w-3.5 h-3.5 text-zinc-400 icon-small" /> 
-                CHARM DECAY SPEED (∂Δ/∂T)
+                <Clock className="w-3.5 h-3.5 text-zinc-400 icon-small" />
+                CHARM (delta decay per day)
               </label>
               <span>
-                {calculatedGreeks.charm.toFixed(4)} <span className="unit">C_COEFF</span>
+                {calculatedGreeks.charm.toFixed(4)} <span className="unit">∂Δ/∂T</span>
               </span>
             </div>
 
             {/* CARD 5: ATM MAGNET STRIKE */}
             <div className="greek-card">
               <label>
-                <Crosshair className="w-3.5 h-3.5 text-sky-400 icon-small" /> 
-                ATM MAGNET STRIKE
+                <Crosshair className="w-3.5 h-3.5 text-sky-400 icon-small" />
+                MAGNET STRIKE
               </label>
               <span className="text-sky-400">
-                {profile.spot.toFixed(0)} <span className="unit">MAGNET_STRIKE</span>
+                {profile.spot.toFixed(0)} <span className="unit">ATM</span>
               </span>
             </div>
 

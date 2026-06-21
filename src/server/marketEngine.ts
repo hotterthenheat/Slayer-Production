@@ -31,6 +31,7 @@ import { computeStrikeGravity } from '../lib/strikeGravity';
 import { computeDealerDynamics, type DealerSnapshot, type DealerDynamics } from '../lib/dealerDynamics';
 import { compute0DTE } from '../lib/zeroDte';
 import { buildTradePlan } from '../lib/tradePlan';
+import { tickSkyVision, getSkyVision } from './skyVisionService';
 import { computeTechnicalRead } from '../lib/technicalEngine';
 import { pcaResidualZScores } from '../lib/crossAsset';
 import { marketLeader } from '../lib/infoTheory';
@@ -390,6 +391,11 @@ export async function runTickerCycle() {
     // per tick so every SSE client reuses the same cached block.
     refreshEdgeCache();
 
+    // Sky Vision v2.0 contract-intelligence engine (per-contract strength, rotation
+    // scanner, EMA target ladder, swing, master score) — computed once per tick and
+    // cached per ticker, so every SSE client reuses the same block.
+    tickSkyVision();
+
     // 2. Tick active trade logs outcomes
     db.v8Trades = db.v8Trades.map((t) => {
       if (t.finalOutcome !== 'Active') return t;
@@ -520,6 +526,7 @@ export function accessTierToLevel(accessTier?: string | null): number {
  */
 const PREMIUM_BLOCK_TIERS: Record<string, number> = {
   trade_plan: 2,
+  sky_vision: 2,
   strike_gravity: 2,
   gex_profile: 3,
   zerodte: 3,
@@ -1552,6 +1559,7 @@ export const constructPayload = (params: {
     dealer_dynamics: dealerDynCache[asset.ticker] || null,
     zerodte,
     trade_plan,
+    sky_vision: getSkyVision(asset.ticker),
     dealer_flow,
     displacement,
     candle_feed: feedLabel,

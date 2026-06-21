@@ -24,16 +24,16 @@ export function DisplacementScoreRadar({ score }: ScoreRadarProps) {
 
   // List of weights/breakdowns with helpful institutional tooltips
   const components = [
-    { name: 'Displacement Quality', val: score.displacementQuality, max: 15, desc: 'Quality of the body/range ratio & ATR expansion ratio.' },
-    { name: 'Volume Expansion', val: score.volumeExpansion, max: 10, desc: 'Volume multiplier & relative institutional buying/selling power.' },
-    { name: 'RSI Cascade Multi', val: score.rsiCascade, max: 10, desc: 'Multi-timeframe momentum cascade agreement.' },
-    { name: 'VWAP Slope & Dist', val: score.vwapAlignment, max: 10, desc: 'Distance and acceleration of price relative to institutional average.' },
-    { name: 'Market Structure Shift', val: score.structureQuality, max: 10, desc: 'Clean breakout strength and sequence of higher highs/lows.' },
-    { name: 'Liquidity Event Sweep', val: score.liquiditySweep, max: 10, desc: 'Interaction with high/low liquidity levels & order books.' },
-    { name: 'HTF Agreement Matrix', val: score.htfAgreement, max: 10, desc: 'Alignment percentage of aggregate macro timeframes.' },
-    { name: 'Volatility Regime Alignment', val: score.volatilityRegime, max: 10, desc: 'Implied vol expansion supporting price displacement.' },
-    { name: 'Premium / Discount Deal', val: score.premiumDiscount, max: 5, desc: 'Location inside premium/discount dealing range.' },
-    { name: 'Momentum Acceleration', val: score.momentumAcceleration, max: 10, desc: 'Price velocity & short-term explosive impulse.' },
+    { name: 'Move Quality', val: score.displacementQuality, max: 15, desc: 'Candle body vs. range ratio and how far price expanded vs. ATR.' },
+    { name: 'Volume Expansion', val: score.volumeExpansion, max: 10, desc: 'Volume multiplier vs. average — how hard buyers/sellers hit.' },
+    { name: 'RSI Multi-TF', val: score.rsiCascade, max: 10, desc: 'RSI momentum agreement across multiple timeframes.' },
+    { name: 'VWAP Slope & Dist', val: score.vwapAlignment, max: 10, desc: 'How far and fast price is running from VWAP.' },
+    { name: 'Structure Break', val: score.structureQuality, max: 10, desc: 'Clean breakout strength and sequence of higher highs/lows.' },
+    { name: 'Liquidity Sweep', val: score.liquiditySweep, max: 10, desc: 'Price swept a key high/low liquidity level.' },
+    { name: 'Higher TF Agreement', val: score.htfAgreement, max: 10, desc: 'How many higher timeframes agree with the current move.' },
+    { name: 'Volatility Alignment', val: score.volatilityRegime, max: 10, desc: 'IV expansion backing the price move.' },
+    { name: 'Premium / Discount', val: score.premiumDiscount, max: 5, desc: 'Where price sits in the current dealing range.' },
+    { name: 'Momentum Acceleration', val: score.momentumAcceleration, max: 10, desc: 'Price velocity and short-term impulse strength.' },
   ];
 
   return (
@@ -42,7 +42,7 @@ export function DisplacementScoreRadar({ score }: ScoreRadarProps) {
         <div className="flex items-center gap-2">
           <Gauge className="w-4 animate-pulse text-zinc-400" />
           <h3 className="font-display font-medium text-xs md:text-sm tracking-wide text-zinc-100 uppercase">
-            Master Institutional Score
+            Setup Score
           </h3>
         </div>
         <span className="text-[10px] text-zinc-500 font-mono tracking-wider">REF: SLAYERS_M_01</span>

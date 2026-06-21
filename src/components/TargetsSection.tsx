@@ -60,9 +60,9 @@ export function TargetsSection({ targets, assetName, decimals }: TargetsSectionP
       <div className="flex items-center justify-between border-b border-black pb-3 mb-4">
         <div className="flex items-center gap-1.5">
           <Crosshair className="w-4 h-4 text-[#4ADE80] animate-spin" style={{ animationDuration: '6s' }} />
-          <span className="text-xs tracking-[0.2em] font-bold text-[#E0E0E0]">PROJECTION TARGET ENGINE</span>
+          <span className="text-xs tracking-[0.2em] font-bold text-[#E0E0E0]">PRICE TARGETS</span>
         </div>
-        <span className="text-[9px] text-[#888888] font-bold tracking-widest border border-black px-2 py-0.5 bg-black/40">MODEL: OPTION ESTIMATOR V3</span>
+        <span className="text-[9px] text-[#888888] font-bold tracking-widest border border-black px-2 py-0.5 bg-black/40">OPTION PREMIUM ESTIMATES</span>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -94,13 +94,13 @@ export function TargetsSection({ targets, assetName, decimals }: TargetsSectionP
                 
                 {/* Option Value */}
                 <div className="flex items-center justify-between mb-2">
-                  <span className="text-[10px] text-[#888888] uppercase select-none">Option Value</span>
+                  <span className="text-[10px] text-[#888888] uppercase select-none">Est. Premium</span>
                   <span className="text-sm font-black text-[#E5E5E5] font-mono tracking-wide">{item.optionValue}</span>
                 </div>
 
                 {/* Probability */}
                 <div className="flex items-center justify-between mb-2">
-                  <span className="text-[10px] text-[#888888] uppercase select-none">Probability</span>
+                  <span className="text-[10px] text-[#888888] uppercase select-none">Hit Probability</span>
                   <span className="text-xs font-bold text-[#E5E5E5] font-mono">{item.probability}%</span>
                 </div>
 
@@ -121,7 +121,7 @@ export function TargetsSection({ targets, assetName, decimals }: TargetsSectionP
 
               {/* Footer ETA */}
               <div className="mt-4 pt-2.5 border-t border-black flex justify-between items-center text-[10px]">
-                <span className="text-[#66666A] uppercase font-bold tracking-tight">target eta</span>
+                <span className="text-[#66666A] uppercase font-bold tracking-tight">Time to Target</span>
                 <span className="text-[#4ADE80] font-bold font-mono">{item.eta}</span>
               </div>
             </div>

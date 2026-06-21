@@ -180,7 +180,7 @@ export function WorkspaceView({ isSuperAdmin }: Props) {
       <div className="flex-1 flex flex-col w-full h-full font-mono text-[#E5E5E5] bg-black overflow-hidden select-none relative">
         <div className="flex-none bg-[#0A0A0A] border-b border-[#1F1F1F] p-2 flex items-center justify-between z-40">
           <div className="flex items-center gap-2">
-            <span className="text-[10px] font-black uppercase tracking-widest text-[#A3A3A3]">Workstation Editor</span>
+            <span className="text-[10px] font-black uppercase tracking-widest text-[#A3A3A3]">Layout Editor</span>
           </div>
           <div className="flex items-center gap-1 md:gap-2">
             <button onClick={() => { setShowSaveOverlay(true); setLoadOpen(false); setAddOpen(false); }} className="flex items-center gap-1.5 text-[9px] font-bold uppercase tracking-widest text-cyan-400 bg-black/40 border border-cyan-900/50 rounded-sm px-2 md:px-3 py-1.5 hover:bg-cyan-900/20 hover:border-cyan-400 transition-colors">

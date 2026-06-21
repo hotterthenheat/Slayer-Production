@@ -690,7 +690,11 @@ export function computeDealerInventory(
   const dealer01 = Math.min(1, Math.max(0, 0.5 * (DSI + 1)));
 
   // Expected move calculation (§3.7) - returns as fractional rate to prevent double scaling
-  const atmIV = chain.length > 0 ? chain[Math.floor(chain.length / 2)].iv : 0.15;
+  // ATM IV = IV of the contract whose strike is nearest spot (chain is not guaranteed
+  // to be spot-centered, so a blind middle-index pick can land off the money).
+  const atmIV = chain.length > 0
+    ? chain.reduce((best, c) => Math.abs(c.strike - spot) < Math.abs(best.strike - spot) ? c : best).iv
+    : 0.15;
   const expectedMovePct = atmIV * Math.sqrt(dte / 365);
 
   return {
@@ -1231,7 +1235,9 @@ export function evaluateDecisionGate(
 }
 
 function passRR2(rr: number) {
-  return rr > 1.5 || !isFinite(rr);
+  // Mirror the live gate (passRR = rr > 1.50). NaN/Infinity must NOT silently
+  // "pass" here, otherwise a failed R/R is omitted from the failure-reason list.
+  return rr > 1.5;
 }
 
 // ==========================================

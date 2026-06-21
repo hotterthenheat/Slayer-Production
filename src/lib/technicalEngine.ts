@@ -59,7 +59,7 @@ function emaSeries(values: number[], period: number): number[] {
   for (let i = 1; i < n; i++) out.push(values[i] * k + out[i - 1] * (1 - k));
   return out;
 }
-function emaLast(values: number[], period: number): number {
+export function emaLast(values: number[], period: number): number {
   const s = emaSeries(values, period);
   return s.length ? s[s.length - 1] : (values.length ? values[values.length - 1] : 0);
 }
