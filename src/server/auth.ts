@@ -138,6 +138,7 @@ export interface UserAccount {
   temp_new_email?: string;
   email_otp?: string;
   email_otp_expiry?: number;
+  email_otp_attempts?: number;
   notification_preferences?: {
     email_enabled: boolean;
     sms_enabled: boolean;
