@@ -18,6 +18,7 @@ import { IntradayTargetsView } from './IntradayTargetsView';
 import { QuantEdgePanel } from './QuantEdgePanel';
 import { RegimeMatrixPanel } from './RegimeMatrixPanel';
 import { DealerDynamicsPanel } from './DealerDynamicsPanel';
+import { GexReadCard } from './GexReadCard';
 import { ZeroDtePanel } from './ZeroDtePanel';
 import { DealerFlowMap } from './DealerFlowMap';
 import {
@@ -792,6 +793,7 @@ export function DealerFlowView() {
 
       {/* DEALER DYNAMICS — vanna/charm flow, strike migration, gamma velocity,
           liquidity vacuums, wall strength */}
+      <GexReadCard />
       <DealerDynamicsPanel />
 
       {/* 0DTE PROBABILITIES — expected-move bands, pin probability, EOD magnet,
