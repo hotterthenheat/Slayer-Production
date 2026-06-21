@@ -15,7 +15,6 @@ import { ClerkGate } from './components/ClerkGate';
 import { CelebrationOverlay } from './components/CelebrationOverlay';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { CommandPalette } from './components/CommandPalette';
-import { TerminalRain } from './components/TerminalRain';
 // Eagerly imported because SlayerIntro (also eager, on the landing path) imports it
 // statically — a lazy() wrapper here can't code-split it and only warns at build.
 import { SubscriptionPricing } from './components/SubscriptionPricing';
@@ -915,9 +914,6 @@ export default function App() {
           </div>
         )}
         {showAlerts && <SkyseyeAlertHub />}
-        
-        {/* Global Subtle Terminal Rain Backdrop */}
-        <TerminalRain activeTab={activeTab} />
 
         <div className="flex-1 flex flex-col w-full mx-auto relative z-10 h-full overflow-hidden">
           {/* Main workspace frame */}

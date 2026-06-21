@@ -15,12 +15,10 @@ import { SlayerScoreWidget, VolatilityStateWidget } from './WorkspaceWidgets';
 import { InteractiveChart } from './InteractiveChart';
 import { InstitutionalPhysicsDashboard } from './InstitutionalPhysicsDashboard';
 import { IntradayTargetsView } from './IntradayTargetsView';
-import { InstitutionalDashboard } from './InstitutionalDashboard';
 import { QuantEdgePanel } from './QuantEdgePanel';
 import { RegimeMatrixPanel } from './RegimeMatrixPanel';
 import { DealerDynamicsPanel } from './DealerDynamicsPanel';
 import { ZeroDtePanel } from './ZeroDtePanel';
-import { MicrostructureLabView } from './MicrostructureLabView';
 import { DealerFlowMap } from './DealerFlowMap';
 import {
   Waves,
@@ -443,7 +441,7 @@ export function DealerFlowView() {
     if (ticker !== selectedAsset.ticker) return null;
     return rawServerState;
   }, [rawServerState, selectedAsset.ticker]);
-  const [activeEngineView, setActiveEngineView] = useState<'profile' | 'physics' | 'targets' | 'institutional' | 'microstructure'>('institutional');
+  const [activeEngineView, setActiveEngineView] = useState<'profile' | 'physics' | 'targets'>('profile');
   const [mocDirection, setMocDirection] = useState<'BUY' | 'SELL' | 'NEUTRAL'>('BUY');
   const [mocValue, setMocValue] = useState<number>(1.24 * 1e9);
 
@@ -801,28 +799,6 @@ export function DealerFlowView() {
           <Zap className="w-3.5 h-3.5 text-amber-400" />
           DEALER MECHANICS
         </button>
-        <button
-          onClick={() => setActiveEngineView('institutional')}
-          className={`flex shrink-0 items-center gap-2 px-4.5 py-3 font-mono text-[9px] font-black uppercase tracking-wider border rounded-lg transition-all cursor-pointer ${
-            activeEngineView === 'institutional'
-              ? 'bg-fuchsia-500/10 border-fuchsia-500 border-b-2 border-b-fuchsia-400 text-[#E5E5E5] shadow-[0_0_12px_rgba(217,70,239,0.12)]'
-              : 'bg-black/45 border-black text-zinc-500 hover:text-[#4ADE80] hover:border-black'
-          }`}
-        >
-          <Activity className="w-3.5 h-3.5 text-fuchsia-400" />
-          INSTITUTIONAL METRICS
-        </button>
-        <button
-          onClick={() => setActiveEngineView('microstructure')}
-          className={`flex shrink-0 items-center gap-2 px-4.5 py-3 font-mono text-[9px] font-black uppercase tracking-wider border rounded-lg transition-all cursor-pointer ${
-            activeEngineView === 'microstructure'
-              ? 'bg-cyan-500/10 border-cyan-500 border-b-2 border-b-cyan-400 text-[#E5E5E5] shadow-[0_0_12px_rgba(6,182,212,0.12)]'
-              : 'bg-black/45 border-black text-zinc-500 hover:text-[#4ADE80] hover:border-black'
-          }`}
-        >
-          <Waves className="w-3.5 h-3.5 text-cyan-400" />
-          ORDER FLOW
-        </button>
       </div>
 
       {activeEngineView === 'profile' ? (
@@ -971,10 +947,6 @@ export function DealerFlowView() {
         </>
       ) : activeEngineView === 'targets' ? (
         <IntradayTargetsView profile={profile} ticker={selectedAsset.ticker} decimals={selectedAsset.decimals} />
-      ) : activeEngineView === 'institutional' ? (
-        <InstitutionalDashboard />
-      ) : activeEngineView === 'microstructure' ? (
-        <MicrostructureLabView />
       ) : (
         <div id="institutional-physics-dash-wrapper">
           <InstitutionalPhysicsDashboard

@@ -196,11 +196,12 @@ export default function QuantSuiteView() {
     return solveImpliedRND(optionChain, spotPrice, defaultIv, dteD / 365, 0.051);
   }, [optionChain, spotPrice, defaultIv]);
 
-  // Threshold evaluation
-  const [probStrike, setProbStrike] = useState<number>(Math.round(spotPrice * 1.05));
-  useEffect(() => {
-    setProbStrike(Math.round(spotPrice * 1.05));
-  }, [spotPrice]);
+  // Probability target — auto-derived from the chain's own 1σ implied move
+  // (no manual entry). Reads the risk-neutral std-dev straight from the RND.
+  const probStrike = useMemo(
+    () => Math.round(spotPrice + rndResult.stdDev),
+    [spotPrice, rndResult.stdDev]
+  );
 
   const probabilityPricingText = useMemo(() => {
     const sorted = [...rndResult.density].sort((a,b) => b.strike - a.strike);
@@ -801,19 +802,11 @@ export default function QuantSuiteView() {
                       Derives the market-implied probability of price reaching any strike, read directly from the options chain via Breeden-Litzenberger (RND).
                     </p>
                     <div className="mt-4 flex flex-col gap-2">
-                      <label className="text-[8px] text-zinc-500 uppercase font-black">Target strike price</label>
-                      <div className="flex gap-2">
-                        <input 
-                          type="range" 
-                          min={Math.round(spotPrice * 0.85)} 
-                          max={Math.round(spotPrice * 1.15)} 
-                          value={probStrike} 
-                          onChange={(e) => setProbStrike(parseInt(e.target.value))}
-                          className="flex-1 accent-[#D9A15C]" 
-                        />
-                        <span className="text-[10px] font-bold text-[#fbbf24] w-12 text-right">{probStrike}</span>
+                      <div className="flex justify-between items-center">
+                        <span className="text-[8px] text-zinc-500 uppercase font-black">1σ Expected-Move Strike</span>
+                        <span className="text-[12px] font-mono font-black text-[#fbbf24]">{probStrike.toLocaleString(undefined, { maximumFractionDigits: 0 })}</span>
                       </div>
-                      <div className="bg-[#0a0a0d] border border-zinc-800/40 p-2.5 rounded-[1px] mt-2">
+                      <div className="bg-[#0a0a0d] border border-zinc-800/40 p-2.5 rounded-[1px] mt-1">
                         <p className="text-[9.5px] text-zinc-300 font-bold leading-normal lowercase first-letter:uppercase">
                           {probabilityPricingText.statement}
                         </p>

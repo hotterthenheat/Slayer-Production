@@ -7,12 +7,11 @@
  * Renders the server-computed `sky_vision` block: the master verdict, the strongest
  * contract on the chain (rotation scanner), the EMA target ladder with projected
  * option premiums, the swing read, and the position-health-style component breakdown.
- * One-click "Add to Trade History" wires the strongest contract into the per-user
- * tracked-trade engine.
+ * Read-only — everything is computed server-side from the live chain each tick.
  */
-import React, { useState } from 'react';
+import React from 'react';
 import { useContractStore } from '../lib/store';
-import { Crosshair, TrendingUp, TrendingDown, Activity, Gauge, Target, Layers, Check, Loader2 } from 'lucide-react';
+import { Crosshair, TrendingUp, TrendingDown, Activity, Gauge, Target, Layers } from 'lucide-react';
 
 const fmt = (v: number | undefined, d = 2) => (typeof v === 'number' && isFinite(v) ? v.toLocaleString(undefined, { maximumFractionDigits: d }) : '—');
 
@@ -29,8 +28,6 @@ const strengthTone = (s: number) => (s >= 70 ? '#4ADE80' : s >= 45 ? '#FBBF24' :
 export function SkyVisionV2Panel() {
   const serverState = useContractStore((s) => s.serverState);
   const sv = serverState?.sky_vision as any | undefined;
-  const [addState, setAddState] = useState<'idle' | 'adding' | 'added' | 'error'>('idle');
-  const [addMsg, setAddMsg] = useState('');
 
   if (!sv || !sv.master) {
     return (
@@ -47,43 +44,6 @@ export function SkyVisionV2Panel() {
   const dirTone = dir === 'BULLISH' ? '#4ADE80' : dir === 'BEARISH' ? '#F87171' : '#A3A3A3';
   const lead = dirBull ? sv.bestCall : sv.bestPut;
   const master = sv.master;
-
-  const addStrongest = async () => {
-    if (!lead || addState === 'adding') return;
-    setAddState('adding');
-    setAddMsg('');
-    try {
-      const res = await fetch('/api/tracked/add', {
-        method: 'POST',
-        credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          underlying: sv.ticker,
-          strike: lead.strike,
-          isCall: lead.isCall,
-          spot: sv.spot,
-          iv: lead.iv,
-          dteDays: 1,
-          category: 'top_opportunity',
-          entryPrice: lead.premium,
-        }),
-      });
-      const data = await res.json().catch(() => ({}));
-      if (res.ok) {
-        setAddState('added');
-        setAddMsg(`Tracking ${lead.key} — see Trade History.`);
-        setTimeout(() => setAddState('idle'), 4000);
-      } else {
-        setAddState('error');
-        setAddMsg(data.error || 'Could not add contract.');
-        setTimeout(() => setAddState('idle'), 5000);
-      }
-    } catch {
-      setAddState('error');
-      setAddMsg('Network error — please retry.');
-      setTimeout(() => setAddState('idle'), 5000);
-    }
-  };
 
   const components: { key: string; label: string }[] = [
     { key: 'contractStrength', label: 'Contract' },
@@ -143,15 +103,6 @@ export function SkyVisionV2Panel() {
                 <div><span className="text-[var(--text-secondary)]">IV </span><span className="text-[var(--text-primary)] font-mono">{fmt(lead.iv * 100, 1)}%</span></div>
                 <div><span className="text-[var(--text-secondary)]">Vol </span><span className="text-[var(--text-primary)] font-mono">{fmt(lead.volume, 0)}</span></div>
               </div>
-              <button
-                onClick={addStrongest}
-                disabled={addState === 'adding' || addState === 'added'}
-                className="mt-3 w-full rounded-md py-2 text-[10px] font-black uppercase tracking-wider flex items-center justify-center gap-1.5 transition-colors disabled:opacity-70"
-                style={{ background: addState === 'added' ? 'rgba(74,222,128,0.15)' : 'rgba(74,222,128,0.12)', color: '#4ADE80', border: '1px solid rgba(74,222,128,0.4)' }}
-              >
-                {addState === 'adding' ? <><Loader2 className="w-3 h-3 animate-spin" /> Adding…</> : addState === 'added' ? <><Check className="w-3 h-3" /> Tracking</> : 'Add to Trade History'}
-              </button>
-              {addMsg && <div className={`mt-1.5 text-[9px] ${addState === 'error' ? 'text-[#F87171]' : 'text-[#4ADE80]'}`}>{addMsg}</div>}
             </>
           ) : (
             <div className="text-[10px] text-[var(--text-secondary)]">No clear directional leader right now.</div>
