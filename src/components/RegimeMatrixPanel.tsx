@@ -9,15 +9,15 @@ const num = (v: any, d = 2) => (typeof v === 'number' && isFinite(v) ? v.toFixed
 function Flag({ label, value, active, tone = '#4ADE80' }: { label: string; value: string; active: boolean; tone?: string }) {
   return (
     <div
-      className="rounded-md border p-2.5 flex flex-col gap-1 transition-colors"
+      className="rounded-md border p-2.5 flex flex-col gap-1 transition-colors bg-[var(--surface-2)]"
       style={{
-        borderColor: active ? tone : 'rgba(63,63,70,0.6)',
-        background: active ? `${tone}12` : 'rgba(0,0,0,0.35)',
+        borderColor: active ? `${tone}66` : 'var(--border)',
+        background: active ? `${tone}12` : undefined,
       }}
     >
-      <span className="text-[8px] font-black uppercase tracking-widest text-zinc-500 leading-tight">{label}</span>
-      <span className="text-[13px] font-bold tabular-nums leading-none" style={{ color: active ? tone : '#E5E5E5' }}>{value}</span>
-      <span className="text-[8px] font-black tracking-widest" style={{ color: active ? tone : '#52525B' }}>
+      <span className="text-[9px] font-black uppercase tracking-widest text-[var(--text-tertiary)] leading-tight">{label}</span>
+      <span className="text-[13px] font-bold tabular-nums leading-none" style={{ color: active ? tone : 'var(--text-primary)' }}>{value}</span>
+      <span className="text-[9px] font-black tracking-widest" style={{ color: active ? tone : 'var(--text-tertiary)' }}>
         {active ? '● ACTIVE' : '○ INACTIVE'}
       </span>
     </div>
@@ -29,7 +29,7 @@ function Section({ title, icon, children }: { title: string; icon: React.ReactNo
     <div className="flex flex-col gap-2">
       <div className="flex items-center gap-2">
         {icon}
-        <h3 className="text-[9px] font-black tracking-widest uppercase text-zinc-400">{title}</h3>
+        <h3 className="text-[10px] font-black tracking-widest uppercase text-[var(--text-secondary)]">{title}</h3>
       </div>
       <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">{children}</div>
     </div>
@@ -56,11 +56,11 @@ export function RegimeMatrixPanel() {
   const regimeTone = reg.state === 'TAIL_RISK' ? '#F87171' : reg.state === 'TREND_EXPANSION' ? '#4ADE80' : '#60A5FA';
 
   return (
-    <div className="rounded-xl border bg-white/[0.02] p-5 flex flex-col gap-4 shadow-lg" style={{ borderColor: 'rgba(56,189,248,0.22)', borderLeftColor: 'rgba(56,189,248,0.9)', borderLeftWidth: '3px' }}>
-      <div className="flex items-center gap-2">
-        <Radar className="w-4 h-4 text-[#4ADE80]" />
-        <h2 className="text-xs font-black tracking-widest uppercase text-[#E5E5E5]">Market State — {selectedAsset?.ticker}</h2>
-        <span className="text-[8px] text-zinc-500 uppercase tracking-widest ml-auto">11 signals · live</span>
+    <div className="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-5 flex flex-col gap-4" style={{ borderLeftColor: '#60A5FA', borderLeftWidth: '3px' }}>
+      <div className="flex items-center gap-2 pb-3 border-b border-[var(--border)]">
+        <Radar className="w-4 h-4 text-[#60A5FA]" />
+        <h2 className="text-xs font-black tracking-widest uppercase text-[var(--text-primary)]">Market State — {selectedAsset?.ticker}</h2>
+        <span className="text-[9px] text-[var(--text-tertiary)] uppercase tracking-widest ml-auto">11 signals · live</span>
       </div>
 
       <Section title="Trend and Mean-Reversion Signals" icon={<GitBranch className="w-3 h-3 text-[#60A5FA]" />}>

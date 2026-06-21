@@ -77,25 +77,25 @@ function ReferralCodeBox() {
   };
 
   return (
-    <div className="bg-black/40 border border-black rounded-xl p-4 space-y-4">
+    <div className="bg-[var(--surface-2)] border border-[var(--border)] rounded-xl p-4 space-y-4">
       <div>
-        <span className="text-[10px] text-zinc-500 uppercase tracking-widest font-black">Your Referral Code</span>
+        <span className="text-[10px] text-[var(--text-tertiary)] uppercase tracking-widest font-bold">Your Referral Code</span>
         <div className="flex items-center gap-2 mt-1.5">
-          <code className="flex-1 bg-black border border-black rounded-lg px-3 py-2.5 text-sm font-mono font-black text-[#4ADE80] tracking-widest">{code || '…'}</code>
-          <button onClick={copy} className="px-3 py-2.5 mirror-panel rounded-lg text-[10px] font-bold uppercase tracking-widest text-[#4ADE80] hover:text-[#E5E5E5]">{copied ? 'Copied' : 'Copy'}</button>
+          <code className="flex-1 bg-[var(--surface)] border border-[var(--border)] rounded-lg px-3 py-2.5 text-sm font-mono font-bold text-[#4ADE80] tracking-widest">{code || '…'}</code>
+          <button onClick={copy} className="px-3 py-2.5 bg-[var(--surface)] border border-[var(--border)] rounded-lg text-[10px] font-bold uppercase tracking-widest text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors">{copied ? 'Copied' : 'Copy'}</button>
         </div>
-        <p className="text-[10px] text-zinc-600 mt-1.5">Share this code — referees get 10% off and you earn +1 token per use.</p>
+        <p className="text-[10px] text-[var(--text-tertiary)] mt-1.5">Share this code — referees get 10% off and you earn +1 token per use.</p>
       </div>
-      <div className="pt-3 border-t border-black/60">
-        <span className="text-[10px] text-zinc-500 uppercase tracking-widest font-black">Apply a Referral Code</span>
+      <div className="pt-3 border-t border-[var(--border)]">
+        <span className="text-[10px] text-[var(--text-tertiary)] uppercase tracking-widest font-bold">Apply a Referral Code</span>
         <div className="flex items-center gap-2 mt-1.5">
           <input
             value={applyInput}
             onChange={(e) => setApplyInput(e.target.value.toUpperCase())}
             placeholder="FRND10OFF"
-            className="flex-1 bg-black border border-black rounded-lg px-3 py-2.5 text-sm font-mono text-[#E5E5E5] uppercase placeholder:text-zinc-700 focus:outline-none focus:border-black"
+            className="flex-1 bg-[var(--surface)] border border-[var(--border)] rounded-lg px-3 py-2.5 text-sm font-mono text-[var(--text-primary)] uppercase placeholder:text-[var(--text-tertiary)] focus:outline-none focus:border-indigo-500 transition-colors"
           />
-          <button onClick={apply} disabled={applying} className="px-4 py-2.5 bg-black/40 border border-black text-[#4ADE80] rounded-lg text-[10px] font-bold uppercase tracking-widest hover:bg-black/40 disabled:opacity-50">{applying ? '…' : 'Apply'}</button>
+          <button onClick={apply} disabled={applying} className="px-4 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-[#E5E5E5] rounded-lg text-[10px] font-bold uppercase tracking-widest disabled:opacity-50 transition-colors">{applying ? '…' : 'Apply'}</button>
         </div>
         {applyMsg && <p className={`text-[10px] mt-1.5 ${applyMsg.ok ? 'text-[#4ADE80]' : 'text-[#F87171]'}`}>{applyMsg.text}</p>}
       </div>
@@ -138,7 +138,7 @@ function KeybindRow({ bindId, label }: { bindId: keyof ContractStore['keybinds']
   const displayKey = (keybinds[bindId] || '').replace('cmd', typeof window !== 'undefined' && navigator.userAgent.includes('Mac') ? '⌘' : 'Ctrl');
 
   return (
-    <div className={`flex items-center justify-between p-3 bg-black/40 border ${isDisabled ? 'border-black/50 opacity-50' : 'border-black'} rounded-lg transition-all`}>
+    <div className={`flex items-center justify-between p-3 bg-[var(--surface-2)] border border-[var(--border)] rounded-lg transition-all ${isDisabled ? 'opacity-50' : ''}`}>
       <div className="flex items-center gap-3">
         {/* 36px minimum tap target wrapping the 16px checkbox visual */}
         <button
@@ -146,11 +146,11 @@ function KeybindRow({ bindId, label }: { bindId: keyof ContractStore['keybinds']
           className="flex items-center justify-center min-w-[36px] min-h-[36px] rounded-lg cursor-pointer"
           aria-label={isDisabled ? 'Enable keybind' : 'Disable keybind'}
         >
-          <span className={`w-4 h-4 rounded flex items-center justify-center border ${isDisabled ? 'bg-transparent border-black' : 'bg-indigo-500 border-indigo-500 text-[#E5E5E5]'}`}>
+          <span className={`w-4 h-4 rounded flex items-center justify-center border ${isDisabled ? 'bg-transparent border-[var(--border-strong)]' : 'bg-indigo-500 border-indigo-500 text-[#E5E5E5]'}`}>
             {!isDisabled && <svg viewBox="0 0 24 24" fill="none" className="w-3 h-3 stroke-current stroke-[3]"><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>}
           </span>
         </button>
-        <span className={`text-sm font-mono font-bold ${isDisabled ? 'text-zinc-500 line-through' : 'text-[#4ADE80]'}`}>{label}</span>
+        <span className={`text-sm font-mono font-bold ${isDisabled ? 'text-[var(--text-tertiary)] line-through' : 'text-[var(--text-primary)]'}`}>{label}</span>
       </div>
       <button
         onClick={() => {
@@ -158,9 +158,9 @@ function KeybindRow({ bindId, label }: { bindId: keyof ContractStore['keybinds']
         }}
         disabled={isDisabled}
         className={`px-3 min-h-[36px] text-xs font-mono font-bold rounded-lg flex items-center justify-center min-w-[80px] transition-all border
-          ${isDisabled ? 'bg-black text-zinc-600 border-black cursor-not-allowed' : isRecording ? 'bg-indigo-500/20 text-indigo-400 border-indigo-500/50 shadow-[0_0_10px_rgba(99,102,241,0.3)]' : 'bg-black text-zinc-400 border-black hover:border-black hover:text-[#E5E5E5]'}`}
+          ${isDisabled ? 'bg-[var(--surface)] text-[var(--text-tertiary)] border-[var(--border)] cursor-not-allowed' : isRecording ? 'bg-indigo-500/20 text-indigo-400 border-indigo-500/50' : 'bg-[var(--surface)] text-[var(--text-secondary)] border-[var(--border)] hover:border-[var(--border-strong)] hover:text-[var(--text-primary)]'}`}
       >
-        {isRecording ? 'Listening...' : displayKey.toUpperCase()}
+        {isRecording ? 'Listening…' : displayKey.toUpperCase()}
       </button>
     </div>
   );
@@ -313,6 +313,13 @@ export function SettingsPanel({ session, onUpdateSession }: SettingsPanelProps) 
 
   useEffect(() => {
     if (session) {
+      // Sync appearance prefs (these only seed via useState on first mount,
+      // so re-sync here when the session loads/changes to avoid stale values).
+      if (session.selected_font_scale) setSelectedFont(session.selected_font_scale);
+      setCompactMode(!!session.compact_view_enabled);
+      setUltrawideMode(!!session.ultrawide_enabled);
+      if (session.selected_theme) setActiveTheme(session.selected_theme);
+
       if (session.notification_preferences) {
         setNotifPreferences({
           email_enabled: session.notification_preferences.email_enabled ?? true,
@@ -638,19 +645,19 @@ export function SettingsPanel({ session, onUpdateSession }: SettingsPanelProps) 
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
-                className={`shrink-0 flex items-center gap-2 px-4 rounded-lg text-[11px] font-mono font-black uppercase tracking-[0.15em] transition-all cursor-pointer min-h-[36px] whitespace-nowrap ${
+                className={`shrink-0 flex items-center gap-2 px-4 rounded-lg text-[11px] font-mono font-bold uppercase tracking-[0.15em] transition-all cursor-pointer min-h-[36px] whitespace-nowrap ${
                   isActive
-                    ? 'bg-black text-[#4ADE80] border border-black shadow-inner'
-                    : 'text-zinc-400 hover:text-[#E5E5E5] hover:bg-black/50 border border-transparent'
+                    ? 'bg-[var(--surface-2)] text-[var(--text-primary)] border border-[var(--border-strong)]'
+                    : 'text-[var(--text-tertiary)] hover:text-[var(--text-primary)] hover:bg-[var(--surface)] border border-transparent'
                 }`}
               >
-                <Icon className={`w-3.5 h-3.5 shrink-0 ${isActive ? 'text-[#4ADE80]' : 'text-zinc-500'}`} />
+                <Icon className={`w-3.5 h-3.5 shrink-0 ${isActive ? 'text-indigo-400' : 'text-[var(--text-tertiary)]'}`} />
                 <span>{tab.label}</span>
               </button>
             );
           })}
         </div>
-        <div className="mt-1 h-px bg-black/40" />
+        <div className="mt-1 h-px bg-[var(--border)]" />
       </div>
 
       {/* Content Area */}
@@ -665,62 +672,61 @@ export function SettingsPanel({ session, onUpdateSession }: SettingsPanelProps) 
           <div className="space-y-6 animate-fadeIn pb-12">
             
             {/* MFA Container */}
-            <div className="bg-black/20 border border-black rounded-xl p-5 space-y-4 relative shadow-lg">
-              <div className="flex items-center gap-2.5 border-b border-black pb-3">
+            <div className="bg-[var(--surface)] border border-[var(--border)] rounded-xl p-5 space-y-4">
+              <div className="flex items-center gap-2.5 border-b border-[var(--border)] pb-3">
                 <Lock className="w-4 h-4 text-indigo-400" />
-                <span className="text-[10px] font-mono font-black uppercase tracking-[0.2em] text-zinc-500">Account Security</span>
+                <span className="text-[10px] font-mono font-bold uppercase tracking-[0.2em] text-[var(--text-tertiary)]">Account Security</span>
               </div>
-              <p className="text-xs font-mono text-zinc-400">Manage two-factor authentication, passwords, and account deletion.</p>
-              
+              <p className="text-xs text-[var(--text-secondary)]">Manage two-factor authentication, passwords, and account deletion.</p>
+
               <TwoFactorFlow />
             </div>
 
             {/* Email Transition Container */}
-            <div className="bg-black/20 border border-black rounded-xl p-5 space-y-4 relative shadow-lg">
-              <div className="flex items-center gap-2.5 border-b border-black pb-3">
+            <div className="bg-[var(--surface)] border border-[var(--border)] rounded-xl p-5 space-y-4">
+              <div className="flex items-center gap-2.5 border-b border-[var(--border)] pb-3">
                 <svg viewBox="0 0 24 24" fill="none" className="w-4 h-4 text-indigo-400 stroke-current stroke-2"><path strokeLinecap="round" strokeLinejoin="round" d="M3 19.5h18M3 4.5h18M3 9.5h18M3 14.5h18" /></svg>
-                <span className="text-[10px] font-mono font-black uppercase tracking-[0.2em] text-zinc-500">Primary Email &amp; Two-Step OTP</span>
+                <span className="text-[10px] font-mono font-bold uppercase tracking-[0.2em] text-[var(--text-tertiary)]">Primary Email &amp; Two-Step OTP</span>
               </div>
-              
+
               <div className="space-y-3">
-                <div className="text-xs text-zinc-500">
+                <div className="text-xs text-[var(--text-secondary)] leading-normal">
                   Changing your email requires a verification code. A security notice will also be sent to your old address.
                 </div>
 
-                <div className="bg-black/30 border border-black p-3 rounded-lg text-xs">
-                  <div className="text-zinc-500 font-bold mb-0.5 uppercase tracking-wide">Current Email</div>
-                  <div className="text-[#4ADE80] font-mono font-bold">{session?.email || 'N/A'}</div>
+                <div className="bg-[var(--surface-2)] border border-[var(--border)] p-3 rounded-lg text-xs">
+                  <div className="text-[var(--text-tertiary)] font-bold mb-0.5 uppercase tracking-wide">Current Email</div>
+                  <div className="text-[var(--text-primary)] font-mono font-bold">{session?.email || 'N/A'}</div>
                 </div>
 
-                {emailError && <div className="text-xs font-bold text-rose-500 p-2 bg-rose-950/20 rounded-md border border-[#F87171]/30">{emailError}</div>}
-                {emailSuccess && <div className="text-xs font-bold text-[#4ADE80] p-2 bg-black/40 rounded-md border border-black">{emailSuccess}</div>}
+                {emailError && <div className="text-xs font-bold text-[#F87171] p-2 bg-[var(--surface-2)] rounded-md border border-[#F87171]/30">{emailError}</div>}
+                {emailSuccess && <div className="text-xs font-bold text-[#4ADE80] p-2 bg-[var(--surface-2)] rounded-md border border-[#4ADE80]/30">{emailSuccess}</div>}
 
                 {otpSent ? (
                   <form onSubmit={handleEmailUpdateVerify} className="space-y-3 animate-fadeIn">
-                    <div className="p-3 bg-indigo-950/20 border border-indigo-900/40 rounded-lg text-xs space-y-2">
-                      <div className="font-bold text-indigo-300">Demo mode - verification code:</div>
-                      <p className="text-zinc-400">Because you are in demo mode, the 6-digit verification code is shown here:</p>
-                      <div className="font-mono text-sm font-bold text-[#4ADE80] bg-black/50 px-2 py-1 rounded w-fit select-all border border-black">
+                    <div className="p-3 bg-indigo-500/5 border border-indigo-500/30 rounded-lg text-xs space-y-2">
+                      <div className="font-bold text-indigo-300 uppercase tracking-wider text-[10px]">Verification Code</div>
+                      <div className="font-mono text-sm font-bold text-[#4ADE80] bg-[var(--surface-2)] px-2 py-1 rounded w-fit select-all border border-[var(--border)]">
                         {simulatedOtp}
                       </div>
                     </div>
-                    
+
                     <div className="space-y-1">
-                      <label className="text-[10px] text-zinc-400 font-bold uppercase tracking-wider">Enter Verification Code</label>
-                      <input 
+                      <label className="text-[10px] text-[var(--text-tertiary)] font-bold uppercase tracking-wider">Enter Verification Code</label>
+                      <input
                         type="text"
                         placeholder="000000"
                         maxLength={6}
                         value={emailOtp}
                         onChange={e => setEmailOtp(e.target.value.replace(/\D/g, ''))}
-                        className="w-full mirror-panel rounded-lg px-3 py-2 text-center text-sm font-mono tracking-widest text-[#E5E5E5] focus:outline-none focus:border-indigo-500"
+                        className="w-full bg-[var(--surface-2)] border border-[var(--border)] rounded-lg px-3 py-2 text-center text-sm font-mono tracking-widest text-[var(--text-primary)] focus:outline-none focus:border-indigo-500 transition-colors"
                       />
                     </div>
                     <div className="flex justify-end gap-3 pt-1">
-                      <button 
-                        type="button" 
-                        onClick={() => { setOtpSent(false); setEmailOtp(''); }} 
-                        className="px-3 py-1.5 text-xs text-zinc-500 hover:text-[#E5E5E5] cursor-pointer"
+                      <button
+                        type="button"
+                        onClick={() => { setOtpSent(false); setEmailOtp(''); }}
+                        className="px-3 py-1.5 text-xs text-[var(--text-tertiary)] hover:text-[var(--text-primary)] cursor-pointer transition-colors"
                       >
                         Cancel
                       </button>
@@ -728,24 +734,24 @@ export function SettingsPanel({ session, onUpdateSession }: SettingsPanelProps) 
                         type="submit"
                         className="px-4 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-[#E5E5E5] rounded-lg text-xs font-bold cursor-pointer transition-colors"
                       >
-                        Verify & Save
+                        Verify &amp; Save
                       </button>
                     </div>
                   </form>
                 ) : (
                   <form onSubmit={handleEmailUpdateRequest} className="space-y-3">
                     <div className="space-y-1">
-                      <label className="text-[10px] text-zinc-400 font-bold uppercase tracking-wider">New Email Address</label>
-                      <input 
+                      <label className="text-[10px] text-[var(--text-tertiary)] font-bold uppercase tracking-wider">New Email Address</label>
+                      <input
                         type="email"
                         placeholder="newemailaddress@trade.com"
                         value={newEmail}
                         onChange={e => setNewEmail(e.target.value)}
-                        className="w-full mirror-panel rounded-lg px-3 py-2 text-sm text-[#E5E5E5] focus:outline-none focus:border-indigo-500"
+                        className="w-full bg-[var(--surface-2)] border border-[var(--border)] rounded-lg px-3 py-2 text-sm text-[var(--text-primary)] focus:outline-none focus:border-indigo-500 transition-colors"
                       />
                     </div>
                     <div className="flex justify-end">
-                      <button 
+                      <button
                         type="submit"
                         className="px-4 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-[#E5E5E5] rounded-lg text-xs font-bold cursor-pointer transition-colors"
                       >
@@ -758,47 +764,47 @@ export function SettingsPanel({ session, onUpdateSession }: SettingsPanelProps) 
             </div>
 
             {/* Password Mutation Container */}
-            <div className="bg-black/20 border border-black rounded-xl p-5 space-y-4 relative shadow-lg">
-              <div className="flex items-center gap-2.5 border-b border-black pb-3">
+            <div className="bg-[var(--surface)] border border-[var(--border)] rounded-xl p-5 space-y-4">
+              <div className="flex items-center gap-2.5 border-b border-[var(--border)] pb-3">
                 <svg viewBox="0 0 24 24" fill="none" className="w-4 h-4 text-indigo-400 stroke-current stroke-2"><path strokeLinecap="round" strokeLinejoin="round" d="M15.75 5.25a3 3 0 013 3m3 0a6 6 0 01-7.029 5.912c-.563-.097-1.159.026-1.563.43L10.5 17.25H8.25v2.25H6v2.25H2.25v-2.818c0-.597.237-1.17.659-1.591l6.499-6.499c.404-.404.527-1 .43-1.563A6 6 0 1121.75 8.25z" /></svg>
-                <span className="text-[10px] font-mono font-black uppercase tracking-[0.2em] text-zinc-500">Change Password</span>
+                <span className="text-[10px] font-mono font-bold uppercase tracking-[0.2em] text-[var(--text-tertiary)]">Change Password</span>
               </div>
-              
+
               <form onSubmit={handleChangePasswordSubmit} className="space-y-4">
-                {pwError && <div className="text-xs font-bold text-rose-500 p-2 bg-rose-950/20 rounded-md border border-[#F87171]/30">{pwError}</div>}
-                {pwSuccess && <div className="text-xs font-bold text-[#4ADE80] p-2 bg-black/40 rounded-md border border-black">{pwSuccess}</div>}
+                {pwError && <div className="text-xs font-bold text-[#F87171] p-2 bg-[var(--surface-2)] rounded-md border border-[#F87171]/30">{pwError}</div>}
+                {pwSuccess && <div className="text-xs font-bold text-[#4ADE80] p-2 bg-[var(--surface-2)] rounded-md border border-[#4ADE80]/30">{pwSuccess}</div>}
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="space-y-1">
-                    <label className="text-[10px] text-zinc-400 font-bold uppercase tracking-wider">Current Password</label>
-                    <input 
+                    <label className="text-[10px] text-[var(--text-tertiary)] font-bold uppercase tracking-wider">Current Password</label>
+                    <input
                       type="password"
                       placeholder="••••••••••••"
                       value={currentPassword}
                       onChange={e => setCurrentPassword(e.target.value)}
-                      className="w-full mirror-panel rounded-lg px-3 py-2 text-sm text-[#E5E5E5] focus:outline-none focus:border-indigo-500"
+                      className="w-full bg-[var(--surface-2)] border border-[var(--border)] rounded-lg px-3 py-2 text-sm text-[var(--text-primary)] focus:outline-none focus:border-indigo-500 transition-colors"
                     />
                   </div>
                   <div className="space-y-1">
-                    <label className="text-[10px] text-zinc-400 font-bold uppercase tracking-wider">New Password</label>
-                    <input 
+                    <label className="text-[10px] text-[var(--text-tertiary)] font-bold uppercase tracking-wider">New Password</label>
+                    <input
                       type="password"
                       placeholder="••••••••••••"
                       value={newPassword}
                       onChange={e => setNewPassword(e.target.value)}
-                      className="w-full mirror-panel rounded-lg px-3 py-2 text-sm text-[#E5E5E5] focus:outline-none focus:border-indigo-500"
+                      className="w-full bg-[var(--surface-2)] border border-[var(--border)] rounded-lg px-3 py-2 text-sm text-[var(--text-primary)] focus:outline-none focus:border-indigo-500 transition-colors"
                     />
                   </div>
                 </div>
 
-                <div className="text-[10px] text-zinc-500 space-y-1 leading-normal list-disc pl-3">
-                  <div>• Password must be at least 8 characters.</div>
-                  <div>• Must contain at least one UPPERCASE letter.</div>
-                  <div>• Must contain at least one digit (0-9) and one special punctuation mark.</div>
-                </div>
+                <ul className="text-[10px] text-[var(--text-tertiary)] space-y-1 leading-normal list-disc pl-4">
+                  <li>At least 8 characters.</li>
+                  <li>At least one uppercase letter.</li>
+                  <li>At least one digit (0-9) and one special character.</li>
+                </ul>
 
                 <div className="flex justify-end">
-                  <button 
+                  <button
                     type="submit"
                     className="px-4 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-[#E5E5E5] rounded-lg text-xs font-bold cursor-pointer transition-colors"
                   >
@@ -809,48 +815,48 @@ export function SettingsPanel({ session, onUpdateSession }: SettingsPanelProps) 
             </div>
 
             {/* Active Sessions & SSO Container */}
-            <div className="bg-black/20 border border-black rounded-xl p-5 space-y-4 relative shadow-lg animate-fadeIn">
-              <div className="flex items-center justify-between border-b border-black pb-3">
+            <div className="bg-[var(--surface)] border border-[var(--border)] rounded-xl p-5 space-y-4 animate-fadeIn">
+              <div className="flex items-center justify-between border-b border-[var(--border)] pb-3">
                 <div className="flex items-center gap-2.5">
                   <svg viewBox="0 0 24 24" fill="none" className="w-4 h-4 text-indigo-400 stroke-current stroke-2"><path strokeLinecap="round" strokeLinejoin="round" d="M9 17.25v1.007a3 3 0 01-.879 2.122L7.5 21h9l-.621-.621A3 3 0 0115 18.257V17.25m6-12V15a2.25 2.25 0 01-2.25 2.25H5.25A2.25 2.25 0 013 15V5.25m18 0A2.25 2.25 0 0018.75 3H5.25A2.25 2.25 0 003 5.25m18 0V12a2.25 2.25 0 01-2.25 2.25H5.25A2.25 2.25 0 013 12V5.25" /></svg>
-                  <span className="text-[10px] font-mono font-black uppercase tracking-[0.2em] text-zinc-500">Active Sessions</span>
+                  <span className="text-[10px] font-mono font-bold uppercase tracking-[0.2em] text-[var(--text-tertiary)]">Active Sessions</span>
                 </div>
                 <button
                   onClick={handleRevokeAllSessions}
                   type="button"
-                  className="px-3 py-1 bg-rose-600/10 hover:bg-rose-600 border border-rose-500/20 hover:border-rose-500 text-[#F87171] hover:text-[#E5E5E5] text-[11px] font-bold rounded-lg cursor-pointer transition-all"
+                  className="px-3 py-1 bg-[#F87171]/10 hover:bg-[#F87171] border border-[#F87171]/20 hover:border-[#F87171] text-[#F87171] hover:text-[#E5E5E5] text-[11px] font-bold rounded-lg cursor-pointer transition-all"
                 >
                   Log Out All Devices
                 </button>
               </div>
-              <p className="text-xs text-zinc-400 leading-normal">
-                These are the devices and browsers currently signed in to your account. Clicking "Log Out All Devices" signs them out immediately.
+              <p className="text-xs text-[var(--text-secondary)] leading-normal">
+                Devices and browsers currently signed in to your account. "Log Out All Devices" signs them out immediately.
               </p>
 
-              <div className="divide-y divide-zinc-900/80 bg-black/40 border border-black rounded-xl overflow-hidden">
+              <div className="divide-y divide-[var(--border)] bg-[var(--surface-2)] border border-[var(--border)] rounded-xl overflow-hidden">
                 {sessions.length === 0 ? (
-                  <div className="p-4 text-xs text-center text-zinc-500 font-mono">No active sessions located.</div>
+                  <div className="p-4 text-xs text-center text-[var(--text-tertiary)] font-mono">No active sessions located.</div>
                 ) : (
                   sessions.map((sess, idx) => (
                     <div key={idx} className="p-4 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 text-xs">
                       <div className="space-y-1">
                         <div className="flex items-center gap-2">
-                          <span className="font-bold text-[#E5E5E5] font-mono">{sess.ip_address}</span>
+                          <span className="font-bold text-[var(--text-primary)] font-mono">{sess.ip_address}</span>
                           {sess.is_current ? (
-                            <span className="px-2 py-0.5 bg-[#4ADE80] text-black/15 border border-black text-[#4ADE80] font-bold text-[9px] rounded-full uppercase tracking-wider">
-                              Current Connection
+                            <span className="px-2 py-0.5 bg-[#4ADE80]/10 border border-[#4ADE80]/30 text-[#4ADE80] font-bold text-[9px] rounded-full uppercase tracking-wider">
+                              Current
                             </span>
                           ) : (
-                            <span className="px-2 py-0.5 bg-black border border-black text-zinc-400 font-bold text-[9px] rounded-full uppercase tracking-wider">
+                            <span className="px-2 py-0.5 bg-[var(--surface-3)] border border-[var(--border)] text-[var(--text-tertiary)] font-bold text-[9px] rounded-full uppercase tracking-wider">
                               Other Device
                             </span>
                           )}
                         </div>
-                        <div className="text-[10px] text-zinc-500 truncate max-w-[300px] sm:max-w-md font-mono" title={sess.user_agent}>
+                        <div className="text-[10px] text-[var(--text-tertiary)] truncate max-w-[300px] sm:max-w-md font-mono" title={sess.user_agent}>
                           {sess.user_agent}
                         </div>
-                        <div className="text-[10px] text-zinc-400 font-mono">
-                          Created: {formatDateTime(sess.created_at)} | Activity: {formatTime(sess.last_active)}
+                        <div className="text-[10px] text-[var(--text-secondary)] font-mono">
+                          Created: {formatDateTime(sess.created_at)} · Activity: {formatTime(sess.last_active)}
                         </div>
                       </div>
                     </div>
@@ -860,42 +866,42 @@ export function SettingsPanel({ session, onUpdateSession }: SettingsPanelProps) 
             </div>
 
             {/* GDPR Deactivation & Account Purge Container */}
-            <div className="bg-rose-950/10 border border-rose-500/20 rounded-xl p-5 space-y-4 relative shadow-lg">
-              <div className="flex items-center gap-2.5 border-b border-rose-500/20 pb-3">
+            <div className="bg-[var(--surface)] border border-[#F87171]/20 rounded-xl p-5 space-y-4">
+              <div className="flex items-center gap-2.5 border-b border-[#F87171]/20 pb-3">
                 <svg viewBox="0 0 24 24" fill="none" className="w-4 h-4 text-[#F87171] stroke-current stroke-2"><path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
-                <span className="text-[10px] font-mono font-black uppercase tracking-[0.2em] text-[#F87171]">Delete Account</span>
+                <span className="text-[10px] font-mono font-bold uppercase tracking-[0.2em] text-[#F87171]">Delete Account</span>
               </div>
-              <p className="text-xs text-zinc-400 leading-normal">
-                Under GDPR you can request account deletion. Your account will be deactivated immediately and permanently removed after 30 days.
+              <p className="text-xs text-[var(--text-secondary)] leading-normal">
+                Under GDPR you can request account deletion. Your account is deactivated immediately and permanently removed after 30 days.
               </p>
 
-              {deleteError && <div className="text-xs font-bold text-rose-500 p-2 bg-rose-950/20 rounded-md border border-[#F87171]/30">{deleteError}</div>}
+              {deleteError && <div className="text-xs font-bold text-[#F87171] p-2 bg-[var(--surface-2)] rounded-md border border-[#F87171]/30">{deleteError}</div>}
 
               {showDeleteConfirm ? (
-                <div className="p-4 bg-black border border-rose-500/30 rounded-lg space-y-3 animate-fadeIn">
-                  <div className="text-xs text-[#4ADE80] font-bold">Are you absolutely sure?</div>
-                  <p className="text-[11px] text-zinc-500">
+                <div className="p-4 bg-[var(--surface-2)] border border-[#F87171]/30 rounded-lg space-y-3 animate-fadeIn">
+                  <div className="text-xs text-[var(--text-primary)] font-bold">Are you absolutely sure?</div>
+                  <p className="text-[11px] text-[var(--text-tertiary)] leading-normal">
                     This immediately disables your username, API keys, and options flow access. After 30 days it cannot be undone.
                   </p>
                   <div className="flex gap-3 justify-end">
                     <button
                       onClick={() => setShowDeleteConfirm(false)}
-                      className="px-3 py-1.5 text-xs text-zinc-400 hover:text-[#E5E5E5] cursor-pointer"
+                      className="px-3 py-1.5 text-xs text-[var(--text-tertiary)] hover:text-[var(--text-primary)] cursor-pointer transition-colors"
                     >
                       Cancel
                     </button>
                     <button
                       onClick={handleSoftDeleteAccount}
-                      className="px-4 py-1.5 bg-rose-600 hover:bg-rose-500 text-[#E5E5E5] rounded-lg text-xs font-bold cursor-pointer transition-colors"
+                      className="px-4 py-1.5 bg-[#F87171] hover:brightness-110 text-black rounded-lg text-xs font-bold cursor-pointer transition-all"
                     >
                       Confirm Delete Account
                     </button>
                   </div>
                 </div>
               ) : (
-                <button 
+                <button
                   onClick={() => setShowDeleteConfirm(true)}
-                  className="px-4 py-2 bg-rose-600/10 hover:bg-rose-600 border border-rose-500/20 hover:border-rose-500 text-[#F87171] hover:text-[#E5E5E5] text-xs font-bold rounded-lg cursor-pointer transition-all"
+                  className="px-4 py-2 bg-[#F87171]/10 hover:bg-[#F87171] border border-[#F87171]/20 hover:border-[#F87171] text-[#F87171] hover:text-black text-xs font-bold rounded-lg cursor-pointer transition-all"
                 >
                   Request Account Deletion
                 </button>
@@ -907,36 +913,25 @@ export function SettingsPanel({ session, onUpdateSession }: SettingsPanelProps) 
 
         {activeTab === 'privacy' && (
           <div className="space-y-6 animate-fadeIn pb-12">
-            
-            {/* Header Description Card */}
-            <div className="bg-black/20 border border-black rounded-xl p-5 space-y-4 relative shadow-lg">
-              <div className="flex items-center gap-2.5 border-b border-black pb-3">
-                <ShieldAlert className="w-4 h-4 text-indigo-400" />
-                <span className="text-[10px] font-mono font-black uppercase tracking-[0.2em] text-zinc-500">Privacy &amp; Notifications</span>
-              </div>
-              <p className="text-xs font-mono text-zinc-400 leading-normal">
-                Control who can view your profile, toggle alerts, and download your data.
-              </p>
-            </div>
 
             {/* Notification preferences JSONB manager */}
-            <div className="bg-black/20 border border-black rounded-xl p-5 space-y-5 relative shadow-lg">
-              <div className="flex items-center gap-2.5 border-b border-black pb-3">
+            <div className="bg-[var(--surface)] border border-[var(--border)] rounded-xl p-5 space-y-5">
+              <div className="flex items-center gap-2.5 border-b border-[var(--border)] pb-3">
                 <svg viewBox="0 0 24 24" fill="none" className="w-4 h-4 text-indigo-400 stroke-current stroke-2"><path strokeLinecap="round" strokeLinejoin="round" d="M14.828 14.828a4 4 0 01-5.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-                <span className="text-[10px] font-mono font-black uppercase tracking-[0.2em] text-zinc-500">Notification Preferences</span>
+                <span className="text-[10px] font-mono font-bold uppercase tracking-[0.2em] text-[var(--text-tertiary)]">Notification Preferences</span>
               </div>
-              <p className="text-xs text-zinc-500">
-                Choose which alert channels are active. Alerts are only sent through channels you have turned on.
+              <p className="text-xs text-[var(--text-secondary)] leading-normal">
+                Alerts are only sent through the channels you turn on.
               </p>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div className="bg-black/40 p-4 rounded-xl border border-black flex items-center justify-between">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="bg-[var(--surface-2)] p-4 rounded-xl border border-[var(--border)] flex items-center justify-between gap-3">
                   <div>
-                    <div className="text-xs font-bold text-[#E5E5E5]">Email Alerts</div>
-                    <div className="text-[10px] text-zinc-500">Send alerts to your email</div>
+                    <div className="text-xs font-bold text-[var(--text-primary)]">Email Alerts</div>
+                    <div className="text-[10px] text-[var(--text-tertiary)]">Send alerts to your email</div>
                   </div>
-                  <label className="relative inline-flex items-center cursor-pointer select-none">
-                    <input 
+                  <label className="relative inline-flex items-center cursor-pointer select-none shrink-0">
+                    <input
                       type="checkbox"
                       checked={notifPreferences.email_enabled}
                       disabled={isPatchingPrivacy}
@@ -947,17 +942,17 @@ export function SettingsPanel({ session, onUpdateSession }: SettingsPanelProps) 
                       }}
                       className="peer sr-only"
                     />
-                    <div className="w-9 h-5 bg-black peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-black after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-indigo-600 peer-checked:after:bg-white"></div>
+                    <div className="w-9 h-5 bg-[var(--surface-3)] peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-[var(--text-tertiary)] after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-indigo-600 peer-checked:after:bg-white"></div>
                   </label>
                 </div>
 
-                <div className="bg-black/40 p-4 rounded-xl border border-black flex items-center justify-between">
+                <div className="bg-[var(--surface-2)] p-4 rounded-xl border border-[var(--border)] flex items-center justify-between gap-3">
                   <div>
-                    <div className="text-xs font-bold text-[#E5E5E5]">SMS Alerts</div>
-                    <div className="text-[10px] text-zinc-500">Send alerts to your phone via SMS</div>
+                    <div className="text-xs font-bold text-[var(--text-primary)]">SMS Alerts</div>
+                    <div className="text-[10px] text-[var(--text-tertiary)]">Send alerts to your phone via SMS</div>
                   </div>
-                  <label className="relative inline-flex items-center cursor-pointer select-none">
-                    <input 
+                  <label className="relative inline-flex items-center cursor-pointer select-none shrink-0">
+                    <input
                       type="checkbox"
                       checked={notifPreferences.sms_enabled}
                       disabled={isPatchingPrivacy}
@@ -968,17 +963,17 @@ export function SettingsPanel({ session, onUpdateSession }: SettingsPanelProps) 
                       }}
                       className="peer sr-only"
                     />
-                    <div className="w-9 h-5 bg-black peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-black after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-indigo-600 peer-checked:after:bg-white"></div>
+                    <div className="w-9 h-5 bg-[var(--surface-3)] peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-[var(--text-tertiary)] after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-indigo-600 peer-checked:after:bg-white"></div>
                   </label>
                 </div>
 
-                <div className="bg-black/40 p-4 rounded-xl border border-black flex items-center justify-between">
+                <div className="bg-[var(--surface-2)] p-4 rounded-xl border border-[var(--border)] flex items-center justify-between gap-3">
                   <div>
-                    <div className="text-xs font-bold text-[#E5E5E5]">Discord Webhook Feeds</div>
-                    <div className="text-[10px] text-zinc-500">Post sweeps directly to server webhooks</div>
+                    <div className="text-xs font-bold text-[var(--text-primary)]">Discord Webhook Feeds</div>
+                    <div className="text-[10px] text-[var(--text-tertiary)]">Post sweeps directly to server webhooks</div>
                   </div>
-                  <label className="relative inline-flex items-center cursor-pointer select-none">
-                    <input 
+                  <label className="relative inline-flex items-center cursor-pointer select-none shrink-0">
+                    <input
                       type="checkbox"
                       checked={notifPreferences.discord_enabled}
                       disabled={isPatchingPrivacy}
@@ -989,17 +984,17 @@ export function SettingsPanel({ session, onUpdateSession }: SettingsPanelProps) 
                       }}
                       className="peer sr-only"
                     />
-                    <div className="w-9 h-5 bg-black peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-black after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-indigo-600 peer-checked:after:bg-white"></div>
+                    <div className="w-9 h-5 bg-[var(--surface-3)] peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-[var(--text-tertiary)] after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-indigo-600 peer-checked:after:bg-white"></div>
                   </label>
                 </div>
 
-                <div className="bg-black/40 p-4 rounded-xl border border-black flex items-center justify-between">
+                <div className="bg-[var(--surface-2)] p-4 rounded-xl border border-[var(--border)] flex items-center justify-between gap-3">
                   <div>
-                    <div className="text-xs font-bold text-[#E5E5E5]">Options Flow Alerts</div>
-                    <div className="text-[10px] text-zinc-500">Alert on large GEX deviation events</div>
+                    <div className="text-xs font-bold text-[var(--text-primary)]">Options Flow Alerts</div>
+                    <div className="text-[10px] text-[var(--text-tertiary)]">Alert on large GEX deviation events</div>
                   </div>
-                  <label className="relative inline-flex items-center cursor-pointer select-none">
-                    <input 
+                  <label className="relative inline-flex items-center cursor-pointer select-none shrink-0">
+                    <input
                       type="checkbox"
                       checked={notifPreferences.options_flow_alerts}
                       disabled={isPatchingPrivacy}
@@ -1010,24 +1005,24 @@ export function SettingsPanel({ session, onUpdateSession }: SettingsPanelProps) 
                       }}
                       className="peer sr-only"
                     />
-                    <div className="w-9 h-5 bg-black peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-black after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-indigo-600 peer-checked:after:bg-white"></div>
+                    <div className="w-9 h-5 bg-[var(--surface-3)] peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-[var(--text-tertiary)] after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-indigo-600 peer-checked:after:bg-white"></div>
                   </label>
                 </div>
               </div>
             </div>
 
             {/* Profile Visibility Enums & Search Indexing */}
-            <div className="bg-black/20 border border-black rounded-xl p-5 space-y-4 relative shadow-lg">
-              <div className="flex items-center gap-2.5 border-b border-black pb-3">
+            <div className="bg-[var(--surface)] border border-[var(--border)] rounded-xl p-5 space-y-4">
+              <div className="flex items-center gap-2.5 border-b border-[var(--border)] pb-3">
                 <svg viewBox="0 0 24 24" fill="none" className="w-4 h-4 text-indigo-400 stroke-current stroke-2"><path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path strokeLinecap="round" strokeLinejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
-                <span className="text-[10px] font-mono font-black uppercase tracking-[0.2em] text-zinc-500">Profile Visibility &amp; Search</span>
+                <span className="text-[10px] font-mono font-bold uppercase tracking-[0.2em] text-[var(--text-tertiary)]">Profile Visibility &amp; Search</span>
               </div>
-              
+
               <div className="space-y-4">
                 <div className="space-y-1">
-                  <span className="text-xs font-bold text-[#E5E5E5] block">Profile Visibility Setting</span>
-                  <p className="text-[11px] text-zinc-500 leading-normal">Controls who can find and view your profile.</p>
-                  
+                  <span className="text-xs font-bold text-[var(--text-primary)] block">Profile Visibility</span>
+                  <p className="text-[11px] text-[var(--text-tertiary)] leading-normal">Controls who can find and view your profile.</p>
+
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 pt-1 font-mono">
                     {[
                       { value: 'public', label: 'Public (Everyone)', desc: 'Anyone can view your profile' },
@@ -1043,27 +1038,27 @@ export function SettingsPanel({ session, onUpdateSession }: SettingsPanelProps) 
                         }}
                         className={`p-3 rounded-lg border text-left cursor-pointer transition-all ${
                           profileVisibility === opt.value
-                            ? 'bg-indigo-600/10 border-indigo-500 text-[#E5E5E5] shadow-md'
-                            : 'bg-black/20 border-black text-zinc-450 hover:text-[#E5E5E5]'
+                            ? 'bg-indigo-600/10 border-indigo-500 text-[var(--text-primary)]'
+                            : 'bg-[var(--surface-2)] border-[var(--border)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:border-[var(--border-strong)]'
                         }`}
                       >
                         <div className="text-xs font-bold">{opt.label}</div>
-                        <div className="text-[9px] text-zinc-500 mt-0.5 leading-tight">{opt.desc}</div>
+                        <div className="text-[9px] text-[var(--text-tertiary)] mt-0.5 leading-tight">{opt.desc}</div>
                       </button>
                     ))}
                   </div>
                 </div>
 
-                <div className="pt-4 border-t border-black/60 flex items-center justify-between">
+                <div className="pt-4 border-t border-[var(--border)] flex items-center justify-between gap-4">
                   <div className="max-w-[80%]">
-                    <span className="text-xs font-bold text-[#E5E5E5] block">Restrict Search Engine Indexing</span>
-                    <p className="text-[11px] text-zinc-500 leading-normal">
-                      Tells Google and Bing not to index your profile page. Adds a <code className="font-mono text-indigo-400">noindex</code> tag to your public profile.
+                    <span className="text-xs font-bold text-[var(--text-primary)] block">Restrict Search Engine Indexing</span>
+                    <p className="text-[11px] text-[var(--text-tertiary)] leading-normal">
+                      Adds a <code className="font-mono text-indigo-400">noindex</code> tag so Google and Bing don't index your public profile.
                     </p>
                   </div>
-                  
-                  <label className="relative inline-flex items-center cursor-pointer select-none">
-                    <input 
+
+                  <label className="relative inline-flex items-center cursor-pointer select-none shrink-0">
+                    <input
                       type="checkbox"
                       checked={blockSearchIndexing}
                       disabled={isPatchingPrivacy}
@@ -1073,38 +1068,38 @@ export function SettingsPanel({ session, onUpdateSession }: SettingsPanelProps) 
                       }}
                       className="peer sr-only"
                     />
-                    <div className="w-9 h-5 bg-black peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-black after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-indigo-600 peer-checked:after:bg-white"></div>
+                    <div className="w-9 h-5 bg-[var(--surface-3)] peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-[var(--text-tertiary)] after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-indigo-600 peer-checked:after:bg-white"></div>
                   </label>
                 </div>
               </div>
             </div>
 
-            {/* GDPR Compliance Data Export (S3 Storage) */}
-            <div className="bg-black/20 border border-black rounded-xl p-5 space-y-4 relative shadow-lg">
-              <div className="flex items-center gap-2.5 border-b border-black pb-3">
+            {/* GDPR Compliance Data Export */}
+            <div className="bg-[var(--surface)] border border-[var(--border)] rounded-xl p-5 space-y-4">
+              <div className="flex items-center gap-2.5 border-b border-[var(--border)] pb-3">
                 <FolderSync className="w-4 h-4 text-indigo-400" />
-                <span className="text-[10px] font-mono font-black uppercase tracking-[0.2em] text-zinc-500">Download Your Data (GDPR)</span>
+                <span className="text-[10px] font-mono font-bold uppercase tracking-[0.2em] text-[var(--text-tertiary)]">Download Your Data (GDPR)</span>
               </div>
-              <p className="text-xs text-zinc-400 leading-normal">
-                Export all your account data - logs, preferences, and payment records - as a single download. The file is available for 24 hours, then deleted.
+              <p className="text-xs text-[var(--text-secondary)] leading-normal">
+                Export all your account data — logs, preferences, and payment records — as a single download. The file is available for 24 hours, then deleted.
               </p>
 
               {isExporting ? (
                 <div className="space-y-2 animate-fadeIn pt-1">
                   <div className="flex items-center justify-between text-xs font-mono">
-                    <span className="text-zinc-400">Building your data export...</span>
+                    <span className="text-[var(--text-secondary)]">Building your data export…</span>
                     <span className="text-indigo-400 font-bold">{exportProgress}%</span>
                   </div>
-                  <div className="w-full bg-black h-2 rounded overflow-hidden border border-black">
+                  <div className="w-full bg-[var(--surface-2)] h-2 rounded overflow-hidden border border-[var(--border)]">
                     <div className="bg-indigo-600 h-full transition-all duration-300" style={{ width: `${exportProgress}%` }}></div>
                   </div>
                 </div>
               ) : (
                 <div className="flex justify-end pt-1">
-                  <button 
+                  <button
                     type="button"
                     onClick={triggerGdprExport}
-                    className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-[#E5E5E5] rounded-lg text-xs font-bold cursor-pointer transition-colors shadow-lg"
+                    className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-[#E5E5E5] rounded-lg text-xs font-bold cursor-pointer transition-colors"
                   >
                     Export My Data
                   </button>
@@ -1113,43 +1108,42 @@ export function SettingsPanel({ session, onUpdateSession }: SettingsPanelProps) 
 
               {/* Download Container */}
               {exportDownloadUrl && (
-                <div className="mt-4 p-4 bg-black/60 border border-indigo-900/40 rounded-xl space-y-3 animate-fadeIn">
+                <div className="mt-4 p-4 bg-[var(--surface-2)] border border-[var(--border)] rounded-xl space-y-3 animate-fadeIn">
                   <div className="flex items-center gap-2 text-xs font-bold text-[#4ADE80]">
                     <svg viewBox="0 0 20 20" fill="currentColor" className="w-5 h-5"><path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" /></svg>
                     <span>Data export ready</span>
                   </div>
-                  
-                  <div className="text-[11px] text-zinc-500 leading-normal space-y-1">
-                    <div>• <strong>Stored at</strong>: Encrypted cloud storage (<code className="font-mono text-zinc-400">aws-eu-central-1-skyseye-gdpr-temp</code>)</div>
-                    <div>• <strong>Access Expiration</strong>: {exportExpiresAt ? new Date(exportExpiresAt).toLocaleString() : '24 hours'}</div>
+
+                  <div className="text-[11px] text-[var(--text-tertiary)] leading-normal">
+                    Expires: {exportExpiresAt ? new Date(exportExpiresAt).toLocaleString() : 'in 24 hours'}
                   </div>
 
-                  <div className="flex flex-col sm:flex-row gap-3 pt-2">
+                  <div className="flex flex-col sm:flex-row gap-3 pt-1">
                     <a
                       href={exportDownloadUrl}
                       download
-                      className="px-4 py-2 bg-black/40 hover:bg-black/40 text-[#E5E5E5] rounded-lg text-xs font-bold text-center cursor-pointer transition-all flex items-center justify-center gap-2"
+                      className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-[#E5E5E5] rounded-lg text-xs font-bold text-center cursor-pointer transition-colors flex items-center justify-center gap-2"
                     >
-                      <span>⬇️ Download GDPR Export Package</span>
+                      <span>Download Export Package</span>
                     </a>
-                    
+
                     <button
                       type="button"
                       onClick={() => {
                         const link = window.location.origin + exportDownloadUrl;
                         navigator.clipboard.writeText(link);
-                        showToast("GDPR direct download URL copied.");
+                        showToast("Download URL copied.");
                       }}
-                      className="px-4 py-2 bg-black hover:bg-black text-[#4ADE80] font-bold border border-black text-xs rounded-lg cursor-pointer transition-colors"
+                      className="px-4 py-2 bg-[var(--surface)] hover:bg-[var(--surface-3)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] font-bold border border-[var(--border)] text-xs rounded-lg cursor-pointer transition-colors"
                     >
                       Copy Direct File URL
                     </button>
                   </div>
 
                   {exportEmailLog && (
-                    <div className="bg-indigo-950/20 border border-indigo-900/30 p-3 rounded-lg text-[10px] space-y-1 font-mono">
-                      <div className="font-bold text-indigo-300">Email notification sent (demo):</div>
-                      <p className="text-zinc-500">{exportEmailLog}</p>
+                    <div className="bg-[var(--surface)] border border-[var(--border)] p-3 rounded-lg text-[10px] space-y-1 font-mono">
+                      <div className="font-bold text-[var(--text-secondary)] uppercase tracking-wider">Email notification</div>
+                      <p className="text-[var(--text-tertiary)]">{exportEmailLog}</p>
                     </div>
                   )}
                 </div>
@@ -1162,22 +1156,22 @@ export function SettingsPanel({ session, onUpdateSession }: SettingsPanelProps) 
         {activeTab === 'preferences' && (
           <div className="space-y-6 animate-fadeIn">
             {/* Module 6: Appearance customization option box */}
-            <div className="bg-black/20 border border-black rounded-xl p-5 space-y-5 relative shadow-lg">
-              <div className="flex items-center gap-2.5 border-b border-black pb-3">
+            <div className="bg-[var(--surface)] border border-[var(--border)] rounded-xl p-5 space-y-5">
+              <div className="flex items-center gap-2.5 border-b border-[var(--border)] pb-3">
                 <Settings className="w-4 h-4 text-indigo-400" />
-                <span className="text-[10px] font-mono font-black uppercase tracking-[0.2em] text-zinc-500">Display Preferences</span>
+                <span className="text-[10px] font-mono font-bold uppercase tracking-[0.2em] text-[var(--text-tertiary)]">Display Preferences</span>
               </div>
 
               {/* Option A: Font Size Scaling (STANDARD vs ENHANCED) */}
               <div className="space-y-2">
-                <div className="flex items-center gap-2 text-sm font-bold text-[#E5E5E5]">
-                  <Type className="w-4 h-4 text-zinc-550 shrink-0" />
+                <div className="flex items-center gap-2 text-sm font-bold text-[var(--text-primary)]">
+                  <Type className="w-4 h-4 text-[var(--text-tertiary)] shrink-0" />
                   <span>Text Size</span>
                 </div>
-                <p className="text-xs text-[#8e8e93] leading-relaxed">
+                <p className="text-xs text-[var(--text-tertiary)] leading-normal">
                   Adjust how large the text appears throughout the app.
                 </p>
-                
+
                 <div className="mt-2">
                   <select
                     value={selectedFont}
@@ -1187,7 +1181,7 @@ export function SettingsPanel({ session, onUpdateSession }: SettingsPanelProps) 
                       applyTextSize(newVal);
                       handleSaveSettings(newVal, compactMode, activeTheme);
                     }}
-                    className="w-full bg-black border border-black text-[#E5E5E5] rounded-lg p-3 text-sm focus:outline-none focus:border-indigo-500 transition-colors cursor-pointer appearance-none"
+                    className="w-full bg-[var(--surface-2)] border border-[var(--border)] text-[var(--text-primary)] rounded-lg p-3 text-sm focus:outline-none focus:border-indigo-500 transition-colors cursor-pointer appearance-none"
                   >
                     <option value="STANDARD">Standard</option>
                     <option value="ENHANCED">Large</option>
@@ -1197,22 +1191,22 @@ export function SettingsPanel({ session, onUpdateSession }: SettingsPanelProps) 
               </div>
 
               {/* Option Hour Format */}
-              <div className="pt-4 border-t border-black/60 space-y-2">
-                <div className="flex items-center gap-2 text-sm font-bold text-[#E5E5E5]">
-                  <Clock className="w-4 h-4 text-zinc-550 shrink-0" />
+              <div className="pt-4 border-t border-[var(--border)] space-y-2">
+                <div className="flex items-center gap-2 text-sm font-bold text-[var(--text-primary)]">
+                  <Clock className="w-4 h-4 text-[var(--text-tertiary)] shrink-0" />
                   <span>Clock Format</span>
                 </div>
-                <p className="text-xs text-[#8e8e93] leading-relaxed">
-                  Choose whether times show as 12-hour (AM/PM) or 24-hour.
+                <p className="text-xs text-[var(--text-tertiary)] leading-normal">
+                  Show times as 12-hour (AM/PM) or 24-hour.
                 </p>
                 <div className="mt-2 flex gap-3">
                   <button
                     type="button"
                     onClick={() => setTimeFormat('12H')}
-                    className={`flex-1 p-2.5 rounded-lg border text-xs font-black uppercase tracking-wider transition-all ${
+                    className={`flex-1 p-2.5 rounded-lg border text-xs font-bold uppercase tracking-wider transition-all ${
                       timeFormat === '12H'
-                        ? 'bg-indigo-600/20 border-indigo-500 text-[#E5E5E5] shadow-[0_0_12px_rgba(99,102,241,0.25)]'
-                        : 'bg-black border-black/60 text-zinc-550 hover:text-zinc-350 hover:border-zinc-800'
+                        ? 'bg-indigo-600/20 border-indigo-500 text-[var(--text-primary)]'
+                        : 'bg-[var(--surface-2)] border-[var(--border)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:border-[var(--border-strong)]'
                     }`}
                   >
                     12-Hour Clock
@@ -1220,10 +1214,10 @@ export function SettingsPanel({ session, onUpdateSession }: SettingsPanelProps) 
                   <button
                     type="button"
                     onClick={() => setTimeFormat('24H')}
-                    className={`flex-1 p-2.5 rounded-lg border text-xs font-black uppercase tracking-wider transition-all ${
+                    className={`flex-1 p-2.5 rounded-lg border text-xs font-bold uppercase tracking-wider transition-all ${
                       timeFormat === '24H'
-                        ? 'bg-indigo-600/20 border-indigo-500 text-[#E5E5E5] shadow-[0_0_12px_rgba(99,102,241,0.25)]'
-                        : 'bg-black border-black/60 text-zinc-550 hover:text-zinc-350 hover:border-zinc-800'
+                        ? 'bg-indigo-600/20 border-indigo-500 text-[var(--text-primary)]'
+                        : 'bg-[var(--surface-2)] border-[var(--border)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:border-[var(--border-strong)]'
                     }`}
                   >
                     24-Hour Clock
@@ -1232,19 +1226,19 @@ export function SettingsPanel({ session, onUpdateSession }: SettingsPanelProps) 
               </div>
 
               {/* Option Display Time Zone */}
-              <div className="pt-4 border-t border-black/60 space-y-2">
-                <div className="flex items-center gap-2 text-sm font-bold text-[#E5E5E5]">
-                  <Monitor className="w-4 h-4 text-zinc-550 shrink-0" />
+              <div className="pt-4 border-t border-[var(--border)] space-y-2">
+                <div className="flex items-center gap-2 text-sm font-bold text-[var(--text-primary)]">
+                  <Monitor className="w-4 h-4 text-[var(--text-tertiary)] shrink-0" />
                   <span>Display Time Zone</span>
                 </div>
-                <p className="text-xs text-[#8e8e93] leading-relaxed">
-                  All times in the app will display in this timezone. US market hours are in Eastern Time.
+                <p className="text-xs text-[var(--text-tertiary)] leading-normal">
+                  All times display in this timezone. US market hours are in Eastern Time.
                 </p>
                 <div className="mt-2">
                   <select
                     value={timeZone}
                     onChange={(e) => setTimeZone(e.target.value as 'EST' | 'UTC' | 'LOCAL')}
-                    className="w-full bg-black border border-black text-[#E5E5E5] rounded-lg p-3 text-sm focus:outline-none focus:border-indigo-500 transition-colors cursor-pointer appearance-none"
+                    className="w-full bg-[var(--surface-2)] border border-[var(--border)] text-[var(--text-primary)] rounded-lg p-3 text-sm focus:outline-none focus:border-indigo-500 transition-colors cursor-pointer appearance-none"
                   >
                     <option value="EST">New York Time (EST / EDT)</option>
                     <option value="UTC">Coordinated Universal Time (UTC)</option>
@@ -1254,14 +1248,14 @@ export function SettingsPanel({ session, onUpdateSession }: SettingsPanelProps) 
               </div>
 
               {/* Option B: Compact rows spacing density (denser row rendering overlay) */}
-              <div className="pt-4 border-t border-black/60 space-y-2">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2 text-sm font-bold text-[#E5E5E5]">
-                    <Eye className="w-4 h-4 text-zinc-550 shrink-0" />
+              <div className="pt-4 border-t border-[var(--border)] space-y-2">
+                <div className="flex items-center justify-between gap-4">
+                  <div className="flex items-center gap-2 text-sm font-bold text-[var(--text-primary)]">
+                    <Eye className="w-4 h-4 text-[var(--text-tertiary)] shrink-0" />
                     <span>Compact View</span>
                   </div>
-                  
-                  <label className="relative inline-flex items-center cursor-pointer select-none">
+
+                  <label className="relative inline-flex items-center cursor-pointer select-none shrink-0">
                     <input
                       type="checkbox"
                       checked={compactMode}
@@ -1273,21 +1267,21 @@ export function SettingsPanel({ session, onUpdateSession }: SettingsPanelProps) 
                       }}
                       className="sr-only peer"
                     />
-                    <div className="w-9 h-5 bg-black peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-black after:border-black after:border after:rounded-full after:h-4 after:w-4 after:transition-all dark:bg-black peer-checked:bg-indigo-600 peer-checked:after:bg-white" />
+                    <div className="w-9 h-5 bg-[var(--surface-3)] peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-[var(--text-tertiary)] after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-indigo-600 peer-checked:after:bg-white" />
                   </label>
                 </div>
-                <p className="text-xs text-[#8e8e93] leading-relaxed">
+                <p className="text-xs text-[var(--text-tertiary)] leading-normal">
                   Reduces spacing between rows and panels so more data fits on screen at once.
                 </p>
               </div>
 
               {/* Option D: Background Theme custom swatch grid */}
-              <div className="pt-4 border-t border-black/60 space-y-2">
-                <div className="flex items-center gap-2 text-sm font-bold text-[#E5E5E5]">
-                  <Palette className="w-4 h-4 text-zinc-550 shrink-0" />
+              <div className="pt-4 border-t border-[var(--border)] space-y-2">
+                <div className="flex items-center gap-2 text-sm font-bold text-[var(--text-primary)]">
+                  <Palette className="w-4 h-4 text-[var(--text-tertiary)] shrink-0" />
                   <span>Interface Theme</span>
                 </div>
-                <p className="text-xs text-[#8e8e93] leading-relaxed mb-3">
+                <p className="text-xs text-[var(--text-tertiary)] leading-normal mb-3">
                   Changes the background and panel colors across the app.
                 </p>
 
@@ -1305,8 +1299,8 @@ export function SettingsPanel({ session, onUpdateSession }: SettingsPanelProps) 
                         }}
                         className={`group relative aspect-square rounded-lg border-2 transition-all ${
                           activeTheme === t.id
-                            ? 'border-indigo-500 scale-110 shadow-lg z-10'
-                            : 'border-black/40 hover:border-black hover:scale-105'
+                            ? 'border-indigo-500 scale-110 z-10'
+                            : 'border-[var(--border)] hover:border-[var(--border-strong)] hover:scale-105'
                         }`}
                         style={{ background: `linear-gradient(135deg, ${t.surface} 0%, ${t.surface} 50%, ${t.accent} 50%, ${t.accent} 100%)` }}
                       >
@@ -1319,17 +1313,17 @@ export function SettingsPanel({ session, onUpdateSession }: SettingsPanelProps) 
                     ))}
                   </div>
                 </div>
-                <div className="mt-2 text-[10px] text-[#8e8e93] uppercase tracking-widest font-mono">
-                  Active: <span className="text-[#E5E5E5] font-bold">{THEMES.find(t => t.id === activeTheme)?.name || 'Default'}</span> · {THEMES.length} themes
+                <div className="mt-2 text-[10px] text-[var(--text-tertiary)] uppercase tracking-widest font-mono">
+                  Active: <span className="text-[var(--text-primary)] font-bold">{THEMES.find(t => t.id === activeTheme)?.name || 'Default'}</span> · {THEMES.length} themes
                 </div>
               </div>
             </div>
 
             {/* Informational notification */}
-            <div className="p-4 bg-black/40 border border-black text-[11px] rounded-xl text-[#a1a1aa] leading-relaxed flex gap-3">
+            <div className="p-4 bg-[var(--surface-2)] border border-[var(--border)] text-[11px] rounded-xl text-[var(--text-secondary)] leading-normal flex gap-3">
               <ShieldAlert className="w-4 h-4 text-[#4ADE80] shrink-0 mt-0.5" />
               <span>
-                <b>Note:</b> Themes change background and panel colors. All signal indicators, heat maps, and status colors stay the same so data is always readable.
+                Themes change background and panel colors only. Signal indicators, heat maps, and status colors stay the same so data is always readable.
               </span>
             </div>
           </div>
@@ -1337,22 +1331,22 @@ export function SettingsPanel({ session, onUpdateSession }: SettingsPanelProps) 
 
         {activeTab === 'keybinds' && (
           <div className="space-y-6 animate-fadeIn">
-            <div className="bg-black/20 border border-black rounded-xl p-5 space-y-5 relative shadow-lg">
-              <div className="flex items-center gap-2.5 border-b border-black pb-3">
+            <div className="bg-[var(--surface)] border border-[var(--border)] rounded-xl p-5 space-y-5">
+              <div className="flex items-center gap-2.5 border-b border-[var(--border)] pb-3">
                 <Type className="w-4 h-4 text-indigo-400" />
-                <span className="text-[10px] font-mono font-black uppercase tracking-[0.2em] text-zinc-500">Keyboard Shortcuts &amp; Hotkeys</span>
+                <span className="text-[10px] font-mono font-bold uppercase tracking-[0.2em] text-[var(--text-tertiary)]">Keyboard Shortcuts</span>
               </div>
-              <div className="flex justify-between items-start border-b border-black pb-4 mb-4">
-                <p className="text-sm text-zinc-400 max-w-md">
-                  Customize quick-access keybinds for global menu toggles and workspace switching. These bindings work universally across macOS (Command) and Windows (Ctrl).
+              <div className="flex flex-col sm:flex-row justify-between items-start gap-4 border-b border-[var(--border)] pb-4">
+                <p className="text-xs text-[var(--text-secondary)] max-w-md leading-normal">
+                  Quick-access keybinds for menu toggles and workspace switching. Bindings work across macOS (Command) and Windows (Ctrl).
                 </p>
-                
-                <div className="flex flex-col items-end gap-2">
-                  <div className="flex items-center gap-3 bg-black/50 px-3 py-1.5 rounded-lg border border-black">
-                    <span className="text-xs font-bold text-[#4ADE80]">Enable All Shortcuts</span>
+
+                <div className="flex flex-col items-stretch sm:items-end gap-2 w-full sm:w-auto shrink-0">
+                  <div className="flex items-center justify-between gap-3 bg-[var(--surface-2)] px-3 py-1.5 rounded-lg border border-[var(--border)]">
+                    <span className="text-xs font-bold text-[var(--text-primary)]">Enable All Shortcuts</span>
                     <button
                       onClick={() => setGlobalKeybindsEnabled(!globalKeybindsEnabled)}
-                      className={`relative w-10 h-5 rounded-full transition-colors ${globalKeybindsEnabled ? 'bg-indigo-500' : 'bg-black'}`}
+                      className={`relative w-10 h-5 rounded-full transition-colors shrink-0 ${globalKeybindsEnabled ? 'bg-indigo-500' : 'bg-[var(--surface-3)]'}`}
                     >
                       <div className={`absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full transition-transform ${globalKeybindsEnabled ? 'translate-x-5' : 'translate-x-0'}`} />
                     </button>
@@ -1373,14 +1367,14 @@ export function SettingsPanel({ session, onUpdateSession }: SettingsPanelProps) 
                       useContractStore.getState().setDisabledKeybinds({});
                       setGlobalKeybindsEnabled(true);
                     }}
-                    className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-zinc-400 bg-black/50 hover:bg-black hover:text-[#E5E5E5] border border-black rounded-lg transition-all"
+                    className="flex items-center justify-center gap-1.5 px-3 py-1.5 text-xs font-bold text-[var(--text-secondary)] bg-[var(--surface-2)] hover:bg-[var(--surface-3)] hover:text-[var(--text-primary)] border border-[var(--border)] rounded-lg transition-all"
                   >
                     <RotateCcw className="w-3.5 h-3.5" />
                     Reset to Defaults
                   </button>
                 </div>
               </div>
-              
+
               <div className={`space-y-2 transition-opacity duration-300 ${!globalKeybindsEnabled ? 'opacity-30 pointer-events-none' : ''}`}>
                 {[
                   { id: 'prismMenu', label: 'Toggle Prism Command Menu', default: 'cmd+k' },
@@ -1396,11 +1390,11 @@ export function SettingsPanel({ session, onUpdateSession }: SettingsPanelProps) 
                 ))}
               </div>
             </div>
-            
-            <div className="p-4 bg-black/40 border border-black text-[11px] rounded-xl text-[#a1a1aa] leading-relaxed flex gap-3">
+
+            <div className="p-4 bg-[var(--surface-2)] border border-[var(--border)] text-[11px] rounded-xl text-[var(--text-secondary)] leading-normal flex gap-3">
               <ShieldAlert className="w-4 h-4 text-[#4ADE80] shrink-0 mt-0.5" />
               <span>
-                <b>Hotkey Note:</b> To rebind, click on a shortcut button and press your new key combination. Use Modifier keys (Shift, Ctrl, Alt, Meta) plus a character.
+                To rebind, click a shortcut button and press your new key combination. Use a modifier (Shift, Ctrl, Alt, Meta) plus a character.
               </span>
             </div>
           </div>
@@ -1409,60 +1403,60 @@ export function SettingsPanel({ session, onUpdateSession }: SettingsPanelProps) 
         {activeTab === 'referrals' && (
           <div className="space-y-6 animate-fadeIn">
             {/* Module 5: Referrals token stats */}
-            <div className="bg-black/20 border border-black rounded-xl p-5 space-y-5 relative shadow-lg">
-              <div className="flex items-center gap-2.5 border-b border-black pb-3">
+            <div className="bg-[var(--surface)] border border-[var(--border)] rounded-xl p-5 space-y-5">
+              <div className="flex items-center gap-2.5 border-b border-[var(--border)] pb-3">
                 <Coins className="w-4 h-4 text-[#4ADE80]" />
-                <span className="text-[10px] font-mono font-black uppercase tracking-[0.2em] text-zinc-500">Referral Rewards</span>
+                <span className="text-[10px] font-mono font-bold uppercase tracking-[0.2em] text-[var(--text-tertiary)]">Referral Rewards</span>
               </div>
 
               <ReferralCodeBox />
 
               {/* Referral Progress Bar (Gamification) */}
-              <div className="bg-black/50 border border-black rounded-xl p-4 overflow-hidden">
+              <div className="bg-[var(--surface-2)] border border-[var(--border)] rounded-xl p-4 overflow-hidden">
                 <div className="flex justify-between items-center mb-2">
-                  <span className="text-xs font-bold text-[#E5E5E5]">Tokens to Next Free Month</span>
+                  <span className="text-xs font-bold text-[var(--text-primary)]">Tokens to Next Free Month</span>
                   <span className="text-xs font-mono text-[#4ADE80]">{session?.referral_tokens_pool || 0} / 10</span>
                 </div>
-                <div className="w-full h-2.5 bg-black rounded-full overflow-hidden">
-                  <div 
-                    className="h-full bg-black/40 rounded-full transition-all duration-1000"
+                <div className="w-full h-2.5 bg-[var(--surface-3)] rounded-full overflow-hidden">
+                  <div
+                    className="h-full bg-[#4ADE80] rounded-full transition-all duration-1000"
                     style={{ width: `${Math.min(100, ((session?.referral_tokens_pool || 0) / 10) * 100)}%` }}
                   />
                 </div>
               </div>
 
               {/* Referral Token Pool Dashboard metrics */}
-              <div className="grid grid-cols-2 gap-3 bg-black/40 border border-black rounded-xl p-4 text-center">
+              <div className="grid grid-cols-2 gap-3 bg-[var(--surface-2)] border border-[var(--border)] rounded-xl p-4 text-center">
                 <div className="space-y-1">
-                  <span className="text-xs text-zinc-500 font-bold block">YOUR TOKENS</span>
-                  <span className="text-2xl font-black text-[#4ADE80] font-mono block drop-shadow-[0_0_8px_rgba(34,211,238,0.2)]">
+                  <span className="text-[10px] text-[var(--text-tertiary)] font-bold uppercase tracking-wider block">Your Tokens</span>
+                  <span className="text-2xl font-black text-[#4ADE80] font-mono block">
                     {session?.referral_tokens_pool || 0}
                   </span>
-                  <span className="text-xs text-zinc-600 block font-mono mt-1">1 Token = 10% Off</span>
+                  <span className="text-[10px] text-[var(--text-tertiary)] block font-mono mt-1">1 Token = 10% Off</span>
                 </div>
-                
-                <div className="space-y-1 border-l border-black/60 pl-3">
-                  <span className="text-xs text-zinc-500 font-bold block">CURRENT DISCOUNT</span>
-                  <span className="text-2xl font-black text-[#E5E5E5] font-mono block">
+
+                <div className="space-y-1 border-l border-[var(--border)] pl-3">
+                  <span className="text-[10px] text-[var(--text-tertiary)] font-bold uppercase tracking-wider block">Current Discount</span>
+                  <span className="text-2xl font-black text-[var(--text-primary)] font-mono block">
                     {Math.min(100, (session?.referral_tokens_pool || 0) * 10)}%
                   </span>
-                  <span className="text-xs text-[#8e8e93] block font-mono mt-1">Demo discount</span>
+                  <span className="text-[10px] text-[var(--text-tertiary)] block font-mono mt-1">Applied at renewal</span>
                 </div>
               </div>
 
               {/* Your custom referral code */}
               <div className="space-y-4">
                 <div className="space-y-2">
-                  <span className="text-sm text-[#A1A1AA] font-bold block">Your Referral Code</span>
-                  <div className="mirror-panel text-[#E5E5E5] rounded-lg px-3 py-2 text-sm font-bold font-mono tracking-widest text-center shadow-inner">
+                  <span className="text-xs text-[var(--text-tertiary)] font-bold uppercase tracking-wider block">Your Referral Code</span>
+                  <div className="bg-[var(--surface-2)] border border-[var(--border)] text-[var(--text-primary)] rounded-lg px-3 py-2 text-sm font-bold font-mono tracking-widest text-center">
                     {session?.custom_referral_code || 'SLAYERX'}
                   </div>
                 </div>
-                
+
                 <div className="space-y-2">
-                  <span className="text-sm text-[#A1A1AA] font-bold block">Your Custom Referral Link</span>
+                  <span className="text-xs text-[var(--text-tertiary)] font-bold uppercase tracking-wider block">Your Custom Referral Link</span>
                   <div className="flex flex-col sm:flex-row gap-2">
-                    <div className="flex-1 mirror-panel text-[#a1a1aa] rounded-lg px-3 py-2 text-xs font-bold font-mono md:tracking-wider flex items-center justify-between whitespace-nowrap overflow-hidden text-ellipsis shadow-inner">
+                    <div className="flex-1 bg-[var(--surface-2)] border border-[var(--border)] text-[var(--text-secondary)] rounded-lg px-3 py-2 text-xs font-mono md:tracking-wider flex items-center whitespace-nowrap overflow-hidden">
                       <span className="truncate pr-2">{referralLink}</span>
                     </div>
                     <button
@@ -1481,14 +1475,14 @@ export function SettingsPanel({ session, onUpdateSession }: SettingsPanelProps) 
 
         {activeTab === 'billing' && (
           <div className="space-y-6 animate-fadeIn">
-            <div className="bg-black/20 border border-black rounded-xl p-5 relative shadow-lg space-y-4">
-              <div className="flex justify-between items-center border-b border-black pb-3">
+            <div className="bg-[var(--surface)] border border-[var(--border)] rounded-xl p-5 space-y-4">
+              <div className="flex justify-between items-center border-b border-[var(--border)] pb-3">
                 <div className="flex items-center gap-2.5">
                   <Receipt className="w-4 h-4 text-indigo-400" />
-                  <span className="text-[10px] font-mono font-black uppercase tracking-[0.2em] text-zinc-500">Subscription &amp; Tier</span>
+                  <span className="text-[10px] font-mono font-bold uppercase tracking-[0.2em] text-[var(--text-tertiary)]">Subscription &amp; Tier</span>
                 </div>
                 {session?.customer_id && (
-                  <span className="text-[8px] tracking-widest uppercase bg-indigo-950/40 px-2 py-0.5 border border-indigo-900/30 rounded text-indigo-400 font-mono">
+                  <span className="text-[9px] tracking-widest uppercase bg-indigo-500/10 px-2 py-0.5 border border-indigo-500/30 rounded text-indigo-400 font-mono">
                     Secured
                   </span>
                 )}
@@ -1496,17 +1490,17 @@ export function SettingsPanel({ session, onUpdateSession }: SettingsPanelProps) 
 
               <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div className="space-y-1 text-left">
-                  <div className="text-[10px] uppercase tracking-wider font-bold text-zinc-500">Current Plan</div>
-                  <div className="text-2xl font-black uppercase text-[#E5E5E5] tracking-widest flex items-center gap-2">
+                  <div className="text-[10px] uppercase tracking-wider font-bold text-[var(--text-tertiary)]">Current Plan</div>
+                  <div className="text-2xl font-black uppercase text-[var(--text-primary)] tracking-widest flex items-center gap-2 flex-wrap">
                     <span>{session?.access_tier || 'GUEST'} TIER</span>
                     {session?.cancels_at_period_end ? (
-                      <span className="text-[9px] tracking-normal font-sans font-semibold bg-rose-500/10 border border-rose-500/20 text-[#F87171] px-2.5 py-0.5 rounded-full">
+                      <span className="text-[9px] tracking-normal font-sans font-semibold bg-[#F87171]/10 border border-[#F87171]/20 text-[#F87171] px-2.5 py-0.5 rounded-full">
                         Cancels at Period End
                       </span>
                     ) : (
                       session?.access_tier && !['guest', 'discord'].includes(session?.access_tier) && (
-                        <span className="text-[9px] tracking-normal font-sans font-semibold bg-black/40 border border-black text-[#4ADE80] px-2.5 py-0.5 rounded-full">
-                          Active & Auto-renewing
+                        <span className="text-[9px] tracking-normal font-sans font-semibold bg-[#4ADE80]/10 border border-[#4ADE80]/20 text-[#4ADE80] px-2.5 py-0.5 rounded-full">
+                          Active &amp; Auto-renewing
                         </span>
                       )
                     )}
@@ -1527,10 +1521,10 @@ export function SettingsPanel({ session, onUpdateSession }: SettingsPanelProps) 
                     <button
                       onClick={() => setShowCancelConfirm(true)}
                       disabled={!!session?.cancels_at_period_end}
-                      className={`px-4 py-2 font-bold text-xs uppercase tracking-widest rounded-lg transition-all cursor-pointer ${
+                      className={`px-4 py-2 font-bold text-xs uppercase tracking-widest rounded-lg transition-all cursor-pointer border ${
                         session?.cancels_at_period_end
-                          ? 'bg-black text-zinc-500 cursor-not-allowed border border-black'
-                          : 'bg-black hover:bg-rose-950/20 text-[#F87171] border border-black hover:border-[#F87171]/30'
+                          ? 'bg-[var(--surface-2)] text-[var(--text-tertiary)] cursor-not-allowed border-[var(--border)]'
+                          : 'bg-[var(--surface-2)] hover:bg-[#F87171]/10 text-[#F87171] border-[var(--border)] hover:border-[#F87171]/30'
                       }`}
                     >
                       {session?.cancels_at_period_end ? 'Cancellation Logged' : 'Cancel Subscription'}
@@ -1541,19 +1535,19 @@ export function SettingsPanel({ session, onUpdateSession }: SettingsPanelProps) 
 
               {/* Secure Customer_id and Payment_method_id details */}
               {session?.customer_id && (
-                <div className="bg-black/60 border border-black/60 rounded-xl p-4 space-y-2 text-left font-mono text-[10px] text-zinc-500">
-                  <div className="text-zinc-400 font-bold text-[9px] uppercase tracking-widest pb-1 border-b border-black/40">Payment Info</div>
+                <div className="bg-[var(--surface-2)] border border-[var(--border)] rounded-xl p-4 space-y-2 text-left font-mono text-[10px] text-[var(--text-tertiary)]">
+                  <div className="text-[var(--text-secondary)] font-bold text-[9px] uppercase tracking-widest pb-1 border-b border-[var(--border)]">Payment Info</div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1 font-mono">
                     <div>
-                      <span className="text-zinc-600 font-bold block text-[8px] uppercase">Stripe Customer ID</span>
-                      <code className="text-indigo-400 font-mono text-[9.5px]">{session.customer_id}</code>
+                      <span className="text-[var(--text-tertiary)] font-bold block text-[9px] uppercase">Stripe Customer ID</span>
+                      <code className="text-indigo-400 font-mono text-[10px]">{session.customer_id}</code>
                     </div>
                     <div>
-                      <span className="text-zinc-600 font-bold block text-[8px] uppercase">Tokenized Payment Method ID</span>
-                      <code className="text-[#4ADE80] font-mono text-[9.5px]">{session.payment_method_id || 'Not Saved (Iframe Protected)'}</code>
+                      <span className="text-[var(--text-tertiary)] font-bold block text-[9px] uppercase">Tokenized Payment Method ID</span>
+                      <code className="text-[#4ADE80] font-mono text-[10px]">{session.payment_method_id || 'Not Saved (Iframe Protected)'}</code>
                     </div>
                   </div>
-                  <p className="text-[9px] text-zinc-650 italic leading-tight pt-1">
+                  <p className="text-[9px] text-[var(--text-tertiary)] italic leading-tight pt-1">
                     No card numbers or CVVs are stored here. Payment details are kept securely by Stripe.
                   </p>
                 </div>
@@ -1562,21 +1556,21 @@ export function SettingsPanel({ session, onUpdateSession }: SettingsPanelProps) 
               {/* Confirmation Dialog / Modal */}
               {showCancelConfirm && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fadeIn">
-                  <div className="bg-black border border-black rounded-2xl max-w-md w-full p-6 text-left space-y-4 shadow-2xl relative">
-                    <div className="flex items-center gap-3 text-[#F87171] pb-2 border-b border-black">
+                  <div className="bg-[var(--surface)] border border-[var(--border)] rounded-2xl max-w-md w-full p-6 text-left space-y-4 shadow-2xl relative">
+                    <div className="flex items-center gap-3 text-[#F87171] pb-2 border-b border-[var(--border)]">
                       <svg viewBox="0 0 24 24" fill="none" className="w-6 h-6 stroke-current stroke-2"><path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
                       <h3 className="text-base font-black uppercase tracking-wider">Are you sure?</h3>
                     </div>
-                    
-                    <p className="text-xs text-zinc-400 leading-normal font-sans text-left">
-                      Canceling your subscription takes effect at the end of your current paid billing period. You will <strong>retain full access</strong> to your current tier and real-time options flow triggers until your paid time expires.
+
+                    <p className="text-xs text-[var(--text-secondary)] leading-normal font-sans text-left">
+                      Cancellation takes effect at the end of your current paid billing period. You <strong className="text-[var(--text-primary)]">retain full access</strong> to your tier and real-time options flow triggers until then.
                     </p>
 
                     <div className="flex justify-end gap-3 pt-2">
                       <button
                         type="button"
                         onClick={() => setShowCancelConfirm(false)}
-                        className="px-4 py-2 bg-black hover:bg-black text-[#4ADE80] font-bold text-xs uppercase tracking-widest rounded-lg cursor-pointer transition-all border border-black"
+                        className="px-4 py-2 bg-[var(--surface-2)] hover:bg-[var(--surface-3)] text-[var(--text-primary)] font-bold text-xs uppercase tracking-widest rounded-lg cursor-pointer transition-all border border-[var(--border)]"
                       >
                         Keep Subscription
                       </button>
@@ -1584,9 +1578,9 @@ export function SettingsPanel({ session, onUpdateSession }: SettingsPanelProps) 
                         type="button"
                         onClick={handleCancelSubscription}
                         disabled={isCanceling}
-                        className="px-4 py-2 bg-rose-600 hover:bg-rose-500 text-[#E5E5E5] font-bold text-xs uppercase tracking-widest rounded-lg cursor-pointer transition-all flex items-center gap-2 shadow-lg shadow-rose-950/40"
+                        className="px-4 py-2 bg-[#F87171] hover:brightness-110 text-black font-bold text-xs uppercase tracking-widest rounded-lg cursor-pointer transition-all flex items-center gap-2 disabled:opacity-50"
                       >
-                        {isCanceling ? 'Processing...' : 'Confirm Cancel'}
+                        {isCanceling ? 'Processing…' : 'Confirm Cancel'}
                       </button>
                     </div>
                   </div>
@@ -1595,28 +1589,28 @@ export function SettingsPanel({ session, onUpdateSession }: SettingsPanelProps) 
             </div>
 
             {/* Invoice simulation box */}
-            <div className="bg-black/20 border border-black rounded-xl p-5 space-y-5 relative shadow-lg">
-              <div className="flex justify-between items-center border-b border-black pb-3">
+            <div className="bg-[var(--surface)] border border-[var(--border)] rounded-xl p-5 space-y-5">
+              <div className="flex justify-between items-center border-b border-[var(--border)] pb-3">
                 <div className="flex items-center gap-2.5">
                   <Receipt className="w-4 h-4 text-indigo-400" />
-                  <span className="text-[10px] font-mono font-black uppercase tracking-[0.2em] text-zinc-500">Billing &amp; Invoices</span>
+                  <span className="text-[10px] font-mono font-bold uppercase tracking-[0.2em] text-[var(--text-tertiary)]">Billing &amp; Invoices</span>
                 </div>
-                <span className="text-[8px] bg-black px-2 py-0.5 border border-black rounded text-zinc-400">Sandbox</span>
+                <span className="text-[9px] uppercase tracking-wider bg-[var(--surface-2)] px-2 py-0.5 border border-[var(--border)] rounded text-[var(--text-tertiary)]">Sandbox</span>
               </div>
-              
-              <p className="text-xs text-zinc-400">
-                You currently have no active credit cards on file. This environment uses a developer sandbox integration for simulated billing runs.
+
+              <p className="text-xs text-[var(--text-secondary)] leading-normal">
+                No active cards on file. This environment uses a developer sandbox for simulated billing runs.
               </p>
 
               <button
                 onClick={handleRunSimulatedBilling}
                 disabled={isSimulatingInvoice}
-                className="w-full py-3 mt-2 bg-indigo-500/10 border border-indigo-500/30 hover:bg-[#6366f1]/20 text-indigo-400 font-black text-xs uppercase tracking-widest rounded-lg flex items-center justify-center gap-2 transition-all cursor-pointer"
+                className="w-full py-3 bg-indigo-500/10 border border-indigo-500/30 hover:bg-indigo-500/20 text-indigo-400 font-bold text-xs uppercase tracking-widest rounded-lg flex items-center justify-center gap-2 transition-all cursor-pointer disabled:opacity-50"
               >
                 {isSimulatingInvoice ? (
                   <>
                     <RefreshCw className="w-4 h-4 animate-spin" />
-                    <span>RUNNING INVOICE SIMULATION...</span>
+                    <span>Running Invoice Simulation…</span>
                   </>
                 ) : (
                   <>
@@ -1630,23 +1624,22 @@ export function SettingsPanel({ session, onUpdateSession }: SettingsPanelProps) 
                 <motion.div
                   initial={{ opacity: 0, y: 5 }}
                   animate={{ opacity: 1, y: 0 }}
-                  className="bg-black border border-black rounded-lg p-3 text-left font-mono text-[10px] text-[#a1a1aa] leading-relaxed space-y-1 mt-2 relative overflow-hidden"
+                  className="bg-[var(--surface-2)] border border-[var(--border)] rounded-lg p-4 text-left font-mono text-[10px] text-[var(--text-secondary)] leading-relaxed space-y-1.5"
                 >
-                  <div className="absolute top-0 right-0 p-1 bg-indigo-500/10 border-l border-b border-black text-indigo-400 font-black tracking-widest text-[7px] uppercase select-none">Invoice Receipt</div>
-                  <div className="text-[9px] text-zinc-650 font-black tracking-widest uppercase border-b border-black pb-1 mb-1.5 flex justify-between">
-                    <span>BILLING_RUN_RESULT // SUCCESS</span>
-                    <span className="text-zinc-600 font-normal">Active tier: {invoiceLog.access_tier}</span>
+                  <div className="text-[9px] text-[var(--text-tertiary)] font-bold tracking-widest uppercase border-b border-[var(--border)] pb-1.5 mb-1.5 flex justify-between">
+                    <span>Invoice Receipt</span>
+                    <span className="font-normal">Tier: {invoiceLog.access_tier}</span>
                   </div>
-                  <div>Monthly Plan Price: <span className="text-[#E5E5E5] font-bold font-mono">${invoiceLog.base_rate}.00</span></div>
-                  <div>Tokens Used: <span className="text-[#F87171] text-right">-{invoiceLog.tokens_deducted} Tokens ({invoiceLog.discount_rate_pct}% Off)</span></div>
-                  <div>Discount Applied: <span className="text-[#4ADE80] text-right">-${(invoiceLog.discount_amount_usd ?? 0).toFixed(2)} USD</span></div>
-                  <div className="border-t border-black/60 pt-2 mt-2 font-bold flex justify-between text-[11px]">
-                    <span className="text-[#f4f4f5]">Net Amount Charged:</span>
+                  <div className="flex justify-between">Monthly Plan Price <span className="text-[var(--text-primary)] font-bold">${invoiceLog.base_rate}.00</span></div>
+                  <div className="flex justify-between">Tokens Used <span className="text-[#F87171]">-{invoiceLog.tokens_deducted} ({invoiceLog.discount_rate_pct}% Off)</span></div>
+                  <div className="flex justify-between">Discount Applied <span className="text-[#4ADE80]">-${(invoiceLog.discount_amount_usd ?? 0).toFixed(2)}</span></div>
+                  <div className="border-t border-[var(--border)] pt-2 mt-2 font-bold flex justify-between text-[11px]">
+                    <span className="text-[var(--text-primary)]">Net Charged</span>
                     <span className="text-[#4ADE80]">${(invoiceLog.total_charged_usd ?? 0).toFixed(2)} USD</span>
                   </div>
-                  <div className="border-t border-dashed border-black/80 pt-2 mt-2 text-[9px] text-zinc-600 uppercase flex gap-1.5 items-center">
+                  <div className="border-t border-[var(--border)] pt-2 mt-2 text-[9px] text-[var(--text-tertiary)] uppercase flex gap-1.5 items-center">
                     <FolderSync className="w-3.5 h-3.5 text-indigo-400/80 shrink-0" />
-                    <span>Unused tokens: {invoiceLog.tokens_remaining_rolled_over} rolled over to next month.</span>
+                    <span>{invoiceLog.tokens_remaining_rolled_over} unused tokens rolled over to next month.</span>
                   </div>
                 </motion.div>
               )}
@@ -1656,13 +1649,13 @@ export function SettingsPanel({ session, onUpdateSession }: SettingsPanelProps) 
       </div>
 
       {toastText && (
-        <motion.div 
+        <motion.div
           initial={{ opacity: 0, y: 10, scale: 0.95 }}
           animate={{ opacity: 1, y: 0, scale: 1 }}
-          className={`fixed bottom-5 right-5 z-[100] p-4 bg-black border ${toastType === 'success' ? 'border-black' : 'border-rose-500/30'} shadow-2xl flex items-center gap-2.5 font-mono text-[10.5px] text-[#E5E5E5] rounded-sm`}
+          className={`fixed bottom-5 right-5 z-[100] p-4 bg-[var(--surface-2)] border ${toastType === 'success' ? 'border-[#4ADE80]/30' : 'border-[#F87171]/30'} shadow-2xl flex items-center gap-2.5 font-mono text-[10.5px] text-[var(--text-primary)] rounded-lg`}
         >
-          <span className={`w-1.5 h-1.5 rounded-full ${toastType === 'success' ? 'bg-black/40' : 'bg-rose-500'} animate-pulse`} />
-          <span className="uppercase font-semibold tracking-wider text-zinc-400">{toastType === 'success' ? 'SUCCESS' : 'ERROR'}:</span>
+          <span className={`w-1.5 h-1.5 rounded-full ${toastType === 'success' ? 'bg-[#4ADE80]' : 'bg-[#F87171]'} animate-pulse`} />
+          <span className={`uppercase font-semibold tracking-wider ${toastType === 'success' ? 'text-[#4ADE80]' : 'text-[#F87171]'}`}>{toastType === 'success' ? 'Success' : 'Error'}:</span>
           <span>{toastText}</span>
         </motion.div>
       )}

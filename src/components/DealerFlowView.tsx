@@ -8,7 +8,7 @@
  * clearly-labeled deterministic model when offline).
  */
 
-import { useMemo, useState, useEffect, useRef } from 'react';
+import { useMemo, useState } from 'react';
 import { motion } from 'motion/react';
 import { useContractStore } from '../lib/store';
 import { SlayerScoreWidget, VolatilityStateWidget } from './WorkspaceWidgets';
@@ -27,22 +27,11 @@ import {
   Layers,
   Zap,
   ShieldAlert,
-  Droplets,
-  Play,
-  Share2,
-  RefreshCw,
-  Skull,
-  Clock,
-  Briefcase,
-  Sliders,
-  HelpCircle,
-  Activity,
   Target
 } from 'lucide-react';
 import { ASSET_LIST } from '../data';
 
 const fmtBn = (v: number) => `${v >= 0 ? '+' : '−'}$${Math.abs(v / 1e9).toFixed(2)}B`;
-const fmtMn = (v: number) => `${v >= 0 ? '+' : '−'}$${Math.abs(v / 1e6).toFixed(1)}M`;
 const fmtGreek = (v: number) => {
   const abs = Math.abs(v);
   if (abs >= 1e9) {
@@ -365,67 +354,6 @@ function ExposureProfileChart({ profile, decimals, type }: { profile: any; decim
 }
 
 // ----------------------------------------------------------------
-// Pure Market Microstructure & Mathematical Physics Helpers
-// ----------------------------------------------------------------
-function normalPdf(x: number): number {
-  return Math.exp(-0.5 * x * x) / Math.sqrt(2 * Math.PI);
-}
-
-function normalCdf(x: number): number {
-  const t = 1 / (1 + 0.2316419 * Math.abs(x));
-  const d = 0.39894228 * Math.exp(-x * x / 2);
-  const p = d * t * (0.31938153 + t * (-0.356563782 + t * (1.781477937 + t * (-1.821255978 + t * 1.330274429))));
-  return x > 0 ? 1 - p : p;
-}
-
-interface OptionGreekPayload {
-  delta: number;
-  gamma: number;
-  vanna: number;
-  charm: number;
-  speed: number;
-  color: number;
-}
-
-function calculateGreeksTS(
-  S: number,
-  K: number,
-  t: number,
-  sigma: number,
-  r: number,
-  q: number,
-  option_type: "call" | "put"
-): OptionGreekPayload {
-  if (t <= 0) t = 1e-4;
-  if (sigma <= 0) sigma = 1e-3;
-
-  const d1 = (Math.log(S / K) + (r - q + 0.5 * sigma * sigma) * t) / (sigma * Math.sqrt(t));
-  const d2 = d1 - sigma * Math.sqrt(t);
-
-  const n_prime_d1 = normalPdf(d1);
-  const N_d1 = normalCdf(d1);
-
-  // Delta & Gamma
-  const delta = option_type === "call"
-    ? Math.exp(-q * t) * N_d1
-    : Math.exp(-q * t) * (N_d1 - 1);
-  const gamma = (Math.exp(-q * t) * n_prime_d1) / (S * sigma * Math.sqrt(t));
-
-  // Second-Order (Vanna, Charm)
-  const vanna = -Math.exp(-q * t) * n_prime_d1 * (d2 / sigma);
-  const charm_base = Math.exp(-q * t) * n_prime_d1 * ((r - q) / (sigma * Math.sqrt(t)) - d2 / (2 * t));
-  const charm = option_type === "call"
-    ? q * Math.exp(-q * t) * N_d1 - charm_base
-    : -q * Math.exp(-q * t) * (1 - N_d1) - charm_base;
-
-  // Third-Order (Speed, Color)
-  const speed = -(gamma / S) * (1 + (d1 / (sigma * Math.sqrt(t))));
-  const color = -(Math.exp(-q * t) * n_prime_d1 / (2 * S * t * sigma * Math.sqrt(t))) * (1 + d1 * ((r - q) / (sigma * Math.sqrt(t)) - d2 / (2 * t)));
-
-  return { delta, gamma, vanna, charm, speed, color };
-}
-
-// ----------------------------------------------------------------
 // Main view
 // ----------------------------------------------------------------
 export function DealerFlowView() {
@@ -442,49 +370,6 @@ export function DealerFlowView() {
     return rawServerState;
   }, [rawServerState, selectedAsset.ticker]);
   const [activeEngineView, setActiveEngineView] = useState<'profile' | 'physics' | 'targets'>('profile');
-  const [mocDirection, setMocDirection] = useState<'BUY' | 'SELL' | 'NEUTRAL'>('BUY');
-  const [mocValue, setMocValue] = useState<number>(1.24 * 1e9);
-
-  const recommendedPlay = useMemo(() => {
-    const prof = serverState?.gex_profile;
-    if (!prof || !prof.spot || !prof.strikes || prof.strikes.length === 0) {
-      return { contract: '-', strategy: 'N/A', edge: '-', color: 'text-zinc-400' };
-    }
-    const spot = prof.spot;
-    const strikesList = [...prof.strikes].sort((a, b) => a.strike - b.strike);
-    const ticker = selectedAsset.ticker;
-
-    if (mocDirection === 'BUY') {
-      const targetStrike = strikesList.find(s => s.strike > spot);
-      if (targetStrike) {
-        return {
-          contract: `${ticker} 0DTE $${targetStrike.strike.toFixed(0)} CALL`,
-          strategy: 'OTM CALL BUY (GAMMA ACCELERATION)',
-          edge: `+18.4% Edge`,
-          color: 'text-[#4ADE80]'
-        };
-      }
-    } else if (mocDirection === 'SELL') {
-      const targetStrike = [...strikesList].reverse().find(s => s.strike < spot);
-      if (targetStrike) {
-        return {
-          contract: `${ticker} 0DTE $${targetStrike.strike.toFixed(0)} PUT`,
-          strategy: 'OTM PUT BUY (GAMMA ACCELERATION)',
-          edge: `+21.2% Edge`,
-          color: 'text-[#F87171]'
-        };
-      }
-    } else {
-      const magnetStrike = prof.magnet || spot;
-      return {
-        contract: `${ticker} 0DTE $${magnetStrike.toFixed(0)} Condor/Straddle`,
-        strategy: 'MAGNET PINNING (THETA DECAY)',
-        edge: `+12.8% Edge`,
-        color: 'text-sky-400'
-      };
-    }
-    return { contract: '-', strategy: 'N/A', edge: '-', color: 'text-zinc-400' };
-  }, [serverState, mocDirection, selectedAsset]);
 
   // Load contract selector parameters to map Call/Put styles (or white-glass defaults)
   const selectedOptionType = useContractStore(s => s.selectedOptionType);
@@ -621,7 +506,6 @@ export function DealerFlowView() {
   const profile = serverState?.gex_profile;
   const gauge = serverState?.dealer_flow;
   const disp = serverState?.displacement;
-  const dm = serverState?.deep_intelligence?.dealer_metrics;
 
   // Memoize array props for InteractiveChart so they keep a stable reference when the
   // underlying data is unchanged. The inline `|| []` + optional chaining otherwise create
@@ -634,21 +518,21 @@ export function DealerFlowView() {
 
   if (!serverState || !profile || !profile.strikes || !gauge || !disp) {
     return (
-      <div className="w-full flex flex-col items-center justify-center min-h-[460px] bg-black/30 border border-black rounded-lg p-8 text-center space-y-4" id="dealerflow-data-pending">
-        <div className="w-12 h-12 rounded-full bg-black/40 border border-black flex items-center justify-center">
+      <div className="w-full flex flex-col items-center justify-center min-h-[460px] bg-[var(--surface)] border border-[var(--border)] rounded-lg p-8 text-center space-y-4" id="dealerflow-data-pending">
+        <div className="w-12 h-12 rounded-full bg-[var(--surface-2)] border border-[var(--border)] flex items-center justify-center">
           <Waves className="w-6 h-6 text-[#4ADE80]" />
         </div>
         <div className="space-y-1.5">
-          <h2 className="text-[11px] font-black tracking-widest text-[#E5E5E5] uppercase font-sans">
+          <h2 className="text-[11px] font-black tracking-widest text-[var(--text-primary)] uppercase font-sans">
             LOADING DEALER FLOW DATA
           </h2>
-          <p className="text-[9px] text-zinc-500 uppercase tracking-widest leading-relaxed max-w-sm mx-auto">
+          <p className="text-[9px] text-[var(--text-tertiary)] uppercase tracking-widest leading-relaxed max-w-sm mx-auto">
             Loading hedging profiles, order flow, and price zones. Select any strike or option type to start the feed.
           </p>
         </div>
         <div className="flex items-center gap-2 justify-center">
-          <span className="w-1.5 h-1.5 rounded-full bg-amber-500 inline-block" />
-          <span className="text-[8px] font-mono tracking-widest text-zinc-400 font-bold uppercase">
+          <span className="w-1.5 h-1.5 rounded-full bg-[#FBBF24] inline-block animate-pulse" />
+          <span className="text-[8px] font-mono tracking-widest text-[var(--text-tertiary)] font-bold uppercase">
             CONNECTING TO LIVE FEED...
           </span>
         </div>
@@ -656,27 +540,11 @@ export function DealerFlowView() {
     );
   }
 
-  const formatState = (state: string) => {
-    if (['ARMED', 'ACTIVE'].includes(state)) return 'HOLDING';
-    if (['TESTED'].includes(state)) return 'TESTING';
-    return 'FAILING';
-  };
-
-  const stateChip = (state: string) => {
-    const s = formatState(state);
-    const map: Record<string, string> = {
-      HOLDING: 'status-holding mirror-panel',
-      TESTING: 'status-testing mirror-panel',
-      FAILING: 'status-failing mirror-panel',
-    };
-    return map[s];
-  };
-
   return (
     <div className="w-full space-y-6 tabular-data" id="dealerflow-main-workspace-view">
-      {/* Ticker Bar (Image Matched) */}
-      <div className="flex justify-center items-center w-full mb-2 relative z-10">
-        <div className="bg-black/90 backdrop-blur-md border border-black rounded-[10px] flex items-center p-1 gap-0.5 shadow-inner">
+      {/* Ticker Bar */}
+      <div className="flex justify-center items-center w-full relative z-10">
+        <div className="bg-[var(--surface-2)] border border-[var(--border)] rounded-lg flex items-center p-1 gap-0.5">
           {ASSET_LIST.map(asset => {
             const isActive = selectedAsset.ticker === asset.ticker;
             return (
@@ -684,10 +552,10 @@ export function DealerFlowView() {
                 key={asset.ticker}
                 type="button"
                 onClick={() => setSelectedAsset(asset)}
-                className={`px-3.5 py-1 text-[10px] uppercase font-black tracking-widest rounded-lg transition-all duration-200 cursor-pointer ${
+                className={`px-3.5 py-1 text-[10px] uppercase font-black tracking-widest rounded-md transition-colors duration-200 cursor-pointer ${
                   isActive
-                    ? 'bg-black text-[#E5E5E5] shadow hover:bg-black'
-                    : 'text-zinc-500 hover:text-[#4ADE80] hover:bg-white/[0.02] border border-transparent'
+                    ? 'bg-[var(--surface-3)] text-[var(--text-primary)]'
+                    : 'text-[var(--text-tertiary)] hover:text-[var(--text-primary)]'
                 }`}
               >
                 {asset.ticker}
@@ -704,63 +572,33 @@ export function DealerFlowView() {
           </div>
           <div>
             <div className="flex items-center gap-2">
-              <h1 className="text-sm font-black tracking-widest text-[#E5E5E5] uppercase font-sans">
-                PINPOINT AI | {selectedAsset.ticker}
+              <h1 className="text-sm font-black tracking-widest text-[var(--text-primary)] uppercase font-sans">
+                PINPOINT | {selectedAsset.ticker}
               </h1>
               <FeedChip feed={profile?.feed} />
             </div>
-            <p className="text-[9px] text-zinc-500 uppercase tracking-widest mt-0.5">
-              Gamma exposure · hedging pressure · price zones · volatility · {selectedTimeframe}
+            <p className="text-[9px] text-[var(--text-tertiary)] uppercase tracking-widest mt-0.5">
+              Gamma exposure · hedging pressure · price zones · {selectedTimeframe}
             </p>
           </div>
         </div>
 
-        <div className="flex flex-nowrap overflow-x-auto scrollbar-none items-center gap-2.5 pb-0.5">
+        <div className="grid grid-cols-3 sm:grid-cols-6 gap-2 lg:flex lg:flex-nowrap lg:items-center">
           {[
-            { label: 'Net GEX', value: profile ? fmtBn(profile.netGex) : '-', tone: profile?.netGex >= 0 ? 'text-[#4ADE80] font-bold' : 'text-[#F87171] font-bold', icon: <Layers className="w-3 h-3" /> },
-            { label: 'Call Wall', value: profile?.callWall?.toFixed(0) ?? '-', tone: 'text-[#4ADE80] font-bold', icon: <Layers className="w-3 h-3" /> },
-            { label: 'Put Wall', value: profile?.putWall?.toFixed(0) ?? '-', tone: 'text-[#F87171] font-bold', icon: <Layers className="w-3 h-3" /> },
-            { label: 'γ-Flip', value: profile?.gammaFlip?.toFixed(0) ?? '-', tone: 'text-amber-400 font-bold', icon: <Crosshair className="w-3 h-3" /> },
-            { label: 'Pin Magnet', value: profile?.magnet?.toFixed(0) ?? '-', tone: 'text-sky-400 font-bold', icon: <Magnet className="w-3 h-3" /> },
+            { label: 'Net GEX', value: profile ? fmtBn(profile.netGex) : '—', tone: profile?.netGex >= 0 ? '#4ADE80' : '#F87171' },
+            { label: 'Call Wall', value: profile?.callWall?.toFixed(0) ?? '—', tone: '#4ADE80' },
+            { label: 'Put Wall', value: profile?.putWall?.toFixed(0) ?? '—', tone: '#F87171' },
+            { label: 'γ-Flip', value: profile?.gammaFlip?.toFixed(0) ?? '—', tone: '#FBBF24' },
+            { label: 'Pin Magnet', value: profile?.magnet?.toFixed(0) ?? '—', tone: '#60A5FA' },
+            { label: 'Dist to Flip', value: profile?.gammaFlip ? `${Math.abs(profile.spot - profile.gammaFlip).toFixed(1)}` : '—', tone: 'var(--text-primary)' },
           ].map(card => (
-            <div key={card.label} className="bg-black/50 border border-black/60 rounded-md px-3 py-2 min-w-[86px] shrink-0" id={`card-${card.label.toLowerCase().replace(/\s+/g, '-')}`}>
-              <div className="flex items-center gap-1 text-[7.5px] font-black tracking-widest text-zinc-500 uppercase">
-                {card.icon}
+            <div key={card.label} className="bg-[var(--surface-2)] border border-[var(--border)] rounded-md px-3 py-2 min-w-[84px] shrink-0" id={`card-${card.label.toLowerCase().replace(/\s+/g, '-')}`}>
+              <div className="text-[8px] font-black tracking-widest text-[var(--text-tertiary)] uppercase">
                 {card.label}
               </div>
-              <div className={`text-[13px] font-mono ${card.tone}`}>{card.value}</div>
+              <div className="text-[14px] font-mono font-bold tabular-nums" style={{ color: card.tone }}>{card.value}</div>
             </div>
           ))}
-        </div>
-      </div>
-
-      {/* Advanced Quantitative Dealer Analytics Panel */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-        <div className="bg-black/80 border border-black rounded-lg p-3.5 flex flex-col justify-between hover:border-amber-500/30 transition-colors">
-          <span className="text-[8px] font-bold tracking-widest text-[#a1a1aa] uppercase mb-2 flex items-center gap-1.5"><Activity className="w-3 h-3 text-amber-500" /> Acceleration Flow</span>
-          <div>
-            <div className="text-[14px] font-mono font-black text-amber-400 mb-0.5">+4.2x / hr</div>
-            <div className="text-[9px] text-zinc-500 uppercase tracking-wide leading-snug">Gamma Acceleration</div>
-          </div>
-        </div>
-        
-        <div className="bg-black/80 border border-black rounded-lg p-3.5 flex flex-col justify-between hover:border-sky-500/30 transition-colors">
-          <span className="text-[8px] font-bold tracking-widest text-[#a1a1aa] uppercase mb-2 flex items-center gap-1.5"><Crosshair className="w-3 h-3 text-sky-400" /> Distance to Flip</span>
-          <div>
-            <div className="text-[14px] font-mono font-black text-[#E5E5E5] mb-0.5">{profile?.gammaFlip ? `${Math.abs(profile.spot - profile.gammaFlip).toFixed(1)} pts` : '--'}</div>
-            <div className="text-[9px] text-zinc-500 uppercase tracking-wide leading-snug">Distance to Gamma Flip</div>
-          </div>
-        </div>
-
-        <div className="bg-black/40 border border-black rounded-lg p-3.5 flex flex-col justify-center relative overflow-hidden group hover:border-black transition-colors">
-           <div className="absolute top-0 right-0 p-2 opacity-20 group-hover:opacity-40 transition-opacity">
-              <Clock className="w-12 h-12 text-[#4ADE80]" />
-           </div>
-           <span className="text-[8px] font-bold tracking-widest text-[#4ADE80] uppercase mb-2 flex items-center gap-1.5 relative z-10"><Clock className="w-3 h-3" /> Statistical Edge</span>
-           <div className="relative z-10">
-            <div className="text-[14px] font-mono font-black text-[#4ADE80] mb-0.5 leading-snug">72.4% Win Rate</div>
-            <div className="text-[8.5px] text-[#4ADE80] uppercase tracking-widest font-black">Historical Win Rate</div>
-          </div>
         </div>
       </div>
 
@@ -768,35 +606,35 @@ export function DealerFlowView() {
       <div className="flex flex-nowrap overflow-x-auto scrollbar-none gap-2.5 justify-start items-center pb-0.5" id="dealerflow-subtabs-bar">
         <button
           onClick={() => setActiveEngineView('profile')}
-          className={`flex shrink-0 items-center gap-2 px-4.5 py-3 font-mono text-[9px] font-black uppercase tracking-wider border rounded-lg transition-all cursor-pointer ${
+          className={`flex shrink-0 items-center gap-2 px-4 py-2.5 font-mono text-[9px] font-black uppercase tracking-wider border rounded-lg transition-colors cursor-pointer ${
             activeEngineView === 'profile'
-              ? theme.buttonActive + ' border-b-2 border-b-[#4ADE80]'
-              : theme.buttonInactive
+              ? 'bg-[var(--surface-3)] border-[#4ADE80]/50 text-[var(--text-primary)]'
+              : 'bg-[var(--surface-2)] border-[var(--border)] text-[var(--text-tertiary)] hover:text-[var(--text-primary)]'
           }`}
         >
-          <Layers className="w-3.5 h-3.5" />
-          HEDGING PROFILE & LIQUIDITY LEVELS
+          <Layers className="w-3.5 h-3.5 text-[#4ADE80]" />
+          HEDGING PROFILE
         </button>
         <button
           onClick={() => setActiveEngineView('targets')}
-          className={`flex shrink-0 items-center gap-2 px-4.5 py-3 font-mono text-[9px] font-black uppercase tracking-wider border rounded-lg transition-all cursor-pointer ${
+          className={`flex shrink-0 items-center gap-2 px-4 py-2.5 font-mono text-[9px] font-black uppercase tracking-wider border rounded-lg transition-colors cursor-pointer ${
             activeEngineView === 'targets'
-              ? 'bg-rose-500/10 border-rose-500 border-b-2 border-b-rose-400 text-[#E5E5E5] shadow-[0_0_12px_rgba(244,63,94,0.12)]'
-              : 'bg-black/45 border-black text-zinc-500 hover:text-[#4ADE80] hover:border-black'
+              ? 'bg-[var(--surface-3)] border-[#F87171]/50 text-[var(--text-primary)]'
+              : 'bg-[var(--surface-2)] border-[var(--border)] text-[var(--text-tertiary)] hover:text-[var(--text-primary)]'
           }`}
         >
           <Target className="w-3.5 h-3.5 text-[#F87171]" />
-          LOADED STRIKE TARGETS (INTRADAY)
+          INTRADAY TARGETS
         </button>
         <button
           onClick={() => setActiveEngineView('physics')}
-          className={`flex shrink-0 items-center gap-2 px-4.5 py-3 font-mono text-[9px] font-black uppercase tracking-wider border rounded-lg transition-all cursor-pointer ${
+          className={`flex shrink-0 items-center gap-2 px-4 py-2.5 font-mono text-[9px] font-black uppercase tracking-wider border rounded-lg transition-colors cursor-pointer ${
             activeEngineView === 'physics'
-              ? 'bg-amber-500/10 border-amber-500 border-b-2 border-b-amber-400 text-[#E5E5E5] shadow-[0_0_12px_rgba(245,158,11,0.12)]'
-              : 'bg-black/45 border-black text-zinc-500 hover:text-[#4ADE80] hover:border-black'
+              ? 'bg-[var(--surface-3)] border-[#FBBF24]/50 text-[var(--text-primary)]'
+              : 'bg-[var(--surface-2)] border-[var(--border)] text-[var(--text-tertiary)] hover:text-[var(--text-primary)]'
           }`}
         >
-          <Zap className="w-3.5 h-3.5 text-amber-400" />
+          <Zap className="w-3.5 h-3.5 text-[#FBBF24]" />
           DEALER MECHANICS
         </button>
       </div>
@@ -804,14 +642,11 @@ export function DealerFlowView() {
       {activeEngineView === 'profile' ? (
         <>
           {/* ============== DEALER FLOW MAP (Hero Chart) ============== */}
-          <div className={`${theme.cardBg} rounded-lg p-5 mb-4`} id="dealerflow-map-panel">
-            <div className="flex items-center justify-between mb-4">
-              <div className="flex items-center gap-2 text-[9px] font-black tracking-widest text-[#a1a1aa] uppercase">
-                <Layers className={`w-3.5 h-3.5 ${theme.iconColor}`} />
-                Dealer Net Gamma Map
-                <span className="text-zinc-700">|</span>
-                <span className="text-zinc-550">Dealer inventory & pin levels by strike</span>
-              </div>
+          <div className="bg-[var(--surface)] border border-[var(--border)] rounded-lg p-5 mb-4" id="dealerflow-map-panel">
+            <div className="flex items-center gap-2 text-[9px] font-black tracking-widest uppercase mb-4">
+              <Layers className="w-3.5 h-3.5 text-[#4ADE80]" />
+              <span className="text-[var(--text-secondary)]">Dealer Net Gamma Map</span>
+              <span className="text-[var(--text-tertiary)] font-normal normal-case tracking-normal text-[9px]">· inventory & pin levels by strike</span>
             </div>
             <DealerFlowMap profile={profile} decimals={selectedAsset.decimals} />
           </div>
@@ -819,93 +654,84 @@ export function DealerFlowView() {
           {/* ============== MAIN GRID ============== */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-4" id="dealerflow-main-grid">
             {/* GEX PROFILE */}
-            <div className={`${theme.cardBg} rounded-lg p-5`} id="gex-profile-chart-panel">
-              <div className="flex items-center justify-between mb-4">
-                <div className="flex items-center gap-2 text-[9px] font-black tracking-widest text-[#a1a1aa] uppercase">
-                  <Layers className={`w-3.5 h-3.5 ${theme.iconColor}`} />
-                  Gamma Exposure (GEX)
-                  <span className="text-zinc-700">|</span>
-                  <span className="text-zinc-550">$ per 1% move</span>
-                </div>
+            <div className="bg-[var(--surface)] border border-[var(--border)] rounded-lg p-5" id="gex-profile-chart-panel">
+              <div className="flex items-center gap-2 text-[9px] font-black tracking-widest uppercase mb-4">
+                <Layers className="w-3.5 h-3.5 text-[#4ADE80]" />
+                <span className="text-[var(--text-secondary)]">Gamma Exposure (GEX)</span>
+                <span className="text-[var(--text-tertiary)] font-normal normal-case tracking-normal">· $ per 1% move</span>
               </div>
               <ExposureProfileChart profile={profile} decimals={selectedAsset.decimals} type="gex" />
 
               {/* GEX footer */}
               {profile && (
-                <div className="mt-4 pt-3 border-t border-black/60 grid grid-cols-3 gap-2 text-center" id="gex-profile-chart-oi-footer">
+                <div className="mt-4 pt-3 border-t border-[var(--border)] grid grid-cols-3 gap-2 text-center" id="gex-profile-chart-oi-footer">
                   <div>
-                    <div className="text-[7.5px] text-zinc-500 font-black uppercase tracking-widest">Call GEX</div>
+                    <div className="text-[8px] text-[var(--text-tertiary)] font-black uppercase tracking-widest">Call GEX</div>
                     <div className="text-[11px] font-mono text-[#4ADE80] font-bold">{fmtGreek(profile.strikes.reduce((acc, cur) => acc + (cur.callGex || 0), 0))}</div>
                   </div>
                   <div>
-                    <div className="text-[7.5px] text-zinc-500 font-black uppercase tracking-widest">Put GEX</div>
+                    <div className="text-[8px] text-[var(--text-tertiary)] font-black uppercase tracking-widest">Put GEX</div>
                     <div className="text-[11px] font-mono text-[#F87171] font-bold">{fmtGreek(profile.strikes.reduce((acc, cur) => acc + (cur.putGex || 0), 0))}</div>
                   </div>
                   <div>
-                    <div className="text-[7.5px] text-zinc-500 font-black uppercase tracking-widest">Net GEX</div>
-                    <div className="text-[11px] font-mono text-[#E5E5E5] font-bold">{fmtGreek(profile.netGex)}</div>
+                    <div className="text-[8px] text-[var(--text-tertiary)] font-black uppercase tracking-widest">Net GEX</div>
+                    <div className="text-[11px] font-mono text-[var(--text-primary)] font-bold">{fmtGreek(profile.netGex)}</div>
                   </div>
                 </div>
               )}
             </div>
 
             {/* DEX PROFILE */}
-            <div className={`${theme.cardBg} rounded-lg p-5`} id="dex-profile-chart-panel">
-              <div className="flex items-center justify-between mb-4">
-                <div className="flex items-center gap-2 text-[9px] font-black tracking-widest text-[#a1a1aa] uppercase">
-                  <Waves className={`w-3.5 h-3.5 ${theme.iconColor}`} />
-                  Delta Exposure (DEX)
-                  <span className="text-zinc-700">|</span>
-                  <span className="text-zinc-550">$ per 1% spot move</span>
-                </div>
+            <div className="bg-[var(--surface)] border border-[var(--border)] rounded-lg p-5" id="dex-profile-chart-panel">
+              <div className="flex items-center gap-2 text-[9px] font-black tracking-widest uppercase mb-4">
+                <Waves className="w-3.5 h-3.5 text-[#60A5FA]" />
+                <span className="text-[var(--text-secondary)]">Delta Exposure (DEX)</span>
+                <span className="text-[var(--text-tertiary)] font-normal normal-case tracking-normal">· $ per 1% spot move</span>
               </div>
               <ExposureProfileChart profile={profile} decimals={selectedAsset.decimals} type="dex" />
 
               {/* DEX footer */}
               {profile && (
-                <div className="mt-4 pt-3 border-t border-black/60 grid grid-cols-3 gap-2 text-center" id="dex-profile-chart-footer">
+                <div className="mt-4 pt-3 border-t border-[var(--border)] grid grid-cols-3 gap-2 text-center" id="dex-profile-chart-footer">
                   <div>
-                    <div className="text-[7.5px] text-zinc-500 font-black uppercase tracking-widest">Call DEX</div>
+                    <div className="text-[8px] text-[var(--text-tertiary)] font-black uppercase tracking-widest">Call DEX</div>
                     <div className="text-[11px] font-mono tabular-nums text-sky-300 font-bold">{fmtGreek(profile.strikes.reduce((acc, cur) => acc + (cur.callDex || 0), 0))}</div>
                   </div>
                   <div>
-                    <div className="text-[7.5px] text-zinc-500 font-black uppercase tracking-widest">Put DEX</div>
+                    <div className="text-[8px] text-[var(--text-tertiary)] font-black uppercase tracking-widest">Put DEX</div>
                     <div className="text-[11px] font-mono tabular-nums text-[#F87171] font-bold">{fmtGreek(profile.strikes.reduce((acc, cur) => acc + (cur.putDex || 0), 0))}</div>
                   </div>
                   <div>
-                    <div className="text-[7.5px] text-zinc-500 font-black uppercase tracking-widest">Net DEX</div>
-                    <div className="text-[11px] font-mono tabular-nums text-[#E5E5E5] font-bold">{fmtGreek(profile.strikes.reduce((acc, cur) => acc + (cur.netDex || 0), 0))}</div>
+                    <div className="text-[8px] text-[var(--text-tertiary)] font-black uppercase tracking-widest">Net DEX</div>
+                    <div className="text-[11px] font-mono tabular-nums text-[var(--text-primary)] font-bold">{fmtGreek(profile.strikes.reduce((acc, cur) => acc + (cur.netDex || 0), 0))}</div>
                   </div>
                 </div>
               )}
             </div>
 
             {/* VEX PROFILE */}
-            <div className={`${theme.cardBg} rounded-lg p-5`} id="vex-profile-chart-panel">
-              <div className="flex items-center justify-between mb-4">
-                <div className="flex items-center gap-2 text-[9px] font-black tracking-widest text-[#a1a1aa] uppercase">
-                  <Zap className={`w-3.5 h-3.5 ${theme.iconColor}`} />
-                  Vega Exposure (VEX)
-                  <span className="text-zinc-700">|</span>
-                  <span className="text-zinc-550">$ per 1% vol shift</span>
-                </div>
+            <div className="bg-[var(--surface)] border border-[var(--border)] rounded-lg p-5" id="vex-profile-chart-panel">
+              <div className="flex items-center gap-2 text-[9px] font-black tracking-widest uppercase mb-4">
+                <Zap className="w-3.5 h-3.5 text-[#C084FC]" />
+                <span className="text-[var(--text-secondary)]">Vega Exposure (VEX)</span>
+                <span className="text-[var(--text-tertiary)] font-normal normal-case tracking-normal">· $ per 1% vol shift</span>
               </div>
               <ExposureProfileChart profile={profile} decimals={selectedAsset.decimals} type="vex" />
 
               {/* VEX footer */}
               {profile && (
-                <div className="mt-4 pt-3 border-t border-black/60 grid grid-cols-3 gap-2 text-center" id="vex-profile-chart-footer">
+                <div className="mt-4 pt-3 border-t border-[var(--border)] grid grid-cols-3 gap-2 text-center" id="vex-profile-chart-footer">
                   <div>
-                    <div className="text-[7.5px] text-zinc-500 font-black uppercase tracking-widest">Call VEX</div>
+                    <div className="text-[8px] text-[var(--text-tertiary)] font-black uppercase tracking-widest">Call VEX</div>
                     <div className="text-[11px] font-mono tabular-nums text-indigo-300 font-bold">{fmtGreek(profile.strikes.reduce((acc, cur) => acc + (cur.callVex || 0), 0))}</div>
                   </div>
                   <div>
-                    <div className="text-[7.5px] text-zinc-500 font-black uppercase tracking-widest">Put VEX</div>
+                    <div className="text-[8px] text-[var(--text-tertiary)] font-black uppercase tracking-widest">Put VEX</div>
                     <div className="text-[11px] font-mono tabular-nums text-[#F87171] font-bold">{fmtGreek(profile.strikes.reduce((acc, cur) => acc + (cur.putVex || 0), 0))}</div>
                   </div>
                   <div>
-                    <div className="text-[7.5px] text-zinc-500 font-black uppercase tracking-widest">Net VEX</div>
-                    <div className="text-[11px] font-mono tabular-nums text-[#E5E5E5] font-bold">{fmtGreek(profile.strikes.reduce((acc, cur) => acc + (cur.netVex || 0), 0))}</div>
+                    <div className="text-[8px] text-[var(--text-tertiary)] font-black uppercase tracking-widest">Net VEX</div>
+                    <div className="text-[11px] font-mono tabular-nums text-[var(--text-primary)] font-bold">{fmtGreek(profile.strikes.reduce((acc, cur) => acc + (cur.netVex || 0), 0))}</div>
                   </div>
                 </div>
               )}
@@ -919,10 +745,10 @@ export function DealerFlowView() {
           </div>
 
           {/* ============== FULL WIDTH CHART AT BOTTOM ============== */}
-          <div className={`${theme.cardBg} rounded-lg p-5 flex flex-col w-full overflow-hidden`} id="displacement-overlay-chart-panel" style={{ minHeight: '380px' }}>
+          <div className="bg-[var(--surface)] border border-[var(--border)] rounded-lg p-5 flex flex-col w-full overflow-hidden" id="displacement-overlay-chart-panel" style={{ minHeight: '380px' }}>
             <div className="flex items-center justify-between mb-3 shrink-0">
-              <div className="flex items-center gap-2 text-[9px] font-black tracking-widest text-[#a1a1aa] uppercase">
-                <ShieldAlert className={`w-3.5 h-3.5 ${theme.iconColor}`} />
+              <div className="flex items-center gap-2 text-[9px] font-black tracking-widest text-[var(--text-secondary)] uppercase">
+                <ShieldAlert className="w-3.5 h-3.5 text-[#F87171]" />
                 Price Action — Supply/Demand & Imbalance Overlay
               </div>
               <FeedChip feed={serverState?.candle_feed} />

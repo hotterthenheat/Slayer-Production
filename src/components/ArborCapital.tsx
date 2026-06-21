@@ -1,33 +1,76 @@
 import React, { useState, useMemo } from 'react';
-import { 
-  Users, 
-  BookOpen, 
-  MessagesSquare, 
-  HelpCircle, 
-  FileText, 
-  Tv, 
-  Lightbulb, 
-  Calendar, 
-  ExternalLink, 
-  ArrowUpRight, 
-  MessageSquarePlus, 
+import {
+  Users,
+  BookOpen,
+  FileText,
+  HelpCircle,
+  Calendar,
+  MessageSquarePlus,
   CheckCircle,
-  Clock,
   Compass,
   GraduationCap,
-  Sparkles,
-  Bookmark
+  ShieldCheck,
+  TrendingUp,
+  TrendingDown,
+  Bookmark,
+  ChevronUp,
 } from 'lucide-react';
 import { useContractStore } from '../lib/store';
+import { V8TradeRecord } from '../types';
+
+type ChannelKey = 'verified' | 'research' | 'education' | 'support';
+
+const CHANNELS: { key: ChannelKey; label: string; sub: string; Icon: typeof FileText }[] = [
+  { key: 'verified', label: 'Verified Results', sub: 'Live trade ledger', Icon: ShieldCheck },
+  { key: 'research', label: 'Research Library', sub: 'Flow & macro methodology', Icon: FileText },
+  { key: 'education', label: 'Options Education', sub: 'Greeks & risk framework', Icon: BookOpen },
+  { key: 'support', label: 'Product Support', sub: 'Feature requests & feedback', Icon: HelpCircle },
+];
+
+// Section header used across every channel for a consistent institutional look.
+function SectionHeader({
+  icon,
+  title,
+  meta,
+}: {
+  icon: React.ReactNode;
+  title: string;
+  meta?: React.ReactNode;
+}) {
+  return (
+    <div className="flex items-center justify-between gap-3 border-b border-[var(--border)] pb-3">
+      <div className="flex items-center gap-2">
+        {icon}
+        <h3 className="text-[11px] font-black uppercase tracking-[0.18em] text-[var(--text-primary)]">
+          {title}
+        </h3>
+      </div>
+      {meta != null && (
+        <span className="text-[9px] uppercase tracking-[0.16em] text-[var(--text-tertiary)] shrink-0">
+          {meta}
+        </span>
+      )}
+    </div>
+  );
+}
+
+const WIN_OUTCOMES = ['Target 1 Winner', 'Target 2 Winner', 'Target 3 Winner', 'Stretch Winner'];
 
 export default function ArborCapital() {
-  const [activeChannel, setActiveChannel] = useState<'research' | 'education' | 'community' | 'support'>('research');
-  
-  // Feature requests state
+  const [activeChannel, setActiveChannel] = useState<ChannelKey>('verified');
+
+  // Real platform data — trade ledger and market clock come straight from the store.
+  const trades = useContractStore((s) => s.trades);
+  const serverState = useContractStore((s) => s.serverState);
+  const marketState = useContractStore((s) => s.marketState);
+  const selectedAsset = useContractStore((s) => s.selectedAsset);
+
+  // Feature requests are genuine client-side UI (a working form + voting), not
+  // mock "live" data. Kept and restyled.
   const [userRequests, setUserRequests] = useState([
     { id: 'req-1', title: 'Imbalance sweep trigger audio alerts', type: 'Feature Request', votes: 24, status: 'Completed' },
-    { id: 'req-2', title: 'Vanna exposure speed indicators', type: 'Research suggestion', votes: 11, status: 'In Review' },
-    { id: 'req-3', title: 'Gamma Flip levels overlays in standard indices charts', type: 'Feature Request', votes: 19, status: 'Scheduled' }
+    { id: 'req-2', title: 'Vanna exposure speed indicators', type: 'Research Suggestion', votes: 11, status: 'In Review' },
+    { id: 'req-3', title: 'Gamma flip level overlays on index charts', type: 'Feature Request', votes: 19, status: 'Scheduled' },
   ]);
   const [newRequestTitle, setNewRequestTitle] = useState('');
   const [newRequestType, setNewRequestType] = useState('Feature Request');
@@ -36,16 +79,9 @@ export default function ArborCapital() {
   const handleAddRequest = (e: React.FormEvent) => {
     e.preventDefault();
     if (!newRequestTitle.trim()) return;
-
     setUserRequests([
-      {
-        id: `req-${Date.now()}`,
-        title: newRequestTitle,
-        type: newRequestType,
-        votes: 1,
-        status: 'Open'
-      },
-      ...userRequests
+      { id: `req-${Date.now()}`, title: newRequestTitle, type: newRequestType, votes: 1, status: 'Open' },
+      ...userRequests,
     ]);
     setNewRequestTitle('');
     setRequestSubmitted(true);
@@ -53,505 +89,522 @@ export default function ArborCapital() {
   };
 
   const handleVote = (id: string) => {
-    setUserRequests(prev => prev.map(r => r.id === id ? { ...r, votes: r.votes + 1 } : r));
+    setUserRequests((prev) => prev.map((r) => (r.id === id ? { ...r, votes: r.votes + 1 } : r)));
   };
 
-  // Static mock data for the selected channel content
-  const researchArticles = [
+  // Aggregate verified results from the real trade archive.
+  const ledgerStats = useMemo(() => {
+    const list = (trades || []) as V8TradeRecord[];
+    const closed = list.filter((t) => t.finalOutcome && t.finalOutcome !== 'Active');
+    const wins = closed.filter((t) => WIN_OUTCOMES.includes(t.finalOutcome));
+    const active = list.filter((t) => t.finalOutcome === 'Active');
+    const winRate = closed.length ? (wins.length / closed.length) * 100 : null;
+    const avgGain = closed.length
+      ? closed.reduce((s, t) => s + (Number.isFinite(t.maxGain) ? t.maxGain : 0), 0) / closed.length
+      : null;
+    return {
+      total: list.length,
+      closed: closed.length,
+      wins: wins.length,
+      active: active.length,
+      winRate,
+      avgGain,
+    };
+  }, [trades]);
+
+  const recentTrades = useMemo(
+    () => ((trades || []) as V8TradeRecord[]).slice(0, 8),
+    [trades],
+  );
+
+  // Static, clearly-labeled reference content. No fabricated "live" statistics,
+  // dates, or hit rates — these describe how the platform's tools work.
+  const researchTopics = [
     {
-      title: 'Dealer Gamma Flips During Volatility Spikes: What the Data Shows',
-      tag: 'Dealer Flow Analysis',
-      date: 'June 08, 2026',
-      summary: 'A breakdown of price speed when market makers hit deep negative gamma. Historical win rate for call buyers was 72.4% in the 90-minute window after these events.',
-      readTime: '8 min read',
-      isPremium: true
+      title: 'Reading Dealer Gamma Through Volatility',
+      tag: 'Dealer Flow',
+      body: 'How market makers hedge across positive and negative gamma regimes, and why price behaves differently on each side of the gamma flip.',
     },
     {
-      title: 'Overbought RSI Divergences on Index Futures: Hit Rate Review',
-      tag: 'Market Research',
-      date: 'June 07, 2026',
-      summary: 'How reliable are RSI reversion signals on index futures? When paired with order-block sweeps, historical max drawdown dropped by over 14%.',
-      readTime: '6 min read',
-      isPremium: false
+      title: 'Order Blocks, VWAP & Structure Breaks',
+      tag: 'Price Structure',
+      body: 'Mapping displacement zones and structure breaks (BOS) as reference levels for short-dated option premium.',
     },
     {
-      title: 'Weekly Index Outlook: Key Call/Put Walls and Vanna Levels for SPX, NDX, RUT',
-      tag: 'Macro Analysis',
-      date: 'June 05, 2026',
-      summary: 'Call wall and put wall levels mapped for SPX, NDX, and RUT. Price clustering suggests a low-volatility period ahead, which favors Calendar spreads.',
-      readTime: '12 min read',
-      isPremium: true
-    }
+      title: 'Call / Put Walls & Vanna Levels',
+      tag: 'Positioning',
+      body: 'Interpreting call-wall and put-wall clustering on index names, and what compressing exposure implies for the expected move.',
+    },
   ];
 
   const educationModules = [
     {
-      title: 'Options Greeks and Dealer Hedging Explained',
-      level: 'CORE LESSON 1',
-      desc: 'Learn how GEX (gamma exposure), DEX (delta exposure), and VEX (vanna exposure) drive market maker hedging. Understand where dealers are likely to push price.',
-      progress: '100% COMPLETED',
-      icon: GraduationCap,
-      color: 'text-indigo-400'
+      title: 'Greeks & Dealer Hedging',
+      level: 'Foundations',
+      desc: 'How GEX, DEX and VEX drive market-maker hedging and where dealers are positioned to push price.',
+      Icon: GraduationCap,
+      accent: '#4ADE80',
     },
     {
-      title: 'Order Blocks and VWAP: Finding Key Price Levels',
-      level: 'CORE LESSON 2',
-      desc: 'How to spot major order blocks and displacement zones. Learn why structure breaks (BOS) often act as magnets for short-dated option premium.',
-      progress: '80% COMPLETED',
-      icon: BookOpen,
-      color: 'text-[#4ADE80]'
+      title: 'Key Price Levels',
+      level: 'Foundations',
+      desc: 'Identifying major order blocks and displacement zones, and why structure breaks act as magnets for premium.',
+      Icon: BookOpen,
+      accent: '#60A5FA',
     },
     {
-      title: 'Options Risk Management: Protecting Your Account',
-      level: 'ADVANCED LESSON 3',
-      desc: 'A practical framework covering expected value, probability sizing, and drawdown limits to keep your account healthy across different volatility conditions.',
-      progress: 'NOT STARTED',
-      icon: Compass,
-      color: 'text-amber-400'
-    }
+      title: 'Risk Management',
+      level: 'Advanced',
+      desc: 'A practical framework for expected value, probability-based sizing and drawdown limits across volatility regimes.',
+      Icon: Compass,
+      accent: '#FBBF24',
+    },
   ];
 
-  const communityDiscussions = [
-    { id: 1, user: 'VolTrader_41', avatar: '🛡️', msg: 'SPX GEX wall held at 5180. Dealers pushed price back up. Classic pin at that level.', time: '12m ago' },
-    { id: 2, user: 'QuantDelta', avatar: '🔬', msg: 'Watching the vanna curve on QQQ right now. IV declining and dealers are buying back hedges passively.', time: '28m ago' },
-    { id: 3, user: 'SlayerAlpha_007', avatar: '🌲', msg: 'Has anyone checked V8 live tracker results vs the expected move? My Target 1 calls hit spot on this morning.', time: '1h ago' }
-  ];
+  const fmtPct = (v: number | null, signed = false) =>
+    v == null || !Number.isFinite(v) ? '—' : `${signed && v >= 0 ? '+' : ''}${v.toFixed(1)}%`;
+
+  const fmtTime = (ts?: string) => {
+    if (!ts) return '';
+    const d = new Date(ts);
+    if (isNaN(d.getTime())) return '';
+    return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  };
 
   return (
-    <div className="w-full text-[#4ADE80] flex flex-col font-mono select-none antialiased space-y-6">
-      
-      {/* Header Banner */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center apple-glass p-5 rounded-2xl gap-4 shadow-lg border border-white/5">
+    <div className="w-full flex flex-col font-mono select-none antialiased space-y-5 text-[var(--text-secondary)]">
+
+      {/* Header */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 rounded-xl border border-[var(--border)] bg-[var(--surface)] p-5">
         <div>
-          <div className="flex items-center gap-2 text-[#4ADE80] mb-1">
+          <div className="flex items-center gap-2 mb-1.5">
             <Users className="w-4 h-4 text-[#4ADE80]" />
-            <span className="text-[10px] tracking-[0.25em] font-black uppercase font-mono">SLAYER LABS</span>
-          </div>
-          <h2 className="text-xl font-bold tracking-wider text-[#E5E5E5] font-mono flex items-center gap-2">
-            🌲 SLAYER LABS: COMMUNITY AND EDUCATION
-          </h2>
-          <p className="text-xs text-zinc-400 font-sans mt-1 leading-normal text-left">
-            Research, education, and trade reviews for options day traders. Built around verified results, not alerts.
-          </p>
-        </div>
-        <div className="flex items-center gap-2 bg-black/40 p-2.5 border border-white/5 rounded-lg shrink-0">
-          <span className="text-[9px] text-[#A1A1AA] font-mono tracking-wider uppercase block">MISSION</span>
-          <div className="h-5 w-px bg-white/10 mx-1"></div>
-          <span className="text-xs font-bold text-[#4ADE80] font-mono italic">"Verified results. Shared knowledge."</span>
-        </div>
-      </div>
-
-      {/* Main Structural Information Cards regarding "Not a Discord, Not an alert service" */}
-      <div className="bg-gradient-to-r from-zinc-300/10 via-indigo-500/5 to-transparent border border-black p-6 rounded-2xl relative overflow-hidden shadow-xl text-left">
-        <div className="absolute top-0 right-0 p-4 opacity-5 pointer-events-none">
-          <Sparkles className="w-24 h-24 text-[#4ADE80] shrink-0" />
-        </div>
-        <div className="relative">
-          <h3 className="text-xs font-black tracking-widest text-[#E0E0E0] uppercase font-mono mb-2">What This Is</h3>
-          <p className="text-xs md:text-sm text-[#4ADE80] leading-relaxed font-sans max-w-4xl pt-0.5">
-            Slayer.trade is a software company - <span className="font-bold text-[#4ADE80]">Slayer Labs is not a signal group or Discord alert room</span>. We build tools that help traders make better decisions using real, measurable data. The community exists to support the software and hold results accountable. The software does not exist to support the community.
-          </p>
-          <div className="flex flex-wrap gap-4 mt-4 text-[10px] text-zinc-400 font-mono uppercase">
-            <div className="flex items-center gap-1.5">
-              <span className="w-1.5 h-1.5 rounded-full bg-black"></span>
-              <span>Software First</span>
-            </div>
-            <div className="h-4 w-px bg-white/10"></div>
-            <div className="flex items-center gap-1.5">
-              <span className="w-1.5 h-1.5 rounded-full bg-[#d4d4d8]"></span>
-              <span>Verified Results</span>
-            </div>
-            <div className="h-4 w-px bg-white/10"></div>
-            <div className="flex items-center gap-1.5">
-              <span className="w-1.5 h-1.5 rounded-full bg-[#d4d4d8]"></span>
-              <span>Data-Driven Methods</span>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Slayer Labs Interactive Workspace Layout */}
-      <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 items-start">
-        
-        {/* Sidebar Navigation */}
-        <div className="col-span-1 flex flex-col gap-2 w-full">
-          
-          <button
-            onClick={() => setActiveChannel('research')}
-            className={`flex items-center gap-3 p-3 px-4 rounded-xl text-left font-mono text-xs font-bold transition-all border ${
-              activeChannel === 'research'
-                ? 'bg-black/40 text-[#d4d4d8] border-black shadow'
-                : 'bg-black/30 border-white/5 hover:border-black text-[#888888] hover:text-zinc-200'
-            }`}
-          >
-            <FileText className="w-4 h-4 shrink-0" />
-            <div className="flex flex-col">
-              <span>RESEARCH CHANNELS</span>
-              <span className="text-[9px] text-zinc-550 font-normal">Flow & Macro Analysis</span>
-            </div>
-          </button>
-
-          <button
-            onClick={() => setActiveChannel('education')}
-            className={`flex items-center gap-3 p-3 px-4 rounded-xl text-left font-mono text-xs font-bold transition-all border ${
-              activeChannel === 'education'
-                ? 'bg-black/40 text-[#d4d4d8] border-black shadow'
-                : 'bg-black/30 border-white/5 hover:border-black text-[#888888] hover:text-zinc-200'
-            }`}
-          >
-            <BookOpen className="w-4 h-4 shrink-0" />
-            <div className="flex flex-col">
-              <span>EDUCATIONAL CONTENT</span>
-              <span className="text-[9px] text-zinc-550 font-normal">Interactive options school</span>
-            </div>
-          </button>
-
-          <button
-            onClick={() => setActiveChannel('community')}
-            className={`flex items-center gap-3 p-3 px-4 rounded-xl text-left font-mono text-xs font-bold transition-all border ${
-              activeChannel === 'community'
-                ? 'bg-black/40 text-[#d4d4d8] border-black shadow'
-                : 'bg-black/30 border-white/5 hover:border-black text-[#888888] hover:text-zinc-200'
-            }`}
-          >
-            <MessagesSquare className="w-4 h-4 shrink-0" />
-            <div className="flex flex-col">
-              <span>COMMUNITY FEED</span>
-              <span className="text-[9px] text-zinc-550 font-normal">Trade journaling logs</span>
-            </div>
-          </button>
-
-          <button
-            onClick={() => setActiveChannel('support')}
-            className={`flex items-center gap-3 p-3 px-4 rounded-xl text-left font-mono text-xs font-bold transition-all border ${
-              activeChannel === 'support'
-                ? 'bg-black/40 text-[#d4d4d8] border-black shadow'
-                : 'bg-black/30 border-white/5 hover:border-black text-[#888888] hover:text-zinc-200'
-            }`}
-          >
-            <HelpCircle className="w-4 h-4 shrink-0" />
-            <div className="flex flex-col">
-              <span>PRODUCT SUPPORT</span>
-              <span className="text-[9px] text-zinc-550 font-normal">Feedback and suggestion box</span>
-            </div>
-          </button>
-
-          {/* Event Timeline Display Widget */}
-          <div className="bg-black/30 border border-white/5 rounded-2xl p-5 mt-2 flex flex-col font-mono text-xs gap-3">
-            <span className="text-[9px] text-[#A1A1AA] uppercase tracking-widest font-black flex items-center gap-1">
-              <Calendar className="w-3.5 h-3.5 text-[#4ADE80]" />
-              Upcoming Live Sessions
+            <span className="text-[10px] font-black uppercase tracking-[0.24em] text-[var(--text-tertiary)]">
+              Slayer Labs
             </span>
-
-            <div className="space-y-3.5 text-left">
-              <div className="border-l-2 border-black pl-3">
-                <span className="text-[9px] text-[#d4d4d8] block font-bold uppercase tracking-wider">TODAY 15:30 UTC</span>
-                <span className="font-bold text-zinc-200 block">Intraday Dealer Flow Review</span>
-                <span className="text-[10px] text-zinc-500 font-sans">Live platform walkthrough with V8 experts</span>
-              </div>
-              
-              <div className="border-l-2 border-white/10 pl-3 text-[#888888]">
-                <span className="text-[9px] block uppercase tracking-wider">WEDNESDAY 19:15 UTC</span>
-                <span className="font-bold text-zinc-400 block">Low-Volatility Environment Panel</span>
-                <span className="text-[10px] text-zinc-650 font-sans">Education session covering vanna and charm effects</span>
-              </div>
-            </div>
           </div>
+          <h2 className="text-lg font-bold tracking-tight text-[var(--text-primary)]">
+            Community &amp; Education
+          </h2>
+          <p className="text-xs text-[var(--text-tertiary)] mt-1 leading-relaxed max-w-2xl">
+            Research, education and a verified trade ledger for options day traders. Built around
+            measurable results — not alerts.
+          </p>
+        </div>
+        <div className="flex items-center gap-3 rounded-lg border border-[var(--border)] bg-[var(--surface-2)] px-4 py-3 shrink-0">
+          <div className="flex flex-col">
+            <span className="text-[9px] uppercase tracking-[0.16em] text-[var(--text-tertiary)]">Market</span>
+            <span
+              className="text-xs font-bold tabular-nums"
+              style={{ color: marketState.open ? '#4ADE80' : '#F87171' }}
+            >
+              {marketState.open ? 'OPEN' : 'CLOSED'}
+            </span>
+          </div>
+          <div className="h-7 w-px bg-[var(--border)]" />
+          <div className="flex flex-col">
+            <span className="text-[9px] uppercase tracking-[0.16em] text-[var(--text-tertiary)]">
+              {marketState.open ? 'Closes in' : 'Opens in'}
+            </span>
+            <span className="text-xs font-bold tabular-nums text-[var(--text-primary)]">
+              {marketState.open ? marketState.closeIn : marketState.openIn}
+            </span>
+          </div>
+        </div>
+      </div>
 
+      {/* Positioning statement */}
+      <div className="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-5">
+        <h3 className="text-[10px] font-black uppercase tracking-[0.18em] text-[var(--text-tertiary)] mb-2">
+          What This Is
+        </h3>
+        <p className="text-xs md:text-[13px] text-[var(--text-secondary)] leading-relaxed max-w-4xl">
+          Slayer is a software company —{' '}
+          <span className="font-bold text-[var(--text-primary)]">not a signal group or Discord alert room</span>.
+          The tools help traders make better decisions with real, measurable data. The community exists to
+          support the software and keep results accountable.
+        </p>
+        <div className="flex flex-wrap gap-x-5 gap-y-2 mt-4 text-[10px] uppercase tracking-[0.12em] text-[var(--text-tertiary)]">
+          {['Software first', 'Verified results', 'Data-driven methods'].map((t) => (
+            <span key={t} className="flex items-center gap-1.5">
+              <span className="w-1 h-1 rounded-full bg-[#4ADE80]" />
+              {t}
+            </span>
+          ))}
+        </div>
+      </div>
+
+      {/* Workspace */}
+      <div className="grid grid-cols-1 lg:grid-cols-4 gap-5 items-start">
+
+        {/* Sidebar */}
+        <div className="lg:col-span-1 flex flex-col gap-2">
+          {CHANNELS.map(({ key, label, sub, Icon }) => {
+            const active = activeChannel === key;
+            return (
+              <button
+                key={key}
+                onClick={() => setActiveChannel(key)}
+                className={`flex items-center gap-3 rounded-lg border px-4 py-3 text-left transition-colors ${
+                  active
+                    ? 'border-[var(--border-strong)] bg-[var(--surface-2)]'
+                    : 'border-[var(--border)] bg-[var(--surface)] hover:bg-[var(--surface-2)]'
+                }`}
+              >
+                <Icon
+                  className="w-4 h-4 shrink-0"
+                  style={{ color: active ? '#4ADE80' : 'var(--text-tertiary)' }}
+                />
+                <div className="flex flex-col">
+                  <span
+                    className="text-[11px] font-bold uppercase tracking-[0.1em]"
+                    style={{ color: active ? 'var(--text-primary)' : 'var(--text-secondary)' }}
+                  >
+                    {label}
+                  </span>
+                  <span className="text-[9px] text-[var(--text-tertiary)] normal-case">{sub}</span>
+                </div>
+              </button>
+            );
+          })}
+
+          {/* Live session note */}
+          <div className="mt-1 rounded-xl border border-[var(--border)] bg-[var(--surface)] p-4 flex flex-col gap-2.5">
+            <div className="flex items-center gap-1.5">
+              <Calendar className="w-3.5 h-3.5 text-[#4ADE80]" />
+              <span className="text-[9px] font-black uppercase tracking-[0.16em] text-[var(--text-tertiary)]">
+                Live Sessions
+              </span>
+            </div>
+            <p className="text-[11px] text-[var(--text-secondary)] leading-relaxed">
+              Platform walkthroughs and education sessions are announced in-app. Tracked contract:{' '}
+              <span className="font-bold text-[var(--text-primary)]">{selectedAsset?.ticker ?? '—'}</span>.
+            </p>
+          </div>
         </div>
 
-        {/* Content Dynamic Area */}
-        <div className="col-span-1 lg:col-span-3 bg-black/40 border border-white/5 rounded-2xl p-6 shadow-xl relative min-h-[350px]">
-          
-          {/* Channel 1: Research Articles */}
-          {activeChannel === 'research' && (
+        {/* Content */}
+        <div className="lg:col-span-3 rounded-xl border border-[var(--border)] bg-[var(--surface)] p-5 md:p-6 min-h-[360px]">
+
+          {/* Verified Results — real trade ledger */}
+          {activeChannel === 'verified' && (
             <div className="flex flex-col gap-4 animate-fadeIn">
-              <div className="flex justify-between items-center border-b border-white/5 pb-3">
-                <h3 className="text-sm font-bold text-[#E5E5E5] font-mono uppercase tracking-widest flex items-center gap-1.5">
-                  <FileText className="w-4.5 h-4.5 text-[#d4d4d8]" />
-                  Market Research & Flow Reports
-                </h3>
-                <span className="text-[9px] text-zinc-500 font-mono">PUBLISHED BY SLAYER LABS</span>
+              <SectionHeader
+                icon={<ShieldCheck className="w-4 h-4 text-[#4ADE80]" />}
+                title="Verified Trade Ledger"
+                meta={serverState?.data_source ? `Source · ${serverState.data_source}` : 'Live'}
+              />
+
+              {/* Stat strip from real archive */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                {[
+                  { label: 'Logged Trades', value: String(ledgerStats.total), tone: 'var(--text-primary)' },
+                  {
+                    label: 'Win Rate',
+                    value: fmtPct(ledgerStats.winRate),
+                    tone:
+                      ledgerStats.winRate == null
+                        ? 'var(--text-primary)'
+                        : ledgerStats.winRate >= 50
+                        ? '#4ADE80'
+                        : '#F87171',
+                  },
+                  {
+                    label: 'Avg Max Gain',
+                    value: fmtPct(ledgerStats.avgGain, true),
+                    tone: (ledgerStats.avgGain ?? 0) >= 0 ? '#4ADE80' : '#F87171',
+                  },
+                  { label: 'Active Now', value: String(ledgerStats.active), tone: '#FBBF24' },
+                ].map((s) => (
+                  <div key={s.label} className="rounded-lg border border-[var(--border)] bg-[var(--surface-2)] p-3.5">
+                    <span className="text-[9px] uppercase tracking-[0.14em] text-[var(--text-tertiary)] block">
+                      {s.label}
+                    </span>
+                    <span className="text-lg font-bold tabular-nums mt-0.5 block" style={{ color: s.tone }}>
+                      {s.value}
+                    </span>
+                  </div>
+                ))}
               </div>
 
-              <div className="space-y-4">
-                {researchArticles.map((article, idx) => (
-                  <div key={idx} className="bg-black/30 hover:bg-black/80 border border-white/5 hover:border-black p-5 rounded-2xl transition-all flex flex-col justify-between shadow-md text-left">
-                    <div>
-                      <div className="flex justify-between items-center mb-1.5">
-                        <span className="text-[9.5px] font-bold text-[#d4d4d8] bg-[#d4d4d8]/10 px-2 py-0.5 border border-[#d4d4d8]/20 font-mono rounded text-center">
-                          {article.tag}
-                        </span>
-                        <div className="flex items-center gap-3 text-[10.5px] text-zinc-500 font-mono">
-                          <span>{article.date}</span>
-                          <span className="hidden sm:inline">•</span>
-                          <span className="hidden sm:inline">{article.readTime}</span>
+              {/* Recent entries */}
+              {recentTrades.length > 0 ? (
+                <div className="flex flex-col gap-2">
+                  <span className="text-[9px] uppercase tracking-[0.16em] text-[var(--text-tertiary)]">
+                    Most recent entries
+                  </span>
+                  {recentTrades.map((t) => {
+                    const bullish = t.direction === 'BULLISH';
+                    const isWin = WIN_OUTCOMES.includes(t.finalOutcome);
+                    const isActive = t.finalOutcome === 'Active';
+                    const outcomeTone = isActive ? '#FBBF24' : isWin ? '#4ADE80' : '#F87171';
+                    return (
+                      <div
+                        key={t.id}
+                        className="rounded-lg border border-[var(--border)] bg-[var(--surface-2)] p-3.5 flex items-center justify-between gap-3"
+                      >
+                        <div className="flex items-center gap-3 min-w-0">
+                          <div
+                            className="w-7 h-7 rounded flex items-center justify-center shrink-0"
+                            style={{ background: `${bullish ? '#4ADE80' : '#F87171'}1a` }}
+                          >
+                            {bullish ? (
+                              <TrendingUp className="w-4 h-4" style={{ color: '#4ADE80' }} />
+                            ) : (
+                              <TrendingDown className="w-4 h-4" style={{ color: '#F87171' }} />
+                            )}
+                          </div>
+                          <div className="min-w-0">
+                            <span className="text-xs font-bold text-[var(--text-primary)] block truncate">
+                              {t.contract}
+                            </span>
+                            <span className="text-[10px] text-[var(--text-tertiary)] tabular-nums">
+                              {fmtTime(t.closeTs || t.timestamp)} · {t.recommendation}
+                            </span>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-4 shrink-0">
+                          <div className="flex flex-col items-end">
+                            <span className="text-[9px] uppercase tracking-[0.12em] text-[var(--text-tertiary)]">
+                              Max gain
+                            </span>
+                            <span
+                              className="text-xs font-bold tabular-nums"
+                              style={{ color: (t.maxGain ?? 0) >= 0 ? '#4ADE80' : '#F87171' }}
+                            >
+                              {fmtPct(t.maxGain, true)}
+                            </span>
+                          </div>
+                          <span
+                            className="text-[9px] font-bold uppercase tracking-[0.1em] px-2 py-1 rounded whitespace-nowrap"
+                            style={{ color: outcomeTone, background: `${outcomeTone}14`, border: `1px solid ${outcomeTone}55` }}
+                          >
+                            {t.finalOutcome}
+                          </span>
                         </div>
                       </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                <div className="rounded-lg border border-dashed border-[var(--border)] bg-[var(--surface-2)] p-8 text-center">
+                  <ShieldCheck className="w-7 h-7 text-[var(--text-tertiary)] mx-auto mb-2" />
+                  <p className="text-xs text-[var(--text-secondary)]">No trades logged yet for this session.</p>
+                  <p className="text-[10px] text-[var(--text-tertiary)] mt-1">
+                    Verified entries appear here as the engine records them.
+                  </p>
+                </div>
+              )}
+            </div>
+          )}
 
-                      <h4 className="text-sm sm:text-base font-bold text-zinc-100 hover:text-[#d4d4d8] transition-colors font-mono tracking-tight leading-tight cursor-pointer flex items-center gap-1.5">
-                        {article.title}
-                        <ArrowUpRight className="w-3.5 h-3.5 shrink-0 opacity-70" />
-                      </h4>
-                      <p className="text-zinc-400 font-sans text-xs mt-2.5 ml-0.5 leading-relaxed">
-                        {article.summary}
-                      </p>
+          {/* Research Library */}
+          {activeChannel === 'research' && (
+            <div className="flex flex-col gap-4 animate-fadeIn">
+              <SectionHeader
+                icon={<FileText className="w-4 h-4 text-[#4ADE80]" />}
+                title="Research Library"
+                meta="Methodology"
+              />
+              <p className="text-xs text-[var(--text-tertiary)] leading-relaxed -mt-1">
+                Reference notes on how the platform reads flow, structure and positioning. These describe
+                method — they are not trade calls.
+              </p>
+              <div className="grid grid-cols-1 gap-3">
+                {researchTopics.map((a) => (
+                  <div
+                    key={a.title}
+                    className="rounded-lg border border-[var(--border)] bg-[var(--surface-2)] p-4"
+                  >
+                    <div className="flex items-center justify-between gap-3 mb-2">
+                      <span className="text-[9px] font-bold uppercase tracking-[0.12em] text-[#4ADE80] px-2 py-0.5 rounded border border-[#4ADE80]/30 bg-[#4ADE80]/10">
+                        {a.tag}
+                      </span>
                     </div>
-
-                    <div className="mt-4 pt-3.5 border-t border-white/5 flex items-center justify-between text-[10.5px] font-mono select-none">
-                      <span className="text-zinc-550">Author: Slayer Labs Research</span>
-                      <button className="text-[#d4d4d8] hover:underline flex items-center gap-1 bg-black/40 px-2.5 py-1 border border-white/5 rounded-lg cursor-pointer">
-                        <span>EXPAND ENTIRE REPORT</span>
-                      </button>
-                    </div>
+                    <h4 className="text-sm font-bold text-[var(--text-primary)] tracking-tight leading-snug">
+                      {a.title}
+                    </h4>
+                    <p className="text-xs text-[var(--text-secondary)] mt-2 leading-relaxed">{a.body}</p>
                   </div>
                 ))}
               </div>
             </div>
           )}
 
-          {/* Channel 2: Educational Content */}
+          {/* Options Education */}
           {activeChannel === 'education' && (
             <div className="flex flex-col gap-4 animate-fadeIn">
-              <div className="flex justify-between items-center border-b border-white/5 pb-3">
-                <h3 className="text-sm font-bold text-[#E5E5E5] font-mono uppercase tracking-widest flex items-center gap-1.5">
-                  <GraduationCap className="w-4.5 h-4.5 text-[#d4d4d8]" />
-                  Options Education & Risk Management
-                </h3>
-                <span className="text-[9px] text-zinc-500 font-mono">3 / 5 MODULES COMPLETED</span>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-left">
-                {educationModules.map((module, idx) => {
-                  const IconComp = module.icon;
+              <SectionHeader
+                icon={<GraduationCap className="w-4 h-4 text-[#4ADE80]" />}
+                title="Options Education"
+                meta="Core curriculum"
+              />
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                {educationModules.map((m) => {
+                  const Icon = m.Icon;
                   return (
-                    <div key={idx} className="bg-black/30 border border-white/5 p-5 rounded-2xl flex flex-col justify-between shadow-md">
-                      <div>
-                        <div className="flex justify-between items-center mb-3">
-                          <span className="text-[9px] text-zinc-500 font-mono leading-none tracking-wider uppercase block">{module.level}</span>
-                          <span className={`text-[9.5px] font-bold font-mono px-2 py-0.5 border rounded ${
-                            module.progress.startsWith('100') 
-                              ? 'bg-[#d4d4d8]/10 text-[#d4d4d8] border-[#d4d4d8]/20' 
-                              : module.progress.startsWith('NOT')
-                              ? 'bg-black/40 text-zinc-500 border-transparent'
-                              : 'bg-amber-500/10 text-amber-500 border-amber-500/20'
-                          }`}>
-                            {module.progress}
-                          </span>
+                    <div
+                      key={m.title}
+                      className="rounded-lg border border-[var(--border)] bg-[var(--surface-2)] p-4 flex flex-col gap-3"
+                    >
+                      <div className="flex items-center justify-between">
+                        <div
+                          className="w-8 h-8 rounded flex items-center justify-center"
+                          style={{ background: `${m.accent}1a`, border: `1px solid ${m.accent}55` }}
+                        >
+                          <Icon className="w-4 h-4" style={{ color: m.accent }} />
                         </div>
-
-                        <div className="flex items-center gap-2 mb-2">
-                          <IconComp className={`w-5 h-5 shrink-0 ${module.color}`} />
-                          <h4 className="text-[12.5px] font-extrabold text-zinc-200 mt-0.5 tracking-tight font-mono leading-none">{module.title}</h4>
-                        </div>
-                        <p className="text-zinc-450 font-sans text-xs mt-2.5 leading-relaxed">
-                          {module.desc}
-                        </p>
+                        <span className="text-[9px] uppercase tracking-[0.12em] text-[var(--text-tertiary)]">
+                          {m.level}
+                        </span>
                       </div>
-
-                      <div className="mt-5 pt-3.5 border-t border-white/5">
-                        <button className="w-full text-center py-2 bg-black/40 hover:bg-black/80 text-zinc-200 hover:text-[#E5E5E5] font-mono text-[10.5px] uppercase border border-white/5 rounded-lg cursor-pointer transition-colors shadow">
-                          {module.progress.startsWith('100') ? 'REVIEW MODULE CONTENT' : 'LAUNCH WORKBOOK'}
-                        </button>
-                      </div>
+                      <h4 className="text-[13px] font-bold text-[var(--text-primary)] tracking-tight leading-snug">
+                        {m.title}
+                      </h4>
+                      <p className="text-xs text-[var(--text-secondary)] leading-relaxed flex-1">{m.desc}</p>
                     </div>
                   );
                 })}
               </div>
-
-              <div className="mt-4 p-5 bg-black/50 border border-white/5 rounded-xl flex flex-col sm:flex-row items-center justify-between gap-4 text-left shadow-inner">
-                <div className="flex items-center gap-3">
-                  <div className="p-2.5 bg-[#d4d4d8]/10 text-[#d4d4d8] rounded-full shrink-0">
-                    <Tv className="w-5 h-5" />
-                  </div>
-                  <div>
-                    <span className="text-xs font-bold text-[#E5E5E5] block font-mono">🎓 SLAYER WEEKLY SESSION REPLAY</span>
-                    <span className="text-[11px] text-zinc-400 font-sans">Full walkthrough of expected value and probability sizing, with live examples.</span>
-                  </div>
-                </div>
-                <button className="w-full sm:w-auto px-4 py-2 bg-[#d4d4d8] hover:bg-black/40 text-black font-extrabold text-xs font-mono uppercase rounded-lg transition-colors shadow cursor-pointer whitespace-nowrap shrink-0">
-                  PLAY ARCHIVE (1h 14m)
-                </button>
-              </div>
             </div>
           )}
 
-          {/* Channel 3: Community Discussions Feed */}
-          {activeChannel === 'community' && (
-            <div className="flex flex-col gap-4 animate-fadeIn">
-              <div className="flex justify-between items-center border-b border-white/5 pb-3">
-                <h3 className="text-sm font-bold text-[#E5E5E5] font-mono uppercase tracking-widest flex items-center gap-1.5">
-                  <MessagesSquare className="w-4.5 h-4.5 text-[#d4d4d8]" />
-                  Member Trade Journals & Flow Discussion
-                </h3>
-                <span className="text-[9px] text-zinc-500 font-mono">148 MEMBERS LIVE ONLINE</span>
-              </div>
-
-              {/* Feed List */}
-              <div className="space-y-3.5 text-left">
-                {communityDiscussions.map((d) => (
-                  <div key={d.id} className="bg-black/30 border border-white/5 p-4 rounded-xl flex items-start gap-3.5 font-sans shadow-md">
-                    <div className="w-8 h-8 rounded-full bg-black/40 border border-white/5 flex items-center justify-center text-sm shrink-0 select-none">
-                      {d.avatar}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center justify-between font-mono text-[11px] mb-1">
-                        <span className="font-bold text-[#d4d4d8]">{d.user}</span>
-                        <span className="text-[#888888] tracking-tighter italic font-sans">{d.time}</span>
-                      </div>
-                      <p className="text-[#4ADE80] text-xs leading-normal">
-                        {d.msg}
-                      </p>
-                      <div className="flex items-center gap-3.5 font-mono text-[10.5px] text-zinc-500 mt-2 hover:text-zinc-400">
-                        <button className="hover:underline flex items-center gap-1 cursor-pointer">
-                          <span>❤️ Agree (14)</span>
-                        </button>
-                        <span>•</span>
-                        <button className="hover:underline flex items-center gap-1 cursor-pointer">
-                          <span>💬 Reply</span>
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-
-              {/* Chat Input placeholder bar */}
-              <div className="mt-3 p-2 bg-black/40 border border-[#2D2D30] rounded-xl flex items-center justify-between gap-3 font-mono">
-                <input 
-                  type="text" 
-                  placeholder="Share your trade notes, key levels, or a question..."
-                  className="bg-transparent border-0 text-xs text-zinc-350 placeholder-zinc-650 focus:outline-none flex-1 px-2.5 py-1.5"
-                  readOnly
-                />
-                <button 
-                  onClick={() => alert('Slayer Labs posts require a verified account.')}
-                  className="px-4 py-2 bg-black/50 text-zinc-400 hover:text-[#E5E5E5] border border-white/5 text-[10px] font-bold uppercase rounded-lg cursor-pointer whitespace-nowrap mr-1 hover:bg-black"
-                >
-                  SEND ENTRY
-                </button>
-              </div>
-            </div>
-          )}
-
-          {/* Channel 4: Product Support & Feedback Box */}
+          {/* Product Support */}
           {activeChannel === 'support' && (
             <div className="flex flex-col gap-4 animate-fadeIn">
-              
-              <div className="flex justify-between items-center border-b border-white/5 pb-3">
-                <h3 className="text-sm font-bold text-[#E5E5E5] font-mono uppercase tracking-widest flex items-center gap-1.5">
-                  <HelpCircle className="w-4.5 h-4.5 text-[#d4d4d8]" />
-                  Support & Feature Requests
-                </h3>
-                <span className="text-[9px] text-zinc-500 font-mono">PRODUCT ROADMAP</span>
-              </div>
+              <SectionHeader
+                icon={<HelpCircle className="w-4 h-4 text-[#4ADE80]" />}
+                title="Support & Feature Requests"
+                meta="Product roadmap"
+              />
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-5 items-stretch text-left">
-                
-                {/* Submit suggestion */}
-                <div className="bg-black/30 border border-white/5 p-5 rounded-2xl flex flex-col justify-between font-mono shadow-md">
-                  <div>
-                    <h4 className="text-xs font-black text-[#d4d4d8] uppercase tracking-widest flex items-center gap-1 mb-2.5">
-                      <MessageSquarePlus className="w-4 h-4 text-[#d4d4d8]" />
-                      Submit a Feature Request
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-start">
+
+                {/* Submit */}
+                <div className="rounded-lg border border-[var(--border)] bg-[var(--surface-2)] p-4">
+                  <div className="flex items-center gap-1.5 mb-2">
+                    <MessageSquarePlus className="w-4 h-4 text-[#4ADE80]" />
+                    <h4 className="text-[11px] font-black uppercase tracking-[0.14em] text-[var(--text-primary)]">
+                      Submit a Request
                     </h4>
-                    <p className="text-[11px] text-zinc-400 font-sans leading-relaxed mb-4">
-                      Submit feature ideas or bug reports. Upvote existing requests to help us prioritize what to build next.
-                    </p>
-
-                    {requestSubmitted ? (
-                      <div className="bg-black/40 text-[#d4d4d8] border border-[#d4d4d8]/20 p-4 rounded-xl flex items-start gap-2.5 mb-4 font-sans text-xs">
-                        <CheckCircle className="w-4.5 h-4.5 shrink-0 text-[#d4d4d8]" />
-                        <div>
-                          <span className="font-bold font-mono block">Request Submitted</span>
-                          Your request has been logged and will be reviewed by the team.
-                        </div>
-                      </div>
-                    ) : (
-                      <form onSubmit={handleAddRequest} className="space-y-3">
-                        <div className="space-y-1">
-                          <label className="text-[9.5px] text-[#888888] uppercase font-bold block">REQUEST TITLE</label>
-                          <input 
-                            type="text" 
-                            value={newRequestTitle}
-                            onChange={(e) => setNewRequestTitle(e.target.value)}
-                            placeholder="e.g. Alert when IV drops below 15%..."
-                            className="w-full bg-black/40 border border-white/5 p-2.5 text-xs rounded-lg text-zinc-200 focus:outline-[1px] focus:outline-[#d4d4d8]/50"
-                            required
-                          />
-                        </div>
-
-                        <div className="space-y-1">
-                          <label className="text-[9.5px] text-[#888888] uppercase font-bold block">CATEGORY</label>
-                          <select 
-                            value={newRequestType}
-                            onChange={(e) => setNewRequestType(e.target.value)}
-                            className="w-full bg-black/40 border border-white/5 p-2 text-xs rounded-lg text-[#4ADE80] font-mono focus:outline-none"
-                          >
-                            <option value="Feature Request">Platform Feature Request</option>
-                            <option value="Technical Bug">Technical Bug Report</option>
-                            <option value="Research Suggestion">Research Suggestion</option>
-                          </select>
-                        </div>
-
-                        <button 
-                          type="submit"
-                          className="w-full py-2.5 bg-[#d4d4d8] hover:bg-black/40 text-black font-extrabold uppercase text-[10px] rounded-lg transition-all shadow cursor-pointer"
-                        >
-                          SUBMIT REQUEST
-                        </button>
-                      </form>
-                    )}
                   </div>
+                  <p className="text-[11px] text-[var(--text-tertiary)] leading-relaxed mb-4">
+                    Share feature ideas or bug reports. Upvote existing requests to help prioritize what we
+                    build next.
+                  </p>
+
+                  {requestSubmitted ? (
+                    <div className="rounded-lg border border-[#4ADE80]/40 bg-[#4ADE80]/10 p-4 flex items-start gap-2.5">
+                      <CheckCircle className="w-4 h-4 shrink-0 mt-0.5" style={{ color: '#4ADE80' }} />
+                      <div>
+                        <span className="text-xs font-bold text-[var(--text-primary)] block">
+                          Request submitted
+                        </span>
+                        <span className="text-[11px] text-[var(--text-secondary)]">
+                          Logged and queued for review.
+                        </span>
+                      </div>
+                    </div>
+                  ) : (
+                    <form onSubmit={handleAddRequest} className="space-y-3">
+                      <div className="space-y-1">
+                        <label className="text-[9px] font-bold uppercase tracking-[0.12em] text-[var(--text-tertiary)] block">
+                          Request title
+                        </label>
+                        <input
+                          type="text"
+                          value={newRequestTitle}
+                          onChange={(e) => setNewRequestTitle(e.target.value)}
+                          placeholder="e.g. Alert when IV drops below 15%"
+                          className="w-full rounded-lg border border-[var(--border)] bg-[var(--surface)] p-2.5 text-xs text-[var(--text-primary)] placeholder:text-[var(--text-tertiary)] focus:outline-none focus:border-[#4ADE80]/60"
+                          required
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <label className="text-[9px] font-bold uppercase tracking-[0.12em] text-[var(--text-tertiary)] block">
+                          Category
+                        </label>
+                        <select
+                          value={newRequestType}
+                          onChange={(e) => setNewRequestType(e.target.value)}
+                          className="w-full rounded-lg border border-[var(--border)] bg-[var(--surface)] p-2.5 text-xs text-[var(--text-secondary)] focus:outline-none focus:border-[#4ADE80]/60"
+                        >
+                          <option value="Feature Request">Feature Request</option>
+                          <option value="Technical Bug">Technical Bug</option>
+                          <option value="Research Suggestion">Research Suggestion</option>
+                        </select>
+                      </div>
+                      <button
+                        type="submit"
+                        className="w-full rounded-lg py-2.5 bg-[#4ADE80] hover:bg-[#3fcf72] text-black font-bold uppercase text-[10px] tracking-[0.12em] transition-colors"
+                      >
+                        Submit Request
+                      </button>
+                    </form>
+                  )}
                 </div>
 
-                {/* Grid list of registered user requests */}
-                <div className="bg-black/30 border border-white/5 p-5 rounded-box flex flex-col font-mono text-xs rounded-2xl shadow-md">
-                  <h4 className="text-xs font-black text-[#4ADE80] uppercase tracking-widest flex items-center gap-1 mb-3 pb-2 border-b border-white/5">
-                    <Bookmark className="w-4 h-4 text-[#d4d4d8]" />
-                    Open Requests
-                  </h4>
-
-                  <div className="space-y-2.5 overflow-y-auto max-h-[220px] flex-1">
-                    {userRequests.map((req) => (
-                      <div key={req.id} className="p-3 bg-black/30 border border-white/5 rounded-xl flex items-center justify-between gap-3">
-                        <div className="min-w-0 flex-1">
-                          <div className="flex items-center gap-1.5 text-[9px] mb-1">
-                            <span className="text-[#d4d4d8] font-bold uppercase tracking-tighter">{req.type}</span>
-                            <span className="text-zinc-650">•</span>
-                            <span className={`px-1.5 py-px rounded uppercase tracking-tighter text-[8px] ${
-                              req.status === 'Completed' ? 'bg-[#d4d4d8]/10 text-[#d4d4d8] border border-[#d4d4d8]/20' :
-                              req.status === 'In Review' ? 'bg-amber-500/10 text-amber-500 border border-amber-500/20' :
-                              req.status === 'Scheduled' ? 'bg-indigo-500/10 text-indigo-300 border border-indigo-500/20' :
-                              'bg-white/5 text-zinc-400 border-transparent'
-                            }`}>
-                              {req.status}
+                {/* Open requests */}
+                <div className="rounded-lg border border-[var(--border)] bg-[var(--surface-2)] p-4 flex flex-col">
+                  <div className="flex items-center gap-1.5 mb-3 pb-2.5 border-b border-[var(--border)]">
+                    <Bookmark className="w-4 h-4 text-[#4ADE80]" />
+                    <h4 className="text-[11px] font-black uppercase tracking-[0.14em] text-[var(--text-primary)]">
+                      Open Requests
+                    </h4>
+                  </div>
+                  <div className="space-y-2.5 overflow-y-auto max-h-[300px]">
+                    {userRequests.map((req) => {
+                      const tone =
+                        req.status === 'Completed'
+                          ? '#4ADE80'
+                          : req.status === 'In Review'
+                          ? '#FBBF24'
+                          : req.status === 'Scheduled'
+                          ? '#60A5FA'
+                          : 'var(--text-tertiary)';
+                      return (
+                        <div
+                          key={req.id}
+                          className="rounded-lg border border-[var(--border)] bg-[var(--surface)] p-3 flex items-center justify-between gap-3"
+                        >
+                          <div className="min-w-0 flex-1">
+                            <div className="flex items-center gap-1.5 mb-1">
+                              <span className="text-[9px] font-bold uppercase tracking-[0.1em] text-[var(--text-tertiary)]">
+                                {req.type}
+                              </span>
+                              <span className="text-[var(--text-tertiary)]">·</span>
+                              <span
+                                className="text-[8px] font-bold uppercase tracking-[0.1em] px-1.5 py-px rounded"
+                                style={{ color: tone, background: `${tone}1a` }}
+                              >
+                                {req.status}
+                              </span>
+                            </div>
+                            <span className="text-xs font-bold text-[var(--text-primary)] block truncate leading-tight">
+                              {req.title}
                             </span>
                           </div>
-                          <span className="font-bold text-zinc-200 block truncate leading-tight">{req.title}</span>
+                          <button
+                            onClick={() => handleVote(req.id)}
+                            className="flex flex-col items-center justify-center rounded-lg border border-[var(--border)] bg-[var(--surface-2)] px-2.5 py-1.5 shrink-0 hover:border-[#4ADE80]/60 transition-colors"
+                          >
+                            <ChevronUp className="w-3.5 h-3.5 text-[#4ADE80]" />
+                            <span className="text-[11px] font-bold tabular-nums text-[var(--text-primary)]">
+                              {req.votes}
+                            </span>
+                          </button>
                         </div>
-
-                        <button
-                          onClick={() => handleVote(req.id)}
-                          className="bg-black/30 hover:bg-[#d4d4d8]/10 p-1.5 px-2.5 border border-white/5 rounded-lg font-bold text-center flex flex-col text-[10px] shrink-0 hover:text-[#d4d4d8] hover:border-[#d4d4d8]/50 transition-all cursor-pointer"
-                        >
-                          <span></span>
-                          <span>{req.votes}</span>
-                        </button>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 </div>
 
               </div>
-
             </div>
           )}
 
         </div>
-
       </div>
-
     </div>
   );
 }

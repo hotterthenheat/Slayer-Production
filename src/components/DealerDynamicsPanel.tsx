@@ -8,10 +8,10 @@ const num = (v: any, d = 0) => (typeof v === 'number' && isFinite(v) ? v.toLocal
 
 function Tile({ label, value, sub, tone = '#E5E5E5', active = false }: { label: string; value: string; sub?: string; tone?: string; active?: boolean }) {
   return (
-    <div className="rounded-md border p-2.5 flex flex-col gap-1" style={{ borderColor: active ? `${tone}66` : 'rgba(63,63,70,0.5)', background: active ? `${tone}10` : 'rgba(0,0,0,0.35)' }}>
-      <span className="text-[8px] font-black uppercase tracking-widest text-zinc-500 leading-tight">{label}</span>
+    <div className="rounded-md border p-2.5 flex flex-col gap-1 bg-[var(--surface-2)]" style={{ borderColor: active ? `${tone}66` : 'var(--border)', background: active ? `${tone}10` : undefined }}>
+      <span className="text-[9px] font-black uppercase tracking-widest text-[var(--text-tertiary)] leading-tight">{label}</span>
       <span className="text-[13px] font-bold tabular-nums leading-none" style={{ color: tone }}>{value}</span>
-      {sub && <span className="text-[8px] text-zinc-500 tabular-nums leading-tight">{sub}</span>}
+      {sub && <span className="text-[9px] text-[var(--text-tertiary)] tabular-nums leading-tight">{sub}</span>}
     </div>
   );
 }
@@ -47,11 +47,11 @@ export function DealerDynamicsPanel() {
     !z ? '—' : `${z.lo.toLocaleString(undefined, { maximumFractionDigits: decimals })}–${z.hi.toLocaleString(undefined, { maximumFractionDigits: decimals })}`;
 
   return (
-    <div className="rounded-xl border bg-white/[0.02] p-5 flex flex-col gap-4 shadow-lg" style={{ borderColor: 'rgba(192,132,252,0.22)', borderLeftColor: 'rgba(192,132,252,0.9)', borderLeftWidth: '3px' }}>
-      <div className="flex items-center gap-2">
+    <div className="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-5 flex flex-col gap-4" style={{ borderLeftColor: '#C084FC', borderLeftWidth: '3px' }}>
+      <div className="flex items-center gap-2 pb-3 border-b border-[var(--border)]">
         <Activity className="w-4 h-4 text-[#C084FC]" />
-        <h2 className="text-xs font-black tracking-widest uppercase text-[#E5E5E5]">Dealer Dynamics — {selectedAsset?.ticker}</h2>
-        <span className="text-[8px] text-zinc-500 uppercase tracking-widest ml-auto">hedging flow · time decay · gamma · strike shift · walls</span>
+        <h2 className="text-xs font-black tracking-widest uppercase text-[var(--text-primary)]">Dealer Dynamics — {selectedAsset?.ticker}</h2>
+        <span className="text-[9px] text-[var(--text-tertiary)] uppercase tracking-widest ml-auto hidden sm:block">hedging flow · time decay · gamma · walls</span>
       </div>
 
       {/* Vanna + Charm + Gamma + Migration */}
@@ -65,29 +65,29 @@ export function DealerDynamicsPanel() {
       {/* Wall strength + liquidity vacuums */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <div className="flex flex-col gap-2">
-          <div className="flex items-center gap-2"><BrickWall className="w-3 h-3 text-zinc-400" /><h3 className="text-[9px] font-black tracking-widest uppercase text-zinc-400">Wall Strength (0-100)</h3></div>
+          <div className="flex items-center gap-2"><BrickWall className="w-3 h-3 text-[var(--text-tertiary)]" /><h3 className="text-[10px] font-black tracking-widest uppercase text-[var(--text-secondary)]">Wall Strength (0-100)</h3></div>
           {[{ label: 'Resistance', x: w.resistance, tone: '#F87171' }, { label: 'Support', x: w.support, tone: '#4ADE80' }].map(({ label, x, tone }) => (
             <div key={label} className="flex items-center gap-2">
-              <span className="text-[9px] font-bold w-20 shrink-0" style={{ color: tone }}>{label} {x ? num(x.strike, decimals) : ''}</span>
-              <div className="flex-1 h-2 rounded-sm bg-black/50 overflow-hidden">
+              <span className="text-[10px] font-bold w-20 shrink-0" style={{ color: tone }}>{label} {x ? num(x.strike, decimals) : ''}</span>
+              <div className="flex-1 h-2 rounded-sm bg-[var(--surface-3)] overflow-hidden">
                 <div className="h-full rounded-sm" style={{ width: `${x ? x.score : 0}%`, background: tone }} />
               </div>
-              <span className="text-[9px] tabular-nums w-8 text-right" style={{ color: tone }}>{x ? x.score : '—'}</span>
+              <span className="text-[10px] tabular-nums w-8 text-right" style={{ color: tone }}>{x ? x.score : '—'}</span>
             </div>
           ))}
         </div>
 
         <div className="flex flex-col gap-2">
-          <div className="flex items-center gap-2"><Wind className="w-3 h-3 text-zinc-400" /><h3 className="text-[9px] font-black tracking-widest uppercase text-zinc-400">Liquidity Vacuums (fast-move zones)</h3></div>
+          <div className="flex items-center gap-2"><Wind className="w-3 h-3 text-[var(--text-tertiary)]" /><h3 className="text-[10px] font-black tracking-widest uppercase text-[var(--text-secondary)]">Liquidity Vacuums (fast-move zones)</h3></div>
           <div className="grid grid-cols-2 gap-2">
             <Tile label="Nearest Above" value={fmtZone(vac.nearestAbove)} sub={vac.nearestAbove ? `${(vac.nearestAbove.widthPct * 100).toFixed(1)}% gap · ${Math.round(vac.nearestAbove.score * 100)}%` : 'none'} tone="#F87171" active={!!vac.nearestAbove} />
             <Tile label="Nearest Below" value={fmtZone(vac.nearestBelow)} sub={vac.nearestBelow ? `${(vac.nearestBelow.widthPct * 100).toFixed(1)}% gap · ${Math.round(vac.nearestBelow.score * 100)}%` : 'none'} tone="#4ADE80" active={!!vac.nearestBelow} />
           </div>
-          <span className="text-[8px] text-zinc-600 leading-tight">Thin OI and volume gaps — price can move quickly through these zones.</span>
+          <span className="text-[9px] text-[var(--text-tertiary)] leading-tight">Thin OI and volume gaps — price can move quickly through these zones.</span>
         </div>
       </div>
 
-      <div className="flex items-start gap-2 text-[9px] text-zinc-500 bg-black/30 border border-zinc-900 rounded px-3 py-2">
+      <div className="flex items-start gap-2 text-[10px] text-[var(--text-tertiary)] bg-[var(--surface-2)] border border-[var(--border)] rounded px-3 py-2">
         <Waves className="w-3.5 h-3.5 text-[#C084FC] shrink-0 mt-0.5" />
         <span>{v.note}</span>
       </div>

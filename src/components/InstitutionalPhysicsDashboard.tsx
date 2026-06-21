@@ -206,7 +206,7 @@ export function InstitutionalPhysicsDashboard({ profile: externalProfile, ticker
   const [systemState, setSystemState] = useState<'SYSTEM ACTIVE' | 'COMPUTING...'>('SYSTEM ACTIVE');
 
   // Control over surface topography model setting: 'call' | 'put' | 'neutral'
-  const [surfaceMode, setSurfaceMode] = useState<'call' | 'put' | 'neutral'>('neutral');
+  const [surfaceMode, setSurfaceMode] = useState<'call' | 'put' | 'neutral' | 'gex'>('neutral');
 
   // Dynamic Breeden-Litzenberger RND Layer state
   const [showRnd, setShowRnd] = useState<boolean>(false);
@@ -422,16 +422,21 @@ export function InstitutionalPhysicsDashboard({ profile: externalProfile, ticker
     const camera = new THREE.PerspectiveCamera(42, w / h, 1, 1000);
 
     // Add cinematic soft lighting
-    const ambientLight = new THREE.AmbientLight(0x1a1a1f, 1.8);
+    // Three-point lighting for a sculpted, premium read of the surface.
+    const ambientLight = new THREE.AmbientLight(0x202028, 1.4);
     scene.add(ambientLight);
 
-    const dirLight1 = new THREE.DirectionalLight(0xffffff, 1.5);
-    dirLight1.position.set(200, 300, 100);
-    scene.add(dirLight1);
+    const keyLight = new THREE.DirectionalLight(0xffffff, 2.0);
+    keyLight.position.set(180, 320, 160);
+    scene.add(keyLight);
 
-    const dirLight2 = new THREE.DirectionalLight(0x71717a, 1.0);
-    dirLight2.position.set(-200, -100, -100);
-    scene.add(dirLight2);
+    const fillLight = new THREE.DirectionalLight(0x8891a5, 0.8);
+    fillLight.position.set(-220, 80, -120);
+    scene.add(fillLight);
+
+    const rimLight = new THREE.DirectionalLight(0x4ade80, 0.45);
+    rimLight.position.set(0, -160, -260);
+    scene.add(rimLight);
 
     // Displace Plane Geometry representing options strike-vol matrix landscape (21 rows x 21 cols)
     const gridSize = 21;
@@ -445,9 +450,10 @@ export function InstitutionalPhysicsDashboard({ profile: externalProfile, ticker
     // Solid Volumetric Shaded Mesh Material
     const surfaceMaterial = new THREE.MeshStandardMaterial({
       vertexColors: true,
-      roughness: 0.20,
-      metalness: 0.30,
-      side: THREE.DoubleSide
+      roughness: 0.42,
+      metalness: 0.45,
+      side: THREE.DoubleSide,
+      envMapIntensity: 0.6
     });
     const surfaceMesh = new THREE.Mesh(geometry, surfaceMaterial);
     scene.add(surfaceMesh);
@@ -573,6 +579,8 @@ export function InstitutionalPhysicsDashboard({ profile: externalProfile, ticker
         wireframeMaterial.color.setHex(0x10b981);
       } else if (currentMode === 'put') {
         wireframeMaterial.color.setHex(0xef4444);
+      } else if (currentMode === 'gex') {
+        wireframeMaterial.color.setHex(0x67e8f9);
       } else {
         wireframeMaterial.color.setHex(0x5a5a65);
       }
@@ -598,8 +606,8 @@ export function InstitutionalPhysicsDashboard({ profile: externalProfile, ticker
         const uNorm = xVal / maxBoundVal;
         const vNorm = zVal / maxBoundVal;
 
-        // Mathematical saddle surface foundation
-        let yVal = 4.0 * Math.sin(uNorm * Math.PI) * Math.cos(vNorm * Math.PI);
+        // Mathematical saddle surface foundation (GEX-profile mode skips it for a clean ridge)
+        let yVal = currentMode === 'gex' ? 0 : 4.0 * Math.sin(uNorm * Math.PI) * Math.cos(vNorm * Math.PI);
 
         // Volatility peak deformations
         strikePeaks.forEach(pk => {
@@ -612,14 +620,16 @@ export function InstitutionalPhysicsDashboard({ profile: externalProfile, ticker
               yVal += (Math.abs(pk.callGex) / 1e6) * 12.0 * weight * edgeFadeDiscounts;
             } else if (currentMode === 'put') {
               yVal -= (Math.abs(pk.putGex) / 1e6) * 12.0 * weight * edgeFadeDiscounts;
+            } else if (currentMode === 'gex') {
+              yVal += (pk.netGex / 1e6) * 16.0 * weight * edgeFadeDiscounts;
             } else {
               yVal += (pk.netGex / 1e6) * 10.0 * weight * edgeFadeDiscounts;
             }
           }
         });
 
-        // Structural saddle variance offsets
-        yVal += (uNorm * uNorm - vNorm * vNorm) * 14.0;
+        // Structural saddle variance offsets (not applied in the literal GEX-profile mode)
+        if (currentMode !== 'gex') yVal += (uNorm * uNorm - vNorm * vNorm) * 14.0;
         yVal = Math.max(-50, Math.min(50, yVal)); // Safe clipping constraints
 
         // Superimpose active fluid flow ripple if data stream is active
@@ -642,6 +652,11 @@ export function InstitutionalPhysicsDashboard({ profile: externalProfile, ticker
           r = 0.35 + hPct * 0.65;
           g = 0.05 + hPct * 0.15;
           b = 0.11 + hPct * 0.19;
+        } else if (currentMode === 'gex') {
+          // Diverging palette: cyan-green for positive (long) gamma, red for negative (short).
+          const t = Math.max(-1, Math.min(1, yVal / 28));
+          if (t >= 0) { r = 0.10; g = 0.45 + t * 0.45; b = 0.42; }
+          else { r = 0.50 + (-t) * 0.40; g = 0.12; b = 0.18; }
         } else {
           r = 0.20 + hPct * 0.50;
           g = 0.22 + hPct * 0.48;
@@ -1059,7 +1074,7 @@ export function InstitutionalPhysicsDashboard({ profile: externalProfile, ticker
           <div className="flex justify-between items-center border-b border-black/70 pb-3 mb-2" id="canvas-control-overlay">
             <div className="flex items-center gap-3">
               {isExpanded && (
-                <span className="text-[9px] font-black tracking-widest text-[#4ADE80] font-mono uppercase bg-[#4ADE80] text-black/10 border border-black px-2 py-1 rounded-sm">
+                <span className="text-[9px] font-black tracking-widest text-black font-mono uppercase bg-[#4ADE80] border border-black px-2 py-1 rounded-sm">
                   FULLSCREEN VIEW
                 </span>
               )}
@@ -1084,6 +1099,13 @@ export function InstitutionalPhysicsDashboard({ profile: externalProfile, ticker
                   className={`px-3 py-1 text-[8.5px] uppercase font-extrabold tracking-wider rounded-xs focus:outline-none transition-colors ${surfaceMode === 'put' ? 'bg-rose-950 border border-rose-900 text-[#F87171]' : 'text-zinc-500 hover:text-zinc-400'}`}
                 >
                   PUT WALL VIEW
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setSurfaceMode('gex')}
+                  className={`px-3 py-1 text-[8.5px] uppercase font-extrabold tracking-wider rounded-xs focus:outline-none transition-colors ${surfaceMode === 'gex' ? 'bg-cyan-950/50 border border-cyan-900 text-[#67e8f9]' : 'text-zinc-500 hover:text-zinc-400'}`}
+                >
+                  GEX PROFILE
                 </button>
                 <button
                   type="button"
@@ -1138,6 +1160,19 @@ export function InstitutionalPhysicsDashboard({ profile: externalProfile, ticker
               onMouseLeave={handleMouseUpOrLeave}
               className="w-full h-full cursor-grab active:cursor-grabbing block"
             />
+            {/* Axis + active-mode legend (HTML overlay — keeps the abstract surface legible) */}
+            <div className="absolute bottom-2 left-3 z-10 pointer-events-none flex flex-col gap-1">
+              <div className="flex items-center gap-1.5">
+                <span className="w-3 h-1.5 rounded-full" style={{ background: surfaceMode === 'call' ? '#4ADE80' : surfaceMode === 'put' ? '#F87171' : surfaceMode === 'gex' ? '#67e8f9' : '#a1a1aa' }} />
+                <span className="text-[7.5px] font-mono font-black uppercase tracking-widest text-zinc-400">
+                  {surfaceMode === 'call' ? 'Call-wall gamma' : surfaceMode === 'put' ? 'Put-wall gamma' : surfaceMode === 'gex' ? 'Net GEX profile' : 'Net gamma (blended)'}
+                </span>
+              </div>
+              <span className="text-[7px] font-mono text-zinc-600 uppercase tracking-[0.2em]">← strikes →</span>
+            </div>
+            <div className="absolute top-2 right-3 z-10 pointer-events-none text-[7px] font-mono text-zinc-600 uppercase tracking-[0.2em]">
+              height ↑ exposure
+            </div>
           </div>
 
           {/* Breeden-Litzenberger Risk-Neutral Density Analysis Console Panel */}

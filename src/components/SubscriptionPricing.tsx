@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'motion/react';
-import { 
+import {
   Check, Lock, CreditCard, ChevronRight, X, AlertTriangle, Shield, CheckCircle2, ArrowRight, User, Mail, ShieldCheck
 } from 'lucide-react';
 import { useContractStore } from '../lib/store';
@@ -17,7 +17,7 @@ interface SubscriptionPricingProps {
 
 export function SubscriptionPricing({ onUpgradeComplete, onEnterApp, session, onRequestAuth }: SubscriptionPricingProps) {
   const serverState = useContractStore(s => s.serverState);
-  
+
   const [isMounted, setIsMounted] = useState(false);
   const [billingCycle, setBillingCycle] = useState<'monthly' | 'annual'>('monthly');
 
@@ -49,13 +49,13 @@ export function SubscriptionPricing({ onUpgradeComplete, onEnterApp, session, on
       document.body.style.overflow = '';
       document.body.classList.remove('prism-locked');
     }
-    
+
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape' && selectedPlanForCheckout && checkoutStep !== 'processing' && checkoutStep !== 'waiting_for_webhook') {
         setSelectedPlanForCheckout(null);
       }
     };
-    
+
     window.addEventListener('keydown', handleKeyDown);
     return () => {
       document.body.style.overflow = '';
@@ -63,12 +63,12 @@ export function SubscriptionPricing({ onUpgradeComplete, onEnterApp, session, on
       window.removeEventListener('keydown', handleKeyDown);
     };
   }, [selectedPlanForCheckout, checkoutStep]);
-  
+
   const [lifetimeContactType, setLifetimeContactType] = useState<'individual' | 'corporate'>('individual');
   const [isValidatingSuccess, setIsValidatingSuccess] = useState(false);
   const [isSuccessValidatedDone, setIsSuccessValidatedDone] = useState(false);
   const [successValidationLogs, setSuccessValidationLogs] = useState<string[]>([]);
-  
+
   const [contactType, setContactType] = useState<'individual' | 'corporate'>('individual');
 
   const [lifetimeIndName, setLifetimeIndName] = useState('');
@@ -119,7 +119,7 @@ export function SubscriptionPricing({ onUpgradeComplete, onEnterApp, session, on
       onRequestAuth();
       return;
     }
-    
+
     setSelectedPlanForCheckout(plan);
     setCheckoutStep('details');
     setCheckoutSubStep('details');
@@ -172,19 +172,19 @@ export function SubscriptionPricing({ onUpgradeComplete, onEnterApp, session, on
     if (checkoutStep === 'processing' && selectedPlanForCheckout) {
       setIsPaymentInFlight(true);
       const logs = selectedPlanForCheckout === 'lifetime' ? [
-        "Sending message request...",
-        "Validating contact entries...",
-        "Opening support ticket channel...",
-        "Registering details in contact directory...",
-        "Handshake completed successfully!"
+        "Sending your message...",
+        "Validating contact details...",
+        "Routing to the onboarding team...",
+        "Saving your request...",
+        "Done. We'll be in touch shortly."
       ] : [
-        "Opening encrypted SSL checkout tunnel...",
-        "Validating payment tokens against testnet node...",
-        "Verifying cumulative tier clearance constraints...",
-        "Provisioning authorization keys inside database tier...",
-        "Upgrading member clearance level ... SUCCESS!"
+        "Securing your checkout session...",
+        "Validating payment details...",
+        "Confirming your plan selection...",
+        "Provisioning account access...",
+        "Finishing up..."
       ];
-      
+
       setProcessingLogs([]);
       let index = 0;
       const interval = setInterval(() => {
@@ -193,7 +193,7 @@ export function SubscriptionPricing({ onUpgradeComplete, onEnterApp, session, on
           index++;
         } else {
           clearInterval(interval);
-          
+
           // Secure Client-Side Tokenization via Stripe Elements & Braintree simulated iframe vault
           // Generates customer_id and payment_method_id securely on client, discarding raw PAN/CVVs
           const clientDerivedCustomerId = "cus_el_" + Math.floor(100000 + Math.random() * 900000);
@@ -226,14 +226,14 @@ export function SubscriptionPricing({ onUpgradeComplete, onEnterApp, session, on
             if (data.success) {
               // Switch UI step to Wait for Webhook visual verification state
               setCheckoutStep('waiting_for_webhook');
-              
+
               // Hook to reload session Details instantly in the background so that layout headers are synced
               if ((window as any).refreshSlayerSession) {
                 (window as any).refreshSlayerSession();
               }
             } else {
               setIsPaymentInFlight(false);
-              setCheckoutError("Payment Authorization Refused: " + (data.error || "Please verify your subscription parameters."));
+              setCheckoutError("Payment could not be completed: " + (data.error || "Please check your details and try again."));
               setCheckoutStep('details');
             }
           })
@@ -260,14 +260,13 @@ export function SubscriptionPricing({ onUpgradeComplete, onEnterApp, session, on
       setIsSuccessValidatedDone(false);
 
       const webhookLogs = [
-        "Establishing secure listener for gateway webhook streams...",
-        "Websocket handshake initialized with payment provider signature...",
-        "Stripe charge event captured: payment_intent.succeeded",
-        "Charge ID: ch_ssl_" + Math.random().toString(36).substring(8).toUpperCase(),
-        "Validating cryptographic SHA-256 webhook signature...",
-        "Webhooks check: Signature payload verified authentic",
-        "Broadcasting clearance level upgrade to decentralized session cookies...",
-        "Ledger reconciliation completed successfully! System ready."
+        "Connecting to the payment provider...",
+        "Waiting for payment confirmation...",
+        "Payment confirmed by Stripe.",
+        "Verifying the transaction...",
+        "Applying your plan to your account...",
+        "Syncing your access level...",
+        "All set. Your subscription is active."
       ];
 
       setSuccessValidationLogs([]);
@@ -278,14 +277,14 @@ export function SubscriptionPricing({ onUpgradeComplete, onEnterApp, session, on
           index++;
         } else {
           clearInterval(interval);
-          
+
           // Settle the tier elevation internally in client Zustand store
-          const tierNum = selectedPlanForCheckout === 'discord' ? 1 
-            : selectedPlanForCheckout === 'skyvision' ? 2 
-            : selectedPlanForCheckout === 'pinpoint' ? 3 
-            : selectedPlanForCheckout === 'quant' ? 4 
+          const tierNum = selectedPlanForCheckout === 'discord' ? 1
+            : selectedPlanForCheckout === 'skyvision' ? 2
+            : selectedPlanForCheckout === 'pinpoint' ? 3
+            : selectedPlanForCheckout === 'quant' ? 4
             : 5;
-          
+
           useContractStore.getState().setPurchasedTier(tierNum);
           setIsValidatingSuccess(false);
           setIsSuccessValidatedDone(true);
@@ -301,361 +300,312 @@ export function SubscriptionPricing({ onUpgradeComplete, onEnterApp, session, on
 
   return (
     <>
-      <motion.section 
-        id="pricing-matrices" 
+      <motion.section
+        id="pricing-matrices"
         initial={{ opacity: 0, y: 50, scale: 0.98 }}
         whileInView={{ opacity: 1, y: 0, scale: 1 }}
         viewport={{ once: true, margin: "-100px" }}
         transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
-        className="relative z-10 py-10 px-6 max-w-[1400px] mx-auto w-full border-t border-black"
+        className="relative z-10 py-20 px-6 max-w-[1320px] mx-auto w-full"
       >
-        <div className="text-center space-y-2 mb-10">
-          <span className="text-zinc-500 text-[10px] font-mono uppercase tracking-[0.3em] block">
-            PLANS & PRICING
+        <div className="text-center mb-12">
+          <span className="text-[var(--text-tertiary)] text-[11px] font-mono uppercase tracking-[0.3em] block mb-3">
+            Plans &amp; Pricing
           </span>
-          <h2 className="text-2xl font-black text-[#E5E5E5] uppercase tracking-tight font-sans">
-            Simple Subscriptions
+          <h2 className="text-3xl md:text-4xl font-bold text-[var(--text-primary)] tracking-tight font-sans">
+            Choose your plan
           </h2>
+          <p className="text-[var(--text-tertiary)] text-sm mt-3 max-w-md mx-auto leading-relaxed">
+            Every tier builds on the one before it. Upgrade or cancel anytime.
+          </p>
         </div>
 
-        <div className="flex justify-center mb-10 w-full">
-          <div className="flex items-center gap-2 bg-black border border-black p-1 rounded-lg">
+        <div className="flex justify-center mb-12 w-full">
+          <div className="inline-flex items-center gap-1 bg-[var(--surface)] border border-[var(--border)] p-1 rounded-full">
             <button
               onClick={() => setBillingCycle('monthly')}
-              className={`px-6 py-2 rounded-md text-[11px] font-bold tracking-widest uppercase transition-all ${
-                billingCycle === 'monthly' ? 'bg-black text-[#E5E5E5]' : 'text-zinc-500 hover:text-[#E5E5E5] hover:bg-black'
+              className={`px-6 py-2 rounded-full text-[12px] font-semibold tracking-wide transition-all ${
+                billingCycle === 'monthly' ? 'bg-[var(--surface-3)] text-[var(--text-primary)]' : 'text-[var(--text-tertiary)] hover:text-[var(--text-primary)]'
               }`}
             >
               Monthly
             </button>
             <button
               onClick={() => setBillingCycle('annual')}
-              className={`px-6 py-2 rounded-md text-[11px] font-bold tracking-widest uppercase transition-all flex items-center gap-2 ${
-                billingCycle === 'annual' ? 'bg-black text-[#E5E5E5]' : 'text-zinc-500 hover:text-[#E5E5E5] hover:bg-black'
+              className={`px-6 py-2 rounded-full text-[12px] font-semibold tracking-wide transition-all flex items-center gap-2 ${
+                billingCycle === 'annual' ? 'bg-[var(--surface-3)] text-[var(--text-primary)]' : 'text-[var(--text-tertiary)] hover:text-[var(--text-primary)]'
               }`}
             >
-              Annual <span className="text-[9px] bg-[#4ADE80]/15 text-[#4ADE80] px-1.5 py-0.5 rounded-full font-black">Save ~20%</span>
+              Annual <span className="text-[10px] bg-[#4ADE80]/15 text-[#4ADE80] px-2 py-0.5 rounded-full font-bold">Save 20%</span>
             </button>
           </div>
         </div>
 
-        <div className="flex flex-wrap justify-center gap-6 font-mono items-stretch">
-          
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-5 items-stretch max-w-[340px] sm:max-w-none mx-auto">
+
           {/* SQUIRE CARD */}
-          <motion.div 
-            initial={{ opacity: 0, y: 30 }}
+          <motion.div
+            initial={{ opacity: 0, y: 24 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
-            transition={{
-              type: "spring",
-              stiffness: 400,
-              damping: 28,
-              opacity: { duration: 0.6, delay: 0.1 }
-            }}
-            whileHover={{ scale: 1.05, y: -10, boxShadow: "0 30px 60px -15px rgba(52, 199, 89, 0.12)" }}
-            className="group apple-glass rounded-2xl p-6 flex flex-col justify-between relative transition-all duration-150 w-full sm:w-[calc(50%-12px)] lg:w-[calc(33.33%-16px)] xl:w-[calc(20%-20px)] sm:min-w-[240px] sm:max-w-[280px] lg:order-1 xl:order-1"
+            transition={{ duration: 0.5, delay: 0.05, ease: [0.16, 1, 0.3, 1] }}
+            className="group rounded-2xl p-6 flex flex-col bg-[var(--surface)] border border-[var(--border)] transition-colors duration-200 hover:border-[var(--border-strong)]"
           >
-            <div className="space-y-4 relative z-10">
-              <div className="flex justify-between items-baseline border-b border-black/40 pb-4">
-                <div>
-                  <span className="text-zinc-500 text-[10px] uppercase tracking-wider block font-bold">Platform</span>
-                  <span className="text-[12px] font-mono font-black text-[#F87171] block mt-1">COMMUNITY CHAT</span>
+            <div className="flex flex-col flex-grow">
+              <div className="pb-5 border-b border-[var(--border)]">
+                <div className="flex items-center justify-between mb-3">
+                  <span className="text-[var(--text-primary)] text-sm font-semibold inline-flex items-center gap-1.5">
+                    Squire <WoodenSword />
+                  </span>
+                  <span className="text-[10px] uppercase tracking-wider text-[var(--text-tertiary)] font-medium">Community</span>
                 </div>
-                <div className="text-right">
-                  <span className="text-[#A1A1AA] text-xs font-bold inline-flex items-center gap-1.5 transition-transform group-hover:scale-105">SQUIRE <WoodenSword className="group-hover:rotate-45" /></span>
-                  <span className="text-3xl font-black text-[#E5E5E5]">{billingCycle === 'monthly' ? '$65' : '$55'}</span>
-                  <span className="text-[10px] text-zinc-650 block">/ Month</span>
+                <div className="flex items-baseline gap-1">
+                  <span className="text-4xl font-bold text-[var(--text-primary)] tracking-tight">{billingCycle === 'monthly' ? '$65' : '$55'}</span>
+                  <span className="text-[12px] text-[var(--text-tertiary)]">/ month</span>
                 </div>
               </div>
 
-              <div className="space-y-3.5 text-xs font-sans">
-                <span className="text-[11px] text-[#71717A] block uppercase font-mono tracking-wider font-bold">Inclusions:</span>
-                <ul className="space-y-2.5 font-mono text-xs text-[#4ADE80]">
-                  <li className="flex gap-2.5 items-center">
-                    <Check className="w-4 h-4 text-[#4ADE80] shrink-0" />
-                    <span>Real-time Discord Chat & Alerts</span>
-                  </li>
-                  <li className="flex gap-2.5 items-center">
-                    <Check className="w-4 h-4 text-[#4ADE80] shrink-0" />
-                    <span>Daily Option Discovery Reports</span>
-                  </li>
-                  <li className="flex gap-2.5 items-center">
-                    <Check className="w-4 h-4 text-[#4ADE80] shrink-0" />
-                    <span>Verified Historic Trade Archive</span>
-                  </li>
-                </ul>
-              </div>
+              <ul className="space-y-3 mt-5 mb-6 flex-grow">
+                <li className="flex gap-2.5 items-start text-[13px] text-[var(--text-secondary)] leading-snug">
+                  <Check className="w-4 h-4 text-[#4ADE80] shrink-0 mt-0.5" />
+                  <span>Real-time Discord chat &amp; alerts</span>
+                </li>
+                <li className="flex gap-2.5 items-start text-[13px] text-[var(--text-secondary)] leading-snug">
+                  <Check className="w-4 h-4 text-[#4ADE80] shrink-0 mt-0.5" />
+                  <span>Daily option discovery reports</span>
+                </li>
+                <li className="flex gap-2.5 items-start text-[13px] text-[var(--text-secondary)] leading-snug">
+                  <Check className="w-4 h-4 text-[#4ADE80] shrink-0 mt-0.5" />
+                  <span>Verified historic trade archive</span>
+                </li>
+              </ul>
             </div>
 
-            <div className="pt-6">
-              <button
-                onClick={() => handleStripeCheckout('discord')}
-                className="w-full py-4 bg-white text-black hover:bg-zinc-100 font-black uppercase tracking-widest text-[11px] rounded-lg transition-all duration-150 cursor-pointer shadow-lg"
-              >
-                Select Plan
-              </button>
-            </div>
+            <button
+              onClick={() => handleStripeCheckout('discord')}
+              className="w-full py-3 bg-[var(--surface-3)] text-[var(--text-primary)] hover:bg-[var(--border-strong)] font-semibold text-[13px] rounded-xl transition-colors duration-200 cursor-pointer border border-[var(--border)]"
+            >
+              Select plan
+            </button>
           </motion.div>
 
           {/* ASSASSIN CARD */}
-          <motion.div 
-            initial={{ opacity: 0, y: 30 }}
+          <motion.div
+            initial={{ opacity: 0, y: 24 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
-            transition={{
-              type: "spring",
-              stiffness: 400,
-              damping: 28,
-              opacity: { duration: 0.6, delay: 0.2 }
-            }}
-            whileHover={{ scale: 1.07, y: -12, boxShadow: "0 30px 60px -15px rgba(99, 102, 241, 0.25)" }}
-            className="group apple-glass rounded-2xl p-6 flex flex-col justify-between relative transition-all duration-150 w-full sm:w-[calc(50%-12px)] lg:w-[calc(33.33%-16px)] xl:w-[calc(20%-20px)] sm:min-w-[240px] sm:max-w-[280px] lg:order-3 xl:order-2"
+            transition={{ duration: 0.5, delay: 0.1, ease: [0.16, 1, 0.3, 1] }}
+            className="group rounded-2xl p-6 flex flex-col bg-[var(--surface)] border border-[var(--border)] transition-colors duration-200 hover:border-[var(--border-strong)]"
           >
-            <div className="space-y-4 relative z-10">
-              <div className="flex justify-between items-baseline border-b border-black/40 pb-4">
-                <div>
-                  <span className="text-zinc-500 text-[10px] uppercase tracking-wider block font-bold">Dashboard</span>
-                  <span className="text-[12px] font-mono font-black text-indigo-400 block mt-1 uppercase">FULL DASHBOARD</span>
+            <div className="flex flex-col flex-grow">
+              <div className="pb-5 border-b border-[var(--border)]">
+                <div className="flex items-center justify-between mb-3">
+                  <span className="text-[var(--text-primary)] text-sm font-semibold inline-flex items-center gap-1.5">
+                    Assassin <NeedleSword />
+                  </span>
+                  <span className="text-[10px] uppercase tracking-wider text-[var(--text-tertiary)] font-medium">Dashboard</span>
                 </div>
-                <div className="text-right">
-                  <span className="text-[#E5E5E5] text-xs font-black inline-flex items-center gap-1.5 transition-transform group-hover:scale-105">ASSASSIN <NeedleSword className="group-hover:rotate-45" /></span>
-                  <span className="text-3xl font-black text-[#E5E5E5]">{billingCycle === 'monthly' ? '$350' : '$290'}</span>
-                  <span className="text-[10px] text-zinc-650 block">/ Month</span>
+                <div className="flex items-baseline gap-1">
+                  <span className="text-4xl font-bold text-[var(--text-primary)] tracking-tight">{billingCycle === 'monthly' ? '$350' : '$290'}</span>
+                  <span className="text-[12px] text-[var(--text-tertiary)]">/ month</span>
                 </div>
               </div>
 
-              <div className="space-y-3.5 text-xs font-sans">
-                <span className="text-[11px] text-[#71717A] block uppercase font-mono tracking-wider font-bold">Inclusions:</span>
-                <ul className="space-y-2.5 font-mono text-xs text-[#4ADE80]">
-                  <li className="flex gap-2.5 items-center">
-                    <Check className="w-4 h-4 text-indigo-400 shrink-0" />
-                    <span className="font-medium text-[#E5E5E5]">All Discord Tier Features ($65 Value)</span>
-                  </li>
-                  <li className="flex gap-2.5 items-center">
-                    <Check className="w-4 h-4 text-[#4ADE80] shrink-0" />
-                    <span>SkyVision Decision Dashboard</span>
-                  </li>
-                  <li className="flex gap-2.5 items-center">
-                    <Check className="w-4 h-4 text-[#4ADE80] shrink-0" />
-                    <span>Live trade health scores</span>
-                  </li>
-                  <li className="flex gap-2.5 items-center">
-                    <Check className="w-4 h-4 text-[#4ADE80] shrink-0" />
-                    <span>Live volatility surface</span>
-                  </li>
-                </ul>
-              </div>
+              <ul className="space-y-3 mt-5 mb-6 flex-grow">
+                <li className="flex gap-2.5 items-start text-[13px] text-[var(--text-secondary)] leading-snug">
+                  <Check className="w-4 h-4 text-[#4ADE80] shrink-0 mt-0.5" />
+                  <span className="text-[var(--text-primary)] font-medium">Everything in Squire</span>
+                </li>
+                <li className="flex gap-2.5 items-start text-[13px] text-[var(--text-secondary)] leading-snug">
+                  <Check className="w-4 h-4 text-[#4ADE80] shrink-0 mt-0.5" />
+                  <span>SkyVision decision dashboard</span>
+                </li>
+                <li className="flex gap-2.5 items-start text-[13px] text-[var(--text-secondary)] leading-snug">
+                  <Check className="w-4 h-4 text-[#4ADE80] shrink-0 mt-0.5" />
+                  <span>Live trade health scores</span>
+                </li>
+                <li className="flex gap-2.5 items-start text-[13px] text-[var(--text-secondary)] leading-snug">
+                  <Check className="w-4 h-4 text-[#4ADE80] shrink-0 mt-0.5" />
+                  <span>Live volatility surface</span>
+                </li>
+              </ul>
             </div>
 
-            <div className="pt-6">
-              <button
-                onClick={() => handleStripeCheckout('skyvision')}
-                className="w-full py-4 bg-white text-black hover:bg-zinc-100 font-black uppercase tracking-widest text-[11px] rounded-lg transition-all duration-150 cursor-pointer shadow-lg"
-              >
-                Select Plan
-              </button>
-            </div>
+            <button
+              onClick={() => handleStripeCheckout('skyvision')}
+              className="w-full py-3 bg-[var(--surface-3)] text-[var(--text-primary)] hover:bg-[var(--border-strong)] font-semibold text-[13px] rounded-xl transition-colors duration-200 cursor-pointer border border-[var(--border)]"
+            >
+              Select plan
+            </button>
           </motion.div>
 
-          {/* DRAGONSLAYER CARD */}
-          <motion.div 
-            initial={{ opacity: 0, y: 30 }}
+          {/* DRAGONSLAYER CARD - highlighted */}
+          <motion.div
+            initial={{ opacity: 0, y: 24 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
-            transition={{
-              type: "spring",
-              stiffness: 400,
-              damping: 28,
-              opacity: { duration: 0.6, delay: 0.3 }
-            }}
-            whileHover={{ scale: 1.08, y: -12, boxShadow: "0 30px 60px -10px rgba(48, 209, 88, 0.3)" }}
-            className="group apple-glass-bright rounded-2xl pt-10 px-6 pb-6 flex flex-col justify-between relative transition-all duration-150 border-2 border-black shadow-[0_0_25px_rgba(48,209,88,0.15)] w-full sm:w-[calc(50%-12px)] lg:w-[calc(33.33%-16px)] xl:w-[calc(20%-20px)] sm:min-w-[240px] sm:max-w-[280px] lg:order-2 xl:order-3"
+            transition={{ duration: 0.5, delay: 0.15, ease: [0.16, 1, 0.3, 1] }}
+            className="group rounded-2xl p-6 pt-9 flex flex-col relative bg-[var(--surface-2)] border border-[#4ADE80]/40 shadow-[0_0_0_1px_rgba(74,222,128,0.15),0_20px_50px_-20px_rgba(74,222,128,0.25)] transition-colors duration-200"
           >
-            <div className="absolute top-3 left-1/2 -translate-x-1/2 bg-zinc-300 text-[#000000] text-[9.5px] font-black uppercase tracking-widest px-3.5 py-1.5 rounded-full shadow-lg whitespace-nowrap z-10 border border-black">
-              BEST VALUE // MOST SUBSCRIBED
+            <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-[#4ADE80] text-black text-[10px] font-bold uppercase tracking-wider px-3 py-1 rounded-full whitespace-nowrap z-10">
+              Best Value
             </div>
 
-            <div className="space-y-4 relative z-10">
-              <div className="flex justify-between items-baseline border-b border-black/40 pb-4">
-                <div>
-                  <span className="text-zinc-500 text-[10px] uppercase tracking-wider block font-bold">Automated GEX</span>
-                  <span className="text-[12px] font-mono font-black text-[#4ADE80] block mt-1 uppercase">POSITION TRACKING</span>
+            <div className="flex flex-col flex-grow">
+              <div className="pb-5 border-b border-[var(--border)]">
+                <div className="flex items-center justify-between mb-3">
+                  <span className="text-[var(--text-primary)] text-sm font-semibold inline-flex items-center gap-1.5">
+                    Dragonslayer <ValyrianSword />
+                  </span>
+                  <span className="text-[10px] uppercase tracking-wider text-[#4ADE80] font-medium">GEX</span>
                 </div>
-                <div className="text-right">
-                  <span className="text-[#A1A1AA] text-xs font-bold inline-flex items-center gap-1.5 transition-transform group-hover:scale-105">DRAGONSLAYER <ValyrianSword className="group-hover:rotate-45" /></span>
-                  <span className="text-3xl font-black text-[#E5E5E5]">{billingCycle === 'monthly' ? '$500' : '$420'}</span>
-                  <span className="text-[10px] text-zinc-650 block">/ Month</span>
+                <div className="flex items-baseline gap-1">
+                  <span className="text-4xl font-bold text-[var(--text-primary)] tracking-tight">{billingCycle === 'monthly' ? '$500' : '$420'}</span>
+                  <span className="text-[12px] text-[var(--text-tertiary)]">/ month</span>
                 </div>
               </div>
 
-              <div className="space-y-3.5 text-xs font-sans">
-                <span className="text-[11px] text-[#71717A] block uppercase font-mono tracking-wider font-bold">Inclusions:</span>
-                <ul className="space-y-2.5 font-mono text-xs text-[#4ADE80]">
-                  <li className="flex gap-2.5 items-center">
-                    <Check className="w-4 h-4 text-[#4ADE80] shrink-0" />
-                    <span className="font-bold text-[#E5E5E5] text-[10.5px]">All SkyVision + Discord Features</span>
-                  </li>
-                  <li className="flex gap-2.5 items-center">
-                    <Check className="w-4 h-4 text-[#4ADE80] shrink-0" />
-                    <span>Live dealer positioning (GEX)</span>
-                  </li>
-                  <li className="flex gap-2.5 items-center">
-                    <Check className="w-4 h-4 text-[#4ADE80] shrink-0" />
-                    <span>Institutional order flow tape</span>
-                  </li>
-                  <li className="flex gap-2.5 items-center">
-                    <Check className="w-4 h-4 text-[#4ADE80] shrink-0" />
-                    <span>GEX chart by strike</span>
-                  </li>
-                </ul>
-              </div>
+              <ul className="space-y-3 mt-5 mb-6 flex-grow">
+                <li className="flex gap-2.5 items-start text-[13px] text-[var(--text-secondary)] leading-snug">
+                  <Check className="w-4 h-4 text-[#4ADE80] shrink-0 mt-0.5" />
+                  <span className="text-[var(--text-primary)] font-medium">Everything in Assassin</span>
+                </li>
+                <li className="flex gap-2.5 items-start text-[13px] text-[var(--text-secondary)] leading-snug">
+                  <Check className="w-4 h-4 text-[#4ADE80] shrink-0 mt-0.5" />
+                  <span>Live dealer positioning (GEX)</span>
+                </li>
+                <li className="flex gap-2.5 items-start text-[13px] text-[var(--text-secondary)] leading-snug">
+                  <Check className="w-4 h-4 text-[#4ADE80] shrink-0 mt-0.5" />
+                  <span>Institutional order flow tape</span>
+                </li>
+                <li className="flex gap-2.5 items-start text-[13px] text-[var(--text-secondary)] leading-snug">
+                  <Check className="w-4 h-4 text-[#4ADE80] shrink-0 mt-0.5" />
+                  <span>GEX chart by strike</span>
+                </li>
+              </ul>
             </div>
 
-            <div className="pt-6">
-              <button
-                onClick={() => handleStripeCheckout('pinpoint')}
-                className="w-full py-4 bg-white text-black hover:bg-zinc-100 font-black uppercase tracking-widest text-[11px] rounded-lg transition-all duration-150 cursor-pointer shadow-[0_10px_30px_rgba(48,209,88,0.25)] hover:scale-[1.01]"
-              >
-                SELECT GEXBOT
-              </button>
-            </div>
+            <button
+              onClick={() => handleStripeCheckout('pinpoint')}
+              className="w-full py-3 bg-[#4ADE80] text-black hover:bg-[#4ADE80]/90 font-semibold text-[13px] rounded-xl transition-colors duration-200 cursor-pointer"
+            >
+              Select plan
+            </button>
           </motion.div>
 
           {/* REAPER CARD */}
-          <motion.div 
-            initial={{ opacity: 0, y: 30 }}
+          <motion.div
+            initial={{ opacity: 0, y: 24 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
-            transition={{
-              type: "spring",
-              stiffness: 400,
-              damping: 28,
-              opacity: { duration: 0.6, delay: 0.4 }
-            }}
-            whileHover={{ scale: 1.05, y: -10, boxShadow: "0 30px 60px -15px rgba(251, 191, 36, 0.12)" }}
-            className="group apple-glass rounded-2xl p-6 flex flex-col justify-between relative transition-all duration-150 w-full sm:w-[calc(50%-12px)] lg:w-[calc(33.33%-16px)] xl:w-[calc(20%-20px)] sm:min-w-[240px] sm:max-w-[280px] lg:order-4 xl:order-4"
+            transition={{ duration: 0.5, delay: 0.2, ease: [0.16, 1, 0.3, 1] }}
+            className="group rounded-2xl p-6 flex flex-col bg-[var(--surface)] border border-[var(--border)] transition-colors duration-200 hover:border-[var(--border-strong)]"
           >
-            <div className="space-y-4 relative z-10">
-              <div className="flex justify-between items-baseline border-b border-black/40 pb-4">
-                <div>
-                  <span className="text-zinc-500 text-[10px] uppercase tracking-wider block font-bold">Full Arsenal</span>
-                  <span className="text-[12px] font-mono font-black text-amber-400 block mt-1 uppercase">EVERYTHING</span>
+            <div className="flex flex-col flex-grow">
+              <div className="pb-5 border-b border-[var(--border)]">
+                <div className="flex items-center justify-between mb-3">
+                  <span className="text-[var(--text-primary)] text-sm font-semibold inline-flex items-center gap-1.5">
+                    The Reaper <CuteScythe />
+                  </span>
+                  <span className="text-[10px] uppercase tracking-wider text-[#FBBF24] font-medium">Full suite</span>
                 </div>
-                <div className="text-right">
-                  <span className="text-[#E5E5E5] text-xs font-black font-mono text-zinc-400 inline-flex items-center gap-1.5 transition-transform group-hover:scale-105">THE REAPER <CuteScythe className="group-hover:rotate-45" /></span>
-                  <span className="text-3xl font-black text-[#E5E5E5]">{billingCycle === 'monthly' ? '$1500' : '$1250'}</span>
-                  <span className="text-[10px] text-zinc-650 block">/ Month</span>
+                <div className="flex items-baseline gap-1">
+                  <span className="text-4xl font-bold text-[var(--text-primary)] tracking-tight">{billingCycle === 'monthly' ? '$1500' : '$1250'}</span>
+                  <span className="text-[12px] text-[var(--text-tertiary)]">/ month</span>
                 </div>
               </div>
 
-              <div className="space-y-3.5 text-xs font-sans">
-                <span className="text-[11px] text-[#71717A] block uppercase font-mono tracking-wider font-bold">Inclusions:</span>
-                <ul className="space-y-2.5 font-mono text-xs text-[#4ADE80]">
-                  <li className="flex gap-2.5 items-center">
-                    <Check className="w-4 h-4 text-amber-400 shrink-0" />
-                    <span className="font-medium text-[#E5E5E5]">All Gexbot + SkyVision + Discord Features</span>
-                  </li>
-                  <li className="flex gap-2.5 items-center">
-                    <Check className="w-4 h-4 text-amber-400 shrink-0" />
-                    <span className="font-medium text-[#E5E5E5]">Full Quant Suite</span>
-                  </li>
-                  <li className="flex gap-2.5 items-center">
-                    <Check className="w-4 h-4 text-[#4ADE80] shrink-0" />
-                    <span>Live order-flow monitor</span>
-                  </li>
-                  <li className="flex gap-2.5 items-center">
-                    <Check className="w-4 h-4 text-[#4ADE80] shrink-0" />
-                    <span>Trade history archive</span>
-                  </li>
-                </ul>
-              </div>
+              <ul className="space-y-3 mt-5 mb-6 flex-grow">
+                <li className="flex gap-2.5 items-start text-[13px] text-[var(--text-secondary)] leading-snug">
+                  <Check className="w-4 h-4 text-[#FBBF24] shrink-0 mt-0.5" />
+                  <span className="text-[var(--text-primary)] font-medium">Everything in Dragonslayer</span>
+                </li>
+                <li className="flex gap-2.5 items-start text-[13px] text-[var(--text-secondary)] leading-snug">
+                  <Check className="w-4 h-4 text-[#FBBF24] shrink-0 mt-0.5" />
+                  <span className="text-[var(--text-primary)] font-medium">Full quant suite</span>
+                </li>
+                <li className="flex gap-2.5 items-start text-[13px] text-[var(--text-secondary)] leading-snug">
+                  <Check className="w-4 h-4 text-[#4ADE80] shrink-0 mt-0.5" />
+                  <span>Live order-flow monitor</span>
+                </li>
+                <li className="flex gap-2.5 items-start text-[13px] text-[var(--text-secondary)] leading-snug">
+                  <Check className="w-4 h-4 text-[#4ADE80] shrink-0 mt-0.5" />
+                  <span>Trade history archive</span>
+                </li>
+              </ul>
             </div>
 
-            <div className="pt-6">
-              <button
-                onClick={() => handleStripeCheckout('quant')}
-                className="w-full py-4 bg-white text-black hover:bg-zinc-100 font-black uppercase tracking-widest text-[11px] rounded-lg transition-all duration-150 cursor-pointer shadow-lg"
-              >
-                Select Plan
-              </button>
-            </div>
+            <button
+              onClick={() => handleStripeCheckout('quant')}
+              className="w-full py-3 bg-[var(--surface-3)] text-[var(--text-primary)] hover:bg-[var(--border-strong)] font-semibold text-[13px] rounded-xl transition-colors duration-200 cursor-pointer border border-[var(--border)]"
+            >
+              Select plan
+            </button>
           </motion.div>
 
           {/* IMMORTAL CARD */}
-          <motion.div 
-            initial={{ opacity: 0, y: 30 }}
+          <motion.div
+            initial={{ opacity: 0, y: 24 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
-            transition={{
-              type: "spring",
-              stiffness: 400,
-              damping: 28,
-              opacity: { duration: 0.6, delay: 0.5 }
-            }}
-            whileHover={{ scale: 1.05, y: -10, boxShadow: "0 30px 60px -15px rgba(255, 255, 255, 0.12)" }}
-            className="group apple-glass rounded-2xl p-6 flex flex-col justify-between relative transition-all duration-150 w-full sm:w-[calc(50%-12px)] lg:w-[calc(33.33%-16px)] xl:w-[calc(20%-20px)] sm:min-w-[240px] sm:max-w-[280px] lg:order-5 xl:order-5"
+            transition={{ duration: 0.5, delay: 0.25, ease: [0.16, 1, 0.3, 1] }}
+            className="group rounded-2xl p-6 flex flex-col bg-[var(--surface)] border border-[var(--border)] transition-colors duration-200 hover:border-[var(--border-strong)]"
           >
-            <div className="space-y-4 relative z-10">
-              <div className="flex justify-between items-baseline border-b border-black/40 pb-4">
-                <div>
-                  <span className="text-zinc-500 text-[10px] uppercase tracking-wider block font-bold">Permanent</span>
-                  <span className="text-[12px] font-mono font-black text-[#E5E5E5] block mt-1 uppercase">UNLIMITED TIER</span>
+            <div className="flex flex-col flex-grow">
+              <div className="pb-5 border-b border-[var(--border)]">
+                <div className="flex items-center justify-between mb-3">
+                  <span className="text-[var(--text-primary)] text-sm font-semibold inline-flex items-center gap-1.5">
+                    Immortal <InfinityCrown />
+                  </span>
+                  <span className="text-[10px] uppercase tracking-wider text-[var(--text-tertiary)] font-medium">Lifetime</span>
                 </div>
-                <button 
-                  onClick={() => handleCheckoutPlan('lifetime')}
-                  className="text-right focus:outline-none focus:ring-1 focus:ring-white/20 rounded p-1 hover:opacity-85 transition-all text-left block text-right cursor-pointer"
-                >
-                  <span className="text-[#A1A1AA] text-[10.5px] font-bold tracking-wider uppercase font-mono inline-flex items-center gap-1.5 transition-transform group-hover:scale-105">IMMORTAL <InfinityCrown className="group-hover:rotate-45" /></span>
-                  <span className="text-[18px] font-black text-[#E5E5E5] uppercase tracking-tight block border-b border-dashed border-white/40">CONTACT US</span>
-                </button>
+                <div className="flex items-baseline gap-1">
+                  <span className="text-2xl font-bold text-[var(--text-primary)] tracking-tight">Custom</span>
+                </div>
+                <span className="text-[12px] text-[var(--text-tertiary)] mt-1 block">Tailored pricing &mdash; talk to us</span>
               </div>
 
-              <div className="space-y-3.5 text-xs font-sans">
-                <span className="text-[11px] text-[#71717A] block uppercase font-mono tracking-wider font-bold">Inclusions:</span>
-                <ul className="space-y-2.5 font-mono text-xs text-[#4ADE80]">
-                  <li className="flex gap-2.5 items-center">
-                    <Check className="w-4 h-4 text-[#E5E5E5] shrink-0" />
-                    <span className="font-medium text-[#E5E5E5]">All Features Unlocked</span>
-                  </li>
-                  <li className="flex gap-2.5 items-center">
-                    <Check className="w-4 h-4 text-[#4ADE80] shrink-0" />
-                    <span>Permanent Platform Access</span>
-                  </li>
-                  <li className="flex gap-2.5 items-center">
-                    <Check className="w-4 h-4 text-[#4ADE80] shrink-0" />
-                    <span>Private 1-on-1 Onboarding</span>
-                  </li>
-                  <li className="flex gap-2.5 items-center">
-                    <Check className="w-4 h-4 text-[#4ADE80] shrink-0" />
-                    <span>Early Beta Access to Tools</span>
-                  </li>
-                </ul>
-              </div>
+              <ul className="space-y-3 mt-5 mb-6 flex-grow">
+                <li className="flex gap-2.5 items-start text-[13px] text-[var(--text-secondary)] leading-snug">
+                  <Check className="w-4 h-4 text-[#4ADE80] shrink-0 mt-0.5" />
+                  <span className="text-[var(--text-primary)] font-medium">All features unlocked</span>
+                </li>
+                <li className="flex gap-2.5 items-start text-[13px] text-[var(--text-secondary)] leading-snug">
+                  <Check className="w-4 h-4 text-[#4ADE80] shrink-0 mt-0.5" />
+                  <span>Permanent platform access</span>
+                </li>
+                <li className="flex gap-2.5 items-start text-[13px] text-[var(--text-secondary)] leading-snug">
+                  <Check className="w-4 h-4 text-[#4ADE80] shrink-0 mt-0.5" />
+                  <span>Private 1-on-1 onboarding</span>
+                </li>
+                <li className="flex gap-2.5 items-start text-[13px] text-[var(--text-secondary)] leading-snug">
+                  <Check className="w-4 h-4 text-[#4ADE80] shrink-0 mt-0.5" />
+                  <span>Early beta access to tools</span>
+                </li>
+              </ul>
             </div>
 
-            <div className="pt-6">
-              <button
-                onClick={() => handleStripeCheckout('lifetime')}
-                className="w-full py-4 bg-white text-black hover:bg-zinc-100 font-black uppercase tracking-widest text-[11px] rounded-lg transition-all duration-150 cursor-pointer shadow-lg"
-              >
-                CONTACT US
-              </button>
-            </div>
+            <button
+              onClick={() => handleCheckoutPlan('lifetime')}
+              className="w-full py-3 bg-[var(--surface-3)] text-[var(--text-primary)] hover:bg-[var(--border-strong)] font-semibold text-[13px] rounded-xl transition-colors duration-200 cursor-pointer border border-[var(--border)]"
+            >
+              Contact us
+            </button>
           </motion.div>
 
         </div>
       </motion.section>
 
-      {/* Pristine Minimal Footer - No telemetry noise clutter */}
-      <motion.footer 
-        initial={{ opacity: 0, y: 25 }}
+      {/* Footer */}
+      <motion.footer
+        initial={{ opacity: 0, y: 20 }}
         whileInView={{ opacity: 1, y: 0 }}
         viewport={{ once: true }}
-        transition={{ duration: 0.6 }}
-        className="border-t border-black bg-black py-12 px-6 text-center text-[10px] text-zinc-500 font-mono mt-auto relative z-10 w-full"
+        transition={{ duration: 0.5 }}
+        className="border-t border-[var(--border)] py-10 px-6 text-center mt-auto relative z-10 w-full"
       >
-        <p>&copy; 2026 slayertrade. ALL RIGHTS RESERVED.</p>
-        <p className="mt-1 text-[8px] text-zinc-650 uppercase tracking-widest">
+        <p className="text-[12px] text-[var(--text-tertiary)]">&copy; 2026 Slayer Trade. All rights reserved.</p>
+        <p className="mt-1.5 text-[11px] text-[var(--text-tertiary)]/70">
           Slayer provides real-time data and analysis tools. Not investment advice.
         </p>
       </motion.footer>
@@ -668,86 +618,87 @@ export function SubscriptionPricing({ onUpgradeComplete, onEnterApp, session, on
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              className="fixed inset-0 bg-black/60 backdrop-blur-md z-[9999] overflow-y-auto flex items-start md:items-center justify-center p-4"
+              className="fixed inset-0 bg-black/70 backdrop-blur-md z-[9999] overflow-y-auto flex items-start md:items-center justify-center p-4"
             >
             <motion.div
-              initial={{ scale: 0.95, y: 20 }}
+              initial={{ scale: 0.96, y: 16 }}
               animate={{ scale: 1, y: 0 }}
-              exit={{ scale: 0.95, y: 20 }}
-              className="bg-black border border-black rounded-2xl w-full max-w-2xl my-auto overflow-hidden shadow-2xl flex flex-col"
+              exit={{ scale: 0.96, y: 16 }}
+              transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
+              className="bg-[var(--surface)] border border-[var(--border)] rounded-2xl w-full max-w-2xl my-auto overflow-hidden shadow-2xl flex flex-col"
             >
               {/* Modal Top Ribbon Header */}
-              <div className="bg-black border-b border-black/80 px-6 py-4 flex items-center justify-between">
+              <div className="border-b border-[var(--border)] px-6 py-4 flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <div className="w-2 h-2 rounded-full bg-[#4ADE80] hover:bg-[#4ADE80]/90 text-black shadow-[0_0_15px_rgba(0,255,136,0.5)] animate-pulse" />
-                  <span className="text-[10px] uppercase font-black tracking-widest text-[#a1a1aa]">
-                    SECURE CHECKOUT
+                  <ShieldCheck className="w-4 h-4 text-[#4ADE80]" />
+                  <span className="text-[11px] uppercase font-semibold tracking-wider text-[var(--text-secondary)]">
+                    Secure checkout
                   </span>
                 </div>
                 {checkoutStep !== 'processing' ? (
                   <button
                     onClick={() => setSelectedPlanForCheckout(null)}
-                    className="text-zinc-500 hover:text-[#E5E5E5] transition-all cursor-pointer p-1.5 hover:bg-black rounded-lg flex items-center justify-center"
+                    className="text-[var(--text-tertiary)] hover:text-[var(--text-primary)] transition-colors cursor-pointer p-1.5 hover:bg-[var(--surface-3)] rounded-lg flex items-center justify-center"
                     title="Close (Esc)"
                   >
                     <X className="w-4 h-4" />
                   </button>
                 ) : (
-                  <span className="text-[8px] text-indigo-400 font-bold uppercase tracking-widest animate-pulse">PROCESSING</span>
+                  <span className="text-[10px] text-[var(--text-tertiary)] font-semibold uppercase tracking-wider">Processing</span>
                 )}
               </div>
 
               {/* Checkout Main Scrollable Panel */}
-              <div className="flex-grow overflow-y-auto p-6 space-y-6">
-                
+              <div className="flex-grow overflow-y-auto p-6 space-y-5">
+
                 {/* 1. PLAN SUMMARY CARD */}
-                <div className="bg-black border border-black p-5 rounded-xl space-y-3">
-                  <div className="flex justify-between items-start">
+                <div className="bg-[var(--surface-2)] border border-[var(--border)] p-5 rounded-xl">
+                  <div className="flex justify-between items-start gap-4">
                     <div>
-                      <span className="text-[10px] text-zinc-500 uppercase tracking-widest block font-bold">YOUR PLAN</span>
-                      <h3 className="text-xl font-black text-[#E5E5E5] mt-1 uppercase tracking-tight font-sans">
+                      <span className="text-[10px] text-[var(--text-tertiary)] uppercase tracking-wider block font-medium">Your plan</span>
+                      <h3 className="text-xl font-bold text-[var(--text-primary)] mt-1 tracking-tight font-sans">
                         {selectedPlanForCheckout === 'discord' && "Squire"}
                         {selectedPlanForCheckout === 'skyvision' && "Assassin"}
                         {selectedPlanForCheckout === 'pinpoint' && "Dragonslayer"}
                         {selectedPlanForCheckout === 'quant' && "The Reaper"}
                         {selectedPlanForCheckout === 'lifetime' && "Immortal Pass"}
                       </h3>
-                      <p className="text-[10px] text-[#A1A1AA] mt-1 tracking-wider uppercase font-mono">
-                        {selectedPlanForCheckout === 'discord' && "LIVE ALERTS & DISCORD COMMUNITY"}
-                        {selectedPlanForCheckout === 'skyvision' && "FULL TRADE DASHBOARD & IV SURFACE"}
-                        {selectedPlanForCheckout === 'pinpoint' && "LIVE DEALER POSITIONING (GEX)"}
-                        {selectedPlanForCheckout === 'quant' && "BACKTESTER, ORDER FLOW & MOMENTUM GAUGES"}
-                        {selectedPlanForCheckout === 'lifetime' && "ALL FEATURES, PERMANENT ACCESS"}
+                      <p className="text-[11px] text-[var(--text-tertiary)] mt-1.5 leading-relaxed">
+                        {selectedPlanForCheckout === 'discord' && "Live alerts & Discord community"}
+                        {selectedPlanForCheckout === 'skyvision' && "Full trade dashboard & IV surface"}
+                        {selectedPlanForCheckout === 'pinpoint' && "Live dealer positioning (GEX)"}
+                        {selectedPlanForCheckout === 'quant' && "Backtester, order flow & momentum gauges"}
+                        {selectedPlanForCheckout === 'lifetime' && "All features, permanent access"}
                       </p>
                     </div>
-                    <div className="text-right">
-                      <span className="text-[10px] text-indigo-400 block tracking-widest font-black">PRICE</span>
-                      <span className={`${selectedPlanForCheckout === 'lifetime' ? 'text-[11px] font-mono font-bold tracking-widest text-[#4ADE80] uppercase bg-black/40 px-3 py-1.5 border border-black rounded-md' : 'text-2xl font-black text-[#E5E5E5] font-mono'}`}>
-                        {selectedPlanForCheckout === 'lifetime' 
-                          ? 'Quote Needed' 
-                          : billingCycle === 'monthly' 
+                    <div className="text-right shrink-0">
+                      <span className="text-[10px] text-[var(--text-tertiary)] block tracking-wider font-medium uppercase">Price</span>
+                      <span className={`${selectedPlanForCheckout === 'lifetime' ? 'text-[12px] font-semibold tracking-wide text-[#4ADE80] inline-block mt-1' : 'text-2xl font-bold text-[var(--text-primary)]'}`}>
+                        {selectedPlanForCheckout === 'lifetime'
+                          ? 'Custom quote'
+                          : billingCycle === 'monthly'
                             ? (selectedPlanForCheckout === 'discord' ? '$65' : selectedPlanForCheckout === 'skyvision' ? '$350' : selectedPlanForCheckout === 'pinpoint' ? '$500' : '$1500')
                             : (selectedPlanForCheckout === 'discord' ? '$55' : selectedPlanForCheckout === 'skyvision' ? '$290' : selectedPlanForCheckout === 'pinpoint' ? '$420' : '$1250')
                         }
                       </span>
                       {selectedPlanForCheckout !== 'lifetime' && (
-                        <span className="text-[10px] text-zinc-650 block">/ Month</span>
+                        <span className="text-[11px] text-[var(--text-tertiary)] block">/ month</span>
                       )}
                     </div>
                   </div>
 
                   {selectedPlanForCheckout !== 'lifetime' && (
-                    <div className="text-[10px] text-[#4ADE80] bg-black/40 border border-black rounded-lg p-2 flex items-center justify-between">
-                      <span className="uppercase font-bold tracking-widest">Billing Schedule:</span>
-                      <span className="font-extrabold uppercase">
-                        {billingCycle === 'monthly' ? "Billed Monthly" : "Billed Annually (Save 20%)"}
+                    <div className="mt-4 text-[11px] text-[var(--text-secondary)] bg-[var(--surface)] border border-[var(--border)] rounded-lg px-3 py-2 flex items-center justify-between">
+                      <span className="uppercase font-medium tracking-wide text-[var(--text-tertiary)]">Billing</span>
+                      <span className="font-semibold">
+                        {billingCycle === 'monthly' ? "Billed monthly" : "Billed annually (save 20%)"}
                       </span>
                     </div>
                   )}
                 </div>
 
                 {checkoutError && checkoutStep === 'details' && (
-                  <div className="rounded-lg border border-[#F87171]/40 bg-[#F87171]/10 text-[#F87171] px-4 py-3 text-[11px] font-mono flex items-start gap-2">
+                  <div className="rounded-lg border border-[#F87171]/40 bg-[#F87171]/10 text-[#F87171] px-4 py-3 text-[12px] flex items-start gap-2">
                     <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
                     <span>{checkoutError}</span>
                     <button onClick={() => setCheckoutError('')} className="ml-auto shrink-0 hover:opacity-70 transition-opacity"><X className="w-3.5 h-3.5" /></button>
@@ -755,30 +706,30 @@ export function SubscriptionPricing({ onUpgradeComplete, onEnterApp, session, on
                 )}
 
                 {checkoutStep === 'details' && (
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-5 animate-fadeIn animate-duration-150">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                     {/* RIGHT COLUMN */}
-                    <div className="order-1 md:order-2 border border-black bg-black/70 rounded-xl p-4 flex flex-col justify-between min-h-[420px]">
+                    <div className="order-1 md:order-2 border border-[var(--border)] bg-[var(--surface-2)] rounded-xl p-4 flex flex-col justify-between min-h-[420px]">
                       {selectedPlanForCheckout === 'lifetime' ? (
                         <div ref={paymentAreaRef} className="space-y-4 flex flex-col justify-between h-full">
                           <div className="space-y-3.5">
-                            <div className="flex items-center gap-1.5 text-[10px] uppercase tracking-widest text-[#a1a1aa] font-black border-b border-black pb-1.5">
+                            <div className="flex items-center gap-1.5 text-[11px] uppercase tracking-wider text-[var(--text-secondary)] font-semibold border-b border-[var(--border)] pb-2">
                               <Mail className="w-3.5 h-3.5 text-[#4ADE80] shrink-0" />
-                              Contact Form
+                              Contact form
                             </div>
 
                             {/* Account Classification Toggle */}
                             <div className="space-y-2">
-                              <label className="text-[8px] text-[#A1A1AA] uppercase tracking-widest font-extrabold block">
-                                Account Type
+                              <label className="text-[10px] text-[var(--text-tertiary)] uppercase tracking-wider font-semibold block">
+                                Account type
                               </label>
                               <div className="grid grid-cols-2 gap-2">
                                 <button
                                   type="button"
                                   onClick={() => setLifetimeContactType('individual')}
-                                  className={`py-2 px-3 text-xs font-bold uppercase tracking-wider rounded-lg border transition-all cursor-pointer ${
+                                  className={`py-2 px-3 text-[12px] font-semibold rounded-lg border transition-colors cursor-pointer ${
                                     lifetimeContactType === 'individual'
-                                      ? 'bg-black/40 border-black text-[#E5E5E5]'
-                                      : 'bg-black border-black text-zinc-500 hover:text-[#E5E5E5] hover:border-black'
+                                      ? 'bg-[var(--surface-3)] border-[var(--border-strong)] text-[var(--text-primary)]'
+                                      : 'bg-[var(--surface)] border-[var(--border)] text-[var(--text-tertiary)] hover:text-[var(--text-primary)] hover:border-[var(--border-strong)]'
                                   }`}
                                 >
                                   Individual
@@ -786,10 +737,10 @@ export function SubscriptionPricing({ onUpgradeComplete, onEnterApp, session, on
                                 <button
                                   type="button"
                                   onClick={() => setLifetimeContactType('corporate')}
-                                  className={`py-2 px-3 text-xs font-bold uppercase tracking-wider rounded-lg border transition-all cursor-pointer ${
+                                  className={`py-2 px-3 text-[12px] font-semibold rounded-lg border transition-colors cursor-pointer ${
                                     lifetimeContactType === 'corporate'
-                                      ? 'bg-black/40 border-black text-[#E5E5E5]'
-                                      : 'bg-black border-black text-zinc-500 hover:text-[#E5E5E5] hover:border-black'
+                                      ? 'bg-[var(--surface-3)] border-[var(--border-strong)] text-[var(--text-primary)]'
+                                      : 'bg-[var(--surface)] border-[var(--border)] text-[var(--text-tertiary)] hover:text-[var(--text-primary)] hover:border-[var(--border-strong)]'
                                   }`}
                                 >
                                   Business
@@ -798,24 +749,24 @@ export function SubscriptionPricing({ onUpgradeComplete, onEnterApp, session, on
                             </div>
 
                             {lifetimeContactType === 'individual' ? (
-                              <div className="space-y-3 animate-fadeIn">
+                              <div className="space-y-3">
                                 <div>
-                                  <label className="text-[8.5px] text-[#A1A1AA] uppercase tracking-widest font-extrabold block mb-1">
-                                    Full Name
+                                  <label className="text-[10px] text-[var(--text-tertiary)] uppercase tracking-wider font-semibold block mb-1">
+                                    Full name
                                   </label>
                                   <input
                                     type="text"
                                     id="lifetime-ind-name-input"
                                     value={lifetimeIndName}
                                     onChange={(e) => setLifetimeIndName(e.target.value)}
-                                    placeholder="Your Name"
-                                    className="w-full bg-black border border-black text-[#E5E5E5] rounded-lg p-2.5 text-xs focus:outline-none focus:border-black transition-colors font-sans font-normal"
+                                    placeholder="Your name"
+                                    className="w-full bg-[var(--surface)] border border-[var(--border)] text-[var(--text-primary)] rounded-lg p-2.5 text-[13px] focus:outline-none focus:border-[var(--border-strong)] transition-colors font-sans"
                                   />
                                 </div>
 
                                 <div className="grid grid-cols-2 gap-2">
                                   <div>
-                                    <label className="text-[8.5px] text-[#A1A1AA] uppercase tracking-widest font-extrabold block mb-1">
+                                    <label className="text-[10px] text-[var(--text-tertiary)] uppercase tracking-wider font-semibold block mb-1">
                                       Email address
                                     </label>
                                     <input
@@ -823,61 +774,61 @@ export function SubscriptionPricing({ onUpgradeComplete, onEnterApp, session, on
                                       value={lifetimeIndEmail}
                                       onChange={(e) => setLifetimeIndEmail(e.target.value)}
                                       placeholder="you@example.com"
-                                      className="w-full bg-black border border-black text-[#E5E5E5] rounded-lg p-2.5 text-xs focus:outline-none focus:border-black transition-colors font-sans font-normal"
+                                      className="w-full bg-[var(--surface)] border border-[var(--border)] text-[var(--text-primary)] rounded-lg p-2.5 text-[13px] focus:outline-none focus:border-[var(--border-strong)] transition-colors font-sans"
                                     />
                                   </div>
                                   <div>
-                                    <label className="text-[8.5px] text-[#A1A1AA] uppercase tracking-widest font-extrabold block mb-1">
-                                      Phone Number
+                                    <label className="text-[10px] text-[var(--text-tertiary)] uppercase tracking-wider font-semibold block mb-1">
+                                      Phone number
                                     </label>
                                     <input
                                       type="tel"
                                       value={lifetimeIndPhone}
                                       onChange={(e) => setLifetimeIndPhone(e.target.value)}
                                       placeholder="+1 (555) 0123"
-                                      className="w-full bg-black border border-black text-[#E5E5E5] rounded-lg p-2.5 text-xs focus:outline-none focus:border-black transition-colors font-sans font-normal"
+                                      className="w-full bg-[var(--surface)] border border-[var(--border)] text-[var(--text-primary)] rounded-lg p-2.5 text-[13px] focus:outline-none focus:border-[var(--border-strong)] transition-colors font-sans"
                                     />
                                   </div>
                                 </div>
 
-                                <div className="animate-fadeIn">
-                                  <label className="text-[8.5px] text-[#A1A1AA] uppercase tracking-widest font-extrabold block mb-1">
+                                <div>
+                                  <label className="text-[10px] text-[var(--text-tertiary)] uppercase tracking-wider font-semibold block mb-1">
                                     How did you find us?
                                   </label>
                                   <select
                                     value={lifetimeIndReferralSource}
                                     onChange={(e) => setLifetimeIndReferralSource(e.target.value)}
-                                    className="w-full bg-black border border-black text-[#E5E5E5] rounded-lg p-2.5 text-xs focus:outline-none focus:border-black transition-colors font-sans font-normal text-left cursor-pointer"
+                                    className="w-full bg-[var(--surface)] border border-[var(--border)] text-[var(--text-primary)] rounded-lg p-2.5 text-[13px] focus:outline-none focus:border-[var(--border-strong)] transition-colors font-sans cursor-pointer"
                                   >
-                                    <option value="" disabled className="bg-black text-zinc-500">Select an option</option>
-                                    <option value="Twitter / X" className="bg-black text-[#E5E5E5]">Twitter / X</option>
-                                    <option value="Telegram" className="bg-black text-[#E5E5E5]">Telegram</option>
-                                    <option value="Friend / Referral" className="bg-black text-[#E5E5E5]">Friend / Referral</option>
-                                    <option value="Search Engine" className="bg-black text-[#E5E5E5]">Search Engine</option>
-                                    <option value="YouTube" className="bg-black text-[#E5E5E5]">YouTube</option>
-                                    <option value="Other" className="bg-black text-[#E5E5E5]">Other</option>
+                                    <option value="" disabled className="bg-[var(--surface)] text-[var(--text-tertiary)]">Select an option</option>
+                                    <option value="Twitter / X" className="bg-[var(--surface)] text-[var(--text-primary)]">Twitter / X</option>
+                                    <option value="Telegram" className="bg-[var(--surface)] text-[var(--text-primary)]">Telegram</option>
+                                    <option value="Friend / Referral" className="bg-[var(--surface)] text-[var(--text-primary)]">Friend / Referral</option>
+                                    <option value="Search Engine" className="bg-[var(--surface)] text-[var(--text-primary)]">Search Engine</option>
+                                    <option value="YouTube" className="bg-[var(--surface)] text-[var(--text-primary)]">YouTube</option>
+                                    <option value="Other" className="bg-[var(--surface)] text-[var(--text-primary)]">Other</option>
                                   </select>
                                 </div>
                               </div>
                             ) : (
-                              <div className="space-y-3 animate-fadeIn">
+                              <div className="space-y-3">
                                 <div>
-                                  <label className="text-[8.5px] text-[#A1A1AA] uppercase tracking-widest font-extrabold block mb-1">
-                                    Full Name
+                                  <label className="text-[10px] text-[var(--text-tertiary)] uppercase tracking-wider font-semibold block mb-1">
+                                    Full name
                                   </label>
                                   <input
                                     type="text"
                                     id="lifetime-bus-name-input"
                                     value={lifetimeBusName}
                                     onChange={(e) => setLifetimeBusName(e.target.value)}
-                                    placeholder="Your Name"
-                                    className="w-full bg-black border border-black text-[#E5E5E5] rounded-lg p-2.5 text-xs focus:outline-none focus:border-black transition-colors font-sans font-normal"
+                                    placeholder="Your name"
+                                    className="w-full bg-[var(--surface)] border border-[var(--border)] text-[var(--text-primary)] rounded-lg p-2.5 text-[13px] focus:outline-none focus:border-[var(--border-strong)] transition-colors font-sans"
                                   />
                                 </div>
 
                                 <div className="grid grid-cols-2 gap-2">
                                   <div>
-                                    <label className="text-[8.5px] text-[#A1A1AA] uppercase tracking-widest font-extrabold block mb-1">
+                                    <label className="text-[10px] text-[var(--text-tertiary)] uppercase tracking-wider font-semibold block mb-1">
                                       Email address
                                     </label>
                                     <input
@@ -885,62 +836,62 @@ export function SubscriptionPricing({ onUpgradeComplete, onEnterApp, session, on
                                       value={lifetimeBusEmail}
                                       onChange={(e) => setLifetimeBusEmail(e.target.value)}
                                       placeholder="you@example.com"
-                                      className="w-full bg-black border border-black text-[#E5E5E5] rounded-lg p-2.5 text-xs focus:outline-none focus:border-black transition-colors font-sans font-normal"
+                                      className="w-full bg-[var(--surface)] border border-[var(--border)] text-[var(--text-primary)] rounded-lg p-2.5 text-[13px] focus:outline-none focus:border-[var(--border-strong)] transition-colors font-sans"
                                     />
                                   </div>
                                   <div>
-                                    <label className="text-[8.5px] text-[#A1A1AA] uppercase tracking-widest font-extrabold block mb-1">
-                                      Phone Number
+                                    <label className="text-[10px] text-[var(--text-tertiary)] uppercase tracking-wider font-semibold block mb-1">
+                                      Phone number
                                     </label>
                                     <input
                                       type="tel"
                                       value={lifetimeBusPhone}
                                       onChange={(e) => setLifetimeBusPhone(e.target.value)}
                                       placeholder="+1 (555) 0123"
-                                      className="w-full bg-black border border-black text-[#E5E5E5] rounded-lg p-2.5 text-xs focus:outline-none focus:border-black transition-colors font-sans font-normal"
+                                      className="w-full bg-[var(--surface)] border border-[var(--border)] text-[var(--text-primary)] rounded-lg p-2.5 text-[13px] focus:outline-none focus:border-[var(--border-strong)] transition-colors font-sans"
                                     />
                                   </div>
                                 </div>
 
-                                <div className="grid grid-cols-2 gap-2 animate-fadeIn">
+                                <div className="grid grid-cols-2 gap-2">
                                   <div>
-                                    <label className="text-[8.5px] text-[#A1A1AA] uppercase tracking-widest font-extrabold block mb-1">
-                                      Company / Entity Name
+                                    <label className="text-[10px] text-[var(--text-tertiary)] uppercase tracking-wider font-semibold block mb-1">
+                                      Company / entity
                                     </label>
                                     <input
                                       type="text"
                                       value={lifetimeBusCompanyName}
                                       onChange={(e) => setLifetimeBusCompanyName(e.target.value)}
-                                      placeholder="Company Name"
-                                      className="w-full bg-black border border-black text-[#E5E5E5] rounded-lg p-2.5 text-xs focus:outline-none focus:border-black transition-colors font-sans font-normal"
+                                      placeholder="Company name"
+                                      className="w-full bg-[var(--surface)] border border-[var(--border)] text-[var(--text-primary)] rounded-lg p-2.5 text-[13px] focus:outline-none focus:border-[var(--border-strong)] transition-colors font-sans"
                                     />
                                   </div>
                                   <div>
-                                    <label className="text-[8.5px] text-[#A1A1AA] uppercase tracking-widest font-extrabold block mb-1">
+                                    <label className="text-[10px] text-[var(--text-tertiary)] uppercase tracking-wider font-semibold block mb-1">
                                       How did you find us?
                                     </label>
                                     <select
                                       value={lifetimeBusReferralSource}
                                       onChange={(e) => setLifetimeBusReferralSource(e.target.value)}
-                                      className="w-full bg-black border border-black text-[#E5E5E5] rounded-lg p-2.5 text-xs focus:outline-none focus:border-black transition-colors font-sans font-normal text-left cursor-pointer"
+                                      className="w-full bg-[var(--surface)] border border-[var(--border)] text-[var(--text-primary)] rounded-lg p-2.5 text-[13px] focus:outline-none focus:border-[var(--border-strong)] transition-colors font-sans cursor-pointer"
                                     >
-                                      <option value="" disabled className="bg-black text-zinc-500">Select an option</option>
-                                      <option value="Twitter / X" className="bg-black text-[#E5E5E5]">Twitter / X</option>
-                                      <option value="Telegram" className="bg-black text-[#E5E5E5]">Telegram</option>
-                                      <option value="Friend / Referral" className="bg-black text-[#E5E5E5]">Friend / Referral</option>
-                                      <option value="Search Engine" className="bg-black text-[#E5E5E5]">Search Engine</option>
-                                      <option value="YouTube" className="bg-black text-[#E5E5E5]">YouTube</option>
-                                      <option value="Other" className="bg-black text-[#E5E5E5]">Other</option>
+                                      <option value="" disabled className="bg-[var(--surface)] text-[var(--text-tertiary)]">Select an option</option>
+                                      <option value="Twitter / X" className="bg-[var(--surface)] text-[var(--text-primary)]">Twitter / X</option>
+                                      <option value="Telegram" className="bg-[var(--surface)] text-[var(--text-primary)]">Telegram</option>
+                                      <option value="Friend / Referral" className="bg-[var(--surface)] text-[var(--text-primary)]">Friend / Referral</option>
+                                      <option value="Search Engine" className="bg-[var(--surface)] text-[var(--text-primary)]">Search Engine</option>
+                                      <option value="YouTube" className="bg-[var(--surface)] text-[var(--text-primary)]">YouTube</option>
+                                      <option value="Other" className="bg-[var(--surface)] text-[var(--text-primary)]">Other</option>
                                     </select>
                                   </div>
                                 </div>
 
                                 <div className="space-y-1">
                                   <div className="flex justify-between items-center">
-                                    <label className="text-[8.5px] text-[#A1A1AA] uppercase tracking-widest font-extrabold block">
-                                      Message Note / Requirements
+                                    <label className="text-[10px] text-[var(--text-tertiary)] uppercase tracking-wider font-semibold block">
+                                      Message / requirements
                                     </label>
-                                    <span className="text-[8.5px] text-zinc-500 font-mono">
+                                    <span className="text-[10px] text-[var(--text-tertiary)] font-mono">
                                       {lifetimeBusMessage.length}/500
                                     </span>
                                   </div>
@@ -949,12 +900,12 @@ export function SubscriptionPricing({ onUpgradeComplete, onEnterApp, session, on
                                     maxLength={500}
                                     value={lifetimeBusMessage}
                                     onChange={(e) => setLifetimeBusMessage(e.target.value)}
-                                    placeholder="Explain your needs, custom setup details, or what premium features you require..."
-                                    className="w-full bg-black border border-black text-[#E5E5E5] rounded-lg p-2 text-xs focus:outline-none focus:border-black transition-colors resize-none font-sans font-normal text-left"
+                                    placeholder="Tell us about your needs, custom setup, or the features you require..."
+                                    className="w-full bg-[var(--surface)] border border-[var(--border)] text-[var(--text-primary)] rounded-lg p-2.5 text-[13px] focus:outline-none focus:border-[var(--border-strong)] transition-colors resize-none font-sans"
                                   />
                                   {lifetimeBusMessage.length >= 500 && (
-                                    <div className="text-[10px] text-red-500 font-bold mt-1 uppercase text-left">
-                                      For more extensive requirements, email <a href="mailto:slayer@trade.com" className="underline hover:text-red-400">slayer@trade.com</a>
+                                    <div className="text-[11px] text-[#F87171] font-medium mt-1">
+                                      For longer requirements, email <a href="mailto:slayer@trade.com" className="underline hover:opacity-80">slayer@trade.com</a>
                                     </div>
                                   )}
                                 </div>
@@ -993,9 +944,9 @@ export function SubscriptionPricing({ onUpgradeComplete, onEnterApp, session, on
                                 }
                               }
                             }}
-                            className={`w-full mt-4 py-3 rounded-lg bg-black/40 hover:bg-black/40 text-neutral-950 font-black text-[10px] uppercase tracking-widest shadow-xl flex items-center justify-center gap-1.5 transition-all cursor-pointer transform hover:scale-[1.01] ${isPaymentInFlight ? 'opacity-50 cursor-not-allowed' : ''}`}
+                            className={`w-full mt-4 py-3 rounded-xl bg-[#4ADE80] hover:bg-[#4ADE80]/90 text-black font-semibold text-[12px] flex items-center justify-center gap-1.5 transition-colors cursor-pointer ${isPaymentInFlight ? 'opacity-50 cursor-not-allowed' : ''}`}
                           >
-                            <span>{isPaymentInFlight ? 'SENDING...' : 'SEND MESSAGE'}</span>
+                            <span>{isPaymentInFlight ? 'Sending...' : 'Send message'}</span>
                           </button>
                         </div>
                       ) : (
@@ -1003,26 +954,26 @@ export function SubscriptionPricing({ onUpgradeComplete, onEnterApp, session, on
                           {checkoutSubStep === 'details' ? (
                             <div className="space-y-4 flex flex-col justify-between h-full">
                               <div className="space-y-3.5">
-                                <div className="flex items-center justify-between border-b border-black pb-1.5">
-                                  <div className="flex items-center gap-1.5 text-[10px] uppercase tracking-widest text-[#a1a1aa] font-black">
-                                    <User className="w-3.5 h-3.5 text-indigo-400" />
-                                    STEP 1: Contact Details
+                                <div className="flex items-center justify-between border-b border-[var(--border)] pb-2">
+                                  <div className="flex items-center gap-1.5 text-[11px] uppercase tracking-wider text-[var(--text-secondary)] font-semibold">
+                                    <User className="w-3.5 h-3.5 text-[#4ADE80]" />
+                                    Step 1 &middot; Contact details
                                   </div>
-                                  <span className="text-[9px] text-[#a1a1aa] font-mono">1/2</span>
+                                  <span className="text-[10px] text-[var(--text-tertiary)] font-mono">1/2</span>
                                 </div>
 
                                 <div className="space-y-2">
-                                  <label className="text-[8px] text-[#A1A1AA] uppercase tracking-widest font-extrabold block">
-                                    Account Type
+                                  <label className="text-[10px] text-[var(--text-tertiary)] uppercase tracking-wider font-semibold block">
+                                    Account type
                                   </label>
                                   <div className="grid grid-cols-2 gap-2">
                                     <button
                                       type="button"
                                       onClick={() => setContactType('individual')}
-                                      className={`py-2 px-3 text-xs font-bold uppercase tracking-wider rounded-lg border transition-all cursor-pointer ${
+                                      className={`py-2 px-3 text-[12px] font-semibold rounded-lg border transition-colors cursor-pointer ${
                                         contactType === 'individual'
-                                          ? 'bg-black border-indigo-500 text-[#E5E5E5]'
-                                          : 'bg-black border-black text-zinc-500 hover:text-[#E5E5E5] hover:border-black'
+                                          ? 'bg-[var(--surface-3)] border-[var(--border-strong)] text-[var(--text-primary)]'
+                                          : 'bg-[var(--surface)] border-[var(--border)] text-[var(--text-tertiary)] hover:text-[var(--text-primary)] hover:border-[var(--border-strong)]'
                                       }`}
                                     >
                                       Individual
@@ -1030,10 +981,10 @@ export function SubscriptionPricing({ onUpgradeComplete, onEnterApp, session, on
                                     <button
                                       type="button"
                                       onClick={() => setContactType('corporate')}
-                                      className={`py-2 px-3 text-xs font-bold uppercase tracking-wider rounded-lg border transition-all cursor-pointer ${
+                                      className={`py-2 px-3 text-[12px] font-semibold rounded-lg border transition-colors cursor-pointer ${
                                         contactType === 'corporate'
-                                          ? 'bg-black border-indigo-500 text-[#E5E5E5]'
-                                          : 'bg-black border-black text-zinc-500 hover:text-[#E5E5E5] hover:border-black'
+                                          ? 'bg-[var(--surface-3)] border-[var(--border-strong)] text-[var(--text-primary)]'
+                                          : 'bg-[var(--surface)] border-[var(--border)] text-[var(--text-tertiary)] hover:text-[var(--text-primary)] hover:border-[var(--border-strong)]'
                                       }`}
                                     >
                                       Business
@@ -1042,10 +993,10 @@ export function SubscriptionPricing({ onUpgradeComplete, onEnterApp, session, on
                                 </div>
 
                                 {contactType === 'individual' ? (
-                                  <div className="space-y-3 animate-fadeIn">
+                                  <div className="space-y-3">
                                     <div>
-                                      <label className="text-[8.5px] text-[#A1A1AA] uppercase tracking-widest font-extrabold block mb-1">
-                                        Full Name
+                                      <label className="text-[10px] text-[var(--text-tertiary)] uppercase tracking-wider font-semibold block mb-1">
+                                        Full name
                                       </label>
                                       <input
                                         type="text"
@@ -1054,13 +1005,13 @@ export function SubscriptionPricing({ onUpgradeComplete, onEnterApp, session, on
                                         onChange={(e) => setRegIndName(e.target.value)}
                                         placeholder="John Doe"
                                         required
-                                        className="w-full bg-black border border-black text-[#E5E5E5] rounded-lg p-2.5 text-xs focus:outline-none focus:border-black transition-colors font-sans font-normal"
+                                        className="w-full bg-[var(--surface)] border border-[var(--border)] text-[var(--text-primary)] rounded-lg p-2.5 text-[13px] focus:outline-none focus:border-[var(--border-strong)] transition-colors font-sans"
                                       />
                                     </div>
 
                                     <div>
-                                      <label className="text-[8.5px] text-[#A1A1AA] uppercase tracking-widest font-extrabold block mb-1">
-                                        Email Address
+                                      <label className="text-[10px] text-[var(--text-tertiary)] uppercase tracking-wider font-semibold block mb-1">
+                                        Email address
                                       </label>
                                       <input
                                         type="email"
@@ -1068,13 +1019,13 @@ export function SubscriptionPricing({ onUpgradeComplete, onEnterApp, session, on
                                         onChange={(e) => setRegIndEmail(e.target.value)}
                                         placeholder="you@example.com"
                                         required
-                                        className="w-full bg-black border border-black text-[#E5E5E5] rounded-lg p-2.5 text-xs focus:outline-none focus:border-black transition-colors font-sans font-normal"
+                                        className="w-full bg-[var(--surface)] border border-[var(--border)] text-[var(--text-primary)] rounded-lg p-2.5 text-[13px] focus:outline-none focus:border-[var(--border-strong)] transition-colors font-sans"
                                       />
                                     </div>
 
                                     <div>
-                                      <label className="text-[8.5px] text-[#A1A1AA] uppercase tracking-widest font-extrabold block mb-1">
-                                        Phone Number
+                                      <label className="text-[10px] text-[var(--text-tertiary)] uppercase tracking-wider font-semibold block mb-1">
+                                        Phone number
                                       </label>
                                       <input
                                         type="tel"
@@ -1082,34 +1033,34 @@ export function SubscriptionPricing({ onUpgradeComplete, onEnterApp, session, on
                                         onChange={(e) => setRegIndPhone(e.target.value)}
                                         placeholder="+1 (555) 0199"
                                         required
-                                        className="w-full bg-black border border-black text-[#E5E5E5] rounded-lg p-2.5 text-xs focus:outline-none focus:border-black transition-colors font-sans font-normal"
+                                        className="w-full bg-[var(--surface)] border border-[var(--border)] text-[var(--text-primary)] rounded-lg p-2.5 text-[13px] focus:outline-none focus:border-[var(--border-strong)] transition-colors font-sans"
                                       />
                                     </div>
 
-                                    <div className="animate-fadeIn">
-                                      <label className="text-[8.5px] text-[#A1A1AA] uppercase tracking-widest font-extrabold block mb-1">
+                                    <div>
+                                      <label className="text-[10px] text-[var(--text-tertiary)] uppercase tracking-wider font-semibold block mb-1">
                                         How did you find us?
                                       </label>
                                       <select
                                         value={regIndReferralSource}
                                         onChange={(e) => setRegIndReferralSource(e.target.value)}
-                                        className="w-full bg-black border border-black text-[#E5E5E5] rounded-lg p-2.5 text-xs focus:outline-none focus:border-black transition-colors font-sans font-normal text-left cursor-pointer animate-fadeIn"
+                                        className="w-full bg-[var(--surface)] border border-[var(--border)] text-[var(--text-primary)] rounded-lg p-2.5 text-[13px] focus:outline-none focus:border-[var(--border-strong)] transition-colors font-sans cursor-pointer"
                                       >
-                                        <option value="" disabled className="bg-black text-zinc-500">Select an option</option>
-                                        <option value="Twitter / X" className="bg-black text-[#E5E5E5]">Twitter / X</option>
-                                        <option value="Telegram" className="bg-black text-[#E5E5E5]">Telegram</option>
-                                        <option value="Friend / Referral" className="bg-black text-[#E5E5E5]">Friend / Referral</option>
-                                        <option value="Search Engine" className="bg-black text-[#E5E5E5]">Search Engine</option>
-                                        <option value="YouTube" className="bg-black text-[#E5E5E5]">YouTube</option>
-                                        <option value="Other" className="bg-black text-[#E5E5E5]">Other</option>
+                                        <option value="" disabled className="bg-[var(--surface)] text-[var(--text-tertiary)]">Select an option</option>
+                                        <option value="Twitter / X" className="bg-[var(--surface)] text-[var(--text-primary)]">Twitter / X</option>
+                                        <option value="Telegram" className="bg-[var(--surface)] text-[var(--text-primary)]">Telegram</option>
+                                        <option value="Friend / Referral" className="bg-[var(--surface)] text-[var(--text-primary)]">Friend / Referral</option>
+                                        <option value="Search Engine" className="bg-[var(--surface)] text-[var(--text-primary)]">Search Engine</option>
+                                        <option value="YouTube" className="bg-[var(--surface)] text-[var(--text-primary)]">YouTube</option>
+                                        <option value="Other" className="bg-[var(--surface)] text-[var(--text-primary)]">Other</option>
                                       </select>
                                     </div>
                                   </div>
                                 ) : (
-                                  <div className="space-y-3 animate-fadeIn">
+                                  <div className="space-y-3">
                                     <div>
-                                      <label className="text-[8.5px] text-[#A1A1AA] uppercase tracking-widest font-extrabold block mb-1">
-                                        Full Name
+                                      <label className="text-[10px] text-[var(--text-tertiary)] uppercase tracking-wider font-semibold block mb-1">
+                                        Full name
                                       </label>
                                       <input
                                         type="text"
@@ -1118,13 +1069,13 @@ export function SubscriptionPricing({ onUpgradeComplete, onEnterApp, session, on
                                         onChange={(e) => setRegBusName(e.target.value)}
                                         placeholder="John Doe"
                                         required
-                                        className="w-full bg-black border border-black text-[#E5E5E5] rounded-lg p-2.5 text-xs focus:outline-none focus:border-black transition-colors font-sans font-normal"
+                                        className="w-full bg-[var(--surface)] border border-[var(--border)] text-[var(--text-primary)] rounded-lg p-2.5 text-[13px] focus:outline-none focus:border-[var(--border-strong)] transition-colors font-sans"
                                       />
                                     </div>
 
                                     <div>
-                                      <label className="text-[8.5px] text-[#A1A1AA] uppercase tracking-widest font-extrabold block mb-1">
-                                        Email Address
+                                      <label className="text-[10px] text-[var(--text-tertiary)] uppercase tracking-wider font-semibold block mb-1">
+                                        Email address
                                       </label>
                                       <input
                                         type="email"
@@ -1132,13 +1083,13 @@ export function SubscriptionPricing({ onUpgradeComplete, onEnterApp, session, on
                                         onChange={(e) => setRegBusEmail(e.target.value)}
                                         placeholder="you@example.com"
                                         required
-                                        className="w-full bg-black border border-black text-[#E5E5E5] rounded-lg p-2.5 text-xs focus:outline-none focus:border-black transition-colors font-sans font-normal"
+                                        className="w-full bg-[var(--surface)] border border-[var(--border)] text-[var(--text-primary)] rounded-lg p-2.5 text-[13px] focus:outline-none focus:border-[var(--border-strong)] transition-colors font-sans"
                                       />
                                     </div>
 
                                     <div>
-                                      <label className="text-[8.5px] text-[#A1A1AA] uppercase tracking-widest font-extrabold block mb-1">
-                                        Phone Number
+                                      <label className="text-[10px] text-[var(--text-tertiary)] uppercase tracking-wider font-semibold block mb-1">
+                                        Phone number
                                       </label>
                                       <input
                                         type="tel"
@@ -1146,39 +1097,39 @@ export function SubscriptionPricing({ onUpgradeComplete, onEnterApp, session, on
                                         onChange={(e) => setRegBusPhone(e.target.value)}
                                         placeholder="+1 (555) 0199"
                                         required
-                                        className="w-full bg-black border border-black text-[#E5E5E5] rounded-lg p-2.5 text-xs focus:outline-none focus:border-black transition-colors font-sans font-normal"
+                                        className="w-full bg-[var(--surface)] border border-[var(--border)] text-[var(--text-primary)] rounded-lg p-2.5 text-[13px] focus:outline-none focus:border-[var(--border-strong)] transition-colors font-sans"
                                       />
                                     </div>
 
-                                    <div className="grid grid-cols-2 gap-2 animate-fadeIn animate-duration-150">
+                                    <div className="grid grid-cols-2 gap-2">
                                       <div>
-                                        <label className="text-[8.5px] text-[#A1A1AA] uppercase tracking-widest font-extrabold block mb-1">
-                                          Company Name
+                                        <label className="text-[10px] text-[var(--text-tertiary)] uppercase tracking-wider font-semibold block mb-1">
+                                          Company name
                                         </label>
                                         <input
                                           type="text"
                                           value={regBusCompanyName}
                                           onChange={(e) => setRegBusCompanyName(e.target.value)}
                                           placeholder="E.g. Capital Ltd"
-                                          className="w-full bg-black border border-black text-[#E5E5E5] rounded-lg p-2.5 text-xs focus:outline-none focus:border-black transition-colors font-sans font-normal"
+                                          className="w-full bg-[var(--surface)] border border-[var(--border)] text-[var(--text-primary)] rounded-lg p-2.5 text-[13px] focus:outline-none focus:border-[var(--border-strong)] transition-colors font-sans"
                                         />
                                       </div>
                                       <div>
-                                        <label className="text-[8.5px] text-[#A1A1AA] uppercase tracking-widest font-extrabold block mb-1">
+                                        <label className="text-[10px] text-[var(--text-tertiary)] uppercase tracking-wider font-semibold block mb-1">
                                           How did you find us?
                                         </label>
                                         <select
                                           value={regBusReferralSource}
                                           onChange={(e) => setRegBusReferralSource(e.target.value)}
-                                          className="w-full bg-black border border-black text-[#E5E5E5] rounded-lg p-2.5 text-xs focus:outline-none focus:border-black transition-colors font-sans font-normal text-left cursor-pointer animate-fadeIn"
+                                          className="w-full bg-[var(--surface)] border border-[var(--border)] text-[var(--text-primary)] rounded-lg p-2.5 text-[13px] focus:outline-none focus:border-[var(--border-strong)] transition-colors font-sans cursor-pointer"
                                         >
-                                          <option value="" disabled className="bg-black text-zinc-500">Select an option</option>
-                                          <option value="Twitter / X" className="bg-black text-[#E5E5E5]">Twitter / X</option>
-                                          <option value="Telegram" className="bg-black text-[#E5E5E5]">Telegram</option>
-                                          <option value="Friend / Referral" className="bg-black text-[#E5E5E5]">Friend / Referral</option>
-                                          <option value="Search Engine" className="bg-black text-[#E5E5E5]">Search Engine</option>
-                                          <option value="YouTube" className="bg-black text-[#E5E5E5]">YouTube</option>
-                                          <option value="Other" className="bg-black text-[#E5E5E5]">Other</option>
+                                          <option value="" disabled className="bg-[var(--surface)] text-[var(--text-tertiary)]">Select an option</option>
+                                          <option value="Twitter / X" className="bg-[var(--surface)] text-[var(--text-primary)]">Twitter / X</option>
+                                          <option value="Telegram" className="bg-[var(--surface)] text-[var(--text-primary)]">Telegram</option>
+                                          <option value="Friend / Referral" className="bg-[var(--surface)] text-[var(--text-primary)]">Friend / Referral</option>
+                                          <option value="Search Engine" className="bg-[var(--surface)] text-[var(--text-primary)]">Search Engine</option>
+                                          <option value="YouTube" className="bg-[var(--surface)] text-[var(--text-primary)]">YouTube</option>
+                                          <option value="Other" className="bg-[var(--surface)] text-[var(--text-primary)]">Other</option>
                                         </select>
                                       </div>
                                     </div>
@@ -1202,27 +1153,27 @@ export function SubscriptionPricing({ onUpgradeComplete, onEnterApp, session, on
                                     }
                                   }
                                 }}
-                                className="w-full mt-4 py-3 rounded-lg bg-indigo-500 hover:bg-indigo-400 text-[#E5E5E5] font-black text-[10px] uppercase tracking-widest shadow-xl flex items-center justify-center gap-1.5 transition-all cursor-pointer"
+                                className="w-full mt-4 py-3 rounded-xl bg-[#4ADE80] hover:bg-[#4ADE80]/90 text-black font-semibold text-[12px] flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
                               >
-                                <span>Continue to Billing Info</span>
+                                <span>Continue to billing</span>
                                 <ArrowRight className="w-4 h-4" />
                               </button>
                             </div>
                           ) : (
-                            <div className="space-y-4 flex flex-col justify-between h-full animate-fadeIn">
+                            <div className="space-y-4 flex flex-col justify-between h-full">
                               <div className="space-y-3">
-                                <div className="flex items-center justify-between border-b border-black pb-1.5">
-                                  <div className="flex items-center gap-1.5 text-[10px] uppercase tracking-widest text-[#a1a1aa] font-black">
-                                    <CreditCard className="w-3.5 h-3.5 text-indigo-400" />
-                                    STEP 2: Billing & Card Details
+                                <div className="flex items-center justify-between border-b border-[var(--border)] pb-2">
+                                  <div className="flex items-center gap-1.5 text-[11px] uppercase tracking-wider text-[var(--text-secondary)] font-semibold">
+                                    <CreditCard className="w-3.5 h-3.5 text-[#4ADE80]" />
+                                    Step 2 &middot; Payment
                                   </div>
-                                  <span className="text-[9px] text-[#a1a1aa] font-mono">2/2</span>
+                                  <span className="text-[10px] text-[var(--text-tertiary)] font-mono">2/2</span>
                                 </div>
 
                                 <div className="grid grid-cols-2 gap-2">
                                   <div>
-                                    <label className="text-[8.5px] text-[#A1A1AA] uppercase tracking-widest font-extrabold block mb-1">
-                                      Billing Address
+                                    <label className="text-[10px] text-[var(--text-tertiary)] uppercase tracking-wider font-semibold block mb-1">
+                                      Billing address
                                     </label>
                                     <input
                                       type="text"
@@ -1230,12 +1181,12 @@ export function SubscriptionPricing({ onUpgradeComplete, onEnterApp, session, on
                                       onChange={(e) => setUserAddress(e.target.value)}
                                       placeholder="123 Main St"
                                       required
-                                      className="w-full bg-black border border-black text-[#E5E5E5] rounded-lg p-2.5 text-xs focus:outline-none focus:border-black transition-colors font-mono"
+                                      className="w-full bg-[var(--surface)] border border-[var(--border)] text-[var(--text-primary)] rounded-lg p-2.5 text-[13px] focus:outline-none focus:border-[var(--border-strong)] transition-colors font-sans"
                                     />
                                   </div>
                                   <div>
-                                    <label className="text-[8.5px] text-[#A1A1AA] uppercase tracking-widest font-extrabold block mb-1">
-                                      City / Zip Code
+                                    <label className="text-[10px] text-[var(--text-tertiary)] uppercase tracking-wider font-semibold block mb-1">
+                                      City / Zip
                                     </label>
                                     <input
                                       type="text"
@@ -1243,48 +1194,48 @@ export function SubscriptionPricing({ onUpgradeComplete, onEnterApp, session, on
                                       onChange={(e) => setUserZip(e.target.value)}
                                       placeholder="New York, NY 10001"
                                       required
-                                      className="w-full bg-black border border-black text-[#E5E5E5] rounded-lg p-2.5 text-xs focus:outline-none focus:border-black transition-colors font-mono"
+                                      className="w-full bg-[var(--surface)] border border-[var(--border)] text-[var(--text-primary)] rounded-lg p-2.5 text-[13px] focus:outline-none focus:border-[var(--border-strong)] transition-colors font-sans"
                                     />
                                   </div>
                                 </div>
 
                                 <div>
-                                  <label className="text-[8.5px] text-[#A1A1AA] uppercase tracking-widest font-extrabold block mb-1">
-                                    Credit Card Number
+                                  <label className="text-[10px] text-[var(--text-tertiary)] uppercase tracking-wider font-semibold block mb-1">
+                                    Card number
                                   </label>
                                   <div className="relative">
                                     <input
                                       type="text"
                                       value={mockCardNumber}
                                       onChange={(e) => setMockCardNumber(e.target.value)}
-                                      className="w-full bg-black border border-black text-[#E5E5E5] rounded-lg p-2.5 pr-10 text-xs focus:outline-none focus:border-black transition-colors font-mono"
+                                      className="w-full bg-[var(--surface)] border border-[var(--border)] text-[var(--text-primary)] rounded-lg p-2.5 pr-10 text-[13px] focus:outline-none focus:border-[var(--border-strong)] transition-colors font-mono"
                                     />
-                                    <CreditCard className="w-3.5 h-3.5 text-zinc-500 absolute right-3 top-1/2 -translate-y-1/2" />
+                                    <CreditCard className="w-3.5 h-3.5 text-[var(--text-tertiary)] absolute right-3 top-1/2 -translate-y-1/2" />
                                   </div>
                                 </div>
 
                                 <div className="grid grid-cols-2 gap-2">
                                   <div>
-                                    <label className="text-[8.5px] text-[#A1A1AA] uppercase tracking-widest font-extrabold block mb-1">
-                                      Expiry Date
+                                    <label className="text-[10px] text-[var(--text-tertiary)] uppercase tracking-wider font-semibold block mb-1">
+                                      Expiry
                                     </label>
                                     <input
                                       type="text"
                                       value={mockCardExpiry}
                                       onChange={(e) => setMockCardExpiry(e.target.value)}
-                                      className="w-full bg-black border border-black text-[#E5E5E5] rounded-lg p-2.5 text-xs focus:outline-none focus:border-black transition-colors text-center font-mono"
+                                      className="w-full bg-[var(--surface)] border border-[var(--border)] text-[var(--text-primary)] rounded-lg p-2.5 text-[13px] focus:outline-none focus:border-[var(--border-strong)] transition-colors text-center font-mono"
                                     />
                                   </div>
 
                                   <div>
-                                    <label className="text-[8.5px] text-[#A1A1AA] uppercase tracking-widest font-extrabold block mb-1">
-                                      CVV Code
+                                    <label className="text-[10px] text-[var(--text-tertiary)] uppercase tracking-wider font-semibold block mb-1">
+                                      CVV
                                     </label>
                                     <input
                                       type="text"
                                       value={mockCardCvv}
                                       onChange={(e) => setMockCardCvv(e.target.value)}
-                                      className="w-full bg-black border border-black text-[#E5E5E5] rounded-lg p-2.5 text-xs focus:outline-none focus:border-black transition-colors text-center font-mono"
+                                      className="w-full bg-[var(--surface)] border border-[var(--border)] text-[var(--text-primary)] rounded-lg p-2.5 text-[13px] focus:outline-none focus:border-[var(--border-strong)] transition-colors text-center font-mono"
                                     />
                                   </div>
                                 </div>
@@ -1294,7 +1245,7 @@ export function SubscriptionPricing({ onUpgradeComplete, onEnterApp, session, on
                                 <button
                                   type="button"
                                   onClick={() => setCheckoutSubStep('details')}
-                                  className="py-3 px-2 text-zinc-400 hover:text-[#E5E5E5] border border-black hover:border-black rounded-lg text-[10px] uppercase font-black tracking-widest transition-colors cursor-pointer text-center"
+                                  className="py-3 px-2 text-[var(--text-tertiary)] hover:text-[var(--text-primary)] bg-[var(--surface)] border border-[var(--border)] hover:border-[var(--border-strong)] rounded-xl text-[12px] font-semibold transition-colors cursor-pointer text-center"
                                 >
                                   Back
                                 </button>
@@ -1321,10 +1272,10 @@ export function SubscriptionPricing({ onUpgradeComplete, onEnterApp, session, on
                                       alert('Please enter your Billing Address and Zip code.');
                                     }
                                   }}
-                                  className="py-3 px-2 bg-black/40 hover:bg-black/40 text-neutral-950 font-black text-[10px] uppercase tracking-widest rounded-lg shadow-xl flex items-center justify-center gap-1.5 transition-all cursor-pointer transform hover:scale-[1.01]"
+                                  className="py-3 px-2 bg-[#4ADE80] hover:bg-[#4ADE80]/90 text-black font-semibold text-[12px] rounded-xl flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
                                 >
                                   <Lock className="w-3.5 h-3.5 shrink-0" />
-                                  <span>{isPaymentInFlight ? 'PROCESSING...' : 'Pay & Activate'}</span>
+                                  <span>{isPaymentInFlight ? 'Processing...' : 'Pay & activate'}</span>
                                 </button>
                               </div>
                             </div>
@@ -1335,10 +1286,10 @@ export function SubscriptionPricing({ onUpgradeComplete, onEnterApp, session, on
 
                     {/* LEFT COLUMN: ACTIVE PLAN CRITERIA & TARIFF DETAILS */}
                     <div className="order-2 md:order-1 space-y-4">
-                      <div className="bg-black border border-black/80 p-4 rounded-xl space-y-3">
+                      <div className="bg-[var(--surface-2)] border border-[var(--border)] p-4 rounded-xl space-y-3">
                         <div>
-                          <span className="text-[9px] text-zinc-500 uppercase tracking-widest block font-bold">YOUR PLAN</span>
-                          <h3 className="text-lg font-black text-[#E5E5E5] mt-1 uppercase tracking-tight font-sans">
+                          <span className="text-[10px] text-[var(--text-tertiary)] uppercase tracking-wider block font-medium">Your plan</span>
+                          <h3 className="text-lg font-bold text-[var(--text-primary)] mt-1 tracking-tight font-sans">
                             {selectedPlanForCheckout === 'discord' && "Discord Plan"}
                             {selectedPlanForCheckout === 'skyvision' && "SkyVision Cockpit"}
                             {selectedPlanForCheckout === 'pinpoint' && "Pinpoint Gexbot"}
@@ -1346,69 +1297,69 @@ export function SubscriptionPricing({ onUpgradeComplete, onEnterApp, session, on
                             {selectedPlanForCheckout === 'lifetime' && "Lifetime Access"}
                           </h3>
                         </div>
-                        <div className="flex justify-between items-center border-t border-black/60 pt-2">
-                          <span className="text-[10px] text-zinc-400 capitalize tracking-wide font-medium">Subscription Price:</span>
-                          <span className={`${selectedPlanForCheckout === 'lifetime' ? 'text-[10px] font-mono font-semibold tracking-wider text-[#4ADE80] uppercase bg-black/40 px-2.5 py-1.5 border border-black rounded-md' : 'text-xl font-black text-[#E5E5E5] font-mono'}`}>
-                            {selectedPlanForCheckout === 'lifetime' 
-                              ? 'Quote Needed' 
-                              : billingCycle === 'monthly' 
+                        <div className="flex justify-between items-center border-t border-[var(--border)] pt-3">
+                          <span className="text-[11px] text-[var(--text-tertiary)] font-medium">Subscription price</span>
+                          <span className={`${selectedPlanForCheckout === 'lifetime' ? 'text-[12px] font-semibold tracking-wide text-[#4ADE80]' : 'text-xl font-bold text-[var(--text-primary)]'}`}>
+                            {selectedPlanForCheckout === 'lifetime'
+                              ? 'Custom quote'
+                              : billingCycle === 'monthly'
                                 ? (selectedPlanForCheckout === 'discord' ? '$65' : selectedPlanForCheckout === 'skyvision' ? '$350' : selectedPlanForCheckout === 'pinpoint' ? '$500' : '$1500')
                                 : (selectedPlanForCheckout === 'discord' ? '$55' : selectedPlanForCheckout === 'skyvision' ? '$290' : selectedPlanForCheckout === 'pinpoint' ? '$420' : '$1250')
                             }
-                            {selectedPlanForCheckout !== 'lifetime' && <span className="text-[10px] text-zinc-500 font-normal ml-0.5">/mo</span>}
+                            {selectedPlanForCheckout !== 'lifetime' && <span className="text-[11px] text-[var(--text-tertiary)] font-normal ml-0.5">/mo</span>}
                           </span>
                         </div>
-                        <div className="flex justify-between items-center border-t border-black pt-2 text-[10px]">
-                          <span className="text-zinc-550">Billing Cycle:</span>
-                          <span className="text-[#4ADE80] font-black uppercase font-mono">
-                            {selectedPlanForCheckout === 'lifetime' ? 'PERMANENT ACCESS' : (billingCycle === 'monthly' ? "BILLED MONTHLY" : "BILLED ANNUALLY (20% OFF)")}
+                        <div className="flex justify-between items-center border-t border-[var(--border)] pt-3 text-[11px]">
+                          <span className="text-[var(--text-tertiary)]">Billing cycle</span>
+                          <span className="text-[var(--text-secondary)] font-semibold">
+                            {selectedPlanForCheckout === 'lifetime' ? 'Permanent access' : (billingCycle === 'monthly' ? "Billed monthly" : "Billed annually (20% off)")}
                           </span>
                         </div>
                       </div>
 
                       {/* Cumulative lock status */}
-                      <div className="space-y-2">
-                        <div className="flex items-center gap-1.5 text-[9px] uppercase font-black tracking-widest text-[#a1a1aa]">
+                      <div className="space-y-2.5">
+                        <div className="flex items-center gap-1.5 text-[11px] uppercase font-semibold tracking-wider text-[var(--text-secondary)]">
                           <ShieldCheck className="w-3.5 h-3.5 text-[#4ADE80] shrink-0" />
-                          <span>WHAT IS INCLUDED</span>
+                          <span>What&apos;s included</span>
                         </div>
-                        <p className="text-[9px] text-zinc-500 leading-relaxed font-mono uppercase">
-                          ALL TIERS STACK. YOUR PLAN UNLOCKS:
+                        <p className="text-[11px] text-[var(--text-tertiary)] leading-relaxed">
+                          Tiers stack. Your plan unlocks:
                         </p>
-                        <div className="bg-black/60 border border-black/65 rounded-xl p-3.5 space-y-1.5 text-[10px] font-mono">
+                        <div className="bg-[var(--surface-2)] border border-[var(--border)] rounded-xl p-4 space-y-2 text-[12px]">
                           {selectedPlanForCheckout === 'discord' && (
                             <>
-                              <div className="flex items-center gap-1.5 text-[#4ADE80]"><Check className="w-3.5 h-3.5 shrink-0" /> Discord alerts and community ($65 value)</div>
-                              <div className="flex items-center gap-1.5 text-zinc-650 line-through"><X className="w-3.5 h-3.5 shrink-0" /> SkyVision dashboard</div>
-                              <div className="flex items-center gap-1.5 text-zinc-650 line-through"><X className="w-3.5 h-3.5 shrink-0" /> Pinpoint GEX feed</div>
+                              <div className="flex items-center gap-2 text-[var(--text-secondary)]"><Check className="w-3.5 h-3.5 shrink-0 text-[#4ADE80]" /> Discord alerts and community</div>
+                              <div className="flex items-center gap-2 text-[var(--text-tertiary)] line-through opacity-60"><X className="w-3.5 h-3.5 shrink-0" /> SkyVision dashboard</div>
+                              <div className="flex items-center gap-2 text-[var(--text-tertiary)] line-through opacity-60"><X className="w-3.5 h-3.5 shrink-0" /> Pinpoint GEX feed</div>
                             </>
                           )}
                           {selectedPlanForCheckout === 'skyvision' && (
                             <>
-                              <div className="flex items-center gap-1.5 text-[#4ADE80]"><Check className="w-3.5 h-3.5 shrink-0" /> Discord alerts (included)</div>
-                              <div className="flex items-center gap-1.5 text-[#4ADE80]"><Check className="w-3.5 h-3.5 shrink-0" /> SkyVision dashboard ($350)</div>
-                              <div className="flex items-center gap-1.5 text-zinc-650 line-through"><X className="w-3.5 h-3.5 shrink-0" /> Pinpoint GEX feed</div>
+                              <div className="flex items-center gap-2 text-[var(--text-secondary)]"><Check className="w-3.5 h-3.5 shrink-0 text-[#4ADE80]" /> Discord alerts (included)</div>
+                              <div className="flex items-center gap-2 text-[var(--text-secondary)]"><Check className="w-3.5 h-3.5 shrink-0 text-[#4ADE80]" /> SkyVision dashboard</div>
+                              <div className="flex items-center gap-2 text-[var(--text-tertiary)] line-through opacity-60"><X className="w-3.5 h-3.5 shrink-0" /> Pinpoint GEX feed</div>
                             </>
                           )}
                           {selectedPlanForCheckout === 'pinpoint' && (
                             <>
-                              <div className="flex items-center gap-1.5 text-[#4ADE80]"><Check className="w-3.5 h-3.5 shrink-0" /> Discord and SkyVision (included)</div>
-                              <div className="flex items-center gap-1.5 text-[#4ADE80]"><Check className="w-3.5 h-3.5 shrink-0" /> Live dealer positioning GEX ($500)</div>
-                              <div className="flex items-center gap-1.5 text-zinc-650 line-through"><X className="w-3.5 h-3.5 shrink-0" /> Quant suite</div>
+                              <div className="flex items-center gap-2 text-[var(--text-secondary)]"><Check className="w-3.5 h-3.5 shrink-0 text-[#4ADE80]" /> Discord and SkyVision (included)</div>
+                              <div className="flex items-center gap-2 text-[var(--text-secondary)]"><Check className="w-3.5 h-3.5 shrink-0 text-[#4ADE80]" /> Live dealer positioning (GEX)</div>
+                              <div className="flex items-center gap-2 text-[var(--text-tertiary)] line-through opacity-60"><X className="w-3.5 h-3.5 shrink-0" /> Quant suite</div>
                             </>
                           )}
                           {selectedPlanForCheckout === 'quant' && (
                             <>
-                              <div className="flex items-center gap-1.5 text-[#4ADE80]"><Check className="w-3.5 h-3.5 shrink-0" /> Discord, SkyVision, Pinpoint GEX</div>
-                              <div className="flex items-center gap-1.5 text-[#4ADE80]"><Check className="w-3.5 h-3.5 shrink-0" /> Quant backtester ($1500)</div>
-                              <div className="flex items-center gap-1.5 text-[#4ADE80]"><Check className="w-3.5 h-3.5 shrink-0" /> Live order-flow monitor</div>
+                              <div className="flex items-center gap-2 text-[var(--text-secondary)]"><Check className="w-3.5 h-3.5 shrink-0 text-[#4ADE80]" /> Discord, SkyVision, Pinpoint GEX</div>
+                              <div className="flex items-center gap-2 text-[var(--text-secondary)]"><Check className="w-3.5 h-3.5 shrink-0 text-[#4ADE80]" /> Quant backtester</div>
+                              <div className="flex items-center gap-2 text-[var(--text-secondary)]"><Check className="w-3.5 h-3.5 shrink-0 text-[#4ADE80]" /> Live order-flow monitor</div>
                             </>
                           )}
                           {selectedPlanForCheckout === 'lifetime' && (
                             <>
-                              <div className="flex items-center gap-1.5 text-[#4ADE80]"><Check className="w-3.5 h-3.5 shrink-0" /> All features, permanent access</div>
-                              <div className="flex items-center gap-1.5 text-[#4ADE80]"><Check className="w-3.5 h-3.5 shrink-0" /> Private 1-on-1 onboarding call</div>
-                              <div className="flex items-center gap-1.5 text-[#4ADE80]"><Check className="w-3.5 h-3.5 shrink-0" /> Priority API access</div>
+                              <div className="flex items-center gap-2 text-[var(--text-secondary)]"><Check className="w-3.5 h-3.5 shrink-0 text-[#4ADE80]" /> All features, permanent access</div>
+                              <div className="flex items-center gap-2 text-[var(--text-secondary)]"><Check className="w-3.5 h-3.5 shrink-0 text-[#4ADE80]" /> Private 1-on-1 onboarding call</div>
+                              <div className="flex items-center gap-2 text-[var(--text-secondary)]"><Check className="w-3.5 h-3.5 shrink-0 text-[#4ADE80]" /> Priority API access</div>
                             </>
                           )}
                         </div>
@@ -1418,17 +1369,17 @@ export function SubscriptionPricing({ onUpgradeComplete, onEnterApp, session, on
                 )}
 
                 {checkoutStep === 'processing' && (
-                  <div className="py-8 flex flex-col items-center justify-center space-y-6 animate-fadeIn">
+                  <div className="py-8 flex flex-col items-center justify-center space-y-6">
                     <div className="relative flex items-center justify-center">
-                      <div className="w-14 h-14 rounded-full border-t-2 border-r-2 border-indigo-500 animate-spin" />
-                      <Lock className="w-5 h-5 text-indigo-400 absolute animate-pulse" />
+                      <div className="w-14 h-14 rounded-full border-t-2 border-r-2 border-[#4ADE80] animate-spin" />
+                      <Lock className="w-5 h-5 text-[#4ADE80] absolute" />
                     </div>
 
-                    <div className="w-full bg-black/60 rounded-lg p-4 font-mono text-[9px] text-[#a1a1aa] leading-released border border-black space-y-1.5 bg-black min-h-[140px]">
-                      <div className="text-zinc-650 text-[8px] font-black border-b border-black/50 pb-1 mb-2 uppercase">PAYMENT STATUS</div>
+                    <div className="w-full bg-[var(--surface-2)] rounded-xl p-4 font-mono text-[11px] text-[var(--text-secondary)] leading-relaxed border border-[var(--border)] space-y-1.5 min-h-[140px]">
+                      <div className="text-[var(--text-tertiary)] text-[10px] font-semibold border-b border-[var(--border)] pb-1.5 mb-2 uppercase tracking-wider">Status</div>
                       {processingLogs.map((log, idx) => (
                         <div key={idx} className="flex gap-2">
-                          <span className="text-indigo-400 shrink-0">&gt;&gt;</span>
+                          <span className="text-[#4ADE80] shrink-0">&gt;</span>
                           <span>{log}</span>
                         </div>
                       ))}
@@ -1437,76 +1388,73 @@ export function SubscriptionPricing({ onUpgradeComplete, onEnterApp, session, on
                 )}
 
                 {checkoutStep === 'waiting_for_webhook' && (
-                  <div className="py-6 space-y-5 animate-fadeIn flex flex-col items-center">
+                  <div className="py-6 space-y-5 flex flex-col items-center">
                     {/* Dynamic state badge */}
-                    <div className="w-full flex justify-between items-center bg-black border border-black rounded-lg p-3 px-4 font-mono text-[9px]">
+                    <div className="w-full flex justify-between items-center bg-[var(--surface-2)] border border-[var(--border)] rounded-lg p-3 px-4 text-[11px]">
                       <div className="flex items-center gap-2">
-                        <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse" />
-                        <span className="text-[#a1a1aa] uppercase font-black tracking-widest">
-                          CONFIRMING PAYMENT
+                        <span className="w-1.5 h-1.5 rounded-full bg-[#FBBF24] animate-pulse" />
+                        <span className="text-[var(--text-secondary)] uppercase font-semibold tracking-wider">
+                          Confirming payment
                         </span>
                       </div>
-                      <span className="font-black uppercase tracking-wider text-amber-400">
-                        PENDING...
+                      <span className="font-semibold uppercase tracking-wider text-[#FBBF24]">
+                        Pending
                       </span>
                     </div>
 
-                    {/* Spinning key / antenna indicator */}
+                    {/* Spinning indicator */}
                     <div className="relative flex items-center justify-center py-4">
-                      <div className="w-16 h-16 rounded-full flex items-center justify-center bg-indigo-500/15 border border-indigo-500/40 animate-pulse">
-                        <ShieldCheck className="w-8 h-8 text-indigo-400 animate-bounce" />
+                      <div className="w-16 h-16 rounded-full flex items-center justify-center bg-[#4ADE80]/10 border border-[#4ADE80]/30">
+                        <ShieldCheck className="w-8 h-8 text-[#4ADE80]" />
                       </div>
-                      <div className="absolute inset-x-[-10px] inset-y-[-10px] rounded-full border border-dashed border-indigo-400/20 animate-spin" />
+                      <div className="absolute inset-x-[-10px] inset-y-[-10px] rounded-full border border-dashed border-[#4ADE80]/20 animate-spin" />
                     </div>
 
                     <div className="text-center space-y-1 max-w-md mx-auto">
-                      <h4 className="text-sm font-black text-[#E5E5E5] uppercase tracking-tight font-sans">
-                        WAITING FOR PAYMENT CONFIRMATION
+                      <h4 className="text-base font-bold text-[var(--text-primary)] tracking-tight font-sans">
+                        Waiting for confirmation
                       </h4>
-                      <p className="text-zinc-400 text-[10.5px]">
+                      <p className="text-[var(--text-tertiary)] text-[12px] leading-relaxed">
                         Waiting for Stripe to confirm your payment. This usually takes a few seconds.
                       </p>
                     </div>
 
                     {/* Console Logs */}
-                    <div className="w-full bg-black border border-black rounded-xl p-4 font-mono text-[9px] text-[#8e8e93] leading-relaxed text-left space-y-1.5 min-h-[140px]">
-                      <div className="text-zinc-650 text-[8px] font-black tracking-widest uppercase border-b border-black/40 pb-1 mb-2">
-                        PAYMENT VERIFICATION LOG
+                    <div className="w-full bg-[var(--surface-2)] border border-[var(--border)] rounded-xl p-4 font-mono text-[11px] text-[var(--text-secondary)] leading-relaxed text-left space-y-1.5 min-h-[140px]">
+                      <div className="text-[var(--text-tertiary)] text-[10px] font-semibold tracking-wider uppercase border-b border-[var(--border)] pb-1.5 mb-2">
+                        Verification log
                       </div>
                       {successValidationLogs.map((log, index) => (
                         <div key={index} className="flex gap-2 items-center">
-                          <span className="text-amber-500 shrink-0 font-bold">&gt;&gt;</span>
+                          <span className="text-[#FBBF24] shrink-0 font-bold">&gt;</span>
                           <span className="truncate">{log}</span>
                         </div>
                       ))}
-                      <div className="flex gap-2 items-center text-amber-450 text-[8px] font-black uppercase tracking-wider pl-5 mt-1 animate-pulse">
-                        <span>VERIFYING...</span>
-                      </div>
                     </div>
                   </div>
                 )}
 
                 {checkoutStep === 'confirmation' && (
-                  <div className="py-4 space-y-5 animate-fadeIn flex flex-col items-center">
+                  <div className="py-4 space-y-5 flex flex-col items-center">
                     {/* Dynamic state badge */}
-                    <div className="w-full flex justify-between items-center bg-black border border-black rounded-lg p-3 px-4 font-mono text-[9px]">
+                    <div className="w-full flex justify-between items-center bg-[var(--surface-2)] border border-[var(--border)] rounded-lg p-3 px-4 text-[11px]">
                       <div className="flex items-center gap-2">
-                        <span className="w-1.5 h-1.5 rounded-full bg-black/40" />
-                        <span className="text-[#a1a1aa] uppercase font-black tracking-widest">
-                          PAYMENT CONFIRMED
+                        <span className="w-1.5 h-1.5 rounded-full bg-[#4ADE80]" />
+                        <span className="text-[var(--text-secondary)] uppercase font-semibold tracking-wider">
+                          Payment confirmed
                         </span>
                       </div>
-                      <span className="font-black uppercase tracking-wider text-[#4ADE80]">
-                        SUCCESS // READY
+                      <span className="font-semibold uppercase tracking-wider text-[#4ADE80]">
+                        Success
                       </span>
                     </div>
 
-                    {/* Highly aesthetic check/scanning animation visualizer */}
+                    {/* Check animation visualizer */}
                     <div className="relative flex items-center justify-center py-4">
-                      <motion.div 
+                      <motion.div
                         initial={{ scale: 0.9, opacity: 0 }}
                         animate={{ scale: 1, opacity: 1 }}
-                        className="w-20 h-20 rounded-full flex items-center justify-center border-2 bg-black/40 border-black shadow-[0_0_30px_rgba(48,209,88,0.25)]"
+                        className="w-20 h-20 rounded-full flex items-center justify-center border-2 bg-[#4ADE80]/10 border-[#4ADE80]/40"
                       >
                         <Check className="w-10 h-10 text-[#4ADE80]" />
                       </motion.div>
@@ -1514,39 +1462,37 @@ export function SubscriptionPricing({ onUpgradeComplete, onEnterApp, session, on
 
                     {/* Status descriptions */}
                     <div className="text-center space-y-1.5 max-w-md mx-auto">
-                      <h4 className="text-base font-black text-[#E5E5E5] uppercase tracking-tight font-sans">
-                        SUBSCRIPTION ACTIVE
+                      <h4 className="text-lg font-bold text-[var(--text-primary)] tracking-tight font-sans">
+                        Subscription active
                       </h4>
-                      <p className="text-zinc-400 text-[11px] leading-relaxed">
+                      <p className="text-[var(--text-tertiary)] text-[12px] leading-relaxed">
                         Your payment was confirmed and your plan is now active. All features for your tier are unlocked.
                       </p>
                     </div>
 
-                    {/* Validation Pipeline Log Console Terminal */}
-                    <div className="w-full bg-black border border-black rounded-xl p-4 font-mono text-[9px] text-[#8e8e93] leading-relaxed text-left space-y-1.5 relative overflow-hidden min-h-[150px]">
-                      <div className="absolute top-0 right-0 p-2 font-mono text-[8px] text-zinc-650 tracking-widest font-bold">STRIPE</div>
-
-                      <div className="text-[8px] text-zinc-650 font-black tracking-widest uppercase border-b border-black/40 pb-1 mb-2">
-                        ACTIVATION LOG
+                    {/* Activation Log */}
+                    <div className="w-full bg-[var(--surface-2)] border border-[var(--border)] rounded-xl p-4 font-mono text-[11px] text-[var(--text-secondary)] leading-relaxed text-left space-y-1.5 relative overflow-hidden min-h-[150px]">
+                      <div className="text-[10px] text-[var(--text-tertiary)] font-semibold tracking-wider uppercase border-b border-[var(--border)] pb-1.5 mb-2">
+                        Activation log
                       </div>
 
                       {successValidationLogs.map((log, index) => (
                         <div key={index} className="flex gap-2.5 items-center">
-                          <span className="text-[#4ADE80] shrink-0 font-bold">&gt;&gt;</span>
+                          <span className="text-[#4ADE80] shrink-0 font-bold">&gt;</span>
                           <span className="truncate">{log}</span>
                         </div>
                       ))}
                     </div>
 
                     {/* Cleared Active Features grid */}
-                    <div className="bg-black/40 border border-black p-4 rounded-xl w-full text-left space-y-2.5 animate-fadeIn">
-                      <div className="text-[9.5px] text-zinc-450 font-extrabold uppercase border-b border-black/60 pb-1 flex justify-between">
-                        <span>Your Active Features</span>
+                    <div className="bg-[var(--surface-2)] border border-[var(--border)] p-4 rounded-xl w-full text-left space-y-2.5">
+                      <div className="text-[11px] text-[var(--text-secondary)] font-semibold uppercase tracking-wider border-b border-[var(--border)] pb-2 flex justify-between">
+                        <span>Your active features</span>
                         <span className="text-[#4ADE80] flex items-center gap-1">
-                          <CheckCircle2 className="w-3.5 h-3.5" /> ACTIVE
+                          <CheckCircle2 className="w-3.5 h-3.5" /> Active
                         </span>
                       </div>
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-[10px] text-zinc-350 font-mono">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-[12px] text-[var(--text-secondary)]">
                         {(() => {
                           const tiersToShow: string[] = [];
                           if (selectedPlanForCheckout === 'discord') tiersToShow.push('discord');
@@ -1564,9 +1510,9 @@ export function SubscriptionPricing({ onUpgradeComplete, onEnterApp, session, on
                           };
 
                           return tiersToShow.map(key => (
-                            <div key={key} className="flex items-center gap-1.5 text-[#4ADE80]">
-                              <span className="w-1 h-1 rounded-full bg-black/40" />
-                              <span className="truncate text-[9.5px]">{listLabels[key] || key}</span>
+                            <div key={key} className="flex items-center gap-2">
+                              <Check className="w-3.5 h-3.5 shrink-0 text-[#4ADE80]" />
+                              <span className="truncate">{listLabels[key] || key}</span>
                             </div>
                           ));
                         })()}
@@ -1578,13 +1524,13 @@ export function SubscriptionPricing({ onUpgradeComplete, onEnterApp, session, on
               </div>
 
               {/* Modal Bottom Controls */}
-              <div className="bg-black border-t border-black/80 px-6 py-4 flex gap-3 justify-center items-center">
+              <div className="border-t border-[var(--border)] px-6 py-4 flex gap-3 justify-center items-center">
                 {checkoutStep === 'details' && (
                   <button
                     onClick={() => setSelectedPlanForCheckout(null)}
-                    className="w-full py-3 rounded-lg bg-black border border-black hover:bg-black text-zinc-400 hover:text-[#E5E5E5] font-bold text-[10px] uppercase tracking-widest transition-all cursor-pointer flex items-center justify-center gap-2"
+                    className="w-full py-3 rounded-xl bg-[var(--surface)] border border-[var(--border)] hover:border-[var(--border-strong)] text-[var(--text-tertiary)] hover:text-[var(--text-primary)] font-semibold text-[12px] transition-colors cursor-pointer flex items-center justify-center gap-2"
                   >
-                    <span>Cancel & Choose Other Plan</span>
+                    <span>Cancel &amp; choose another plan</span>
                   </button>
                 )}
 
@@ -1596,13 +1542,13 @@ export function SubscriptionPricing({ onUpgradeComplete, onEnterApp, session, on
                       const targetTab = selectedPlanForCheckout === 'pinpoint' ? 'pinpoint'
                         : selectedPlanForCheckout === 'quant' ? 'auditor'
                         : 'skyvision';
-                      
-                      const tierNum = selectedPlanForCheckout === 'discord' ? 1 
-                        : selectedPlanForCheckout === 'skyvision' ? 2 
-                        : selectedPlanForCheckout === 'pinpoint' ? 3 
-                        : selectedPlanForCheckout === 'quant' ? 4 
+
+                      const tierNum = selectedPlanForCheckout === 'discord' ? 1
+                        : selectedPlanForCheckout === 'skyvision' ? 2
+                        : selectedPlanForCheckout === 'pinpoint' ? 3
+                        : selectedPlanForCheckout === 'quant' ? 4
                         : 5;
-                        
+
                       if (onUpgradeComplete) {
                         onUpgradeComplete(tierNum);
                       }
@@ -1610,7 +1556,7 @@ export function SubscriptionPricing({ onUpgradeComplete, onEnterApp, session, on
                       if (onEnterApp) onEnterApp(targetTab);
                       setSelectedPlanForCheckout(null);
                       setCheckoutStep('details');
-                      
+
                       // Scroll to the absolute top of the page immediately as if they just came to the page
                       window.scrollTo({ top: 0, behavior: 'auto' });
                       if (typeof document !== 'undefined') {
@@ -1622,13 +1568,13 @@ export function SubscriptionPricing({ onUpgradeComplete, onEnterApp, session, on
                         }
                       }
                     }}
-                    className={`w-full py-4 font-extrabold uppercase tracking-widest text-[#000000] text-center text-[10px] rounded-lg transition-all cursor-pointer shadow-lg flex items-center justify-center gap-2 ${
-                      isValidatingSuccess 
-                        ? 'bg-black text-zinc-550 border border-black cursor-not-allowed opacity-50' 
-                        : 'bg-[#4ADE80] hover:bg-[#4ADE80]/90 text-black shadow-[0_0_15px_rgba(0,255,136,0.5)]'
+                    className={`w-full py-3.5 font-semibold tracking-wide text-center text-[13px] rounded-xl transition-colors cursor-pointer flex items-center justify-center gap-2 ${
+                      isValidatingSuccess
+                        ? 'bg-[var(--surface-3)] text-[var(--text-tertiary)] border border-[var(--border)] cursor-not-allowed opacity-60'
+                        : 'bg-[#4ADE80] hover:bg-[#4ADE80]/90 text-black'
                     }`}
                   >
-                    <span>{isValidatingSuccess ? 'ACTIVATING...' : 'ENTER THE APP'}</span>
+                    <span>{isValidatingSuccess ? 'Activating...' : 'Enter the app'}</span>
                     <ArrowRight className="w-4 h-4" />
                   </button>
                 )}

@@ -9,10 +9,10 @@ const signedPct = (v: any, d = 1) => (typeof v === 'number' && isFinite(v) ? `${
 
 function Card({ title, icon, accent, children }: { title: string; icon: React.ReactNode; accent: string; children: React.ReactNode }) {
   return (
-    <div className="rounded-lg border border-black/60 bg-black/40 p-3.5 flex flex-col gap-2.5 shadow-inner">
+    <div className="rounded-lg border border-[var(--border)] bg-[var(--surface-2)] p-3.5 flex flex-col gap-2.5">
       <div className="flex items-center gap-2">
-        <div className="w-6 h-6 rounded flex items-center justify-center" style={{ background: `${accent}1a`, border: `1px solid ${accent}` }}>{icon}</div>
-        <h3 className="text-[10px] font-black tracking-widest uppercase text-[#E5E5E5]">{title}</h3>
+        <div className="w-6 h-6 rounded flex items-center justify-center shrink-0" style={{ background: `${accent}1a`, border: `1px solid ${accent}55` }}>{icon}</div>
+        <h3 className="text-[10px] font-black tracking-widest uppercase text-[var(--text-secondary)]">{title}</h3>
       </div>
       {children}
     </div>
@@ -22,8 +22,8 @@ function Card({ title, icon, accent, children }: { title: string; icon: React.Re
 function Stat({ label, value, tone }: { label: string; value: string; tone?: string }) {
   return (
     <div className="flex flex-col">
-      <span className="text-[8px] uppercase tracking-widest text-zinc-500">{label}</span>
-      <span className="text-[13px] font-bold tabular-nums" style={{ color: tone || '#E5E5E5' }}>{value}</span>
+      <span className="text-[9px] uppercase tracking-widest text-[var(--text-tertiary)]">{label}</span>
+      <span className="text-[13px] font-bold tabular-nums" style={{ color: tone || 'var(--text-primary)' }}>{value}</span>
     </div>
   );
 }
@@ -89,11 +89,11 @@ export function QuantEdgePanel() {
   const richTone = vrp?.richness === 'IV RICH' ? '#4ADE80' : vrp?.richness === 'IV CHEAP' ? '#F87171' : '#A1A1AA';
 
   return (
-    <div className="rounded-xl border bg-white/[0.02] p-5 flex flex-col gap-3 shadow-lg" style={{ borderColor: 'rgba(74,222,128,0.22)', borderLeftColor: 'rgba(74,222,128,0.9)', borderLeftWidth: '3px' }}>
-      <div className="flex items-center gap-2">
+    <div className="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-5 flex flex-col gap-3" style={{ borderLeftColor: '#4ADE80', borderLeftWidth: '3px' }}>
+      <div className="flex items-center gap-2 pb-3 border-b border-[var(--border)]">
         <Sigma className="w-4 h-4 text-[#4ADE80]" />
-        <h2 className="text-xs font-black tracking-widest uppercase text-[#E5E5E5]">Edge Analytics — {selectedAsset?.ticker}</h2>
-        <span className="text-[8px] text-zinc-500 uppercase tracking-widest ml-auto">live</span>
+        <h2 className="text-xs font-black tracking-widest uppercase text-[var(--text-primary)]">Edge Analytics — {selectedAsset?.ticker}</h2>
+        <span className="text-[9px] text-[var(--text-tertiary)] uppercase tracking-widest ml-auto">live</span>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
@@ -108,12 +108,12 @@ export function QuantEdgePanel() {
             </div>
             <div className="flex flex-wrap gap-x-3 gap-y-1 mt-0.5">
               {(rnd.levels || []).map((l: any) => (
-                <span key={l.label} className="text-[9px] tabular-nums text-zinc-400">
-                  {l.label} <span className="text-[#E5E5E5] font-bold">{pct(l.pAbove, 0)}</span>
+                <span key={l.label} className="text-[10px] tabular-nums text-[var(--text-tertiary)]">
+                  {l.label} <span className="text-[var(--text-primary)] font-bold">{pct(l.pAbove, 0)}</span>
                 </span>
               ))}
             </div>
-            <span className="text-[8px] text-zinc-500 uppercase tracking-widest">Tail risk vs normal: {num(rnd.fatTailRatio, 2)}x</span>
+            <span className="text-[9px] text-[var(--text-tertiary)] uppercase tracking-widest">Tail risk vs normal: {num(rnd.fatTailRatio, 2)}x</span>
           </Card>
         )}
 
@@ -127,7 +127,7 @@ export function QuantEdgePanel() {
             </div>
             <div className="flex items-center gap-2">
               <span className="text-[9px] font-black tracking-widest px-2 py-0.5 rounded" style={{ color: richTone, border: `1px solid ${richTone}`, background: `${richTone}14` }}>{vrp.richness}</span>
-              <span className="text-[9px] text-zinc-500 uppercase tracking-widest">IV/RV {num(vrp.ratio, 2)}x · RV pctile {num(vrp.rvPercentile, 0)}</span>
+              <span className="text-[9px] text-[var(--text-tertiary)] uppercase tracking-widest">IV/RV {num(vrp.ratio, 2)}x · RV pctile {num(vrp.rvPercentile, 0)}</span>
             </div>
             <div className="grid grid-cols-4 gap-1.5 mt-0.5">
               <Stat label="Parkinson" value={pct(rv.parkinson)} />
@@ -161,16 +161,16 @@ export function QuantEdgePanel() {
               <table className="w-full border-separate" style={{ borderSpacing: 2 }}>
                 <thead>
                   <tr>
-                    <th className="text-[7px] text-zinc-500 font-black uppercase">IV\Spot</th>
+                    <th className="text-[8px] text-[var(--text-tertiary)] font-black uppercase">IV\Spot</th>
                     {sc.spotShiftsPct.map((s: number) => (
-                      <th key={s} className="text-[7px] text-zinc-400 font-bold tabular-nums px-0.5">{s >= 0 ? '+' : ''}{(s * 100).toFixed(1)}</th>
+                      <th key={s} className="text-[8px] text-[var(--text-tertiary)] font-bold tabular-nums px-0.5">{s >= 0 ? '+' : ''}{(s * 100).toFixed(1)}</th>
                     ))}
                   </tr>
                 </thead>
                 <tbody>
                   {sc.pnlPct.map((row: number[], i: number) => (
                     <tr key={i}>
-                      <td className="text-[7px] text-zinc-400 font-bold tabular-nums pr-1">{sc.ivShiftsAbs[i] >= 0 ? '+' : ''}{(sc.ivShiftsAbs[i] * 100).toFixed(0)}</td>
+                      <td className="text-[8px] text-[var(--text-tertiary)] font-bold tabular-nums pr-1">{sc.ivShiftsAbs[i] >= 0 ? '+' : ''}{(sc.ivShiftsAbs[i] * 100).toFixed(0)}</td>
                       {row.map((v: number, j: number) => (
                         <td key={j} className="text-[8px] text-center tabular-nums rounded font-bold" style={{ background: pnlColor(v), color: '#E5E5E5', minWidth: 30 }}>
                           {isFinite(v) ? `${v > 0 ? '+' : ''}${v.toFixed(0)}` : '—'}
@@ -184,7 +184,7 @@ export function QuantEdgePanel() {
             <div className="flex items-center gap-3">
               <Stat label="Best" value={`${sc.best.pnlPct > 0 ? '+' : ''}${num(sc.best.pnlPct, 0)}%`} tone="#4ADE80" />
               <Stat label="Worst" value={`${num(sc.worst.pnlPct, 0)}%`} tone="#F87171" />
-              <span className="text-[8px] text-zinc-500 uppercase tracking-widest ml-auto">{sc.daysForward}d theta decay</span>
+              <span className="text-[9px] text-[var(--text-tertiary)] uppercase tracking-widest ml-auto">{sc.daysForward}d theta decay</span>
             </div>
           </Card>
         )}
@@ -200,7 +200,7 @@ export function QuantEdgePanel() {
               <Stat label="Payoff" value={`${num(kelly.payoffRatio, 2)}x`} />
               <Stat label="Verdict" value={kelly.verdict} tone={kelly.verdict === 'STRONG' ? '#4ADE80' : kelly.verdict === 'NO EDGE' ? '#F87171' : '#A1A1AA'} />
             </div>
-            <div className="h-1.5 w-full rounded-full bg-black/60 overflow-hidden">
+            <div className="h-1.5 w-full rounded-full bg-[var(--surface-3)] overflow-hidden">
               <div className="h-full bg-[#34D399]" style={{ width: `${Math.min(100, (kelly.recommended || 0) * 100 * 2)}%` }} />
             </div>
           </Card>
@@ -212,8 +212,8 @@ export function QuantEdgePanel() {
               <Stat label="Hedge ramp" value={pct(clock.weight, 0)} />
               <Stat label="To close" value={clock.minutesToClose != null ? `${clock.minutesToClose}m` : '—'} />
             </div>
-            <span className="text-[9px] text-zinc-400">{clock.label}</span>
-            <div className="h-1.5 w-full rounded-full bg-black/60 overflow-hidden">
+            <span className="text-[10px] text-[var(--text-tertiary)]">{clock.label}</span>
+            <div className="h-1.5 w-full rounded-full bg-[var(--surface-3)] overflow-hidden">
               <div className="h-full bg-[#F472B6]" style={{ width: `${Math.min(100, (clock.weight || 0) * 100)}%` }} />
             </div>
           </Card>

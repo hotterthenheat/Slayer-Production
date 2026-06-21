@@ -17,7 +17,7 @@
  * a real chain feed later without touching the engine.
  */
 import { db } from './state';
-import { ASSET_LIST } from '../data';
+import { ASSET_LIST, optionDteDays } from '../data';
 import {
   snapshotFromMarket,
   scoreContract,
@@ -35,8 +35,7 @@ import {
   type ScoredContract,
 } from '../lib/skyVisionEngine';
 
-const FOCUS_TICKERS = ['SPX', 'NDX', 'QQQ', 'SPY'];
-const DTE_DAYS = 1; // Sky Vision focuses on 0–1DTE intraday contracts
+// Sky Vision is computed for every launch ticker (indices, ETFs, and single names).
 const HISTORY_CAP = 30;
 const STRIKES_EACH_SIDE = 3; // ATM + 3 calls up / 3 puts down
 const RISK_FREE = 0.05;
@@ -92,7 +91,8 @@ function stepFor(price: number): number {
 }
 
 function baseIv(type: string): number {
-  return type === 'INDEXES' ? 0.13 : type === 'ETFS' ? 0.16 : 0.18;
+  // Single stocks carry materially higher IV than broad indices/ETFs.
+  return type === 'INDEXES' ? 0.13 : type === 'ETFS' ? 0.16 : type === 'STOCKS' ? 0.45 : 0.18;
 }
 
 const clamp = (v: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, v));
@@ -110,7 +110,7 @@ function trendScore(hist: ContractSnapshot[], pick: (s: ContractSnapshot) => num
 /** Advance the engine one tick for every focus ticker and cache the result. */
 export function tickSkyVision(): void {
   tickIndex++;
-  for (const asset of ASSET_LIST.filter((a) => FOCUS_TICKERS.includes(a.ticker))) {
+  for (const asset of ASSET_LIST) {
     try {
       computeForAsset(asset);
     } catch (e) {
@@ -135,7 +135,8 @@ function computeForAsset(asset: (typeof ASSET_LIST)[number]): void {
   const step = stepFor(spot);
   const atm = Math.round(spot / step) * step;
   const iv0 = baseIv(asset.type);
-  const emPts = spot * iv0 * Math.sqrt(DTE_DAYS / 365);
+  const dte = optionDteDays(asset); // 0–1DTE for daily names, front-weekly for single stocks
+  const emPts = spot * iv0 * Math.sqrt(dte / 365);
 
   // Build the focus chain: ATM..+3 calls, ATM..-3 puts.
   const specs: { strike: number; isCall: boolean }[] = [];
@@ -161,7 +162,7 @@ function computeForAsset(asset: (typeof ASSET_LIST)[number]): void {
     const volume = Math.max(20, Math.round(prevVol * 0.6 + (250 + nearness * 600 + dirFlow * 220 * nearness) * 0.4 + (Math.random() - 0.5) * 40));
     const oi = Math.max(50, Math.round(prevOi + nearness * 30 + dirFlow * 25 * nearness + (Math.random() - 0.5) * 10));
 
-    const snap = snapshotFromMarket({ t: tickIndex, spot, strike, dteDays: DTE_DAYS, iv, isCall, volume, oi, r: RISK_FREE });
+    const snap = snapshotFromMarket({ t: tickIndex, spot, strike, dteDays: dte, iv, isCall, volume, oi, r: RISK_FREE });
     const hist = prevHist.concat(snap).slice(-HISTORY_CAP);
     histories.set(key, hist);
     lastSeen.set(key, tickIndex);
@@ -224,7 +225,7 @@ function computeForAsset(asset: (typeof ASSET_LIST)[number]): void {
     emHigh: spot + emPts,
     emLow: spot - emPts,
   });
-  const targetStack = projectTargetPremiums(stack, { spot, strike: leadStrike, dteDays: DTE_DAYS, iv: leadIv, isCall: leadIsCall, entryPremium: lead?.premium });
+  const targetStack = projectTargetPremiums(stack, { spot, strike: leadStrike, dteDays: dte, iv: leadIv, isCall: leadIsCall, entryPremium: lead?.premium });
 
   // Swing read for the leading contract.
   const leadKey = lead?.key ?? `${ticker} ${atm}${leadIsCall ? 'C' : 'P'}`;

@@ -4,8 +4,8 @@ import { useContractStore, ContractState } from '../lib/store';
 import { InteractiveChart } from './InteractiveChart';
 import { StrikeGravityPanel } from './StrikeGravityPanel';
 import { TradePlanCard } from './TradePlanCard';
-import { ASSET_LIST } from '../data';
-import { Zap, FileText, CheckCircle2, Maximize2, Minimize2 } from 'lucide-react';
+import { ASSET_LIST, optionExpiryLabel } from '../data';
+import { Zap, FileText, CheckCircle2, Maximize2, Minimize2, Layers, Target, Activity } from 'lucide-react';
 import { DiscoveryView } from './DiscoveryView';
 import { SkyVisionV2Panel } from './SkyVisionV2Panel';
 
@@ -24,7 +24,7 @@ interface OptionCardProps {
   key?: string;
 }
 function OptionCard({ strikeLabel, health, move, price, action, isSelected, isCall, onClick }: OptionCardProps) {
-  const actionColor = action === 'ENTER' ? 'text-[#4ADE80] border-[#4ADE80]/30 bg-[#4ADE80]/5' : action === 'SELL' ? 'text-[#F87171] border-rose-400/30 bg-rose-400/5' : 'text-zinc-400 border-black bg-black/40';
+  const actionColor = action === 'ENTER' ? 'text-[#4ADE80] border-[#4ADE80]/30 bg-[#4ADE80]/10' : action === 'SELL' ? 'text-[#F87171] border-[#F87171]/30 bg-[#F87171]/10' : 'text-[var(--text-tertiary)] border-[var(--border)] bg-[var(--surface-2)]';
   const momentum = health > 85 ? 'STRENGTHENING' : health < 60 ? 'WEAKENING' : 'NEUTRAL';
 
   const [tickDirection, setTickDirection] = React.useState<'up' | 'down' | null>(null);
@@ -45,54 +45,44 @@ function OptionCard({ strikeLabel, health, move, price, action, isSelected, isCa
   let cardBgClass = '';
 
   if (isSelected) {
-    if (isCall) {
-      cardBgClass = 'bg-[#151515] border-[#E5E5E5] text-[#E5E5E5] shadow-[0_0_15px_rgba(255,255,255,0.05)]';
-    } else {
-      cardBgClass = 'bg-[#1A0505] border-[#F87171] text-[#F87171] shadow-[0_0_15px_rgba(248,113,113,0.05)]';
-    }
+    cardBgClass = isCall
+      ? 'bg-[var(--surface-3)] border-[#4ADE80]/60 text-[var(--text-primary)]'
+      : 'bg-[var(--surface-3)] border-[#F87171]/60 text-[var(--text-primary)]';
   } else {
-    cardBgClass = 'bg-black border-[#1F1F1F] hover:bg-[#0A0A0A] hover:border-[#333333] text-[#A3A3A3]';
+    cardBgClass = 'bg-[var(--surface)] border-[var(--border)] hover:bg-[var(--surface-2)] hover:border-[var(--border-strong)] text-[var(--text-tertiary)]';
   }
 
   const tickClass = tickDirection === 'up' ? 'tick-up' : tickDirection === 'down' ? 'tick-down' : '';
 
   return (
     <motion.div
-      whileHover={{ scale: 1.015 }}
-      whileTap={{ scale: 0.985 }}
+      whileHover={{ scale: 1.01 }}
+      whileTap={{ scale: 0.99 }}
       onClick={onClick}
-      className={`p-3.5 border rounded-sm cursor-pointer transition-all flex flex-col gap-2 text-left relative overflow-hidden ${cardBgClass}`}
+      className={`p-3 border rounded-lg cursor-pointer transition-colors flex flex-col gap-2 text-left ${cardBgClass}`}
     >
-      {/* Subtle breathing live glow indicator */}
-      <div className="absolute top-1 right-1 flex items-center">
-        <span className="relative flex h-1.5 w-1.5 shrink-0">
-          <span className={`animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 ${isCall ? 'bg-black/40' : 'bg-rose-450'}`}></span>
-          <span className={`relative inline-flex rounded-full h-1.5 w-1.5 ${isCall ? 'bg-black' : 'bg-[#F87171]'}`}></span>
-        </span>
-      </div>
-
       <div className="flex items-center justify-between">
         <div className="flex flex-col gap-1 text-left">
-          <span className="text-sm font-black font-sans text-[#E5E5E5]">{strikeLabel}</span>
-          <span className="text-[7.5px] uppercase tracking-wider text-zinc-500">HEALTH: {health} PTS</span>
+          <span className="text-[13px] font-black font-sans text-[var(--text-primary)]">{strikeLabel}</span>
+          <span className="text-[8px] uppercase tracking-wider text-[var(--text-tertiary)]">HEALTH {health}</span>
         </div>
         <div className="flex items-center gap-3">
           <div className="flex flex-col items-end gap-0.5 text-right">
-            <span className={`text-xs font-black font-mono text-[#E5E5E5] ${tickClass}`}>
+            <span className={`text-xs font-black font-mono text-[var(--text-primary)] ${tickClass}`}>
               ${price.toFixed(2)}
             </span>
             <span className={`font-bold font-mono text-[9px] ${isCall ? 'text-[#4ADE80]' : 'text-[#F87171]'}`}>
               +{move}%
             </span>
           </div>
-          <span className={`px-2 py-0.5 rounded-xs text-[8.5px] font-black tracking-widest border uppercase shrink-0 ${actionColor}`}>
+          <span className={`px-2 py-0.5 rounded text-[8.5px] font-black tracking-widest border uppercase shrink-0 ${actionColor}`}>
             {action}
           </span>
         </div>
       </div>
-      <div className="flex mt-1 pt-2 border-t border-black/45 justify-between items-center">
-         <span className="text-[8px] text-zinc-500 font-mono">FLOW MOMENTUM:</span>
-         <span className={`text-[8.5px] font-black uppercase ${momentum === 'STRENGTHENING' ? 'text-[#4ADE80]' : momentum === 'WEAKENING' ? 'text-[#F87171]' : 'text-zinc-400'}`}>{momentum}</span>
+      <div className="flex pt-2 border-t border-[var(--border)] justify-between items-center">
+         <span className="text-[8px] text-[var(--text-tertiary)] uppercase tracking-wider font-mono">Momentum</span>
+         <span className={`text-[8.5px] font-black uppercase ${momentum === 'STRENGTHENING' ? 'text-[#4ADE80]' : momentum === 'WEAKENING' ? 'text-[#F87171]' : 'text-[var(--text-secondary)]'}`}>{momentum}</span>
       </div>
     </motion.div>
   );
@@ -124,9 +114,6 @@ export function SkyVisionView() {
 
   const spotPrice = serverState?.pinpoint_map?.spot_price || selectedAsset.defaultPrice;
   const activeStrike = selectedStrike || Math.round(spotPrice / 10) * 10;
-  
-  // Setup nice option premium price
-  const activePrice = serverState?.optionPremiumFloat || 4.20;
 
   const isDeepSkyseyeExpanded = useContractStore(s => s.isDeepSkyseyeExpanded);
   const setIsDeepSkyseyeExpanded = useContractStore(s => s.setIsDeepSkyseyeExpanded);
@@ -182,11 +169,11 @@ export function SkyVisionView() {
         isSpotRow,
         callHealth,
         callAction,
-        callMove: Math.round(35 + (spotPrice - strikeValue) * 0.4),
+        callMove: Math.max(1, Math.round(35 + (spotPrice - strikeValue) * 0.4)),
         callPrice,
         putHealth,
         putAction,
-        putMove: Math.round(22 + (spotPrice - strikeValue) * 0.35),
+        putMove: Math.max(1, Math.round(22 + (spotPrice - strikeValue) * 0.35)),
         putPrice
       };
     });
@@ -203,7 +190,13 @@ export function SkyVisionView() {
 
   // Active decision and parameters derived
   const selectedFocusedOption = strikesList.find(s => s.strike === activeStrike);
-  const tradeHealthValue = selectedFocusedOption 
+  // Premium for the active contract: live server mid when available, otherwise the
+  // computed premium for the focused strike/side (derived from real spot price).
+  const activePrice = serverState?.optionPremiumFloat
+    ?? (selectedFocusedOption
+      ? (selectedOptionType === 'C' ? selectedFocusedOption.callPrice : selectedFocusedOption.putPrice)
+      : 0);
+  const tradeHealthValue = selectedFocusedOption
     ? (selectedOptionType === 'C' ? selectedFocusedOption.callHealth : selectedFocusedOption.putHealth) 
     : 85;
   const activeRecommendation = selectedFocusedOption
@@ -251,14 +244,14 @@ export function SkyVisionView() {
         return {
           title: selectedOptionType === 'C' ? 'STRONG BREAKOUT — BUYERS IN CONTROL' : 'STRONG BREAKDOWN — SELLERS IN CONTROL',
           desc: 'Heavy volume is pushing price in your direction and the move is picking up speed. Good spot to enter.',
-          color: 'text-[#d4d4d8]',
+          color: 'text-[#4ADE80]',
           badges: ['HEAVY VOLUME', 'PRICE MOVING', 'MOMENTUM']
         };
       case 'REDUCE':
         return {
           title: 'LOSING STEAM — CONSIDER TRIMMING',
           desc: 'The move is stalling and time decay is eating into the option price. Think about taking some off to lock in profit.',
-          color: 'text-amber-400',
+          color: 'text-[#FBBF24]',
           badges: ['TIME DECAY', 'LOW VOLATILITY', 'SLOWING DOWN']
         };
       case 'SELL':
@@ -273,7 +266,7 @@ export function SkyVisionView() {
         return {
           title: 'SIDEWAYS — WAIT FOR A MOVE',
           desc: 'Price is chopping in a range with no clear direction yet. Hold and wait for a breakout before adding.',
-          color: 'text-indigo-400',
+          color: 'text-[#60A5FA]',
           badges: ['RANGE-BOUND', 'NO CLEAR TREND', 'WAIT IT OUT']
         };
     }
@@ -282,16 +275,16 @@ export function SkyVisionView() {
   // Real-time custom targets list
   const profitTargetsList = useMemo(() => {
     return [
-      { id: 't1', label: 'Take Profit 1', optionValue: activePrice * 1.3, expectedPnL: '+30%', status: tradeHealthValue > 70 ? 'HIT TP 1 🎯' : 'IN PROGRESS' },
-      { id: 't2', label: 'Take Profit 2', optionValue: activePrice * 1.8, expectedPnL: '+80%', status: tradeHealthValue > 85 ? 'HIT TP 2 🎯' : 'IN PROGRESS' },
-      { id: 't3', label: 'Take Profit 3', optionValue: activePrice * 2.5, expectedPnL: '+150%', status: tradeHealthValue > 95 ? 'HIT TP 3 🎯' : 'PENDING' },
+      { id: 't1', label: 'Take Profit 1', optionValue: activePrice * 1.3, expectedPnL: '+30%', status: tradeHealthValue > 70 ? 'HIT TP 1' : 'IN PROGRESS' },
+      { id: 't2', label: 'Take Profit 2', optionValue: activePrice * 1.8, expectedPnL: '+80%', status: tradeHealthValue > 85 ? 'HIT TP 2' : 'IN PROGRESS' },
+      { id: 't3', label: 'Take Profit 3', optionValue: activePrice * 2.5, expectedPnL: '+150%', status: tradeHealthValue > 95 ? 'HIT TP 3' : 'PENDING' },
       { id: 't4', label: 'Take Profit 4', optionValue: activePrice * 3.5, expectedPnL: '+250%', status: 'PENDING' },
     ];
   }, [activePrice, tradeHealthValue]);
 
   if (!isExpanded) {
     return (
-      <div className="w-full text-zinc-200 flex flex-col font-mono select-none antialiased pt-2 relative">
+      <div className="w-full text-[var(--text-secondary)] flex flex-col font-mono select-none antialiased pt-2 relative">
         <SkyVisionV2Panel />
         <DiscoveryView
           systemScore={serverState?.system_score}
@@ -307,59 +300,58 @@ export function SkyVisionView() {
   }
 
   return (
-    <div className="w-full text-zinc-200 flex flex-col font-mono select-none antialiased space-y-6">
-      
+    <div className="w-full text-[var(--text-secondary)] flex flex-col font-mono select-none antialiased space-y-6">
+
       {/* Back Button to list */}
-      <div className="w-full flex items-center justify-between pb-2 border-b border-black/50">
-        <button 
+      <div className="w-full flex items-center justify-between pb-2 border-b border-[var(--border)]">
+        <button
           onClick={() => {
             setSelectedStrike(null);
           }}
-          className="flex items-center gap-2 text-[10px] text-zinc-400 hover:text-[#E5E5E5] uppercase tracking-widest font-black py-1 px-3 bg-black/50 rounded hover:bg-black transition-colors"
+          className="flex items-center gap-2 text-[10px] text-[var(--text-secondary)] hover:text-[var(--text-primary)] uppercase tracking-widest font-black py-1.5 px-3 bg-[var(--surface-2)] border border-[var(--border)] rounded hover:bg-[var(--surface-3)] transition-colors"
         >
-          ← BACK TO SIGNALS
+          ← Back to Signals
         </button>
-        <span className="text-[10px] text-zinc-500 uppercase font-black">SELECTED: {selectedAsset.ticker} {activeStrike}{selectedOptionType}</span>
+        <span className="text-[10px] text-[var(--text-tertiary)] uppercase font-black tracking-wider">Selected: {selectedAsset.ticker} {activeStrike}{selectedOptionType}</span>
       </div>
 
-      {/* Index Selector (Level 2 Brand Header Context) */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center bg-black border border-black p-3.5 rounded-sm gap-2">
+      {/* Index + timeframe selector */}
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center bg-[var(--surface)] border border-[var(--border)] p-3 rounded-lg gap-3">
         <div className="flex gap-2 items-center">
-          <Zap className="w-4 h-4 text-zinc-400 animate-pulse" />
-          <span className="text-[8.5px] text-zinc-550 uppercase tracking-widest font-black">LIVE TERMINAL</span>
+          <Zap className="w-4 h-4 text-[#4ADE80]" />
+          <span className="text-[9px] text-[var(--text-secondary)] uppercase tracking-widest font-black">Live Terminal</span>
         </div>
-        
+
         <div className="flex items-center gap-2.5 flex-wrap">
-          <div className="flex items-center bg-black p-0.5 border border-black rounded-sm">
+          <div className="flex items-center bg-[var(--surface-2)] p-0.5 border border-[var(--border)] rounded-md">
             {ASSET_LIST.map(asset => (
               <button
                 key={asset.ticker}
                 type="button"
                 onClick={() => setSelectedAsset(asset)}
-                className={`px-3.5 py-1 text-[9px] uppercase font-black tracking-widest rounded-xs transition-all cursor-pointer ${
+                className={`px-3.5 py-1 text-[9px] uppercase font-black tracking-widest rounded transition-colors cursor-pointer ${
                   selectedAsset.ticker === asset.ticker
-                    ? 'bg-black text-[#E5E5E5] font-extrabold shadow'
-                    : 'text-zinc-500 hover:text-[#E5E5E5]'
+                    ? 'bg-[var(--surface-3)] text-[var(--text-primary)]'
+                    : 'text-[var(--text-tertiary)] hover:text-[var(--text-primary)]'
                 }`}
               >
                 {asset.ticker}
               </button>
             ))}
           </div>
-          
-          {/* Small timeframe cards group, beautifully matching the layout */}
-          <div className="flex items-center gap-1.5 pl-2.5 border-l border-black">
-            <span className="text-[8px] text-zinc-550 font-mono font-black uppercase tracking-wider mr-1 hidden sm:inline">TIMEFRAME:</span>
-            <div className="flex items-center bg-black p-0.5 border border-black rounded-sm">
+
+          <div className="flex items-center gap-1.5 pl-2.5 border-l border-[var(--border)]">
+            <span className="text-[8px] text-[var(--text-tertiary)] font-black uppercase tracking-wider mr-1 hidden sm:inline">Timeframe</span>
+            <div className="flex items-center bg-[var(--surface-2)] p-0.5 border border-[var(--border)] rounded-md">
               {(['5m', '15m', '1h', '4h', '1D'] as const).map(tf => (
                 <button
                   key={tf}
                   type="button"
                   onClick={() => useContractStore.getState().setSelectedTimeframe(tf)}
-                  className={`px-3 py-1 text-[8.5px] uppercase font-black tracking-wider rounded-xs transition-all cursor-pointer ${
+                  className={`px-3 py-1 text-[8.5px] uppercase font-black tracking-wider rounded transition-colors cursor-pointer ${
                     selectedTimeframe === tf
-                      ? 'bg-black text-[#E5E5E5] font-black shadow'
-                      : 'text-zinc-500 hover:text-[#E5E5E5]'
+                      ? 'bg-[var(--surface-3)] text-[var(--text-primary)]'
+                      : 'text-[var(--text-tertiary)] hover:text-[var(--text-primary)]'
                   }`}
                 >
                   {tf}
@@ -385,88 +377,55 @@ export function SkyVisionView() {
         {/* LEFT COLUMN: PROVENANCE EVALUATION MATRIX & METRICS */}
         <div className="lg:col-span-6 flex flex-col gap-4 w-full">
           
-          {/* PROVENANCE EVALUATION MATRIX CARD */}
-          <div 
-            className="w-full apple-glass rounded-2xl p-6 relative overflow-hidden shadow-2xl flex flex-col justify-between transition-all duration-300 hover:border-white/15"
+          {/* TRADE VERDICT CARD */}
+          <div
+            className="w-full bg-[var(--surface)] border border-[var(--border)] rounded-xl p-6 flex flex-col gap-4 shadow-lg"
             style={{ minHeight: '340px' }}
           >
-            {/* Moving border white line constantly running along the perimeter */}
-            <svg className="absolute inset-0 w-full h-full pointer-events-none" style={{ borderRadius: 'inherit' }}>
-              <rect
-                x="0.75"
-                y="0.75"
-                width="calc(100% - 1.5px)"
-                height="calc(100% - 1.5px)"
-                rx="16"
-                fill="none"
-                stroke="rgba(255, 255, 255, 0.05)"
-                strokeWidth="1"
-              />
-              <rect
-                x="0.75"
-                y="0.75"
-                width="calc(100% - 1.5px)"
-                height="calc(100% - 1.5px)"
-                rx="16"
-                fill="none"
-                stroke="#ffffff"
-                strokeWidth="1.5"
-                pathLength={1}
-                strokeDasharray="0.16 0.84"
-                className="animated-svg-border-rect"
-              />
-            </svg>
-
-            {/* Accent high strip */}
-            <div className="absolute top-0 left-0 right-0 h-[3px] bg-white/20" />
-
-            {/* Top Line label */}
-            <div className="flex justify-between items-start border-b border-black/40 pb-4 relative z-10">
+            {/* Header: verdict + live mid */}
+            <div className="flex justify-between items-start border-b border-[var(--border)] pb-4">
               <div className="text-left space-y-2">
-                <span className="text-[10px] font-mono font-black uppercase tracking-[0.2em] text-zinc-500 block">YOUR TRADE</span>
-                {/* Recommendation verdict — primary visual anchor */}
-                <div className={`inline-flex items-center px-3 py-1.5 rounded-lg border font-mono font-black text-2xl md:text-3xl uppercase tracking-tight leading-none ${
+                <span className="text-[10px] font-black uppercase tracking-[0.2em] text-[var(--text-tertiary)] block">Your Trade</span>
+                <div className={`inline-flex items-center px-3 py-1.5 rounded-lg border font-black text-2xl md:text-3xl uppercase tracking-tight leading-none ${
                   activeRecommendation === 'ENTER'
-                    ? 'bg-[#4ADE80]/12 border-[#4ADE80]/40 text-[#4ADE80]'
+                    ? 'bg-[#4ADE80]/10 border-[#4ADE80]/40 text-[#4ADE80]'
                     : activeRecommendation === 'SELL'
-                    ? 'bg-[#F87171]/12 border-[#F87171]/40 text-[#F87171]'
+                    ? 'bg-[#F87171]/10 border-[#F87171]/40 text-[#F87171]'
                     : activeRecommendation === 'REDUCE'
-                    ? 'bg-[#FBBF24]/12 border-[#FBBF24]/40 text-[#FBBF24]'
-                    : 'bg-[#60A5FA]/12 border-[#60A5FA]/40 text-[#60A5FA]'
+                    ? 'bg-[#FBBF24]/10 border-[#FBBF24]/40 text-[#FBBF24]'
+                    : 'bg-[#60A5FA]/10 border-[#60A5FA]/40 text-[#60A5FA]'
                 }`}>
                   {activeRecommendation}
                 </div>
-                <h1 className="text-base md:text-lg font-black text-zinc-400 font-sans tracking-tight uppercase leading-none">
+                <h1 className="text-base md:text-lg font-black text-[var(--text-secondary)] font-sans tracking-tight uppercase leading-none">
                   {selectedAsset.ticker} {activeStrike}{selectedOptionType}
                 </h1>
               </div>
-              <div className="text-right bg-black p-2 border border-black rounded-lg text-[10px]">
-                <span className="text-zinc-550 uppercase text-[8px] block">LIVE MID</span>
-                <span className="text-[#E5E5E5] font-extrabold block text-xs">${(activePrice ?? 0).toFixed(2)}</span>
+              <div className="text-right bg-[var(--surface-2)] p-2.5 border border-[var(--border)] rounded-lg">
+                <span className="text-[var(--text-tertiary)] uppercase text-[8px] block tracking-wider">Live Mid</span>
+                <span className="text-[var(--text-primary)] font-black block text-sm font-mono">${(activePrice ?? 0).toFixed(2)}</span>
               </div>
             </div>
 
-            {/* Grid of decision layout */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 items-stretch my-2 relative z-10">
-              
-              {/* Recommendation block (upgraded to Forensic Thesis statement) */}
-              <div className="mirror-panel p-4.5 rounded-xl flex flex-col justify-between text-left gap-3">
+            {/* Decision grid */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 items-stretch flex-1">
+
+              {/* Thesis */}
+              <div className="bg-[var(--surface-2)] border border-[var(--border)] p-4 rounded-lg flex flex-col justify-between text-left gap-3">
                 <div className="space-y-1.5 text-left">
-                  <span className="text-[8px] text-zinc-500 tracking-wider uppercase block font-mono">THE SETUP</span>
+                  <span className="text-[8px] text-[var(--text-tertiary)] tracking-widest uppercase block font-black">The Setup</span>
                   <span className={`text-[13px] md:text-sm font-black font-sans uppercase block tracking-tight leading-tight ${forensicThesis.color}`}>
                     {forensicThesis.title}
                   </span>
-                  <div className="text-[9.5px]/[14px] text-zinc-400 font-sans tracking-wide">
+                  <div className="text-[9.5px]/[14px] text-[var(--text-secondary)] font-sans tracking-wide">
                     {forensicThesis.desc}
                   </div>
                 </div>
-
-                {/* Attribution pill-badges row (Tag Bar) */}
-                <div className="border-t border-black/30 pt-3 mt-1.5">
-                  <span className="text-[8px] text-zinc-550 uppercase tracking-widest font-black block mb-1">WHY</span>
+                <div className="border-t border-[var(--border)] pt-3">
+                  <span className="text-[8px] text-[var(--text-tertiary)] uppercase tracking-widest font-black block mb-1.5">Why</span>
                   <div className="flex flex-wrap gap-1">
                     {forensicThesis.badges.map((b, idx) => (
-                      <span key={idx} className="px-1.5 py-0.5 bg-black/40 border border-black/80 rounded-sm text-[#4ADE80] font-bold text-[7px] tracking-wider uppercase">
+                      <span key={idx} className="px-1.5 py-0.5 bg-[var(--surface-3)] border border-[var(--border)] rounded text-[#4ADE80] font-bold text-[8px] tracking-wider uppercase">
                         {b}
                       </span>
                     ))}
@@ -474,128 +433,103 @@ export function SkyVisionView() {
                 </div>
               </div>
 
-              {/* Health index dials (Upgraded to Physics Greek Grid + Confidence Band + Probability Cone) */}
-              <div className="bg-black/30 border border-black/40 p-4 rounded-xl flex flex-col justify-between text-left gap-4">
-                
-                {/* Score & Institutional confidence bar */}
+              {/* Confidence + greeks + expected move */}
+              <div className="bg-[var(--surface-2)] border border-[var(--border)] p-4 rounded-lg flex flex-col justify-between text-left gap-4">
+
                 <div className="space-y-1.5 text-left">
-                  <div className="flex justify-between items-center text-xs">
-                    <span className="text-zinc-550 uppercase text-[8.5px] font-black font-mono">CONFIDENCE</span>
-                    <span className="font-extrabold text-[#d4d4d8] text-[9.5px] font-mono">{tradeHealthValue}% CONFIDENCE</span>
+                  <div className="flex justify-between items-center">
+                    <span className="text-[var(--text-tertiary)] uppercase text-[8.5px] font-black">Confidence</span>
+                    <span className="font-black text-[var(--text-primary)] text-[10px] font-mono">{tradeHealthValue}%</span>
                   </div>
-                  {/* Linear Progress bar */}
-                  <div className="w-full bg-black h-1.5 rounded-full overflow-hidden relative">
-                    <div className="absolute inset-0 bg-gradient-to-r from-zinc-300/10 via-zinc-300/20 to-zinc-300/40" />
-                    <motion.div 
-                      className="h-full bg-[#d4d4d8] relative shadow-[0_0_8px_#d4d4d8]" 
+                  <div className="w-full bg-[var(--surface-3)] h-1.5 rounded-full overflow-hidden">
+                    <motion.div
+                      className="h-full bg-[#4ADE80]"
                       initial={{ width: 0 }}
                       animate={{ width: `${tradeHealthValue}%` }}
-                      transition={{ duration: 0.8, ease: "easeOut" }}
+                      transition={{ duration: 0.6, ease: "easeOut" }}
                     />
                   </div>
                 </div>
 
-                {/* Greek physics 2x2 grid */}
-                <div className="grid grid-cols-2 gap-1.5 border-t border-b border-black/40 py-2.5 font-mono text-[9px]">
-                  <div className="flex justify-between px-1.5 py-0.5 bg-black/35 border border-black/50 rounded-sm">
-                    <span className="text-zinc-550 font-semibold tracking-wider">DELTA</span>
+                {/* Greeks 2x2 grid */}
+                <div className="grid grid-cols-2 gap-1.5 border-t border-b border-[var(--border)] py-3 font-mono text-[9px]">
+                  <div className="flex justify-between px-1.5 py-1 bg-[var(--surface-3)] border border-[var(--border)] rounded">
+                    <span className="text-[var(--text-tertiary)] font-semibold tracking-wider">DELTA</span>
                     <span className={`font-bold ${derivedGreeks.delta > 0 ? 'text-[#4ADE80]' : 'text-[#F87171]'}`}>
                       {derivedGreeks.delta > 0 ? '+' : ''}{derivedGreeks.delta}
                     </span>
                   </div>
-                  <div className="flex justify-between px-1.5 py-0.5 bg-black/35 border border-black/50 rounded-sm">
-                    <span className="text-zinc-550 font-semibold tracking-wider">GAMMA</span>
-                    <span className="text-[#E5E5E5] font-bold">{derivedGreeks.gamma}</span>
+                  <div className="flex justify-between px-1.5 py-1 bg-[var(--surface-3)] border border-[var(--border)] rounded">
+                    <span className="text-[var(--text-tertiary)] font-semibold tracking-wider">GAMMA</span>
+                    <span className="text-[var(--text-primary)] font-bold">{derivedGreeks.gamma}</span>
                   </div>
-                  <div className="flex justify-between px-1.5 py-0.5 bg-black/35 border border-black/50 rounded-sm">
-                    <span className="text-zinc-550 font-semibold tracking-wider">THETA</span>
-                    <span className="text-amber-400 font-bold">{derivedGreeks.theta}</span>
+                  <div className="flex justify-between px-1.5 py-1 bg-[var(--surface-3)] border border-[var(--border)] rounded">
+                    <span className="text-[var(--text-tertiary)] font-semibold tracking-wider">THETA</span>
+                    <span className="text-[#FBBF24] font-bold">{derivedGreeks.theta}</span>
                   </div>
-                  <div className="flex justify-between px-1.5 py-0.5 bg-black/35 border border-black/50 rounded-sm">
-                    <span className="text-zinc-550 font-semibold tracking-wider">VEGA</span>
-                    <span className="text-indigo-400 font-bold">+{derivedGreeks.vega}</span>
+                  <div className="flex justify-between px-1.5 py-1 bg-[var(--surface-3)] border border-[var(--border)] rounded">
+                    <span className="text-[var(--text-tertiary)] font-semibold tracking-wider">VEGA</span>
+                    <span className="text-[#60A5FA] font-bold">+{derivedGreeks.vega}</span>
                   </div>
                 </div>
 
-                {/* Expected move and Probability cone bell shape */}
-                <div className="flex justify-between items-center bg-black/40 border border-black/70 rounded p-2">
-                  <div className="space-y-0.5 text-left">
-                    <span className="text-[8px] text-zinc-550 tracking-wider block font-black uppercase font-mono">EXPECTED MOVE</span>
-                    <span className="font-extrabold text-[#4f8cff] text-[10px] block font-mono">+{expectedMoveField}% Expected</span>
-                  </div>
-                  {/* Minified Probability Gaussian Curve widget */}
-                  <svg className="w-16 h-7 text-[#4f8cff]/55 shrink-0" viewBox="0 0 60 25" fill="none" stroke="currentColor" strokeWidth="1.5">
-                    <path d="M 5,23 Q 20,23 30,3 Q 40,23 55,23" stroke="currentColor" strokeOpacity="0.4" />
-                    <motion.circle 
-                      cx={30 + Math.min(20, Math.max(-20, (expectedMoveField - 42) * 0.6))} 
-                      cy={21 - (15 * Math.exp(-0.5 * Math.pow((expectedMoveField - 42) / 18, 2)))} 
-                      r="2" 
-                      fill="#4f8cff" 
-                      animate={{ r: [1.5, 3, 1.5] }}
-                      transition={{ repeat: Infinity, duration: 2.2 }}
-                    />
-                    <line x1="30" y1="3" x2="30" y2="23" stroke="rgba(255, 255, 255, 0.15)" strokeDasharray="1.5,1.5" />
-                  </svg>
+                {/* Expected move */}
+                <div className="flex justify-between items-center">
+                  <span className="text-[8.5px] text-[var(--text-tertiary)] tracking-widest font-black uppercase">Expected Move</span>
+                  <span className="font-black text-[#60A5FA] text-sm font-mono">+{expectedMoveField}%</span>
                 </div>
 
               </div>
 
             </div>
 
-            {/* Bottom regulatory action bar */}
-            <div className="border-t border-black pt-4 flex flex-col sm:flex-row justify-between items-center text-[10px] text-[#A1A1AA] gap-2 relative z-10">
-              <span className="uppercase text-[8px] text-zinc-500 block">UPDATING LIVE</span>
-              <div className="flex items-center gap-1">
-                <span className="w-1.5 h-1.5 bg-[#d4d4d8] rounded-full animate-ping" />
-                <span className="font-black text-[#E5E5E5] px-2 py-0.5 border border-black rounded-md uppercase text-[8px]">
-                  LIVE UPDATES ACTIVE
-                </span>
-              </div>
-            </div>
-
           </div>
 
-          {/* STAGE 2: PROFIT TARGETS SECTION */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 w-full">
-            {profitTargetsList.map((tgt) => (
-              <div 
-                key={tgt.id}
-                className="bg-black border border-black p-4 rounded-sm flex items-center justify-between text-left"
-              >
-                <div className="space-y-1">
-                  <span className="text-[7.5px] text-zinc-650 tracking-wider block font-black uppercase">{tgt.label}</span>
-                  <h4 className={`text-[10px] font-black uppercase ${tgt.status.includes('HIT TP') ? 'text-[#d4d4d8]' : 'text-amber-400'}`}>{tgt.status}</h4>
-                  <span className="text-[10px] text-zinc-400 block font-mono">Target: <span className="font-bold text-[#E5E5E5]">${tgt.optionValue.toFixed(2)}</span></span>
+          {/* PROFIT TARGETS */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 w-full">
+            {profitTargetsList.map((tgt) => {
+              const isHit = tgt.status.includes('HIT TP');
+              return (
+                <div
+                  key={tgt.id}
+                  className="bg-[var(--surface)] border border-[var(--border)] p-4 rounded-lg flex items-center justify-between text-left"
+                >
+                  <div className="space-y-1">
+                    <span className="text-[8px] text-[var(--text-tertiary)] tracking-wider block font-black uppercase">{tgt.label}</span>
+                    <h4 className={`text-[10px] font-black uppercase ${isHit ? 'text-[#4ADE80]' : 'text-[#FBBF24]'}`}>{tgt.status}</h4>
+                    <span className="text-[10px] text-[var(--text-secondary)] block font-mono">Target <span className="font-bold text-[var(--text-primary)]">${tgt.optionValue.toFixed(2)}</span></span>
+                  </div>
+                  <div className="text-right">
+                    <span className="text-lg font-black text-[#4ADE80] block">{tgt.expectedPnL}</span>
+                    <span className="text-[7.5px] text-[var(--text-tertiary)] uppercase block font-mono tracking-wider">Expected</span>
+                  </div>
                 </div>
-                <div className="text-right">
-                  <span className="text-lg font-black text-[#d4d4d8] block">{tgt.expectedPnL}</span>
-                  <span className="text-[7px] text-zinc-500 uppercase block font-mono">EXPECTED</span>
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
 
-          {/* STAGE 2.75: STRIKE GRAVITY MAP — dealer-pressure ranking & zones */}
+          {/* STRIKE GRAVITY MAP — dealer-pressure ranking & zones */}
           <StrikeGravityPanel />
 
-          {/* STAGE 3: ANALYSIS SUMMARY SECTION */}
-          <div className="w-full bg-black border border-black p-5 rounded-2xl text-left space-y-3">
-            <div className="flex items-center gap-2 border-b border-black pb-2">
-              <FileText className="w-3.5 h-3.5 text-zinc-500" />
-              <span className="text-[10px] font-mono font-black uppercase tracking-[0.2em] text-zinc-500">
-                Analysis Summary {'&'} Market Outlook
+          {/* ANALYSIS SUMMARY */}
+          <div className="w-full bg-[var(--surface)] border border-[var(--border)] p-5 rounded-xl text-left space-y-3">
+            <div className="flex items-center gap-2 border-b border-[var(--border)] pb-2.5">
+              <FileText className="w-3.5 h-3.5 text-[#4ADE80]" />
+              <span className="text-[10px] font-black uppercase tracking-[0.2em] text-[var(--text-secondary)]">
+                Analysis Summary
               </span>
             </div>
-            <div className="text-[11px] leading-relaxed text-zinc-400 font-mono space-y-2 uppercase tracking-wide bg-black/50 p-3 rounded border border-black/50">
+            <div className="text-[11px] leading-relaxed text-[var(--text-secondary)] space-y-2 bg-[var(--surface-2)] p-3 rounded-lg border border-[var(--border)]">
               <p>
-                Decision Logic Triggered: {serverState?.position_management?.decision_reason || `High confidence condition detected.`}
+                <span className="text-[var(--text-tertiary)] uppercase text-[9px] tracking-wider font-black">Decision Logic</span>{' '}
+                {serverState?.position_management?.decision_reason || 'High confidence condition detected.'}
               </p>
               <p>
-                Order book flows indicate {serverState?.position_management?.momentum === 'ACCELERATING' ? 'concentrated execution pressure' : 'weak neutral shifts'}. 
-                Action recommended is <span className="text-[#4ADE80] font-black">{activeRecommendation}</span> based on momentum shifting {tradeHealthValue > 70 ? 'UPWARDS' : 'DOWNWARDS'}.
+                Order book flows indicate {serverState?.position_management?.momentum === 'ACCELERATING' ? 'concentrated execution pressure' : 'neutral shifts'}.
+                Recommended action is <span className="text-[#4ADE80] font-black">{activeRecommendation}</span> with momentum biased {tradeHealthValue > 70 ? 'upwards' : 'downwards'}.
               </p>
               {serverState?.deep_intelligence && (
-                <div className="mt-2 pt-2 border-t border-t-zinc-900/60 font-sans tracking-normal space-y-1">
+                <div className="mt-2 pt-2 border-t border-[var(--border)] space-y-1">
                   {serverState.deep_intelligence.strike_metrics?.gammaContribution && (
                     <p className="text-[#4ADE80] font-bold">• {activeStrike} contains {serverState.deep_intelligence.strike_metrics.gammaContribution} of total {selectedOptionType === 'C' ? 'call' : 'put'} gamma.</p>
                   )}
@@ -611,32 +545,32 @@ export function SkyVisionView() {
                 </div>
               )}
             </div>
-            <div className="pt-2 border-t border-black/60 flex items-center gap-1 text-[8.5px] text-zinc-500 uppercase font-black">
+            <div className="pt-2 border-t border-[var(--border)] flex items-center gap-1.5 text-[8.5px] text-[var(--text-tertiary)] uppercase font-black tracking-wider">
               <CheckCircle2 className="w-3 h-3 text-[#4ADE80]" />
-              <span>CHECKED ACROSS MULTIPLE TIMEFRAMES</span>
+              <span>Checked across multiple timeframes</span>
             </div>
           </div>
 
         </div>
 
-        {/* RIGHT COLUMN: SIMPLIFIED ADAPTIVE OPTIONS CHAIN DISPLAY */}
-        <div className="lg:col-span-6 w-full bg-black border border-black p-5 rounded-2xl flex flex-col justify-between" style={{ minHeight: '520px' }}>
-          
-          <div className="border-b border-black pb-3 text-left">
-            <span className="text-[10px] font-mono font-black uppercase tracking-[0.2em] text-zinc-500 inline-flex items-center gap-2">
-              <span className="w-2 h-2 rounded-full bg-[#4ADE80] animate-pulse"></span>
-              LIVE CONTRACT FEED
+        {/* RIGHT COLUMN: OPTIONS CHAIN */}
+        <div className="lg:col-span-6 w-full bg-[var(--surface)] border border-[var(--border)] p-5 rounded-xl flex flex-col" style={{ minHeight: '520px' }}>
+
+          <div className="border-b border-[var(--border)] pb-3 text-left">
+            <span className="text-[10px] font-black uppercase tracking-[0.2em] text-[var(--text-secondary)] inline-flex items-center gap-2">
+              <FileText className="w-3.5 h-3.5 text-[#4ADE80]" />
+              Contract Chain
             </span>
-            <p className="text-[8.5px] text-zinc-500 uppercase font-mono tracking-wider mt-1">
-              Real-time changes, risk scores, momentum, and premium estimation.
+            <p className="text-[8.5px] text-[var(--text-tertiary)] uppercase tracking-wider mt-1">
+              Health scores, momentum and premium per strike.
             </p>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4">
-            {/* CALL CARD COLUMNS */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4 flex-1">
+            {/* CALLS */}
             <div className="space-y-2.5">
-              <span className="text-[8.5px] text-zinc-500 uppercase tracking-widest block text-left font-bold pl-1">
-                🟢 CALL CONTRACT CARDS
+              <span className="text-[8.5px] text-[#4ADE80] uppercase tracking-widest block text-left font-black pl-1">
+                Calls
               </span>
               <div className="flex flex-col gap-2">
                 {strikesList.map((row) => {
@@ -663,10 +597,10 @@ export function SkyVisionView() {
               </div>
             </div>
 
-            {/* PUT CARD COLUMNS */}
+            {/* PUTS */}
             <div className="space-y-2.5">
-              <span className="text-[8.5px] text-zinc-500 uppercase tracking-widest block text-left font-bold pl-1">
-                🔴 PUT CONTRACT CARDS
+              <span className="text-[8.5px] text-[#F87171] uppercase tracking-widest block text-left font-black pl-1">
+                Puts
               </span>
               <div className="flex flex-col gap-2">
                 {strikesList.map((row) => {
@@ -694,21 +628,21 @@ export function SkyVisionView() {
             </div>
           </div>
 
-          <div className="border-t border-black pt-2.5 mt-4 text-[8px] text-zinc-650 uppercase font-bold text-left">
-            * Selected Contract: {selectedAsset.ticker} {activeStrike}{selectedOptionType} • Synced Live Coordinates
+          <div className="border-t border-[var(--border)] pt-2.5 mt-4 text-[8px] text-[var(--text-tertiary)] uppercase font-bold text-left tracking-wider">
+            Selected: {selectedAsset.ticker} {activeStrike}{selectedOptionType}
           </div>
 
         </div>
 
       </div>
 
-      {/* EXPANDABLE DEEP INSTITUTIONAL INTELLIGENCE (SKYSEYE EXPANSION MODEL) */}
+      {/* EXPANDABLE DEEP INTELLIGENCE */}
       <div className="w-full mt-2">
-        <button 
+        <button
           onClick={() => setIsDeepSkyseyeExpanded(!isDeepSkyseyeExpanded)}
-          className="w-full bg-black border border-black hover:border-black hover:bg-black/50 transition-colors p-3 rounded-lg flex items-center justify-center gap-2 text-xs font-black uppercase tracking-widest text-zinc-400"
+          className="w-full bg-[var(--surface)] border border-[var(--border)] hover:bg-[var(--surface-2)] hover:border-[var(--border-strong)] transition-colors p-3 rounded-lg flex items-center justify-center gap-2 text-xs font-black uppercase tracking-widest text-[var(--text-secondary)]"
         >
-          {isDeepSkyseyeExpanded ? '▽ Hide Advanced Details' : '▷ Show Advanced Details'}
+          {isDeepSkyseyeExpanded ? 'Hide Advanced Details' : 'Show Advanced Details'}
         </button>
 
         {isDeepSkyseyeExpanded && serverState?.deep_intelligence && (
@@ -720,68 +654,69 @@ export function SkyVisionView() {
             {/* COLUMN 1: CONTRACT & STRIKE INTELLIGENCE */}
             <div className="lg:col-span-8 flex flex-col gap-4">
                {/* Largest Impact Contracts */}
-               <div className="bg-black border border-black rounded-xl p-5">
-                  <div className="border-b border-black pb-2 mb-4 flex justify-between items-center">
-                    <span className="text-[10px] text-[#4ADE80] font-black uppercase tracking-widest">Largest Impact Contracts</span>
-                    <span className="text-[8px] text-[#4f8cff] uppercase px-2 py-0.5 border border-[#4f8cff]/30 bg-[#4f8cff]/10 rounded flex items-center gap-1.5">
-                      <span className="w-1.5 h-1.5 bg-[#4f8cff] rounded-full animate-pulse"></span>
-                      Live Gamma Ranking 
+               <div className="bg-[var(--surface)] border border-[var(--border)] rounded-xl p-5">
+                  <div className="border-b border-[var(--border)] pb-2.5 mb-4 flex justify-between items-center">
+                    <span className="text-[10px] text-[var(--text-secondary)] font-black uppercase tracking-widest flex items-center gap-2">
+                      <Layers className="w-3.5 h-3.5 text-[#4ADE80]" /> Largest Impact Contracts
+                    </span>
+                    <span className="text-[8px] text-[#60A5FA] uppercase px-2 py-0.5 border border-[#60A5FA]/30 bg-[#60A5FA]/10 rounded tracking-wider font-black">
+                      Gamma Ranking
                     </span>
                   </div>
                   {/* Mobile card list — md and below */}
                   <div className="md:hidden flex flex-col gap-2">
                     {(serverState.deep_intelligence.impact_contracts || []).map((c: any) => (
-                      <div key={c.contract} className="bg-black/40 border border-zinc-900 rounded-lg p-3 flex flex-col gap-1.5 font-mono">
+                      <div key={c.contract} className="bg-[var(--surface-2)] border border-[var(--border)] rounded-lg p-3 flex flex-col gap-1.5 font-mono">
                         <div className="flex items-center justify-between">
-                          <span className={`text-[10px] font-black ${c.rank === 1 ? 'text-[#ff4545]' : c.rank === 2 ? 'text-[#4f8cff]' : 'text-zinc-500'}`}>
+                          <span className={`text-[10px] font-black ${c.rank === 1 ? 'text-[#F87171]' : c.rank === 2 ? 'text-[#60A5FA]' : 'text-[var(--text-tertiary)]'}`}>
                             #{c.rank}
                           </span>
-                          <span className="text-[11px] font-black text-[#E5E5E5]">{c.contract}</span>
+                          <span className="text-[11px] font-black text-[var(--text-primary)]">{c.contract}</span>
                         </div>
                         <div className="grid grid-cols-3 gap-1 text-[9px]">
                           <div>
-                            <span className="block text-zinc-600 uppercase tracking-wider text-[7px]">OI</span>
+                            <span className="block text-[var(--text-tertiary)] uppercase tracking-wider text-[7.5px]">OI</span>
                             <span className="text-[#4ADE80] font-bold">{c.oi != null ? c.oi.toLocaleString() : '--'}</span>
                           </div>
                           <div>
-                            <span className="block text-zinc-600 uppercase tracking-wider text-[7px]">Volume</span>
+                            <span className="block text-[var(--text-tertiary)] uppercase tracking-wider text-[7.5px]">Volume</span>
                             <span className="text-[#4ADE80] font-bold">{c.volume != null ? c.volume.toLocaleString() : '--'}</span>
                           </div>
                           <div>
-                            <span className="block text-zinc-600 uppercase tracking-wider text-[7px]">Gamma</span>
-                            <span className="text-[#d4d4d8] font-bold">{c.gammaContribution ?? '--'}</span>
+                            <span className="block text-[var(--text-tertiary)] uppercase tracking-wider text-[7.5px]">Gamma</span>
+                            <span className="text-[var(--text-primary)] font-bold">{c.gammaContribution ?? '--'}</span>
                           </div>
                         </div>
                       </div>
                     ))}
                     {(serverState.deep_intelligence.impact_contracts?.length ?? 0) === 0 && (
-                      <div className="text-zinc-600 text-[9px] font-mono italic py-2 text-center">No impact contracts available.</div>
+                      <div className="text-[var(--text-tertiary)] text-[9px] font-mono italic py-2 text-center">No impact contracts available.</div>
                     )}
                   </div>
                   {/* Full table — md and up */}
                   <div className="hidden md:block overflow-x-auto">
-                    <table className="w-full text-left text-[9px] font-mono text-zinc-400">
+                    <table className="w-full text-left text-[9px] font-mono text-[var(--text-secondary)]">
                       <thead>
-                        <tr className="border-b border-black text-zinc-500 uppercase tracking-widest">
-                          <th className="pb-2 font-black">Impact Rank</th>
+                        <tr className="border-b border-[var(--border)] text-[var(--text-tertiary)] uppercase tracking-widest">
+                          <th className="pb-2 font-black">Rank</th>
                           <th className="pb-2 font-black">Contract</th>
                           <th className="pb-2 font-black">Exp</th>
                           <th className="pb-2 font-black">Open Int</th>
                           <th className="pb-2 font-black">Volume</th>
                           <th className="pb-2 font-black text-right">Delta Notional</th>
-                          <th className="pb-2 font-black text-right">Gamma Contribution</th>
+                          <th className="pb-2 font-black text-right">Gamma</th>
                         </tr>
                       </thead>
-                      <tbody className="divide-y divide-zinc-900/50 text-xs">
+                      <tbody className="divide-y divide-[var(--border)] text-xs">
                         {(serverState.deep_intelligence.impact_contracts || []).map((c: any) => (
-                          <tr key={c.contract} className="hover:bg-black/20 transition-colors">
-                            <td className={`py-2 font-black ${c.rank === 1 ? 'text-[#ff4545]' : c.rank === 2 ? 'text-[#4f8cff]' : 'text-zinc-500'}`}>#{c.rank}</td>
-                            <td className="py-2 font-black text-[#E5E5E5]">{c.contract}</td>
+                          <tr key={c.contract} className="hover:bg-[var(--surface-2)] transition-colors">
+                            <td className={`py-2 font-black ${c.rank === 1 ? 'text-[#F87171]' : c.rank === 2 ? 'text-[#60A5FA]' : 'text-[var(--text-tertiary)]'}`}>#{c.rank}</td>
+                            <td className="py-2 font-black text-[var(--text-primary)]">{c.contract}</td>
                             <td className="py-2">{c.expiration}</td>
-                            <td className="py-2 text-[#4ADE80]">{c.oi.toLocaleString()}</td>
-                            <td className="py-2 text-[#4ADE80]">{c.volume.toLocaleString()}</td>
-                            <td className="py-2 text-right font-bold text-[#E5E5E5]">{c.deltaNotional}</td>
-                            <td className="py-2 text-right font-bold text-[#d4d4d8]">{c.gammaContribution}</td>
+                            <td className="py-2 text-[#4ADE80]">{c.oi != null ? c.oi.toLocaleString() : '--'}</td>
+                            <td className="py-2 text-[#4ADE80]">{c.volume != null ? c.volume.toLocaleString() : '--'}</td>
+                            <td className="py-2 text-right font-bold text-[var(--text-primary)]">{c.deltaNotional}</td>
+                            <td className="py-2 text-right font-bold text-[var(--text-primary)]">{c.gammaContribution}</td>
                           </tr>
                         ))}
                       </tbody>
@@ -790,47 +725,47 @@ export function SkyVisionView() {
                </div>
 
                {/* Strike Breakdown (Strike Intelligence) */}
-               <div className="bg-black border border-black rounded-xl p-5 shadow-inner">
-                  <div className="border-b border-black pb-2 mb-4">
-                    <span className="text-[10px] text-[#4ADE80] font-black uppercase tracking-widest flex items-center gap-2">
-                       <span className="w-1.5 h-1.5 bg-black/40 rounded-full animate-pulse"></span>
-                       Strike Details: {(activeStrike ?? 0).toFixed(2)}
+               <div className="bg-[var(--surface)] border border-[var(--border)] rounded-xl p-5">
+                  <div className="border-b border-[var(--border)] pb-2.5 mb-4">
+                    <span className="text-[10px] text-[var(--text-secondary)] font-black uppercase tracking-widest flex items-center gap-2">
+                       <Target className="w-3.5 h-3.5 text-[#4ADE80]" />
+                       Strike Detail · {(activeStrike ?? 0).toFixed(2)}
                     </span>
                   </div>
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-xs font-mono">
-                    <div className="mirror-panel rounded-md p-3">
-                      <span className="text-[8px] text-zinc-500 uppercase block mb-1">Total Open Interest</span>
-                      <span className="font-extrabold text-[#E5E5E5]">{(serverState.deep_intelligence.strike_metrics?.totalOi || 0).toLocaleString()}</span>
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-xs font-mono">
+                    <div className="bg-[var(--surface-2)] border border-[var(--border)] rounded-lg p-3">
+                      <span className="text-[8px] text-[var(--text-tertiary)] uppercase block mb-1 tracking-wider">Total OI</span>
+                      <span className="font-black text-[var(--text-primary)]">{(serverState.deep_intelligence.strike_metrics?.totalOi || 0).toLocaleString()}</span>
                     </div>
-                    <div className="mirror-panel rounded-md p-3">
-                      <span className="text-[8px] text-zinc-500 uppercase block mb-1">Net Exposure</span>
-                      <span className={`font-extrabold ${serverState.deep_intelligence.strike_metrics?.netExposure?.includes('+') ? 'text-[#4ADE80]' : 'text-[#F87171]'}`}>
+                    <div className="bg-[var(--surface-2)] border border-[var(--border)] rounded-lg p-3">
+                      <span className="text-[8px] text-[var(--text-tertiary)] uppercase block mb-1 tracking-wider">Net Exposure</span>
+                      <span className={`font-black ${serverState.deep_intelligence.strike_metrics?.netExposure?.includes('+') ? 'text-[#4ADE80]' : 'text-[#F87171]'}`}>
                          {serverState.deep_intelligence.strike_metrics?.netExposure}
                       </span>
                     </div>
-                    <div className="mirror-panel rounded-md p-3">
-                      <span className="text-[8px] text-zinc-500 uppercase block mb-1">Call / Put Ratio</span>
-                      <span className="font-extrabold text-[#E5E5E5]">{serverState.deep_intelligence.strike_metrics?.callPutRatio}</span>
+                    <div className="bg-[var(--surface-2)] border border-[var(--border)] rounded-lg p-3">
+                      <span className="text-[8px] text-[var(--text-tertiary)] uppercase block mb-1 tracking-wider">Call / Put Ratio</span>
+                      <span className="font-black text-[var(--text-primary)]">{serverState.deep_intelligence.strike_metrics?.callPutRatio}</span>
                     </div>
-                    <div className="mirror-panel rounded-md p-3">
-                      <span className="text-[8px] text-zinc-500 uppercase block mb-1">Hedge Sensitivity</span>
-                      <span className="font-extrabold text-[#F87171]">{serverState.deep_intelligence.strike_metrics?.hedgeSensitivity}</span>
+                    <div className="bg-[var(--surface-2)] border border-[var(--border)] rounded-lg p-3">
+                      <span className="text-[8px] text-[var(--text-tertiary)] uppercase block mb-1 tracking-wider">Hedge Sensitivity</span>
+                      <span className="font-black text-[#F87171]">{serverState.deep_intelligence.strike_metrics?.hedgeSensitivity}</span>
                     </div>
-                    <div className="mirror-panel rounded-md p-3">
-                      <span className="text-[8px] text-zinc-500 uppercase block mb-1">Dealer Exposure</span>
-                      <span className="font-extrabold text-indigo-400">{serverState.deep_intelligence.strike_metrics?.dealerExposure}</span>
+                    <div className="bg-[var(--surface-2)] border border-[var(--border)] rounded-lg p-3">
+                      <span className="text-[8px] text-[var(--text-tertiary)] uppercase block mb-1 tracking-wider">Dealer Exposure</span>
+                      <span className="font-black text-[#60A5FA]">{serverState.deep_intelligence.strike_metrics?.dealerExposure}</span>
                     </div>
-                    <div className="mirror-panel rounded-md p-3">
-                      <span className="text-[8px] text-zinc-500 uppercase block mb-1">Gamma Contribution</span>
-                      <span className="font-extrabold text-[#d4d4d8]">{serverState.deep_intelligence.strike_metrics?.gammaContribution}</span>
+                    <div className="bg-[var(--surface-2)] border border-[var(--border)] rounded-lg p-3">
+                      <span className="text-[8px] text-[var(--text-tertiary)] uppercase block mb-1 tracking-wider">Gamma Contribution</span>
+                      <span className="font-black text-[var(--text-primary)]">{serverState.deep_intelligence.strike_metrics?.gammaContribution}</span>
                     </div>
-                    <div className="mirror-panel rounded-md p-3 col-span-2 flex items-center justify-between">
+                    <div className="bg-[var(--surface-2)] border border-[var(--border)] rounded-lg p-3 col-span-2 flex items-center justify-between gap-3">
                       <div>
-                        <span className="text-[8px] text-zinc-500 uppercase block mb-1">Delta Contribution</span>
-                        <span className="font-extrabold text-[#E5E5E5]">{serverState.deep_intelligence.strike_metrics?.deltaContribution}</span>
+                        <span className="text-[8px] text-[var(--text-tertiary)] uppercase block mb-1 tracking-wider">Delta Contribution</span>
+                        <span className="font-black text-[var(--text-primary)]">{serverState.deep_intelligence.strike_metrics?.deltaContribution}</span>
                       </div>
-                      <div className="w-1/2 h-1.5 bg-black rounded-full overflow-hidden">
-                         <div className="h-full bg-[#4f8cff]" style={{ width: serverState.deep_intelligence.strike_metrics?.deltaContribution }} />
+                      <div className="w-1/2 h-1.5 bg-[var(--surface-3)] rounded-full overflow-hidden">
+                         <div className="h-full bg-[#60A5FA]" style={{ width: serverState.deep_intelligence.strike_metrics?.deltaContribution }} />
                       </div>
                     </div>
                   </div>
@@ -840,87 +775,86 @@ export function SkyVisionView() {
             {/* COLUMN 2: WHALE DETECTION & FLOW FEED */}
             <div className="lg:col-span-4 flex flex-col gap-4">
                {/* Live Dealer Commentary Card */}
-               <div className="bg-black border border-black rounded-xl p-5 shadow-inner">
-                  <div className="border-b border-black pb-2 mb-3">
-                    <span className="text-[10px] text-[#4ADE80] font-black uppercase tracking-widest flex items-center gap-2">
-                      <span className="w-1.5 h-1.5 bg-[#4f8cff] rounded-full animate-pulse"></span>
+               <div className="bg-[var(--surface)] border border-[var(--border)] rounded-xl p-5">
+                  <div className="border-b border-[var(--border)] pb-2.5 mb-3">
+                    <span className="text-[10px] text-[var(--text-secondary)] font-black uppercase tracking-widest flex items-center gap-2">
+                      <FileText className="w-3.5 h-3.5 text-[#4ADE80]" />
                       Dealer Notes
                     </span>
                   </div>
-                  <div className="space-y-2.5">
+                  <div className="space-y-2">
                      {serverState.deep_intelligence.commentary?.map((point: string, idx: number) => (
-                       <div key={idx} className="p-2 border border-black/50 rounded-lg bg-black/40 text-[9.5px] font-sans text-zinc-400 leading-relaxed flex gap-2">
-                          <span className="text-[#4f8cff] mt-0.5 select-none text-[8px]">■</span>
+                       <div key={idx} className="p-2.5 border border-[var(--border)] rounded-lg bg-[var(--surface-2)] text-[9.5px] font-sans text-[var(--text-secondary)] leading-relaxed flex gap-2">
+                          <span className="text-[#60A5FA] mt-0.5 select-none text-[8px]">■</span>
                           <span>{point}</span>
                        </div>
                      ))}
                      {(!serverState.deep_intelligence.commentary || serverState.deep_intelligence.commentary.length === 0) && (
-                       <div className="text-zinc-500 italic text-xs py-2 text-center">No commentary points compiled for the current frame.</div>
+                       <div className="text-[var(--text-tertiary)] italic text-xs py-2 text-center">No commentary for the current frame.</div>
                      )}
                   </div>
                </div>
 
                {/* Whale Detection */}
-               <div className="bg-black border border-black rounded-xl p-5">
-                  <div className="border-b border-black pb-2 mb-3">
-                    <span className="text-[10px] text-[#4ADE80] font-black uppercase tracking-widest flex items-center gap-2">
-                      <span className="w-1.5 h-1.5 bg-rose-400 rounded-full animate-pulse"></span>
+               <div className="bg-[var(--surface)] border border-[var(--border)] rounded-xl p-5">
+                  <div className="border-b border-[var(--border)] pb-2.5 mb-3">
+                    <span className="text-[10px] text-[var(--text-secondary)] font-black uppercase tracking-widest flex items-center gap-2">
+                      <Activity className="w-3.5 h-3.5 text-[#4ADE80]" />
                       Biggest Trades
                     </span>
                   </div>
                   <div className="space-y-2 text-xs font-mono">
-                    <div className="flex justify-between items-center p-2 bg-[#d4d4d8]/5 border border-[#d4d4d8]/20 rounded-md">
+                    <div className="flex justify-between items-center p-2.5 bg-[#4ADE80]/5 border border-[#4ADE80]/20 rounded-lg">
                       <div>
-                        <span className="text-[8px] text-[#d4d4d8] uppercase block font-black">Largest Bullish Position</span>
-                        <span className="text-[#E5E5E5] font-bold">{serverState.deep_intelligence.whale_detection?.bullish?.contract} • 0DTE</span>
+                        <span className="text-[8px] text-[#4ADE80] uppercase block font-black tracking-wider">Largest Bullish</span>
+                        <span className="text-[var(--text-primary)] font-bold">{serverState.deep_intelligence.whale_detection?.bullish?.contract} • {optionExpiryLabel(selectedAsset)}</span>
                       </div>
-                      <span className="font-black text-[#E5E5E5]">{serverState.deep_intelligence.whale_detection?.bullish?.size}</span>
+                      <span className="font-black text-[var(--text-primary)]">{serverState.deep_intelligence.whale_detection?.bullish?.size}</span>
                     </div>
-                    <div className="flex justify-between items-center p-2 bg-[#ff4545]/5 border border-[#ff4545]/20 rounded-md">
+                    <div className="flex justify-between items-center p-2.5 bg-[#F87171]/5 border border-[#F87171]/20 rounded-lg">
                       <div>
-                        <span className="text-[8px] text-[#ff4545] uppercase block font-black">Largest Bearish Position</span>
-                        <span className="text-[#E5E5E5] font-bold">{serverState.deep_intelligence.whale_detection?.bearish?.contract} • 0DTE</span>
+                        <span className="text-[8px] text-[#F87171] uppercase block font-black tracking-wider">Largest Bearish</span>
+                        <span className="text-[var(--text-primary)] font-bold">{serverState.deep_intelligence.whale_detection?.bearish?.contract} • {optionExpiryLabel(selectedAsset)}</span>
                       </div>
-                      <span className="font-black text-[#E5E5E5]">{serverState.deep_intelligence.whale_detection?.bearish?.size}</span>
+                      <span className="font-black text-[var(--text-primary)]">{serverState.deep_intelligence.whale_detection?.bearish?.size}</span>
                     </div>
-                    <div className="flex justify-between items-center p-2 mirror-panel rounded-md gap-3">
+                    <div className="flex justify-between items-center p-2.5 bg-[var(--surface-2)] border border-[var(--border)] rounded-lg gap-3">
                       <div>
-                        <span className="text-[8px] text-zinc-400 uppercase block font-black">Largest Call Position</span>
-                        <span className="text-[#E5E5E5] font-bold">{serverState.deep_intelligence.whale_detection?.largestCall}</span>
+                        <span className="text-[8px] text-[var(--text-tertiary)] uppercase block font-black tracking-wider">Largest Call</span>
+                        <span className="text-[var(--text-primary)] font-bold">{serverState.deep_intelligence.whale_detection?.largestCall}</span>
                       </div>
-                      <span className="font-black text-[#E5E5E5] cursor-help border-b border-dashed border-black block text-right">HEDGE</span>
+                      <span className="font-black text-[var(--text-tertiary)] block text-right text-[9px]">HEDGE</span>
                     </div>
-                    <div className="flex justify-between items-center p-2 mirror-panel rounded-md gap-3">
+                    <div className="flex justify-between items-center p-2.5 bg-[var(--surface-2)] border border-[var(--border)] rounded-lg gap-3">
                       <div>
-                        <span className="text-[8px] text-zinc-400 uppercase block font-black">Largest Put Position</span>
-                        <span className="text-[#E5E5E5] font-bold">{serverState.deep_intelligence.whale_detection?.largestPut}</span>
+                        <span className="text-[8px] text-[var(--text-tertiary)] uppercase block font-black tracking-wider">Largest Put</span>
+                        <span className="text-[var(--text-primary)] font-bold">{serverState.deep_intelligence.whale_detection?.largestPut}</span>
                       </div>
-                      <span className="font-black text-[#E5E5E5] cursor-help border-b border-dashed border-black block text-right">HEDGE</span>
+                      <span className="font-black text-[var(--text-tertiary)] block text-right text-[9px]">HEDGE</span>
                     </div>
                   </div>
                </div>
-               
+
                {/* Institutional Flow Feed */}
-               <div className="bg-black border border-black rounded-xl p-5 flex-1 flex flex-col h-[300px]">
-                  <div className="border-b border-black pb-2 mb-3 shrink-0 flex justify-between items-center">
-                    <span className="text-[10px] text-[#4ADE80] font-black uppercase tracking-widest flex items-center gap-2">
-                       <span className="w-1.5 h-1.5 bg-[#4f8cff] rounded-full animate-pulse"></span>
+               <div className="bg-[var(--surface)] border border-[var(--border)] rounded-xl p-5 flex-1 flex flex-col h-[300px]">
+                  <div className="border-b border-[var(--border)] pb-2.5 mb-3 shrink-0 flex justify-between items-center">
+                    <span className="text-[10px] text-[var(--text-secondary)] font-black uppercase tracking-widest flex items-center gap-2">
+                       <Activity className="w-3.5 h-3.5 text-[#4ADE80]" />
                        Live Order Flow
                     </span>
-                    <span className="text-[7.5px] text-zinc-500 font-black uppercase">LIVE</span>
                   </div>
-                  <div className="flex flex-col gap-2 overflow-y-auto text-[10px] font-mono hover:overflow-y-scroll pr-1 flex-1">
+                  <div className="flex flex-col gap-2 overflow-y-auto text-[10px] font-mono pr-1 flex-1">
                      {(serverState.deep_intelligence.flow_feed || []).slice(0, 10).map((f: any) => (
-                       <div key={f.id} className={`flex flex-col gap-1.5 p-2 mirror-panel/80 rounded transition-colors hover:bg-black ${f.type === 'UNUSUAL' ? 'border-l-2 border-l-indigo-500' : ''}`}>
+                       <div key={f.id} className={`flex flex-col gap-1.5 p-2.5 bg-[var(--surface-2)] border border-[var(--border)] rounded-lg transition-colors hover:bg-[var(--surface-3)] ${f.type === 'UNUSUAL' ? 'border-l-2 border-l-[#60A5FA]' : ''}`}>
                           <div className="flex justify-between">
-                             <span className={`${f.type === 'SWEEP' ? 'text-[#d4d4d8]' : f.type === 'BLOCK' ? 'text-[#F87171]' : 'text-indigo-400'} font-bold`}>{f.type}</span>
-                             <span className="text-[#E5E5E5] font-bold">{f.contract}</span>
+                             <span className={`${f.type === 'SWEEP' ? 'text-[#4ADE80]' : f.type === 'BLOCK' ? 'text-[#F87171]' : 'text-[#60A5FA]'} font-bold`}>{f.type}</span>
+                             <span className="text-[var(--text-primary)] font-bold">{f.contract}</span>
                           </div>
-                          <span className="text-[8px] text-zinc-500 uppercase">{f.desc}</span>
+                          <span className="text-[8px] text-[var(--text-tertiary)] uppercase tracking-wider">{f.desc}</span>
                        </div>
                      ))}
                      {(serverState.deep_intelligence.flow_feed?.length ?? 0) === 0 && (
-                       <div className="text-zinc-500 text-center py-4 italic text-xs">Waiting for market flows...</div>
+                       <div className="text-[var(--text-tertiary)] text-center py-4 italic text-xs">Waiting for market flows…</div>
                      )}
                   </div>
                </div>
@@ -929,24 +863,23 @@ export function SkyVisionView() {
         )}
       </div>
 
-        {/* STAGE 4: HIGH-PRECISION INTEGRATED CHART REFERENCE & WEBHOOK FEED */}
+      {/* CHART */}
       <div className="w-full mt-2">
-        
-        <div className="w-full bg-black border border-black p-5 rounded-sm space-y-3">
-          <div className="flex justify-between items-center text-[8.5px] uppercase text-zinc-500 bg-black p-2.5 rounded border border-black">
-            <span>Live Chart</span>
-            <div className="flex items-center gap-3">
-              <span className="text-zinc-650 font-bold">LIVE</span>
-              <button 
-                onClick={() => setIsChartExpanded(!isChartExpanded)}
-                className="text-zinc-400 hover:text-[#E5E5E5] transition-colors"
-                title={isChartExpanded ? "Collapse Chart" : "Expand Chart"}
-              >
-                {isChartExpanded ? <Minimize2 className="w-3.5 h-3.5" /> : <Maximize2 className="w-3.5 h-3.5" />}
-              </button>
-            </div>
+
+        <div className="w-full bg-[var(--surface)] border border-[var(--border)] p-5 rounded-xl space-y-3">
+          <div className="flex justify-between items-center pb-2.5 border-b border-[var(--border)]">
+            <span className="text-[10px] font-black uppercase tracking-[0.2em] text-[var(--text-secondary)] flex items-center gap-2">
+              <Activity className="w-3.5 h-3.5 text-[#4ADE80]" /> Live Chart
+            </span>
+            <button
+              onClick={() => setIsChartExpanded(!isChartExpanded)}
+              className="text-[var(--text-tertiary)] hover:text-[var(--text-primary)] transition-colors"
+              title={isChartExpanded ? "Collapse Chart" : "Expand Chart"}
+            >
+              {isChartExpanded ? <Minimize2 className="w-3.5 h-3.5" /> : <Maximize2 className="w-3.5 h-3.5" />}
+            </button>
           </div>
-          <motion.div 
+          <motion.div
             animate={{ height: isChartExpanded ? 500 : 210 }}
             transition={{ duration: 0.3, ease: "easeInOut" }}
             className="w-full relative"
@@ -967,15 +900,6 @@ export function SkyVisionView() {
           </motion.div>
         </div>
 
-      </div>
-
-      {/* FOOTER: FEED STATUS */}
-      <div className="w-full mt-4 bg-black border border-black p-3 rounded-sm flex items-center gap-3 text-[9px] font-mono select-none">
-        <div className="flex items-center gap-1.5 px-2 py-1 bg-black/40 border border-black rounded text-[#4ADE80] font-bold uppercase">
-          <span className="w-1.5 h-1.5 rounded-full bg-[#4ADE80]"></span>
-          Chart Feed Active
-        </div>
-        <span className="text-zinc-500 uppercase tracking-widest hidden md:inline-block">Connected • Live data</span>
       </div>
 
     </div>
