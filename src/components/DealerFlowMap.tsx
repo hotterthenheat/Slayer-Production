@@ -277,31 +277,31 @@ export function DealerFlowMap({ profile, decimals }: DealerFlowMapProps) {
     <div className="w-full h-full min-h-[400px] relative">
       <div ref={containerRef} className="w-full h-full" />
       {tooltip && (
-        <div 
-          className="absolute pointer-events-none bg-black/95 border border-zinc-800 rounded-md p-3 shadow-2xl backdrop-blur-md z-50 transition-opacity duration-75"
+        <div
+          className="absolute pointer-events-none bg-[var(--surface)] border border-[var(--border-strong)] rounded-md p-3 shadow-2xl backdrop-blur-md z-50 transition-opacity duration-75"
           style={{
             left: tooltip.x + 15,
             top: tooltip.y - 10,
             transform: `translate(${tooltip.x > (containerRef.current?.clientWidth || 0) / 2 ? '-110%' : '0'}, 0)`
           }}
         >
-          <div className="flex items-center gap-2 mb-2 border-b border-zinc-800 pb-1">
-            <span className="w-2 h-2 rounded-full bg-indigo-500 animate-pulse" />
-            <span className="font-mono text-zinc-100 font-bold text-[11px] tracking-widest uppercase">Strike ${tooltip.data.strike}</span>
+          <div className="flex items-center gap-2 mb-2 border-b border-[var(--border)] pb-1">
+            <span className="w-2 h-2 rounded-full bg-[#60A5FA] animate-pulse" />
+            <span className="font-mono text-[var(--text-primary)] font-bold text-[11px] tracking-widest uppercase">Strike ${tooltip.data.strike}</span>
           </div>
           <div className="space-y-1 text-left font-mono">
              <div className="flex justify-between items-center gap-4 text-[10px]">
-               <span className="text-zinc-500">Net GEX</span>
+               <span className="text-[var(--text-tertiary)]">Net GEX</span>
                <span className={`font-bold ${tooltip.data.netGex > 0 ? 'text-[#4ade80]' : 'text-[#f87171]'}`}>
                  {tooltip.data.netGex > 0 ? '+' : ''}{formatNumber(tooltip.data.netGex)}
                </span>
              </div>
              <div className="flex justify-between items-center gap-4 text-[10px]">
-               <span className="text-zinc-500">Call GEX</span>
+               <span className="text-[var(--text-tertiary)]">Call GEX</span>
                <span className="text-[#4ade80] font-bold">+{formatNumber(tooltip.data.callGex || 0)}</span>
              </div>
              <div className="flex justify-between items-center gap-4 text-[10px]">
-               <span className="text-zinc-500">Put GEX</span>
+               <span className="text-[var(--text-tertiary)]">Put GEX</span>
                <span className="text-[#f87171] font-bold">{formatNumber(tooltip.data.putGex || 0)}</span>
              </div>
           </div>
