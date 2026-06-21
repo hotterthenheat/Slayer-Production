@@ -408,6 +408,7 @@ export interface ServerStatePayload {
   // 0DTE probability engine + Sky's Vision structured trade plan.
   zerodte?: import('./lib/zeroDte').ZeroDteResult;
   trade_plan?: import('./lib/tradePlan').TradePlan;
+  sky_vision?: import('./server/skyVisionService').SkyVisionTicker;
   expected_move?: ExpectedMoveData;
   targets?: any[];
   candles?: Candle[];
