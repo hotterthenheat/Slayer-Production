@@ -178,14 +178,17 @@ export function SkyVisionV2Panel() {
         {/* Target ladder */}
         <div className="rounded-lg border border-white/10 bg-black/30 p-4">
           <div className="flex items-center gap-1.5 text-[9px] uppercase tracking-widest text-zinc-400 mb-2">
-            <Layers className="w-3 h-3 text-[#C084FC]" /> EMA Target Ladder · projected premium
+            <Layers className="w-3 h-3 text-[#C084FC]" /> EMA Target Ladder · premium · P(hit)
           </div>
           {(sv.targetStack || []).length ? (
             <div className="space-y-1.5">
               {(sv.targetStack || []).slice(0, 5).map((t: any) => (
                 <div key={t.rank} className="flex items-center justify-between text-[10px]">
-                  <span className="text-zinc-300"><span className="text-zinc-500 font-mono mr-1">T{t.rank}</span>{t.label} <span className="font-mono text-[#E5E5E5]">{fmt(t.underlying)}</span></span>
-                  <span className="font-mono font-bold text-[#4ADE80]">${fmt(t.projectedPremium)} <span className="text-[#4ADE80]/70">({t.projectedGainPct > 0 ? '+' : ''}{t.projectedGainPct}%)</span></span>
+                  <span className="text-zinc-300 truncate"><span className="text-zinc-500 font-mono mr-1">T{t.rank}</span>{t.label} <span className="font-mono text-[#E5E5E5]">{fmt(t.underlying)}</span></span>
+                  <span className="flex items-center gap-2 shrink-0">
+                    <span className="font-mono font-bold text-[#4ADE80]">${fmt(t.projectedPremium)} <span className="text-[#4ADE80]/70">({t.projectedGainPct > 0 ? '+' : ''}{t.projectedGainPct}%)</span></span>
+                    <span className="font-mono font-bold w-9 text-right" title="Probability price reaches this level before expiry" style={{ color: (t.touchProb ?? 0) >= 0.5 ? '#4ADE80' : (t.touchProb ?? 0) >= 0.25 ? '#FBBF24' : '#A3A3A3' }}>{Math.round((t.touchProb ?? 0) * 100)}%</span>
+                  </span>
                 </div>
               ))}
             </div>

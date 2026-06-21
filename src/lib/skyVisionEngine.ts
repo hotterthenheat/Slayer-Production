@@ -20,6 +20,7 @@
  */
 import { computeBlackScholesPrice, calculateAnalyticGreeks } from './v11Math';
 import { emaLast } from './technicalEngine';
+import { barrierTouchProb } from './skyQuantCore';
 
 /** Layer 1: one timestamped reading of a single option contract. */
 export interface ContractSnapshot {
@@ -264,6 +265,7 @@ export interface ProjectedTarget extends TargetLevel {
   rank: number; // T1, T2, ...
   projectedPremium: number; // BSM option value when price reaches this level
   projectedGainPct: number; // vs entry premium
+  touchProb: number; // 0..1 — honest barrier-touch probability of reaching this level before expiry
 }
 
 /**
@@ -285,16 +287,22 @@ export function projectTargetPremiums(
   const entry = Math.max(0.01, params.entryPremium ?? computeBlackScholesPrice(spot, strike, dte, iv, isCall, r));
   const em = spot * iv * Math.sqrt(dte / 365); // 1σ over the horizon
 
+  const tauYears = dte / 365;
   return stack.map((lvl, i) => {
     const distEm = em > 0 ? Math.abs(lvl.underlying - spot) / em : 0;
     const elapsedFrac = clamp(distEm * distEm, 0, 0.85); // keep ≥15% time value
     const remDte = Math.max(0.0007, dte * (1 - elapsedFrac));
     const prem = Math.max(0.01, computeBlackScholesPrice(lvl.underlying, strike, remDte, iv, isCall, r));
+    // Honest P(reach this level before expiry): the projected premium IS the value
+    // at lvl.underlying, so the probability of hitting it equals the barrier-touch
+    // probability of the underlying reaching that level (driftless, intraday-honest).
+    const touchProb = barrierTouchProb(spot, lvl.underlying, iv, tauYears, r, 0, false);
     return {
       ...lvl,
       rank: i + 1,
       projectedPremium: Number(prem.toFixed(2)),
       projectedGainPct: Number((((prem - entry) / entry) * 100).toFixed(1)),
+      touchProb: Number(touchProb.toFixed(3)),
     };
   });
 }
