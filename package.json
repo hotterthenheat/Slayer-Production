@@ -9,7 +9,7 @@
     "start": "node dist/server.cjs",
     "clean": "rm -rf dist server.js",
     "lint": "tsc --noEmit",
-    "test": "tsx tests/skyScore.test.ts && tsx tests/math.test.ts && tsx tests/quantEdge.test.ts && tsx tests/quantSuite.test.ts && tsx tests/skyVision.test.ts"
+    "test": "tsx tests/skyScore.test.ts && tsx tests/math.test.ts && tsx tests/quantEdge.test.ts && tsx tests/quantSuite.test.ts && tsx tests/skyVision.test.ts && tsx tests/skyQuantCore.test.ts"
   },
   "dependencies": {
     "@tailwindcss/vite": "^4.1.14",
