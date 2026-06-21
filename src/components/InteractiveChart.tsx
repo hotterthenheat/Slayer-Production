@@ -260,8 +260,10 @@ export const InteractiveChart = React.memo(function InteractiveChart({
       });
     }
 
-    // Set interactive markers on the series
+    // Set interactive markers on the series — lightweight-charts requires them
+    // sorted ascending by time, else setMarkers throws "data must be asc ordered by time".
     if (markersRef.current) {
+      markers.sort((a, b) => (a.time as number) - (b.time as number));
       markersRef.current.setMarkers(markers);
     }
 

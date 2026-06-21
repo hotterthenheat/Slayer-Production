@@ -36,7 +36,8 @@ export function DealerFlowMap({ profile, decimals }: DealerFlowMapProps) {
 
     // Only take strikes around the spot
     const sortedStrikes = [...strikes].sort((a, b) => a.strike - b.strike);
-    const closestIdx = sortedStrikes.findIndex(s => s.strike >= spot);
+    let closestIdx = sortedStrikes.findIndex(s => s.strike >= spot);
+    if (closestIdx === -1) closestIdx = sortedStrikes.length - 1; // spot above all strikes → clamp to highest (else SPOT marker vanishes)
     const startIdx = Math.max(0, closestIdx - 20);
     const visibleStrikes = sortedStrikes.slice(startIdx, startIdx + 40);
 

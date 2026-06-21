@@ -589,7 +589,7 @@ export function computeSkewAnalytics(
   const sortedPuts = chain.filter(c => c.type === 'put').sort((a,b) => Math.abs(Math.abs(a.delta) - 0.25) - Math.abs(Math.abs(b.delta) - 0.25));
   if (sortedPuts.length > 0) put25DIV = sortedPuts[0].iv;
 
-  const sortAtm = chain.sort((a,b) => Math.abs(a.strike - spot) - Math.abs(b.strike - spot));
+  const sortAtm = [...chain].sort((a,b) => Math.abs(a.strike - spot) - Math.abs(b.strike - spot));
   if (sortAtm.length > 0) atmIV = sortAtm[0].iv;
 
   const riskReversal25D = call25DIV - put25DIV;

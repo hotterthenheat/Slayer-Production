@@ -1514,7 +1514,7 @@ export const constructPayload = (params: {
     },
     expected_move: {
       pct: db.dataSource !== 'SANDBOX_SYNTHETIC' && chain.length === 0 ? 'Data Unavailable' : `±${(metricsV11.surface.expectedMovePct * 100).toFixed(1)}%`,
-      range: db.dataSource !== 'SANDBOX_SYNTHETIC' && chain.length === 0 ? 'Data Unavailable' : `±${(asset.defaultPrice * metricsV11.surface.expectedMovePct).toFixed(1)} pts`,
+      range: db.dataSource !== 'SANDBOX_SYNTHETIC' && chain.length === 0 ? 'Data Unavailable' : `±${(lastPrice * metricsV11.surface.expectedMovePct).toFixed(1)} pts`,
       term_structure: metricsV11.surface.termStructure,
       skew: metricsV11.surface.skewCurve,
       ivRank: metricsV11.surface.ivRank,

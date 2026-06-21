@@ -57,7 +57,7 @@ function FeedChip({ feed }: { feed?: string }) {
     <span
       className={`px-1.5 py-0.5 rounded-xs text-[7.5px] font-black tracking-widest uppercase border ${
         live
-          ? 'bg-[#4ADE80] text-black/10 border-black text-[#4ADE80]'
+          ? 'bg-[#4ADE80] text-black border-black'
           : 'bg-amber-500/10 border-amber-500/30 text-amber-500'
       }`}
     >

@@ -518,7 +518,7 @@ export const useContractStore = create<ContractStore>((set, get) => ({
     const payloadTicker = payload.contract.replace('-', ' ').split(' ')[0];
     const currentTicker = get().selectedAsset.ticker;
 
-    const payloadIsCall = payload.provenance?.inputs?.option_type === 'C';
+    const payloadOptType = payload.provenance?.inputs?.option_type;
     const currentIsCall = get().selectedOptionType === 'C';
 
     const payloadStrike = payload.optionStrike;
@@ -528,8 +528,11 @@ export const useContractStore = create<ContractStore>((set, get) => ({
       console.warn(`[SSE Race Condition Guard] Ignored stale payload for ${payloadTicker} (active: ${currentTicker})`);
       return;
     }
-    if (payloadIsCall !== currentIsCall) {
-      console.warn(`[SSE Race Condition Guard] Ignored stale payload for type ${payloadIsCall ? 'C' : 'P'} (active: ${currentIsCall ? 'C' : 'P'})`);
+    // Only enforce the option-type match when the payload actually declares it —
+    // otherwise a payload that omits provenance would be wrongly dropped for a
+    // selected call (option_type undefined !== 'C' read as a put mismatch).
+    if (payloadOptType && (payloadOptType === 'C') !== currentIsCall) {
+      console.warn(`[SSE Race Condition Guard] Ignored stale payload for type ${payloadOptType} (active: ${currentIsCall ? 'C' : 'P'})`);
       return;
     }
     if (currentStrike !== null && payloadStrike !== currentStrike) {
