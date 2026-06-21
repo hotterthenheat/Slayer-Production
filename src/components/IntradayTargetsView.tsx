@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 import { GexProfileData } from '../types';
-import { Target, Activity, Zap, Layers } from 'lucide-react';
+import { Target, Activity, Zap } from 'lucide-react';
 
 interface IntradayTargetsViewProps {
   profile: GexProfileData;
@@ -50,29 +50,29 @@ export function IntradayTargetsView({ profile, ticker, decimals }: IntradayTarge
   const fmtMn = (v: number) => `$${Math.abs(v / 1e6).toFixed(0)}M`;
   
   return (
-    <div className="w-full">
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
+    <div className="w-full bg-[var(--surface)] border border-[var(--border)] rounded-lg p-5">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-5 gap-4 pb-3 border-b border-[var(--border)]">
          <div>
-           <h2 className="text-[13px] font-black tracking-widest text-[#e4e4e7] uppercase flex items-center gap-2">
+           <h2 className="text-[12px] font-black tracking-widest text-[var(--text-primary)] uppercase flex items-center gap-2">
              <Target className="w-4 h-4 text-[#4ADE80]" />
              Key Intraday Strikes
            </h2>
-           <p className="text-[9px] text-zinc-500 uppercase tracking-widest mt-1">
-             High-OI strikes where dealer hedging creates strong price magnets.
+           <p className="text-[9px] text-[var(--text-tertiary)] uppercase tracking-widest mt-1">
+             High-OI strikes where dealer hedging creates strong price magnets
            </p>
          </div>
-         <div className="bg-black border border-black px-3.5 py-2 rounded-lg flex items-center gap-3">
-           <span className="text-[9px] text-zinc-500 uppercase font-black tracking-widest flex items-center gap-1.5">
-             <Activity className="w-3 h-3 text-sky-500" /> Active Spot
+         <div className="bg-[var(--surface-2)] border border-[var(--border)] px-3.5 py-2 rounded-md flex items-center gap-3 shrink-0">
+           <span className="text-[9px] text-[var(--text-tertiary)] uppercase font-black tracking-widest flex items-center gap-1.5">
+             <Activity className="w-3 h-3 text-[#60A5FA]" /> Active Spot
            </span>
-           <span className="text-[13px] font-mono font-bold text-[#E5E5E5]">${spot.toFixed(decimals)}</span>
+           <span className="text-[13px] font-mono font-bold text-[var(--text-primary)]">${spot.toFixed(decimals)}</span>
          </div>
       </div>
-      
+
       {targets.length === 0 ? (
-        <div className="py-16 text-center bg-black/40 border border-black rounded-lg flex flex-col items-center justify-center">
-          <Activity className="w-8 h-8 text-zinc-800 animate-pulse mb-3" />
-          <div className="text-[10px] text-zinc-500 uppercase tracking-widest font-black">No Key Strikes Detected</div>
+        <div className="py-16 text-center bg-[var(--surface-2)] border border-[var(--border)] rounded-lg flex flex-col items-center justify-center">
+          <Activity className="w-8 h-8 text-[var(--text-tertiary)] animate-pulse mb-3" />
+          <div className="text-[10px] text-[var(--text-tertiary)] uppercase tracking-widest font-black">No Key Strikes Detected</div>
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
@@ -82,20 +82,16 @@ export function IntradayTargetsView({ profile, ticker, decimals }: IntradayTarge
             
             let status = 'HOLDING';
             let statusColorClass = 'status-holding';
-            let statusBgClass = '';
 
             if (distancePct < 0.002) {
               status = 'TESTING';
               statusColorClass = 'status-testing';
-              statusBgClass = '';
             } else if ((isDominantCall && spot > t.strike) || (!isDominantCall && spot < t.strike)) {
               status = 'FAILING';
               statusColorClass = 'status-failing';
-              statusBgClass = '';
             } else {
               status = 'HOLDING';
               statusColorClass = 'status-holding';
-              statusBgClass = '';
             }
 
             const rawCall = Math.abs(t.callGex || 0);
@@ -103,65 +99,61 @@ export function IntradayTargetsView({ profile, ticker, decimals }: IntradayTarge
             const totalWidth = rawCall + rawPut;
             const callPct = totalWidth > 0 ? (rawCall / totalWidth) * 100 : 0;
             const putPct = totalWidth > 0 ? (rawPut / totalWidth) * 100 : 0;
-            
-            const accentColor = isDominantCall ? 'emerald' : 'rose';
-            
+
+            const accent = isDominantCall ? '#4ADE80' : '#F87171';
+
             return (
-              <div key={t.strike} className={`bg-black/90 border border-black overflow-hidden relative rounded-xl hover:border-${accentColor}-500/30 transition-all duration-300 group`}>
+              <div key={t.strike} className="bg-[var(--surface-2)] border border-[var(--border)] overflow-hidden relative rounded-lg">
                 {/* Top thin accent line */}
-                <div className={`absolute top-0 left-0 right-0 h-[2px] ${isDominantCall ? 'bg-black/40 shadow-[0_0_8px_rgba(34,211,238,0.5)]' : 'bg-rose-500/80 shadow-[0_0_8px_rgba(244,63,94,0.5)]'}`} />
-                
+                <div className="absolute top-0 left-0 right-0 h-[2px]" style={{ background: accent }} />
+
                 <div className="p-4 flex flex-col h-full">
                   <div className="flex justify-between items-start mb-3">
                     <div>
-                      <div className="text-[17px] font-mono font-black text-[#E5E5E5] relative inline-block drop-shadow-md">
+                      <div className="text-[17px] font-mono font-black text-[var(--text-primary)] relative inline-block">
                         ${t.strike.toFixed(decimals)}
-                        {idx === 0 && <span className="absolute -top-1 -right-3 w-2 h-2 bg-amber-500 rounded-full border border-black" />}
+                        {idx === 0 && <span className="absolute -top-1 -right-3 w-2 h-2 bg-[#FBBF24] rounded-full" />}
                       </div>
-                      <div className="text-[8.5px] font-black uppercase tracking-widest text-zinc-500 mt-0.5">
+                      <div className="text-[9px] font-black uppercase tracking-widest text-[var(--text-tertiary)] mt-0.5">
                         {t.distanceBps.toFixed(0)} bps {t.isAboveSpot ? 'Above Spot' : 'Below Spot'}
                       </div>
                     </div>
-                    <div className={`px-2 py-0.5 rounded text-[8px] font-black uppercase tracking-widest border ${statusBgClass} ${statusColorClass}`}>
+                    <div className={`px-2 py-0.5 rounded text-[9px] font-black uppercase tracking-widest border border-[var(--border)] ${statusColorClass}`}>
                        {status}
                     </div>
                   </div>
 
-                  <div className="mb-5 flex-1">
-                     <span className={`text-[9.5px] uppercase font-black tracking-widest flex items-center gap-1.5 bg-black border border-black px-2.5 py-1.5 rounded-md inline-flex ${isDominantCall ? 'text-[#4ADE80] border-black' : 'text-[#F87171] border-[#F87171]/50/40'}`}>
+                  <div className="mb-4 flex-1">
+                     <span className="text-[9.5px] uppercase font-black tracking-widest inline-flex items-center gap-1.5 bg-[var(--surface-3)] border border-[var(--border)] px-2.5 py-1.5 rounded-md" style={{ color: accent }}>
                        {isDominantCall ? 'Call Resistance / Upside Target' : 'Put Support / Downside Floor'}
                      </span>
                   </div>
 
                   {/* Micro-meter for Call vs Put Distribution */}
-                  <div className="space-y-2 mb-4 bg-black border border-black/60 p-2.5 rounded-lg">
-                    <div className="flex justify-between text-[8px] font-mono text-zinc-500 uppercase font-bold">
+                  <div className="space-y-2 mb-4 bg-[var(--surface-3)] border border-[var(--border)] p-2.5 rounded-md">
+                    <div className="flex justify-between text-[9px] font-mono text-[var(--text-tertiary)] uppercase font-bold">
                        <span>Call Vol</span>
                        <span>Put Vol</span>
                     </div>
-                    <div className="h-1.5 w-full bg-black rounded-full overflow-hidden flex shadow-inner">
-                       <div style={{width: `${callPct}%`}} className="h-full bg-[#4ADE80] shadow-[0_0_8px_rgba(16,185,129,0.4)]" />
-                       <div style={{width: `${putPct}%`}} className="h-full bg-rose-500 shadow-[0_0_8px_rgba(244,63,94,0.4)]" />
+                    <div className="h-1.5 w-full bg-[var(--surface)] rounded-full overflow-hidden flex">
+                       <div style={{width: `${callPct}%`}} className="h-full bg-[#4ADE80]" />
+                       <div style={{width: `${putPct}%`}} className="h-full bg-[#F87171]" />
                     </div>
-                    <div className="flex justify-between text-[8.5px] font-mono font-black">
+                    <div className="flex justify-between text-[10px] font-mono font-black">
                        <span className="text-[#4ADE80]">{rawCall >= 1e9 ? fmtBn(rawCall) : fmtMn(rawCall)}</span>
                        <span className="text-[#F87171]">{rawPut >= 1e9 ? fmtBn(rawPut) : fmtMn(rawPut)}</span>
                     </div>
                   </div>
 
-                  <div className="flex items-center justify-between mt-auto bg-black/60 border border-black/80 rounded-md p-2 relative z-10 overflow-hidden">
-                     <div className={`absolute inset-0 opacity-10 ${t.netGex > 0 ? 'bg-black/40' : 'bg-rose-500'}`} />
-                     <span className="text-[8px] font-black uppercase text-zinc-400 tracking-widest flex items-center gap-1.5">
-                        <Zap className="w-3 h-3 text-zinc-500" /> Net GEX
+                  <div className="flex items-center justify-between mt-auto bg-[var(--surface-3)] border border-[var(--border)] rounded-md p-2">
+                     <span className="text-[9px] font-black uppercase text-[var(--text-tertiary)] tracking-widest flex items-center gap-1.5">
+                        <Zap className="w-3 h-3" /> Net GEX
                      </span>
                      <span className={`text-[12px] font-mono font-black ${t.netGex > 0 ? 'text-[#4ADE80]' : 'text-[#F87171]'}`}>
                         {t.netGex >= 1e9 || t.netGex <= -1e9 ? fmtBn(t.netGex) : fmtMn(t.netGex)}
                      </span>
                   </div>
                 </div>
-                
-                {/* Background resonance glow */}
-                <div className={`absolute -bottom-6 -right-6 w-24 h-24 rounded-full blur-[32px] opacity-10 pointer-events-none group-hover:opacity-20 transition-opacity duration-500 ${isDominantCall ? 'bg-black/40' : 'bg-rose-500'}`} />
               </div>
             );
           })}

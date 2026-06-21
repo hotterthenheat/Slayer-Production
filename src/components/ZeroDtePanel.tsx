@@ -42,19 +42,19 @@ export function ZeroDtePanel() {
   ].filter((w) => w.strike > 0);
 
   const Cell = ({ label, value, sub, tone = '#E5E5E5' }: { label: string; value: string; sub?: string; tone?: string }) => (
-    <div className="rounded-md border border-zinc-800/50 bg-black/35 p-2.5 flex flex-col gap-0.5">
-      <span className="text-[8px] font-black uppercase tracking-widest text-zinc-500 leading-tight">{label}</span>
+    <div className="rounded-md border border-[var(--border)] bg-[var(--surface-2)] p-2.5 flex flex-col gap-0.5">
+      <span className="text-[9px] font-black uppercase tracking-widest text-[var(--text-tertiary)] leading-tight">{label}</span>
       <span className="text-[13px] font-bold tabular-nums leading-none" style={{ color: tone }}>{value}</span>
-      {sub && <span className="text-[8px] text-zinc-500 tabular-nums">{sub}</span>}
+      {sub && <span className="text-[9px] text-[var(--text-tertiary)] tabular-nums">{sub}</span>}
     </div>
   );
 
   return (
-    <div className="rounded-xl border bg-white/[0.02] p-5 flex flex-col gap-4 shadow-lg" style={{ borderColor: 'rgba(251,191,36,0.22)', borderLeftColor: 'rgba(251,191,36,0.9)', borderLeftWidth: '3px' }}>
-      <div className="flex items-center gap-2">
-        <Timer className="w-4 h-4 text-[#60A5FA]" />
-        <h2 className="text-xs font-black tracking-widest uppercase text-[#E5E5E5]">0DTE Probabilities — {selectedAsset?.ticker}</h2>
-        <span className="text-[8px] text-zinc-500 uppercase tracking-widest ml-auto">{z.hoursToClose.toFixed(1)}h to close · ATM IV {(z.atmIv * 100).toFixed(1)}%</span>
+    <div className="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-5 flex flex-col gap-4" style={{ borderLeftColor: '#FBBF24', borderLeftWidth: '3px' }}>
+      <div className="flex items-center gap-2 pb-3 border-b border-[var(--border)]">
+        <Timer className="w-4 h-4 text-[#FBBF24]" />
+        <h2 className="text-xs font-black tracking-widest uppercase text-[var(--text-primary)]">0DTE Probabilities — {selectedAsset?.ticker}</h2>
+        <span className="text-[9px] text-[var(--text-tertiary)] uppercase tracking-widest ml-auto">{z.hoursToClose.toFixed(1)}h to close · ATM IV {(z.atmIv * 100).toFixed(1)}%</span>
       </div>
 
       {/* Expected move bands */}
@@ -75,15 +75,15 @@ export function ZeroDtePanel() {
 
       {/* Probability of touch to the walls */}
       <div className="flex flex-col gap-2">
-        <div className="flex items-center gap-2"><Crosshair className="w-3 h-3 text-zinc-400" /><h3 className="text-[9px] font-black tracking-widest uppercase text-zinc-400">Chance of price reaching dealer walls today</h3></div>
-        {walls.length === 0 && <span className="text-[9px] text-zinc-600">Dealer walls not yet resolved.</span>}
+        <div className="flex items-center gap-2"><Crosshair className="w-3 h-3 text-[var(--text-tertiary)]" /><h3 className="text-[10px] font-black tracking-widest uppercase text-[var(--text-secondary)]">Chance of price reaching dealer walls today</h3></div>
+        {walls.length === 0 && <span className="text-[10px] text-[var(--text-tertiary)]">Dealer walls not yet resolved.</span>}
         {walls.map(({ label, strike, p, tone }) => (
           <div key={label} className="flex items-center gap-2">
-            <span className="text-[9px] font-bold w-24 shrink-0" style={{ color: tone }}>{label} {fmt(strike)}</span>
-            <div className="flex-1 h-2 rounded-sm bg-black/50 overflow-hidden">
+            <span className="text-[10px] font-bold w-24 shrink-0" style={{ color: tone }}>{label} {fmt(strike)}</span>
+            <div className="flex-1 h-2 rounded-sm bg-[var(--surface-3)] overflow-hidden">
               <div className="h-full rounded-sm" style={{ width: `${Math.round(p * 100)}%`, background: tone }} />
             </div>
-            <span className="text-[9px] tabular-nums w-9 text-right" style={{ color: tone }}>{pct(p)}</span>
+            <span className="text-[10px] tabular-nums w-9 text-right" style={{ color: tone }}>{pct(p)}</span>
           </div>
         ))}
       </div>
