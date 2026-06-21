@@ -503,3 +503,130 @@ export function computeMasterScore(inp: MasterScoreInput): MasterScore {
     components,
   };
 }
+
+// ============================================================================
+// LAYER 5 — POSITION HEALTH MONITOR (after entry: is the position improving?)
+// ============================================================================
+
+export type PositionHealth = 'Strong' | 'Healthy' | 'Weakening' | 'Critical';
+
+export interface PositionHealthRead {
+  health: PositionHealth;
+  action: 'Hold' | 'Reduce' | 'Exit';
+  strength: number; // 0..100 (contract strength of the live position)
+  trend: StrengthTrend;
+  signals: string[]; // plain-language strengthening / weakening notes
+}
+
+/**
+ * Assess an OPEN position's health from its live snapshot history. Reuses the
+ * Layer-2 strength score (the position is healthy when the contract keeps
+ * strengthening) and turns it into a hold/reduce/exit verdict + readable signals.
+ */
+export function assessPositionHealth(history: ContractSnapshot[], isCall: boolean): PositionHealthRead {
+  const s = scoreContract(history, isCall);
+
+  let health: PositionHealth;
+  let action: PositionHealthRead['action'];
+  if (s.score >= 70 && s.trend !== 'FALLING') {
+    health = 'Strong';
+    action = 'Hold';
+  } else if (s.score >= 55 && s.trend !== 'FALLING') {
+    health = 'Healthy';
+    action = 'Hold';
+  } else if (s.score >= 40) {
+    health = 'Weakening';
+    action = 'Reduce';
+  } else {
+    health = 'Critical';
+    action = 'Exit';
+  }
+
+  const f = s.factors;
+  const signals: string[] = [];
+  signals.push(f.premium > 0.1 ? 'premium expanding' : f.premium < -0.1 ? 'premium stalling' : 'premium flat');
+  signals.push(f.delta > 0.1 ? 'delta strengthening' : f.delta < -0.1 ? 'delta weakening' : 'delta steady');
+  if (f.volume > 0.1) signals.push('volume rising');
+  else if (f.volume < -0.1) signals.push('volume fading');
+  if (f.iv > 0.1) signals.push('IV expanding');
+  else if (f.iv < -0.1) signals.push('IV collapsing');
+
+  return { health, action, strength: s.score, trend: s.trend, signals };
+}
+
+// ============================================================================
+// LAYER 6 — DYNAMIC EXIT ENGINE (five smart exit triggers)
+// ============================================================================
+
+export type DynamicExitKind = 'EMA_TARGET' | 'STRENGTH_COLLAPSE' | 'FLOW_REVERSAL' | 'GAMMA_WALL' | 'IV_CRUSH';
+
+export interface DynamicExitSignal {
+  kind: DynamicExitKind;
+  action: 'SCALE' | 'TAKE_PROFIT' | 'EXIT';
+  severity: number; // 0..1 (higher = more urgent)
+  reason: string;
+}
+
+/**
+ * Evaluate the five dynamic exit triggers for an OPEN position. Returns every
+ * signal that fired (caller applies priority); pure and deterministic so it can
+ * run each tick. Sweep/strength/IV inputs come from the live feed + Layer 2.
+ */
+export function evaluateDynamicExits(params: {
+  isCall: boolean;
+  history: ContractSnapshot[]; // position live history
+  spot: number;
+  emaTargetHit?: boolean; // price reached the next EMA target this tick
+  gammaWall?: number; // the relevant dealer wall in the trade direction
+  strengthSeries?: number[]; // recent contract-strength scores (for collapse)
+  flow?: { callSweeps: number; putSweeps: number; prevCallSweeps: number; prevPutSweeps: number };
+}): DynamicExitSignal[] {
+  const { isCall, history, spot, emaTargetHit, gammaWall, strengthSeries, flow } = params;
+  const out: DynamicExitSignal[] = [];
+  const w = history.slice(-WINDOW);
+
+  // 1. EMA target reached → scale 25% (take partial, let the rest run).
+  if (emaTargetHit) {
+    out.push({ kind: 'EMA_TARGET', action: 'SCALE', severity: 0.4, reason: 'Price reached the next EMA target — take 25%.' });
+  }
+
+  // 2. Strength collapse — strength rolled over from its peak (e.g. 91 → 70 → 54).
+  if (strengthSeries && strengthSeries.length >= 3) {
+    const peak = Math.max(...strengthSeries);
+    const lastS = strengthSeries[strengthSeries.length - 1];
+    if (peak - lastS >= 20 && lastS < 62) {
+      out.push({ kind: 'STRENGTH_COLLAPSE', action: 'EXIT', severity: 0.9, reason: `Contract strength collapsing (${Math.round(peak)} → ${Math.round(lastS)}).` });
+    }
+  }
+
+  // 3. Flow reversal — directional sweeps fade while the opposite side appears.
+  if (flow) {
+    const callsFading = flow.callSweeps < flow.prevCallSweeps;
+    const putsRising = flow.putSweeps > flow.prevPutSweeps;
+    const putsFading = flow.putSweeps < flow.prevPutSweeps;
+    const callsRising = flow.callSweeps > flow.prevCallSweeps;
+    if (isCall && callsFading && putsRising) {
+      out.push({ kind: 'FLOW_REVERSAL', action: 'EXIT', severity: 0.85, reason: 'Call sweeps fading while put sweeps appear.' });
+    } else if (!isCall && putsFading && callsRising) {
+      out.push({ kind: 'FLOW_REVERSAL', action: 'EXIT', severity: 0.85, reason: 'Put sweeps fading while call sweeps appear.' });
+    }
+  }
+
+  // 4. Gamma wall hit → take profit into the dealer wall.
+  if (gammaWall != null && isFinite(gammaWall) && gammaWall > 0) {
+    if ((isCall && spot >= gammaWall) || (!isCall && spot <= gammaWall)) {
+      out.push({ kind: 'GAMMA_WALL', action: 'TAKE_PROFIT', severity: 0.6, reason: `Price reached the ${isCall ? 'call' : 'put'} gamma wall (${gammaWall}).` });
+    }
+  }
+
+  // 5. IV crush — implied vol dropping while premium stalls (vega bleed).
+  if (w.length >= 3) {
+    const ivChg = netRel(w.map((s) => s.iv));
+    const premChg = netRel(w.map((s) => s.premium));
+    if (ivChg <= -0.04 && premChg <= 0.0) {
+      out.push({ kind: 'IV_CRUSH', action: 'EXIT', severity: 0.7, reason: 'IV collapsing while premium stalls (vega bleed).' });
+    }
+  }
+
+  return out.sort((a, b) => b.severity - a.severity);
+}

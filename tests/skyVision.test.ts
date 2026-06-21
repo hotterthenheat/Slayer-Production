@@ -15,6 +15,8 @@ import {
   detectSwings,
   emaStructureScore,
   computeMasterScore,
+  assessPositionHealth,
+  evaluateDynamicExits,
   type ContractSnapshot,
   type EmaLadder,
 } from '../src/lib/skyVisionEngine';
@@ -209,6 +211,41 @@ console.log('Testing Layer 7 — master score...');
   assert.strictEqual(mixed.score, 56, `weighted blend should be 56, got ${mixed.score}`);
   assert.ok(mixed.confidence < all80.confidence, 'dispersed components → lower confidence');
   console.log(`✔ master: uniform80 → ${all80.score} ${all80.tradeHealth} conf=${all80.confidence}; mixed → ${mixed.score} ${mixed.tradeHealth} conf=${mixed.confidence}`);
+}
+
+// 13. Position health — strengthening = Strong/Hold; weakening = Reduce/Exit.
+console.log('Testing Layer 5 — position health...');
+{
+  const strong = assessPositionHealth(ramp({ premium: [1.0, 3.0], delta: [0.45, 0.62], gamma: [0.018, 0.030], volume: [120, 900], oi: [1000, 1600], iv: [0.14, 0.20] }), true);
+  assert.ok(strong.health === 'Strong' && strong.action === 'Hold', `strengthening should be Strong/Hold, got ${strong.health}/${strong.action}`);
+  const weak = assessPositionHealth(ramp({ premium: [3.0, 1.1], delta: [0.62, 0.42], gamma: [0.030, 0.018], volume: [900, 200], oi: [1600, 1500], iv: [0.21, 0.13] }), true);
+  assert.ok(weak.action === 'Exit' || weak.action === 'Reduce', `weakening should Reduce/Exit, got ${weak.action}`);
+  console.log(`✔ health: strong=${strong.health}/${strong.action} (${strong.strength}); weak=${weak.health}/${weak.action} (${weak.strength})`);
+}
+
+// 14. Dynamic exits — each of the five triggers fires on its condition.
+console.log('Testing Layer 6 — dynamic exits...');
+{
+  const flat = ramp({ premium: [2, 2], delta: [0.5, 0.5], gamma: [0.02, 0.02], volume: [400, 400], oi: [1200, 1200], iv: [0.16, 0.16] });
+
+  const emaSig = evaluateDynamicExits({ isCall: true, history: flat, spot: 620, emaTargetHit: true });
+  assert.ok(emaSig.some((s) => s.kind === 'EMA_TARGET' && s.action === 'SCALE'), 'EMA target → SCALE');
+
+  const collapse = evaluateDynamicExits({ isCall: true, history: flat, spot: 620, strengthSeries: [91, 70, 54] });
+  assert.ok(collapse.some((s) => s.kind === 'STRENGTH_COLLAPSE' && s.action === 'EXIT'), 'strength 91→54 → EXIT');
+
+  const rev = evaluateDynamicExits({ isCall: true, history: flat, spot: 620, flow: { callSweeps: 3, prevCallSweeps: 12, putSweeps: 14, prevPutSweeps: 4 } });
+  assert.ok(rev.some((s) => s.kind === 'FLOW_REVERSAL'), 'call sweeps fade + put sweeps rise → reversal');
+
+  const wall = evaluateDynamicExits({ isCall: true, history: flat, spot: 627.5, gammaWall: 627 });
+  assert.ok(wall.some((s) => s.kind === 'GAMMA_WALL' && s.action === 'TAKE_PROFIT'), 'price at call wall → take profit');
+
+  const crush = evaluateDynamicExits({ isCall: true, spot: 620, history: ramp({ premium: [2.2, 2.1], delta: [0.5, 0.5], gamma: [0.02, 0.02], volume: [400, 400], oi: [1200, 1200], iv: [0.22, 0.15] }) });
+  assert.ok(crush.some((s) => s.kind === 'IV_CRUSH' && s.action === 'EXIT'), 'IV down + premium flat → IV crush exit');
+
+  const none = evaluateDynamicExits({ isCall: true, history: flat, spot: 620 });
+  assert.strictEqual(none.length, 0, 'healthy/quiet position fires no exit signals');
+  console.log(`✔ dynamic exits: EMA/collapse/reversal/wall/crush all fired; quiet=none`);
 }
 
 console.log('\n=============================================');
