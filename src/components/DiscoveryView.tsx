@@ -938,11 +938,11 @@ export function DiscoveryView({
         });
       });
 
-      // Insert fresh scalp feed log to show raw activity
-      const tickers = ['SPX', 'QQQ', 'NDX', 'SPY'];
-      const strikes = [7640, 442, 18500, 510];
-      const randomTicker = tickers[Math.floor(Math.random() * tickers.length)];
-      const randomStrike = strikes[Math.floor(Math.random() * strikes.length)];
+      // Insert fresh scalp feed log to show raw activity across the full launch universe.
+      const randomAsset = ASSET_LIST[Math.floor(Math.random() * ASSET_LIST.length)];
+      const randomTicker = randomAsset.ticker;
+      const feedStep = randomAsset.defaultPrice > 1000 ? 50 : randomAsset.defaultPrice > 150 ? 5 : 1;
+      const randomStrike = Math.round(randomAsset.defaultPrice / feedStep) * feedStep;
       const randomIsBullish = Math.random() > 0.4;
       const timestampLabel = formatTime(new Date());
 

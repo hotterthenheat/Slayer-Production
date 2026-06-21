@@ -6,7 +6,7 @@
  * synthetic sandbox walk), and assembles the Universal SSE payload. Importing
  * this module starts the ticker and seeds candles. No external API key required.
  */
-import { ASSET_LIST, generateInitialCandles, TIMEFRAMES, calculateFVGs, calculateLiquidityEvents } from '../data';
+import { ASSET_LIST, generateInitialCandles, TIMEFRAMES, calculateFVGs, calculateLiquidityEvents, optionExpiryLabel } from '../data';
 import {
   calculateSystemScoreFromCandles,
   calculateV11Metrics,
@@ -673,6 +673,7 @@ export const constructPayload = (params: {
   const positionOpen = params.positionOpen;
 
   const asset = ASSET_LIST.find(a => a.ticker === assetName) || ASSET_LIST[0];
+  const expLabel = optionExpiryLabel(asset); // '0DTE' for daily names, '{n}DTE' front-weekly for single stocks
   const candles = db.candles[`${asset.ticker}-${timeframe}`] || generateInitialCandles(asset, timeframe as TimeframeVal, 200);
   const lastPrice = candles[candles.length - 1].close;
 
@@ -1012,11 +1013,11 @@ export const constructPayload = (params: {
 
   let impactContracts: any[] = [];
   let bullishWhale = isChainLive
-    ? { contract: `${asset.ticker} ${optionStrike + step}C`, exp: '0DTE', size: `$${(10 + Math.random() * 5).toFixed(1)}M` }
-    : { contract: 'N/A (CALCULATED FROM MODEL)', exp: '0DTE', size: '$0.0M' };
+    ? { contract: `${asset.ticker} ${optionStrike + step}C`, exp: expLabel, size: `$${(10 + Math.random() * 5).toFixed(1)}M` }
+    : { contract: 'N/A (CALCULATED FROM MODEL)', exp: expLabel, size: '$0.0M' };
   let bearishWhale = isChainLive
-    ? { contract: `${asset.ticker} ${optionStrike - step}P`, exp: '0DTE', size: `$${(12 + Math.random() * 5).toFixed(1)}M` }
-    : { contract: 'N/A (CALCULATED FROM MODEL)', exp: '0DTE', size: '$0.0M' };
+    ? { contract: `${asset.ticker} ${optionStrike - step}P`, exp: expLabel, size: `$${(12 + Math.random() * 5).toFixed(1)}M` }
+    : { contract: 'N/A (CALCULATED FROM MODEL)', exp: expLabel, size: '$0.0M' };
   let largestCall = isChainLive ? `${asset.ticker} ${optionStrike + (step * 3)}C` : 'N/A (CALCULATED FROM MODEL)';
   let largestPut = isChainLive ? `${asset.ticker} ${optionStrike - (step * 3)}P` : 'N/A (CALCULATED FROM MODEL)';
 
@@ -1069,7 +1070,7 @@ export const constructPayload = (params: {
     
     return {
       contract: c.contract,
-      expiration: '0DTE',
+      expiration: expLabel,
       oi: c.oi,
       volume: c.volume,
       deltaNotional: `$${((c.oi * lastPrice * greekDelta * 100) / 1e9).toFixed(2)}B`,
@@ -1099,7 +1100,7 @@ export const constructPayload = (params: {
     largestCall = rankedCalls[0].c.contract;
     bullishWhale = {
       contract: rankedCalls[0].c.contract,
-      exp: '0DTE',
+      exp: expLabel,
       size: `$${((rankedCalls[0].c.oi * rankedCalls[0].c.lastPrice * 100) / 1e6).toFixed(1)}M`
     };
   }
@@ -1114,7 +1115,7 @@ export const constructPayload = (params: {
     largestPut = rankedPuts[0].c.contract;
     bearishWhale = {
       contract: rankedPuts[0].c.contract,
-      exp: '0DTE',
+      exp: expLabel,
       size: `$${((rankedPuts[0].c.oi * rankedPuts[0].c.lastPrice * 100) / 1e6).toFixed(1)}M`
     };
   }

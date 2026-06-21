@@ -70,8 +70,110 @@ export const ASSET_LIST: AssetInfo[] = [
     unit: 'USD',
     forecastScale: 0.11,
     stabilityMax: 0.040,
-  }
+    optionsStyle: 'daily',
+  },
+  // ===== Broad ETF (0DTE-capable) =====
+  {
+    key: 'IWM', ticker: 'IWM', name: 'iShares Russell 2000 ETF', type: 'ETFS',
+    defaultPrice: 242.50, decimals: 2, spread: 0.02, volatility: 0.72, unit: 'USD',
+    forecastScale: 0.12, stabilityMax: 0.045, optionsStyle: 'daily',
+  },
+  // ===== Top single-stock options underlyings (front-weekly) =====
+  {
+    key: 'TSLA', ticker: 'TSLA', name: 'Tesla, Inc.', type: 'STOCKS',
+    defaultPrice: 342.00, decimals: 2, spread: 0.03, volatility: 1.55, unit: 'USD',
+    forecastScale: 0.20, stabilityMax: 0.085, optionsStyle: 'weekly',
+  },
+  {
+    key: 'NVDA', ticker: 'NVDA', name: 'NVIDIA Corporation', type: 'STOCKS',
+    defaultPrice: 141.50, decimals: 2, spread: 0.02, volatility: 1.45, unit: 'USD',
+    forecastScale: 0.18, stabilityMax: 0.075, optionsStyle: 'weekly',
+  },
+  {
+    key: 'AAPL', ticker: 'AAPL', name: 'Apple Inc.', type: 'STOCKS',
+    defaultPrice: 231.00, decimals: 2, spread: 0.02, volatility: 1.05, unit: 'USD',
+    forecastScale: 0.14, stabilityMax: 0.055, optionsStyle: 'weekly',
+  },
+  {
+    key: 'AMD', ticker: 'AMD', name: 'Advanced Micro Devices', type: 'STOCKS',
+    defaultPrice: 138.00, decimals: 2, spread: 0.02, volatility: 1.50, unit: 'USD',
+    forecastScale: 0.19, stabilityMax: 0.080, optionsStyle: 'weekly',
+  },
+  {
+    key: 'AMZN', ticker: 'AMZN', name: 'Amazon.com, Inc.', type: 'STOCKS',
+    defaultPrice: 222.00, decimals: 2, spread: 0.02, volatility: 1.20, unit: 'USD',
+    forecastScale: 0.15, stabilityMax: 0.060, optionsStyle: 'weekly',
+  },
+  {
+    key: 'META', ticker: 'META', name: 'Meta Platforms, Inc.', type: 'STOCKS',
+    defaultPrice: 605.00, decimals: 2, spread: 0.04, volatility: 1.30, unit: 'USD',
+    forecastScale: 0.16, stabilityMax: 0.065, optionsStyle: 'weekly',
+  },
+  {
+    key: 'MSFT', ticker: 'MSFT', name: 'Microsoft Corporation', type: 'STOCKS',
+    defaultPrice: 442.00, decimals: 2, spread: 0.03, volatility: 1.00, unit: 'USD',
+    forecastScale: 0.13, stabilityMax: 0.050, optionsStyle: 'weekly',
+  },
+  {
+    key: 'GOOGL', ticker: 'GOOGL', name: 'Alphabet Inc. (Class A)', type: 'STOCKS',
+    defaultPrice: 186.00, decimals: 2, spread: 0.02, volatility: 1.10, unit: 'USD',
+    forecastScale: 0.14, stabilityMax: 0.055, optionsStyle: 'weekly',
+  },
+  {
+    key: 'NFLX', ticker: 'NFLX', name: 'Netflix, Inc.', type: 'STOCKS',
+    defaultPrice: 905.00, decimals: 2, spread: 0.06, volatility: 1.25, unit: 'USD',
+    forecastScale: 0.16, stabilityMax: 0.065, optionsStyle: 'weekly',
+  },
+  {
+    key: 'AVGO', ticker: 'AVGO', name: 'Broadcom Inc.', type: 'STOCKS',
+    defaultPrice: 178.00, decimals: 2, spread: 0.03, volatility: 1.30, unit: 'USD',
+    forecastScale: 0.16, stabilityMax: 0.065, optionsStyle: 'weekly',
+  },
+  {
+    key: 'PLTR', ticker: 'PLTR', name: 'Palantir Technologies', type: 'STOCKS',
+    defaultPrice: 76.00, decimals: 2, spread: 0.02, volatility: 1.85, unit: 'USD',
+    forecastScale: 0.22, stabilityMax: 0.095, optionsStyle: 'weekly',
+  },
+  {
+    key: 'MSTR', ticker: 'MSTR', name: 'MicroStrategy Inc.', type: 'STOCKS',
+    defaultPrice: 380.00, decimals: 2, spread: 0.05, volatility: 2.10, unit: 'USD',
+    forecastScale: 0.24, stabilityMax: 0.110, optionsStyle: 'weekly',
+  },
+  {
+    key: 'COIN', ticker: 'COIN', name: 'Coinbase Global, Inc.', type: 'STOCKS',
+    defaultPrice: 292.00, decimals: 2, spread: 0.04, volatility: 1.95, unit: 'USD',
+    forecastScale: 0.23, stabilityMax: 0.100, optionsStyle: 'weekly',
+  },
+  {
+    key: 'SMCI', ticker: 'SMCI', name: 'Super Micro Computer', type: 'STOCKS',
+    defaultPrice: 41.00, decimals: 2, spread: 0.02, volatility: 2.00, unit: 'USD',
+    forecastScale: 0.24, stabilityMax: 0.105, optionsStyle: 'weekly',
+  },
 ];
+
+/**
+ * Front-weekly days-to-expiry — calendar days until the upcoming Friday (0 on
+ * Friday itself). Single-stock options have no daily expirations, so their
+ * nearest contract is this front weekly.
+ */
+export function frontWeeklyDteDays(now: Date = new Date()): number {
+  return (5 - now.getDay() + 7) % 7; // getDay: 0=Sun..6=Sat; Friday = 5
+}
+
+/** Days-to-expiry used for pricing/greeks: daily names ≈ intraday (1), weekly = front weekly. */
+export function optionDteDays(asset: AssetInfo): number {
+  if (asset.optionsStyle === 'weekly') return Math.max(1, frontWeeklyDteDays());
+  return 1;
+}
+
+/** Human label for a ticker's nearest expiry: '0DTE' for daily names, '{n}DTE' for the front weekly. */
+export function optionExpiryLabel(asset: AssetInfo): string {
+  if (asset.optionsStyle === 'weekly') {
+    const d = frontWeeklyDteDays();
+    return d <= 0 ? '0DTE' : `${d}DTE`;
+  }
+  return '0DTE';
+}
 
 export const TIMEFRAMES: { val: TimeframeVal; label: string; minMultiplier: number }[] = [
   { val: '1m', label: '1 Minute', minMultiplier: 1 },

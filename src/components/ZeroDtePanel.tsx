@@ -4,6 +4,7 @@ import { Timer, Crosshair, Magnet, AlertTriangle } from 'lucide-react';
 import type { ZeroDteResult } from '../lib/zeroDte';
 import { probExpireITM, probabilityOfTouch } from '../lib/zeroDte';
 import { PanelSkeleton } from './PanelSkeleton';
+import { optionExpiryLabel } from '../data';
 
 /**
  * 0DTE Probabilities — expected-move bands, strike-pinning probability, end-of-day
@@ -16,12 +17,13 @@ export function ZeroDtePanel() {
   const decimals = selectedAsset?.decimals ?? 2;
   const z = serverState?.zerodte as ZeroDteResult | undefined;
   const gex = serverState?.gex_profile;
+  const expiryLabel = selectedAsset ? optionExpiryLabel(selectedAsset) : '0DTE';
 
   const fmt = (v: number) => (isFinite(v) ? v.toLocaleString(undefined, { maximumFractionDigits: decimals }) : '—');
   const pct = (v: number) => `${Math.round(v * 100)}%`;
 
   if (!z || !gex || !(gex.spot > 0)) {
-    return <PanelSkeleton label="0DTE Probabilities" />;
+    return <PanelSkeleton label={`${expiryLabel} Probabilities`} />;
   }
 
   const spot = gex.spot;
@@ -53,7 +55,7 @@ export function ZeroDtePanel() {
     <div className="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-5 flex flex-col gap-4" style={{ borderLeftColor: '#FBBF24', borderLeftWidth: '3px' }}>
       <div className="flex items-center gap-2 pb-3 border-b border-[var(--border)]">
         <Timer className="w-4 h-4 text-[#FBBF24]" />
-        <h2 className="text-xs font-black tracking-widest uppercase text-[var(--text-primary)]">0DTE Probabilities — {selectedAsset?.ticker}</h2>
+        <h2 className="text-xs font-black tracking-widest uppercase text-[var(--text-primary)]">{expiryLabel} Probabilities — {selectedAsset?.ticker}</h2>
         <span className="text-[9px] text-[var(--text-tertiary)] uppercase tracking-widest ml-auto">{z.hoursToClose.toFixed(1)}h to close · ATM IV {(z.atmIv * 100).toFixed(1)}%</span>
       </div>
 

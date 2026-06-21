@@ -4,7 +4,7 @@ import { useContractStore, ContractState } from '../lib/store';
 import { InteractiveChart } from './InteractiveChart';
 import { StrikeGravityPanel } from './StrikeGravityPanel';
 import { TradePlanCard } from './TradePlanCard';
-import { ASSET_LIST } from '../data';
+import { ASSET_LIST, optionExpiryLabel } from '../data';
 import { Zap, FileText, CheckCircle2, Maximize2, Minimize2, Layers, Target, Activity } from 'lucide-react';
 import { DiscoveryView } from './DiscoveryView';
 import { SkyVisionV2Panel } from './SkyVisionV2Panel';
@@ -807,14 +807,14 @@ export function SkyVisionView() {
                     <div className="flex justify-between items-center p-2.5 bg-[#4ADE80]/5 border border-[#4ADE80]/20 rounded-lg">
                       <div>
                         <span className="text-[8px] text-[#4ADE80] uppercase block font-black tracking-wider">Largest Bullish</span>
-                        <span className="text-[var(--text-primary)] font-bold">{serverState.deep_intelligence.whale_detection?.bullish?.contract} • 0DTE</span>
+                        <span className="text-[var(--text-primary)] font-bold">{serverState.deep_intelligence.whale_detection?.bullish?.contract} • {optionExpiryLabel(selectedAsset)}</span>
                       </div>
                       <span className="font-black text-[var(--text-primary)]">{serverState.deep_intelligence.whale_detection?.bullish?.size}</span>
                     </div>
                     <div className="flex justify-between items-center p-2.5 bg-[#F87171]/5 border border-[#F87171]/20 rounded-lg">
                       <div>
                         <span className="text-[8px] text-[#F87171] uppercase block font-black tracking-wider">Largest Bearish</span>
-                        <span className="text-[var(--text-primary)] font-bold">{serverState.deep_intelligence.whale_detection?.bearish?.contract} • 0DTE</span>
+                        <span className="text-[var(--text-primary)] font-bold">{serverState.deep_intelligence.whale_detection?.bearish?.contract} • {optionExpiryLabel(selectedAsset)}</span>
                       </div>
                       <span className="font-black text-[var(--text-primary)]">{serverState.deep_intelligence.whale_detection?.bearish?.size}</span>
                     </div>

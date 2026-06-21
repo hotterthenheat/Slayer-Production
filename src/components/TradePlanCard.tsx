@@ -2,6 +2,7 @@ import React from 'react';
 import { useContractStore } from '../lib/store';
 import { Crosshair, ShieldX, TrendingUp, TrendingDown, Minus, Clock, Waves, CheckCircle2, XCircle, Activity, Layers } from 'lucide-react';
 import type { TradePlan } from '../lib/tradePlan';
+import { optionExpiryLabel } from '../data';
 
 /**
  * Sky's Vision Trade Plan — the composite output (40% technical / 30% dealer /
@@ -44,7 +45,7 @@ export function TradePlanCard() {
       {/* Header */}
       <div className="flex items-center gap-2 flex-wrap">
         <Crosshair className="w-4 h-4" style={{ color: dirTone }} />
-        <h2 className="text-xs font-black tracking-widest uppercase text-[#E5E5E5]">Sky's Vision Plan — {plan.ticker} 0DTE</h2>
+        <h2 className="text-xs font-black tracking-widest uppercase text-[#E5E5E5]">Sky's Vision Plan — {plan.ticker} {optionExpiryLabel(selectedAsset)}</h2>
         <span className="flex items-center gap-1 text-[10px] font-black uppercase tracking-widest px-2 py-0.5 rounded-sm border ml-auto" style={{ color: dirTone, borderColor: `${dirTone}66`, background: `${dirTone}14` }}>
           <DirIcon className="w-3 h-3" /> {plan.direction} · {plan.confidence}%
         </span>

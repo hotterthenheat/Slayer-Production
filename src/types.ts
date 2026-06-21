@@ -17,6 +17,9 @@ export interface AssetInfo {
   unit: string;
   forecastScale?: number;
   stabilityMax?: number;
+  // Options expiry cadence: 'daily' = 0DTE-capable (indices/broad ETFs),
+  // 'weekly' = front-weekly only (single stocks). Absent ⇒ treated as 'daily'.
+  optionsStyle?: 'daily' | 'weekly';
 }
 
 export type TimeframeVal = '1m' | '2m' | '3m' | '5m' | '15m' | '30m' | '1h' | '4h' | '1D' | '1W';
