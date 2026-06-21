@@ -117,6 +117,10 @@ export function buildTrade(input: BuildTradeInput): TradeRow {
     stopLoss,
     timeStopMin: TIME_STOP_MIN[category] ?? 180,
     modelExitPop: MODEL_EXIT_POP,
+    qtyOpen: 1,
+    scaledOut: false,
+    scalePrice: null,
+    scalePnl: null,
     status: 'OPEN',
     currentPrice: entryPrice,
     elapsedMin: 0,
@@ -133,8 +137,10 @@ export function buildTrade(input: BuildTradeInput): TradeRow {
   };
 }
 
-/** Reprice one OPEN trade against the live spot and decide whether it exits. */
-function evaluate(t: TradeRow): { price: number; exit: ExitReason | null } {
+type TickAction = 'scale' | 'stop' | 'target' | 'time' | 'model' | 'none';
+
+/** Reprice one OPEN trade against the live spot and decide the action this tick. */
+function evaluate(t: TradeRow): { price: number; action: TickAction; elapsed: number } {
   const elapsed = t.elapsedMin + SIM_MINUTES_PER_TICK;
   const remainingFrac = clamp(1 - elapsed / Math.max(1, t.timeStopMin), 0, 1);
   const remainingDte = Math.max(0.0007, t.dteDays * remainingFrac); // ~1 min floor
@@ -142,13 +148,20 @@ function evaluate(t: TradeRow): { price: number; exit: ExitReason | null } {
   const spot = db.liveSpotPrices[t.underlying] || t.entryUnderlying;
   const price = Math.max(0.01, r2(computeBlackScholesPrice(spot, t.strike, remainingDte, t.iv, t.isCall, RISK_FREE)));
 
-  // Earliest-trigger policy: protect capital first, then take profit, then time, then thesis.
-  if (price <= t.stopLoss) return { price, exit: 'STOP' };
-  if (price >= t.target1) return { price, exit: 'TARGET' };
-  if (elapsed >= t.timeStopMin) return { price, exit: 'TIME' };
+  // Capital protection first. For a scaled runner the stop sits at breakeven.
+  if (price <= t.stopLoss) return { price, action: 'stop', elapsed };
+
+  // Pre-scale: hitting T1 trims half. Post-scale: the runner closes at T2.
+  if (!t.scaledOut) {
+    if (price >= t.target1) return { price, action: 'scale', elapsed };
+  } else if (price >= t.target2) {
+    return { price, action: 'target', elapsed };
+  }
+
+  if (elapsed >= t.timeStopMin) return { price, action: 'time', elapsed };
   const pop = probExpireITM(spot, t.strike, remainingDte / 365, t.iv, t.isCall, RISK_FREE);
-  if (pop < t.modelExitPop) return { price, exit: 'MODEL_EDGE' };
-  return { price, exit: null };
+  if (pop < t.modelExitPop) return { price, action: 'model', elapsed };
+  return { price, action: 'none', elapsed };
 }
 
 function outcomeFor(pnlPct: number): TradeOutcome {
@@ -157,7 +170,10 @@ function outcomeFor(pnlPct: number): TradeOutcome {
   return 'SCRATCH';
 }
 
-/** One pass over all OPEN trades: reprice, track, and auto-close where triggered. */
+/**
+ * One pass over all OPEN trades: reprice, track combined P&L (locked T1 half +
+ * open runner), scale out at T1, and auto-close the remainder where triggered.
+ */
 export async function tickOpenTrades(): Promise<void> {
   const store = getTradeStore();
   let open: TradeRow[];
@@ -168,24 +184,39 @@ export async function tickOpenTrades(): Promise<void> {
   }
   const now = Date.now();
   for (const t of open) {
-    const { price, exit } = evaluate(t);
-    const elapsed = t.elapsedMin + SIM_MINUTES_PER_TICK;
-    const pnlPct = ((price - t.entryPrice) / t.entryPrice) * 100;
-    const maxGain = Number(Math.max(t.maxGain, pnlPct).toFixed(1));
-    const maxDrawdown = Number(Math.max(t.maxDrawdown, -pnlPct).toFixed(1));
+    const { price, action, elapsed } = evaluate(t);
+    const realized = t.scalePnl ?? 0; // locked from the T1 half
+    const combinedPnl = realized + t.qtyOpen * (price - t.entryPrice);
+    const combinedPct = (combinedPnl / t.entryPrice) * 100;
+    const maxGain = Number(Math.max(t.maxGain, combinedPct).toFixed(1));
+    const maxDrawdown = Number(Math.max(t.maxDrawdown, -combinedPct).toFixed(1));
 
     try {
-      if (exit) {
+      if (action === 'scale') {
+        // Sell half at T1, lock that P&L, and move the runner's stop to breakeven.
+        await store.scaleOut(t.id, {
+          scalePrice: price,
+          scalePnl: r2(0.5 * (price - t.entryPrice)),
+          qtyOpen: 0.5,
+          stopLoss: t.entryPrice,
+        });
+        await store.applyLive(t.id, { currentPrice: price, elapsedMin: elapsed, maxGain, maxDrawdown });
+      } else if (action === 'none') {
+        await store.applyLive(t.id, { currentPrice: price, elapsedMin: elapsed, maxGain, maxDrawdown });
+      } else {
+        // Closing action: realize the remaining open fraction on top of any locked half.
+        const reason: ExitReason =
+          action === 'stop' ? 'STOP' : action === 'target' ? 'TARGET' : action === 'time' ? 'TIME' : 'MODEL_EDGE';
+        const totalPnl = r2(realized + t.qtyOpen * (price - t.entryPrice));
+        const totalPct = Number(((totalPnl / t.entryPrice) * 100).toFixed(1));
         await store.close(t.id, {
           exitPrice: price,
-          exitReason: exit,
-          pnl: r2(price - t.entryPrice),
-          pnlPct: Number(pnlPct.toFixed(1)),
-          outcome: outcomeFor(pnlPct),
+          exitReason: reason,
+          pnl: totalPnl,
+          pnlPct: totalPct,
+          outcome: outcomeFor(totalPct),
           closedAt: now,
         });
-      } else {
-        await store.applyLive(t.id, { currentPrice: price, elapsedMin: elapsed, maxGain, maxDrawdown });
       }
     } catch {
       /* one bad row shouldn't stop the rest of the pass */

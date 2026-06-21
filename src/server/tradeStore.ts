@@ -61,6 +61,13 @@ export interface TradeRow {
   timeStopMin: number; // simulated minutes until the time-stop closes the trade
   modelExitPop: number; // P(ITM) floor; below this the thesis is broken → exit
 
+  // Position scaling: sell half at T1, run the rest to T2 (or stop/time/model).
+  // qtyOpen: 1 (full) → 0.5 (after T1 scale) → 0 (closed).
+  qtyOpen: number;
+  scaledOut: boolean; // true once the T1 half has been taken off
+  scalePrice: number | null; // premium at the T1 scale-out
+  scalePnl: number | null; // realized P&L locked from the half sold at T1 (points)
+
   status: TradeStatus;
 
   // Live tracking (updated each engine tick while OPEN).
@@ -89,6 +96,14 @@ export interface LivePatch {
   maxDrawdown: number;
 }
 
+/** Scale-out patch (T1 half taken off; the runner stays OPEN with a breakeven stop). */
+export interface ScalePatch {
+  scalePrice: number;
+  scalePnl: number;
+  qtyOpen: number; // remaining fraction (0.5)
+  stopLoss: number; // raised to breakeven on the runner
+}
+
 /** Close-out patch. */
 export interface ClosePatch {
   exitPrice: number;
@@ -111,13 +126,15 @@ export interface TradeStore {
   listByUser(email: string): Promise<TradeRow[]>;
   listAllOpen(): Promise<TradeRow[]>;
   applyLive(id: string, patch: LivePatch): Promise<void>;
+  scaleOut(id: string, patch: ScalePatch): Promise<void>;
   close(id: string, patch: ClosePatch): Promise<void>;
 }
 
 const COLUMNS = `
   id, user_email, underlying, contract, strike, is_call, direction, category,
   entry_price, entry_underlying, iv, dte_days, delta, gamma, theta, vega,
-  target1, target2, stop_loss, time_stop_min, model_exit_pop, status,
+  target1, target2, stop_loss, time_stop_min, model_exit_pop,
+  qty_open, scaled_out, scale_price, scale_pnl, status,
   current_price, elapsed_min, max_gain, max_drawdown,
   exit_price, exit_reason, pnl, pnl_pct, outcome,
   opened_at, closed_at, updated_at`;
@@ -145,6 +162,10 @@ function rowToTrade(r: any): TradeRow {
     stopLoss: r.stop_loss,
     timeStopMin: r.time_stop_min,
     modelExitPop: r.model_exit_pop,
+    qtyOpen: r.qty_open,
+    scaledOut: !!r.scaled_out,
+    scalePrice: r.scale_price,
+    scalePnl: r.scale_pnl,
     status: r.status,
     currentPrice: r.current_price,
     elapsedMin: r.elapsed_min,
@@ -195,6 +216,10 @@ class SqliteTradeStore implements TradeStore {
         stop_loss REAL NOT NULL,
         time_stop_min REAL NOT NULL,
         model_exit_pop REAL NOT NULL,
+        qty_open REAL NOT NULL DEFAULT 1,
+        scaled_out INTEGER NOT NULL DEFAULT 0,
+        scale_price REAL,
+        scale_pnl REAL,
         status TEXT NOT NULL DEFAULT 'OPEN',
         current_price REAL NOT NULL,
         elapsed_min REAL NOT NULL DEFAULT 0,
@@ -221,7 +246,8 @@ class SqliteTradeStore implements TradeStore {
       VALUES (
         $id, $user_email, $underlying, $contract, $strike, $is_call, $direction, $category,
         $entry_price, $entry_underlying, $iv, $dte_days, $delta, $gamma, $theta, $vega,
-        $target1, $target2, $stop_loss, $time_stop_min, $model_exit_pop, $status,
+        $target1, $target2, $stop_loss, $time_stop_min, $model_exit_pop,
+        $qty_open, $scaled_out, $scale_price, $scale_pnl, $status,
         $current_price, $elapsed_min, $max_gain, $max_drawdown,
         $exit_price, $exit_reason, $pnl, $pnl_pct, $outcome,
         $opened_at, $closed_at, $updated_at)
@@ -248,6 +274,10 @@ class SqliteTradeStore implements TradeStore {
       $stop_loss: t.stopLoss,
       $time_stop_min: t.timeStopMin,
       $model_exit_pop: t.modelExitPop,
+      $qty_open: t.qtyOpen,
+      $scaled_out: t.scaledOut ? 1 : 0,
+      $scale_price: t.scalePrice,
+      $scale_pnl: t.scalePnl,
       $status: t.status,
       $current_price: t.currentPrice,
       $elapsed_min: t.elapsedMin,
@@ -294,6 +324,16 @@ class SqliteTradeStore implements TradeStore {
         `UPDATE trades SET current_price = ?, elapsed_min = ?, max_gain = ?, max_drawdown = ?, updated_at = ? WHERE id = ?`
       )
       .run(p.currentPrice, p.elapsedMin, p.maxGain, p.maxDrawdown, Date.now(), id);
+  }
+
+  async scaleOut(id: string, p: ScalePatch): Promise<void> {
+    this.db
+      .prepare(
+        `UPDATE trades
+           SET scaled_out = 1, scale_price = ?, scale_pnl = ?, qty_open = ?, stop_loss = ?, updated_at = ?
+         WHERE id = ? AND status = 'OPEN' AND scaled_out = 0`
+      )
+      .run(p.scalePrice, p.scalePnl, p.qtyOpen, p.stopLoss, Date.now(), id);
   }
 
   async close(id: string, p: ClosePatch): Promise<void> {

@@ -2264,11 +2264,14 @@ app.post('/api/trades/add', async (req, res) => {
 // Kept separate from the legacy global db.v8Trades demo archive above.
 // ==========================================
 
-// Shape a stored TradeRow for the Trade History UI (live P&L when still open).
+// Shape a stored TradeRow for the Trade History UI. While OPEN, P&L is the
+// combined (locked T1 half + open runner) figure so a scaled trade reads right.
 function serializeTracked(t: TradeRow) {
-  const livePnlPct = ((t.currentPrice - t.entryPrice) / t.entryPrice) * 100;
+  const realized = t.scalePnl ?? 0;
+  const livePnl = realized + t.qtyOpen * (t.currentPrice - t.entryPrice);
+  const livePnlPct = (livePnl / t.entryPrice) * 100;
   const pnlPct = t.status === 'CLOSED' ? (t.pnlPct ?? 0) : livePnlPct;
-  const pnl = t.status === 'CLOSED' ? (t.pnl ?? 0) : Number((t.currentPrice - t.entryPrice).toFixed(2));
+  const pnl = t.status === 'CLOSED' ? (t.pnl ?? 0) : Number(livePnl.toFixed(2));
   return {
     id: t.id,
     underlying: t.underlying,
@@ -2289,6 +2292,9 @@ function serializeTracked(t: TradeRow) {
     pnlPct: Number(pnlPct.toFixed(1)),
     maxGain: t.maxGain,
     maxDrawdown: t.maxDrawdown,
+    qtyOpen: t.qtyOpen,
+    scaledOut: t.scaledOut,
+    scalePrice: t.scalePrice,
     exitReason: t.exitReason,
     outcome: t.outcome,
     elapsedMin: t.elapsedMin,
