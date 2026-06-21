@@ -7,6 +7,7 @@ import { TradePlanCard } from './TradePlanCard';
 import { ASSET_LIST } from '../data';
 import { Zap, Percent, HelpCircle, FileText, CheckCircle2, Bot, Search, Maximize2, Minimize2 } from 'lucide-react';
 import { DiscoveryView } from './DiscoveryView';
+import { SkyVisionV2Panel } from './SkyVisionV2Panel';
 
 // OptionCard Component for selection - strictly no Delta/Gamma clutter (Bug #4, Bug #7)
 // Hoisted to module scope so its identity is stable across renders (prevents remounting
@@ -291,6 +292,7 @@ export function SkyVisionView() {
   if (!isExpanded) {
     return (
       <div className="w-full text-zinc-200 flex flex-col font-mono select-none antialiased pt-2 relative">
+        <SkyVisionV2Panel />
         <DiscoveryView
           systemScore={serverState?.system_score}
           discovery={serverState?.discovery}
