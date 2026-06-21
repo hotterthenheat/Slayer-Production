@@ -408,6 +408,8 @@ export interface ServerStatePayload {
   // Dealer Dynamics: vanna/charm trend, strike migration, gamma velocity,
   // liquidity vacuums, wall strength (type-only import avoids a circular dep).
   dealer_dynamics?: import('./lib/dealerDynamics').DealerDynamics | null;
+  // Plain-English dealer-gamma read for the active ticker, refreshed on the 30-min mark.
+  gex_summary?: { text: string; generatedAt: number; nextRefreshAt: number } | null;
   // 0DTE probability engine + Sky's Vision structured trade plan.
   zerodte?: import('./lib/zeroDte').ZeroDteResult;
   trade_plan?: import('./lib/tradePlan').TradePlan;

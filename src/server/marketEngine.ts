@@ -29,6 +29,7 @@ import { buildGexProfile, computeDealerFlowGauge } from '../lib/gexEngine';
 import { computeAssetEdge, computeContractEdge, type AssetEdge, type EdgeHistory } from '../lib/quantEdge';
 import { computeStrikeGravity } from '../lib/strikeGravity';
 import { computeDealerDynamics, type DealerSnapshot, type DealerDynamics } from '../lib/dealerDynamics';
+import { buildGexSummary, type GexSummaryInput } from '../lib/gexSummary';
 import { compute0DTE } from '../lib/zeroDte';
 import { buildTradePlan } from '../lib/tradePlan';
 import { tickSkyVision, getSkyVision } from './skyVisionService';
@@ -91,6 +92,23 @@ const chainCache: Record<string, ChainContract[]> = {};
 // Rolling per-asset dealer snapshots (one per tick) + the latest computed dynamics.
 const dealerDynHistory: Record<string, DealerSnapshot[]> = {};
 const dealerDynCache: Record<string, DealerDynamics> = {};
+
+// Plain-English GEX read, cached per ticker and refreshed on the wall-clock
+// half-hour (:00 / :30) so every viewer sees the same read with a synced countdown.
+const gexSummaryCache: Record<string, { text: string; generatedAt: number; nextRefreshAt: number }> = {};
+function nextHalfHourMark(now: number): number {
+  const d = new Date(now);
+  d.setMinutes(d.getMinutes() < 30 ? 30 : 60, 0, 0); // round up to the next :30 or :00
+  return d.getTime();
+}
+function refreshGexSummary(ticker: string, input: GexSummaryInput) {
+  const now = Date.now();
+  const cached = gexSummaryCache[ticker];
+  if (!cached || now >= cached.nextRefreshAt) {
+    gexSummaryCache[ticker] = { text: buildGexSummary(input), generatedAt: now, nextRefreshAt: nextHalfHourMark(now) };
+  }
+  return gexSummaryCache[ticker];
+}
 
 /**
  * Contract-quality sub-score (0..100) for the ATM±1 strike in the trade direction:
@@ -531,6 +549,7 @@ const PREMIUM_BLOCK_TIERS: Record<string, number> = {
   gex_profile: 3,
   zerodte: 3,
   dealer_dynamics: 3,
+  gex_summary: 3,
   quant_edge: 3,
   option_chain: 3,
 };
@@ -1300,6 +1319,20 @@ export const constructPayload = (params: {
   // data the GEX profile was built on. Feeds Sky's Vision level/target logic.
   const strike_gravity = computeStrikeGravity(gex_profile.strikes, lastPrice, 10);
 
+  // Plain-English dealer-gamma read for this ticker (cached on the 30-min mark).
+  const gex_summary = refreshGexSummary(asset.ticker, {
+    ticker: asset.ticker,
+    spot: lastPrice,
+    decimals: asset.decimals,
+    netGex,
+    callWall,
+    putWall,
+    gammaFlip: flipLevel,
+    magnet: magnetStrike,
+    expiryLabel: expLabel,
+    dynamics: dealerDynCache[asset.ticker] || null,
+  });
+
   const pressureVal = Math.round((dealerScore / 100 - 0.5) * 200);
   const gexNorm = Math.tanh(metricsV11.dealer.netGex / 2e9);
   const dexNorm = Math.tanh(metricsV11.dealer.netDex / 5e9);
@@ -1558,6 +1591,7 @@ export const constructPayload = (params: {
     gex_profile,
     strike_gravity,
     dealer_dynamics: dealerDynCache[asset.ticker] || null,
+    gex_summary,
     zerodte,
     trade_plan,
     sky_vision: getSkyVision(asset.ticker),
