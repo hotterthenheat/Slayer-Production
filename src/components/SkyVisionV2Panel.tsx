@@ -7,8 +7,7 @@
  * Renders the server-computed `sky_vision` block: the master verdict, the strongest
  * contract on the chain (rotation scanner), the EMA target ladder with projected
  * option premiums, the swing read, and the position-health-style component breakdown.
- * One-click "Add to Trade History" wires the strongest contract into the per-user
- * tracked-trade engine.
+ * Read-only — everything is computed server-side from the live chain each tick.
  */
 import React from 'react';
 import { useContractStore } from '../lib/store';
