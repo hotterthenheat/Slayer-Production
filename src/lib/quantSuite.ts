@@ -5,20 +5,22 @@
 
 import { ChainContract } from './v11Math';
 import { formatTime } from './timeUtils';
+import { stdNormalCDF, stdNormalPDF } from './normalDist';
 
 // ==========================================
 // STANDARD MATHEMATICAL & STATISTICS DEFS
 // ==========================================
 
+// Delegate to the platform's high-precision normal distribution (West/Hart,
+// ~1e-15, exact N(x)+N(-x)=1). The previous local Abramowitz-Stegun polynomial
+// was only ~1.5e-7 with asymmetric tails, which biased put-call parity and the
+// Breeden-Litzenberger second-difference RND at the deep-OTM wings.
 export function normalPdf(x: number): number {
-  return Math.exp(-0.5 * x * x) / Math.sqrt(2 * Math.PI);
+  return stdNormalPDF(x);
 }
 
 export function normalCdf(x: number): number {
-  const t = 1 / (1 + 0.2316419 * Math.abs(x));
-  const d = 0.39894228 * Math.exp(-x * x / 2);
-  const p = d * t * (0.31938153 + t * (-0.356563782 + t * (1.781477937 + t * (-1.821255978 + t * 1.330274429))));
-  return x > 0 ? 1 - p : p;
+  return stdNormalCDF(x);
 }
 
 /**
@@ -230,7 +232,11 @@ export function solveImpliedRND(
   const minStrike = Math.max(spot * 0.40, spot - 3.2 * stdModel);
   const maxStrike = spot + 3.2 * stdModel;
 
-  const dK = 1.0; // strike step for double differentiation
+  // Strike step for the Breeden-Litzenberger second difference. A fixed $1 bump
+  // collapses on high-priced underlyings (on SPX ~6000 the grid step is tens of
+  // dollars, so a $1 bump is below grid resolution and the difference is dominated
+  // by floating-point cancellation noise). Scale it to spot, matching riskNeutral.ts.
+  const dK = Math.max(0.5, spot * 0.0025);
   const meshDensity = 100;
   const denseStrikes: number[] = [];
   const stepK = (maxStrike - minStrike) / meshDensity;

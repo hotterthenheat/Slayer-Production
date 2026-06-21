@@ -93,7 +93,7 @@ function FeedPill({ status, compact = false }: { status?: 'connecting' | 'live' 
         {s === 'live' && <span className="animate-ping absolute inline-flex h-full w-full rounded-full opacity-75" style={{ background: cfg.c }} />}
         <span className="relative inline-flex rounded-full h-1.5 w-1.5" style={{ background: cfg.c }} />
       </span>
-      {!compact && <span className="text-[8px] font-black uppercase tracking-widest" style={{ color: cfg.c }}>{cfg.t}</span>}
+      {!compact && <span className="text-[9px] font-black uppercase tracking-widest" style={{ color: cfg.c }}>{cfg.t}</span>}
     </div>
   );
 }
@@ -132,7 +132,7 @@ export function AppShell({ children, session, onLogout, tierInfo, onUpgradeClick
           className="flex-1 overflow-y-auto px-2 py-4 flex flex-col gap-1.5 scrollbar-none scroll-smooth touch-pan-y overflow-x-hidden"
           style={{ WebkitOverflowScrolling: 'touch' }}
         >
-          <div className={`text-[8px] text-zinc-600 font-black tracking-widest px-2 py-1 uppercase mb-1 whitespace-nowrap overflow-hidden transition-all duration-300 ${isSidebarExpanded ? 'opacity-100' : 'opacity-0 h-0 py-0 mb-0 pointer-events-none'}`}>
+          <div className={`text-[9px] text-[var(--text-tertiary)] font-black tracking-widest px-2 py-1 uppercase mb-1 whitespace-nowrap overflow-hidden transition-all duration-300 ${isSidebarExpanded ? 'opacity-100' : 'opacity-0 h-0 py-0 mb-0 pointer-events-none'}`}>
             Main Views
           </div>
           
@@ -142,7 +142,7 @@ export function AppShell({ children, session, onLogout, tierInfo, onUpgradeClick
           <NavItem id="quant" label="Quant Lab" icon={LineChart} activeColor="text-[#D9A15C]" />
           <NavItem id="auditor" label="Trade History" icon={Database} />
           
-          <div className={`text-[8px] text-zinc-600 font-black tracking-widest px-2 py-1 uppercase mt-4 mb-1 whitespace-nowrap overflow-hidden transition-all duration-300 ${isSidebarExpanded ? 'opacity-100' : 'opacity-0 h-0 py-0 mb-0 mt-0 pointer-events-none'}`}>
+          <div className={`text-[9px] text-[var(--text-tertiary)] font-black tracking-widest px-2 py-1 uppercase mt-4 mb-1 whitespace-nowrap overflow-hidden transition-all duration-300 ${isSidebarExpanded ? 'opacity-100' : 'opacity-0 h-0 py-0 mb-0 mt-0 pointer-events-none'}`}>
             Tools
           </div>
 
@@ -171,7 +171,7 @@ export function AppShell({ children, session, onLogout, tierInfo, onUpgradeClick
               </span>
               <div className={`flex flex-col text-left transition-all duration-300 ${isSidebarExpanded ? 'opacity-100 max-w-[200px]' : 'opacity-0 max-w-0 overflow-hidden'}`}>
                 <span className="text-[10px] font-black tracking-wider text-[#E5E5E5] truncate">{tierInfo?.label}</span>
-                <span className="text-[8px] text-zinc-500 font-bold tracking-wider uppercase truncate">{tierInfo?.desc}</span>
+                <span className="text-[9px] text-[var(--text-tertiary)] font-bold tracking-wider uppercase truncate">{tierInfo?.desc}</span>
               </div>
            </div>
 
@@ -221,7 +221,7 @@ export function AppShell({ children, session, onLogout, tierInfo, onUpgradeClick
           style={{ WebkitOverflowScrolling: 'touch' }}
         >
           <div className="p-4 flex flex-col gap-2">
-            <div className="text-[8px] text-zinc-600 font-black tracking-widest px-2 py-1 uppercase mb-2">
+            <div className="text-[9px] text-[var(--text-tertiary)] font-black tracking-widest px-2 py-1 uppercase mb-2">
               Main Views
             </div>
             <NavItem id="home" label="Home" icon={Home} activeColor="text-[#F4F5F6]" isMobile />
@@ -230,7 +230,7 @@ export function AppShell({ children, session, onLogout, tierInfo, onUpgradeClick
             <NavItem id="quant" label="Quant Lab" icon={LineChart} activeColor="text-[#D9A15C]" isMobile />
             <NavItem id="auditor" label="Trade History" icon={Database} isMobile />
 
-            <div className="text-[8px] text-zinc-600 font-black tracking-widest px-2 py-1 uppercase mt-6 mb-2">
+            <div className="text-[9px] text-[var(--text-tertiary)] font-black tracking-widest px-2 py-1 uppercase mt-6 mb-2">
               Tools
             </div>
 

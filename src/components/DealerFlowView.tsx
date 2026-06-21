@@ -192,14 +192,14 @@ function ExposureProfileChart({ profile, decimals, type }: { profile: any; decim
                 const isTesting = Math.abs(r.strike - profile.spot) / profile.spot < 0.005;
                 const status = isFailing ? 'FAILING' : isTesting ? 'TESTING' : 'HOLDING';
                 const sColor = isFailing ? 'text-[#F87171] bg-rose-500/10 border-rose-500/30' : isTesting ? 'text-amber-400 bg-amber-500/10 border-amber-500/30' : 'text-[#4ADE80] bg-[#4ADE80]/10 border-black';
-                return <span className={`ml-1.5 px-1 py-[1px] rounded-[2px] text-[6.5px] align-middle font-black border tracking-widest ${sColor}`}>{status}</span>;
+                return <span className={`ml-1.5 px-1 py-[1px] rounded-[2px] text-[9px] align-middle font-black border tracking-widest ${sColor}`}>{status}</span>;
               })()}
               {isPutMax && (() => {
                 const isFailing = r.strike > profile.spot;
                 const isTesting = Math.abs(r.strike - profile.spot) / profile.spot < 0.005;
                 const status = isFailing ? 'FAILING' : isTesting ? 'TESTING' : 'HOLDING';
                 const sColor = isFailing ? 'text-[#F87171] bg-rose-500/10 border-rose-500/30' : isTesting ? 'text-amber-400 bg-amber-500/10 border-amber-500/30' : 'text-sky-400 bg-sky-500/10 border-sky-500/30';
-                return <span className={`ml-1.5 px-1 py-[1px] rounded-[2px] text-[6.5px] align-middle font-black border tracking-widest ${sColor}`}>{status}</span>;
+                return <span className={`ml-1.5 px-1 py-[1px] rounded-[2px] text-[9px] align-middle font-black border tracking-widest ${sColor}`}>{status}</span>;
               })()}
             </div>
 
@@ -303,7 +303,7 @@ function ExposureProfileChart({ profile, decimals, type }: { profile: any; decim
 
       {/* Spot marker footer removed to avoid dual readouts */}
 
-      {/* FLOATING LASER SPOT GLIDER */}
+      {/* SPOT MARKER — single static marker + a thin hairline reference */}
       {spotLine && (
         <motion.div
           className="absolute left-0 right-0 z-20 pointer-events-none"
@@ -318,33 +318,30 @@ function ExposureProfileChart({ profile, decimals, type }: { profile: any; decim
           }}
         >
           <div className="relative flex items-center">
-            {/* Laser beam emitter core */}
-            <div className={`absolute -left-1.5 w-2.5 h-2.5 bg-white rounded-full border animate-pulse ${
-              type === 'gex' 
-                ? 'border-black shadow-[0_0_8px_rgba(48,209,88,0.8)]' 
-                : type === 'dex' 
-                  ? 'border-sky-400 shadow-[0_0_8px_rgba(14,165,233,0.8)]' 
-                  : 'border-indigo-400 shadow-[0_0_8px_rgba(99,102,241,0.8)]'
+            {/* Static spot marker dot */}
+            <div className={`absolute -left-1.5 w-2.5 h-2.5 bg-white rounded-full border ${
+              type === 'gex'
+                ? 'border-black'
+                : type === 'dex'
+                  ? 'border-sky-400'
+                  : 'border-indigo-400'
             }`} />
-            
-            {/* White-to-accent gradient laser glow line */}
-            <div className={`w-full h-[1.5px] bg-gradient-to-r from-white to-transparent ${
-              type === 'gex' 
-                ? 'via-zinc-300 shadow-[0_0_6px_rgba(48,209,88,0.4)]' 
-                : type === 'dex' 
-                  ? 'via-sky-400 shadow-[0_0_6px_rgba(14,165,233,0.4)]' 
-                  : 'via-indigo-400 shadow-[0_0_6px_rgba(99,102,241,0.4)]'
+
+            {/* Thin hairline reference line across the row */}
+            <div className={`w-full h-[1px] ${
+              type === 'gex'
+                ? 'bg-[#4ADE80]/40'
+                : type === 'dex'
+                  ? 'bg-sky-400/40'
+                  : 'bg-indigo-400/40'
             }`} />
-            
-            {/* Floating centered coordinates tag */}
-            <div className={`absolute left-1/2 -translate-x-1/2 -top-3 px-2 py-0.5 rounded-xs font-mono font-black text-[7.5px] uppercase shadow-lg flex items-center gap-1 border z-30 ${
-              isLight 
-                ? 'bg-white text-zinc-900 border-black' 
+
+            {/* Centered coordinates tag (static) */}
+            <div className={`absolute left-1/2 -translate-x-1/2 -top-3 px-2 py-0.5 rounded-xs font-mono font-black text-[9px] uppercase shadow-sm flex items-center gap-1 border z-30 ${
+              isLight
+                ? 'bg-white text-zinc-900 border-black'
                 : 'bg-black/90 text-[#E5E5E5] border-black'
             }`}>
-              <span className={`w-1.5 h-1.5 rounded-full animate-ping ${
-                type === 'gex' ? 'bg-[#4ADE80]' : type === 'dex' ? 'bg-sky-400' : 'bg-indigo-400'
-              }`} />
               <span>SPOT: {profile.spot.toFixed(2)}</span>
             </div>
           </div>

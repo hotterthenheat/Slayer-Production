@@ -489,6 +489,22 @@ export function calculateEMA(candles: Candle[], length: number): number[] {
   return emas;
 }
 
+/**
+ * SAMPLE / ILLUSTRATIVE discovery tiles.
+ *
+ * These are NOT a live options scan. They are static demo rows used to seed the
+ * Trade Finder layout so it has something to render before/without a connected
+ * options feed. The `health`, `expectedMove`, greeks, prices and narratives here
+ * are illustrative placeholders, not real market readings — the UI labels this
+ * section "SAMPLE DATA" and must not present these numbers as live. The server's
+ * discovery SSE only jitters these same seeds; it does not read the live chain,
+ * so any "live" framing on top of this would be fiction.
+ *
+ * Narratives are intentionally generic. Do NOT add fabricated specifics here
+ * (named dollar whale prints, exact "$XX.XM notional", "perfectly positioned",
+ * precise win/accuracy figures) — those read as real market events and they are
+ * not sourced from anything.
+ */
 export const INITIAL_DISCOVERY_CONTRACTS = [
   // SHELF: CONVICTION
   {
@@ -499,7 +515,7 @@ export const INITIAL_DISCOVERY_CONTRACTS = [
     health: 96,
     expectedMove: '+42.5%',
     action: 'ENTER' as const,
-    narrative: 'Heavy institutional volume cluster matched. Dealer buy walls are perfectly positioned.',
+    narrative: 'Sample tile: illustrates a call sitting above dealer support. Not a live reading.',
     tagText: 'CONVICTION',
     shelf: 'conviction',
     delta: 0.54,
@@ -609,7 +625,7 @@ export const INITIAL_DISCOVERY_CONTRACTS = [
     health: 92,
     expectedMove: '+34.8%',
     action: 'ENTER' as const,
-    narrative: 'Slayer deep learning index detects massive localized volume sweep.',
+    narrative: 'Sample tile: illustrates a localized volume sweep pattern. Not a live reading.',
     tagText: 'CONVICTION',
     shelf: 'conviction',
     delta: 0.58,
@@ -809,7 +825,7 @@ export const INITIAL_DISCOVERY_CONTRACTS = [
     health: 81,
     expectedMove: '+20.5%',
     action: 'HOLD' as const,
-    narrative: 'Theoretical model price sits at $1.85, while active broker ask is $1.35.',
+    narrative: 'Sample tile: illustrates a put trading below an illustrative model value.',
     tagText: 'MISPRICED',
     shelf: 'mispriced',
     delta: -0.38,
@@ -875,7 +891,7 @@ export const INITIAL_DISCOVERY_CONTRACTS = [
     health: 82,
     expectedMove: '+22.4%',
     action: 'HOLD' as const,
-    narrative: 'Strong theoretical offset detected. Arbitrage spread calculated at 14.5%.',
+    narrative: 'Sample tile: illustrates a model/market gap on a deep put. Not a live reading.',
     tagText: 'ARBITRAGE',
     shelf: 'mispriced',
     delta: -0.44,
@@ -1031,7 +1047,7 @@ export const INITIAL_DISCOVERY_CONTRACTS = [
     health: 94,
     expectedMove: '+62.4%',
     action: 'ENTER' as const,
-    narrative: 'Block institutional trades sweep SPX 7700 strike, representing $14.2M notional.',
+    narrative: 'Sample tile: illustrates an out-of-the-money call sweep pattern. Not a live print.',
     tagText: 'WHALE',
     shelf: 'whale',
     delta: 0.35,
@@ -1075,7 +1091,7 @@ export const INITIAL_DISCOVERY_CONTRACTS = [
     health: 89,
     expectedMove: '+44.1%',
     action: 'ENTER' as const,
-    narrative: 'Sweeps executed on Ask price consistently over the last 10 minutes. Bull run.',
+    narrative: 'Sample tile: illustrates repeated at-ask call buying. Not a live print.',
     tagText: 'WHALE',
     shelf: 'whale',
     delta: 0.34,
@@ -1119,7 +1135,7 @@ export const INITIAL_DISCOVERY_CONTRACTS = [
     health: 85,
     expectedMove: '+52.0%',
     action: 'HOLD' as const,
-    narrative: 'Huge defensive protective put basket sweep ($22.4M notional hedge) detected.',
+    narrative: 'Sample tile: illustrates a protective put hedge pattern. Not a live print.',
     tagText: 'WHALE',
     shelf: 'whale',
     delta: -0.19,
@@ -1158,9 +1174,12 @@ export const INITIAL_DISCOVERY_CONTRACTS = [
 ];
 
 /**
- * Builds the seeded options-flow feed with timestamps relative to *now*, so the
- * first paint looks like prints that just happened (the old hard-coded 01:34:25
- * times clashed with the live ticks that stamp the current UTC time).
+ * Builds the SAMPLE options-flow tape used to seed the Trade Finder feed before a
+ * real options feed is connected. These are illustrative rows, NOT real prints —
+ * the UI labels the feed as sample data. Timestamps are stamped relative to *now*
+ * only so the seeded rows sort correctly next to any later ticks (the old
+ * hard-coded 01:34:25 times clashed with the current-UTC tick stamps); they do
+ * not indicate that a real trade occurred at that moment.
  */
 export function buildInitialDiscoveryFeedLogs() {
   const now = Date.now();

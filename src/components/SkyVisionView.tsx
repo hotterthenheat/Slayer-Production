@@ -8,6 +8,10 @@ import { ASSET_LIST, optionExpiryLabel } from '../data';
 import { Zap, FileText, CheckCircle2, Maximize2, Minimize2, Layers, Target, Activity } from 'lucide-react';
 import { DiscoveryView } from './DiscoveryView';
 import { SkyVisionV2Panel } from './SkyVisionV2Panel';
+// Pure, client-safe math (no server-only deps): shared Black-Scholes greeks used
+// as a clearly-labelled MODEL fallback when the premium-gated server option_chain
+// is unavailable. `ChainContract` mirrors the server's per-strike chain shape.
+import { calculateAnalyticGreeks, type ChainContract } from '../lib/v11Math';
 
 // OptionCard Component for selection - strictly no Delta/Gamma clutter (Bug #4, Bug #7)
 // Hoisted to module scope so its identity is stable across renders (prevents remounting
@@ -118,20 +122,78 @@ export function SkyVisionView() {
   const isDeepSkyseyeExpanded = useContractStore(s => s.isDeepSkyseyeExpanded);
   const setIsDeepSkyseyeExpanded = useContractStore(s => s.setIsDeepSkyseyeExpanded);
 
+  // ── REAL market data source of truth ──────────────────────────────────────
+  // The server publishes a near-the-money option chain with REAL greeks (analytic
+  // vanna/charm) when keys are live, and a high-fidelity model when keyless. It is
+  // premium-gated (tier 3+), so it can be `undefined` — guard every access.
+  const liveChain = (serverState?.option_chain as ChainContract[] | undefined) ?? undefined;
+  const hasLiveChain = Array.isArray(liveChain) && liveChain.length > 0;
+  // True only when a real provider chain backs the data (not the keyless model).
+  const isChainLive = !!serverState?.chain_live && hasLiveChain;
+
+  // Nearest matching real contract in the chain for a given strike + side.
+  const findChainContract = React.useCallback(
+    (strike: number, isCall: boolean): ChainContract | undefined => {
+      if (!hasLiveChain || !liveChain) return undefined;
+      const wantType = isCall ? 'call' : 'put';
+      let best: ChainContract | undefined;
+      let bestDist = Infinity;
+      for (const c of liveChain) {
+        if (c.type !== wantType) continue;
+        const d = Math.abs(c.strike - strike);
+        if (d < bestDist) { bestDist = d; best = c; }
+      }
+      return best;
+    },
+    [hasLiveChain, liveChain]
+  );
+
+  // ATM implied vol from the chain (contract whose strike sits closest to spot);
+  // falls back to the asset's static volatility. Used to seed the MODEL greeks.
+  const atmIv = useMemo(() => {
+    let iv = selectedAsset.volatility || 0.17;
+    if (hasLiveChain && liveChain) {
+      let best = Infinity;
+      for (const c of liveChain) {
+        const d = Math.abs(c.strike - spotPrice);
+        if (d < best && isFinite(c.iv) && c.iv > 0) { best = d; iv = c.iv; }
+      }
+    }
+    return iv;
+  }, [hasLiveChain, liveChain, spotPrice, selectedAsset.volatility]);
+
 
   // Render the preloaded Strikes Chain Centered on Spot but display them as list of OptionCards (Bug #4)
   const strikesList = useMemo(() => {
     const step = spotPrice > 1000 ? 50 : spotPrice > 150 ? 5 : 1;
     const center = Math.round(spotPrice / step) * step;
-    
+
+    // Mid price from a real chain contract's bid/ask, when present.
+    const chainMid = (c?: ChainContract): number | null => {
+      if (!c) return null;
+      const bid = isFinite(c.bid) ? c.bid : 0;
+      const ask = isFinite(c.ask) ? c.ask : 0;
+      const mid = bid > 0 && ask > 0 ? (bid + ask) / 2 : (ask || bid);
+      return mid > 0 ? Number(mid.toFixed(2)) : null;
+    };
+
     // Generate 10 strike rows centered on active Spot Price
     return [-4, -3, -2, -1, 0, 1, 2, 3, 4, 5].map(factor => {
       const strikeValue = center + (factor * step);
       const isSpotRow = factor === 0;
 
-      // Calls logic
-      let callHealth = 88;
-      if (strikeValue <= spotPrice) {
+      // Prefer the REAL chain contract for this strike + side (source of truth).
+      const callContract = findChainContract(strikeValue, true);
+      const putContract = findChainContract(strikeValue, false);
+
+      // Health: when a real chain is present, derive it from the contract's REAL
+      // delta (probability-of-finishing-ITM proxy) so it is data-backed rather
+      // than a hardcoded-volatility distance formula. Otherwise fall back to the
+      // existing positional heuristic (this list is not labelled "live").
+      let callHealth: number;
+      if (callContract && isFinite(callContract.delta)) {
+        callHealth = Math.max(30, Math.min(98, Math.round(Math.abs(callContract.delta) * 100)));
+      } else if (strikeValue <= spotPrice) {
         callHealth = Math.round(96 - (spotPrice - strikeValue) * 0.04);
       } else {
         callHealth = Math.round(91 - (strikeValue - spotPrice) * 1.6 / step);
@@ -139,9 +201,10 @@ export function SkyVisionView() {
       callHealth = Math.max(30, Math.min(98, callHealth));
       const callAction = callHealth >= 94 ? 'ENTER' : callHealth >= 75 ? 'HOLD' : callHealth <= 45 ? 'SELL' : 'REDUCE';
 
-      // Puts logic
-      let putHealth = 65;
-      if (strikeValue >= spotPrice) {
+      let putHealth: number;
+      if (putContract && isFinite(putContract.delta)) {
+        putHealth = Math.max(25, Math.min(94, Math.round(Math.abs(putContract.delta) * 100)));
+      } else if (strikeValue >= spotPrice) {
         putHealth = Math.round(34 - (strikeValue - spotPrice) * 1.1 / step);
       } else {
         putHealth = Math.round(79 + (spotPrice - strikeValue) * 0.4 / step);
@@ -149,20 +212,23 @@ export function SkyVisionView() {
       putHealth = Math.max(25, Math.min(94, putHealth));
       const putAction = putHealth >= 88 ? 'ENTER' : putHealth >= 65 ? 'HOLD' : putHealth <= 40 ? 'SELL' : 'REDUCE';
 
-      // Dynamic contract premium formulation based on distance to Spot Price
+      // Price: prefer the real chain bid/ask mid; otherwise the local distance
+      // estimate (× static vol) as a clearly non-live fallback.
       const callDistance = Math.abs(spotPrice - strikeValue);
       const callNormalizedDistance = callDistance / spotPrice;
-      const callPremiumBase = strikeValue <= spotPrice 
+      const callPremiumBase = strikeValue <= spotPrice
         ? (spotPrice * 0.003) * Math.exp((spotPrice - strikeValue) / spotPrice * 3)
         : (spotPrice * 0.003) / Math.exp(callNormalizedDistance * 60);
-      const callPrice = Math.max(0.20, Number((callPremiumBase * (1 + selectedAsset.volatility * 0.15)).toFixed(2)));
+      const callPrice = chainMid(callContract)
+        ?? Math.max(0.20, Number((callPremiumBase * (1 + selectedAsset.volatility * 0.15)).toFixed(2)));
 
       const putDistance = Math.abs(spotPrice - strikeValue);
       const putNormalizedDistance = putDistance / spotPrice;
       const putPremiumBase = strikeValue >= spotPrice
         ? (spotPrice * 0.0035) * Math.exp((strikeValue - spotPrice) / spotPrice * 3)
         : (spotPrice * 0.0035) / Math.exp(putNormalizedDistance * 65);
-      const putPrice = Math.max(0.20, Number((putPremiumBase * (1 + selectedAsset.volatility * 0.15)).toFixed(2)));
+      const putPrice = chainMid(putContract)
+        ?? Math.max(0.20, Number((putPremiumBase * (1 + selectedAsset.volatility * 0.15)).toFixed(2)));
 
       return {
         strike: strikeValue,
@@ -177,7 +243,7 @@ export function SkyVisionView() {
         putPrice
       };
     });
-  }, [spotPrice, selectedAsset.volatility]);
+  }, [spotPrice, selectedAsset.volatility, findChainContract]);
 
   // Memoize array props for InteractiveChart so they keep a stable reference when the
   // underlying data is unchanged. The inline `|| []` + optional chaining otherwise create
@@ -190,52 +256,80 @@ export function SkyVisionView() {
 
   // Active decision and parameters derived
   const selectedFocusedOption = strikesList.find(s => s.strike === activeStrike);
-  // Premium for the active contract: live server mid when available, otherwise the
-  // computed premium for the focused strike/side (derived from real spot price).
+  // Real contract for the active strike + side, when the server chain is present.
+  const activeChainContract = findChainContract(activeStrike, selectedOptionType === 'C');
+  const activeChainMid = activeChainContract && isFinite(activeChainContract.bid) && isFinite(activeChainContract.ask)
+    ? (() => {
+        const b = activeChainContract.bid, a = activeChainContract.ask;
+        const mid = b > 0 && a > 0 ? (b + a) / 2 : (a || b);
+        return mid > 0 ? mid : null;
+      })()
+    : null;
+  // Premium for the active contract: live server mid first, then the matching
+  // chain contract's bid/ask mid, then the focused strike/side estimate.
   const activePrice = serverState?.optionPremiumFloat
+    ?? activeChainMid
     ?? (selectedFocusedOption
       ? (selectedOptionType === 'C' ? selectedFocusedOption.callPrice : selectedFocusedOption.putPrice)
       : 0);
-  const tradeHealthValue = selectedFocusedOption
-    ? (selectedOptionType === 'C' ? selectedFocusedOption.callHealth : selectedFocusedOption.putHealth) 
-    : 85;
+  // Confidence = the server's REAL per-contract trade_health (0–100) when present;
+  // otherwise the focused-row health proxy. Guard: trade_health can be missing.
+  const serverTradeHealth = typeof serverState?.trade_health === 'number' && isFinite(serverState.trade_health)
+    ? Math.max(0, Math.min(100, Math.round(serverState.trade_health)))
+    : null;
+  const tradeHealthValue = serverTradeHealth
+    ?? (selectedFocusedOption
+      ? (selectedOptionType === 'C' ? selectedFocusedOption.callHealth : selectedFocusedOption.putHealth)
+      : 85);
   const activeRecommendation = selectedFocusedOption
     ? (selectedOptionType === 'C' ? selectedFocusedOption.callAction : selectedFocusedOption.putAction)
     : (activeContract?.recommendation || 'HOLD');
-  const expectedMoveField = selectedFocusedOption
-    ? (selectedOptionType === 'C' ? selectedFocusedOption.callMove : selectedFocusedOption.putMove)
-    : (activeContract?.expectedMove || 42);
+  // Expected move = the server's REAL expected_move (parsed from its `pct` string,
+  // e.g. "+42%") when present; otherwise the activeContract value, then a neutral
+  // positional heuristic. Mirrors the store's own expected_move.pct parsing.
+  const serverExpectedMove = (() => {
+    const raw = serverState?.expected_move?.pct;
+    if (raw == null) return null;
+    const n = Number(String(raw).replace(/[^0-9.]/g, ''));
+    return isFinite(n) && n > 0 ? Math.round(n) : null;
+  })();
+  const expectedMoveField = serverExpectedMove
+    ?? activeContract?.expectedMove
+    ?? (selectedFocusedOption
+      ? (selectedOptionType === 'C' ? selectedFocusedOption.callMove : selectedFocusedOption.putMove)
+      : 42);
 
-  // Dynamic Greeks Attribution for the "Physics Grid"
+  // Greeks for the "Physics Grid" — honesty-first source of truth:
+  //  1. REAL per-strike greeks from the server option_chain when present (the
+  //     server publishes analytic delta/gamma/vega/theta). `source: 'live'` only
+  //     when a real provider backs the chain, else 'chain' (server model chain).
+  //  2. Otherwise the SHARED, pure Black-Scholes `calculateAnalyticGreeks` seeded
+  //     with the best available IV (ATM chain iv, else static vol), flagged
+  //     `source: 'model'` so the UI never presents it as live.
+  // The OLD local Math.exp distance approximation (ignored real greeks, used a
+  // static vol as IV, shown unlabelled on a "Live Terminal") has been removed.
   const derivedGreeks = useMemo(() => {
     const isCallOption = selectedOptionType === 'C';
-    const distToStrike = activeStrike - spotPrice;
-    const iv = selectedAsset.volatility || 0.17;
-    const distNorm = distToStrike / (spotPrice * 0.05 || 1); // Normalize space
+    const fmt = (g: { delta: number; gamma: number; theta: number; vega: number }, source: 'live' | 'chain' | 'model') => ({
+      delta: isFinite(g.delta) ? Number(g.delta.toFixed(2)) : 0,
+      gamma: isFinite(g.gamma) ? Number(g.gamma.toFixed(4)) : 0,
+      theta: isFinite(g.theta) ? Number(g.theta.toFixed(2)) : 0,
+      vega: isFinite(g.vega) ? Number(g.vega.toFixed(2)) : 0,
+      source,
+    });
 
-    // Delta estimation
-    let delta = isCallOption ? 1 / (1 + Math.exp(distNorm)) : -1 / (1 + Math.exp(-distNorm));
-    delta = Math.max(isCallOption ? 0.02 : -0.98, Math.min(isCallOption ? 0.98 : -0.02, delta));
+    // 1. Real greeks straight from the matching server chain contract.
+    if (activeChainContract) {
+      return fmt(activeChainContract, isChainLive ? 'live' : 'chain');
+    }
 
-    // Gamma approximation
-    let gamma = (1 / (Math.sqrt(2 * Math.PI) * 1.6)) * Math.exp(-0.5 * Math.pow(distNorm, 2)) * (0.04 * (1.2 + iv));
-    gamma = Math.max(0.001, gamma);
-
-    // Theta approximation (always negative decay)
-    let theta = -0.6 * (1.1 + Math.exp(-0.35 * Math.pow(distNorm, 2))) * (1 + iv);
-    theta = Math.min(-0.02, theta);
-
-    // Vega approximation
-    let vega = 0.16 * Math.exp(-0.45 * Math.pow(distNorm, 2)) * (1.1 + iv);
-    vega = Math.max(0.01, vega);
-
-    return {
-      delta: Number(delta.toFixed(2)),
-      gamma: Number(gamma.toFixed(4)),
-      theta: Number(theta.toFixed(2)),
-      vega: Number(vega.toFixed(2))
-    };
-  }, [activeStrike, spotPrice, selectedOptionType, selectedAsset]);
+    // 2. Model fallback via the shared pure Black-Scholes greeks (client-safe).
+    //    No exact DTE is surfaced in this view; 14d matches the platform's other
+    //    client-side analytic default (QuantSuite). Clearly marked as MODEL.
+    const dteDays = 14;
+    const g = calculateAnalyticGreeks(spotPrice, activeStrike, dteDays, atmIv, isCallOption);
+    return fmt(g, 'model');
+  }, [activeChainContract, isChainLive, spotPrice, activeStrike, selectedOptionType, atmIv]);
 
   // Dynamic Forensic Thesis generator
   const forensicThesis = useMemo(() => {
@@ -451,7 +545,18 @@ export function SkyVisionView() {
                   </div>
                 </div>
 
-                {/* Greeks 2x2 grid */}
+                {/* Greeks 2x2 grid — labelled by provenance so a model/estimate
+                    fallback is never presented as live data. */}
+                <div className="flex items-center justify-between pt-1">
+                  <span className="text-[8px] text-[var(--text-tertiary)] uppercase tracking-widest font-black">Greeks</span>
+                  <span className={`text-[7.5px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded border ${
+                    derivedGreeks.source === 'live'
+                      ? 'text-[#4ADE80] border-[#4ADE80]/30 bg-[#4ADE80]/10'
+                      : 'text-[var(--text-tertiary)] border-[var(--border)] bg-[var(--surface-3)]'
+                  }`}>
+                    {derivedGreeks.source === 'live' ? 'Live' : derivedGreeks.source === 'chain' ? 'Model Chain' : 'Model Est.'}
+                  </span>
+                </div>
                 <div className="grid grid-cols-2 gap-1.5 border-t border-b border-[var(--border)] py-3 font-mono text-[9px]">
                   <div className="flex justify-between px-1.5 py-1 bg-[var(--surface-3)] border border-[var(--border)] rounded">
                     <span className="text-[var(--text-tertiary)] font-semibold tracking-wider">DELTA</span>
@@ -469,7 +574,7 @@ export function SkyVisionView() {
                   </div>
                   <div className="flex justify-between px-1.5 py-1 bg-[var(--surface-3)] border border-[var(--border)] rounded">
                     <span className="text-[var(--text-tertiary)] font-semibold tracking-wider">VEGA</span>
-                    <span className="text-[#60A5FA] font-bold">+{derivedGreeks.vega}</span>
+                    <span className="text-[#60A5FA] font-bold">{derivedGreeks.vega > 0 ? '+' : ''}{derivedGreeks.vega}</span>
                   </div>
                 </div>
 

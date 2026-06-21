@@ -514,7 +514,7 @@ export default function QuantSuiteView() {
   ];
 
   return (
-    <div className="flex flex-col gap-5 w-full text-[var(--text-primary)] bg-black border border-[var(--border)] rounded-lg p-4 font-mono select-none" id="quant-suite-terminal-view">
+    <div className="flex flex-col gap-5 w-full text-[var(--text-primary)] bg-[var(--surface)] border border-[var(--border)] rounded-lg p-4 font-mono select-none" id="quant-suite-terminal-view">
       {/* Header + live summary stats */}
       <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center border-b border-[var(--border)] pb-4 gap-4">
         <div>
@@ -524,8 +524,8 @@ export default function QuantSuiteView() {
             <span
               className={`text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded border ${
                 isLiveData
-                  ? 'text-[#4ADE80] border-[#4ADE80]/40 bg-[#4ADE80]/10'
-                  : 'text-[#FBBF24] border-[#FBBF24]/40 bg-[#FBBF24]/10'
+                  ? 'text-[var(--success)] border-[var(--success)]/40 bg-[var(--success)]/10'
+                  : 'text-[var(--warning)] border-[var(--warning)]/40 bg-[var(--warning)]/10'
               }`}
               title={isLiveData
                 ? 'Computing on the live option chain streamed from the server.'
@@ -546,7 +546,7 @@ export default function QuantSuiteView() {
           </div>
           <div className="flex flex-col bg-[var(--surface)] border border-[var(--border)] rounded-md px-3 py-2">
             <span className="text-[10px] text-[var(--text-tertiary)] uppercase tracking-wide">RND Skew</span>
-            <span className={`text-[13px] font-bold tabular-nums ${rndResult.skewness < 0 ? 'text-[#FBBF24]' : 'text-[#4ADE80]'}`}>{rndResult.skewness.toFixed(3)}</span>
+            <span className={`text-[13px] font-bold tabular-nums ${rndResult.skewness < 0 ? 'text-[var(--warning)]' : 'text-[var(--success)]'}`}>{rndResult.skewness.toFixed(3)}</span>
           </div>
           <div className="flex flex-col bg-[var(--surface)] border border-[var(--border)] rounded-md px-3 py-2">
             <span className="text-[10px] text-[var(--text-tertiary)] uppercase tracking-wide">RV (Y-Z)</span>
@@ -554,7 +554,7 @@ export default function QuantSuiteView() {
           </div>
           <div className="flex flex-col bg-[var(--surface)] border border-[var(--border)] rounded-md px-3 py-2">
             <span className="text-[10px] text-[var(--text-tertiary)] uppercase tracking-wide">25Δ RR</span>
-            <span className={`text-[13px] font-bold tabular-nums ${skewMetrics.riskReversal25D < 0 ? 'text-[#F87171]' : 'text-[#4ADE80]'}`}>{(skewMetrics.riskReversal25D * 100).toFixed(2)}%</span>
+            <span className={`text-[13px] font-bold tabular-nums ${skewMetrics.riskReversal25D < 0 ? 'text-[var(--danger)]' : 'text-[var(--success)]'}`}>{(skewMetrics.riskReversal25D * 100).toFixed(2)}%</span>
           </div>
         </div>
       </div>
@@ -569,13 +569,13 @@ export default function QuantSuiteView() {
               onClick={() => setActiveSubTab(t.id)}
               className={`shrink-0 px-3.5 py-2.5 text-[10px] font-bold uppercase tracking-wider transition-colors cursor-pointer border-b-2 flex items-center gap-1.5 ${
                 active
-                  ? 'text-[var(--text-primary)] border-[#4ADE80]'
+                  ? 'text-[var(--text-primary)] border-[var(--success)]'
                   : 'text-[var(--text-tertiary)] hover:text-[var(--text-primary)] border-transparent'
               }`}
             >
               {t.label}
               {t.id === 'alerts' && alertsLog.length > 0 && (
-                <span className="rounded-full bg-[#4ADE80]/15 text-[#4ADE80] text-[10px] font-bold px-1.5 leading-4 tabular-nums">
+                <span className="rounded-full bg-[var(--success)]/15 text-[var(--success)] text-[10px] font-bold px-1.5 leading-4 tabular-nums">
                   {alertsLog.length}
                 </span>
               )}
@@ -668,7 +668,7 @@ export default function QuantSuiteView() {
                       {[
                         { l: 'Implied 1σ Spread', v: `${(rndResult.stdDev / spotPrice * 100).toFixed(2)}%`, t: 'text-[var(--text-primary)]' },
                         { l: 'Risk-Neutral Mean', v: rndResult.mean.toFixed(2), t: 'text-[var(--text-primary)]' },
-                        { l: 'PDF Skewness', v: rndResult.skewness.toFixed(4), t: rndResult.skewness < 0 ? 'text-[#F87171]' : 'text-[#4ADE80]' },
+                        { l: 'PDF Skewness', v: rndResult.skewness.toFixed(4), t: rndResult.skewness < 0 ? 'text-[var(--danger)]' : 'text-[var(--success)]' },
                         { l: 'Excess Kurtosis', v: rndResult.kurtosis.toFixed(4), t: 'text-[var(--text-secondary)]' },
                       ].map((row, i) => (
                         <div key={i} className="flex justify-between border-b border-[var(--border)] pb-1.5">
@@ -678,7 +678,7 @@ export default function QuantSuiteView() {
                       ))}
                       <div className="flex justify-between items-center">
                         <span className="text-[10px] text-[var(--text-tertiary)] uppercase tracking-wide">Tail Regime</span>
-                        <span className={`text-[10px] font-bold uppercase tracking-wide ${rndResult.isFatTailed ? 'text-[#F87171]' : 'text-[var(--text-tertiary)]'}`}>
+                        <span className={`text-[10px] font-bold uppercase tracking-wide ${rndResult.isFatTailed ? 'text-[var(--danger)]' : 'text-[var(--text-tertiary)]'}`}>
                           {rndResult.isFatTailed ? 'Fat Tails' : 'Normal'}
                         </span>
                       </div>
@@ -686,10 +686,10 @@ export default function QuantSuiteView() {
                   </div>
 
                   <div className="bg-[var(--surface)] border border-[var(--border)] p-4 rounded-lg">
-                    <SectionHeader icon={<Scale className="w-3.5 h-3.5 text-[#FBBF24]" />} label="Probability Pricer" />
+                    <SectionHeader icon={<Scale className="w-3.5 h-3.5 text-[var(--warning)]" />} label="Probability Pricer" />
                     <div className="flex justify-between items-center mb-2">
                       <span className="text-[10px] text-[var(--text-tertiary)] uppercase tracking-wide">1σ Move Strike</span>
-                      <span className="text-[14px] font-bold text-[#FBBF24] tabular-nums">{probStrike.toLocaleString(undefined, { maximumFractionDigits: 0 })}</span>
+                      <span className="text-[14px] font-bold text-[var(--warning)] tabular-nums">{probStrike.toLocaleString(undefined, { maximumFractionDigits: 0 })}</span>
                     </div>
                     <div className="bg-[var(--surface-2)] border border-[var(--border)] p-2.5 rounded-md">
                       <p className="text-[11px] text-[var(--text-secondary)] leading-relaxed">
@@ -709,9 +709,9 @@ export default function QuantSuiteView() {
                     <SectionHeader icon={<Activity className="w-3.5 h-3.5 text-[var(--text-tertiary)]" />} label="Realized Volatility Estimators (20d)" />
                     <div className="grid grid-cols-3 gap-3">
                       {[
-                        { l: 'Parkinson', v: volSuite.parkinson, t: 'text-[#F87171]', d: 'high/low range; excludes overnight gaps' },
-                        { l: 'Garman-Klass', v: volSuite.garmanKlass, t: 'text-[#4ADE80]', d: 'OHLC; captures intraday range' },
-                        { l: 'Yang-Zhang', v: volSuite.yangZhang, t: 'text-[#FBBF24]', d: 'min-variance; gaps + intraday drift' },
+                        { l: 'Parkinson', v: volSuite.parkinson, t: 'text-[var(--danger)]', d: 'high/low range; excludes overnight gaps' },
+                        { l: 'Garman-Klass', v: volSuite.garmanKlass, t: 'text-[var(--success)]', d: 'OHLC; captures intraday range' },
+                        { l: 'Yang-Zhang', v: volSuite.yangZhang, t: 'text-[var(--warning)]', d: 'min-variance; gaps + intraday drift' },
                       ].map((e, i) => (
                         <div key={i} className="bg-[var(--surface-2)] border border-[var(--border)] rounded-md p-3 flex flex-col items-center text-center">
                           <span className="text-[10px] text-[var(--text-tertiary)] uppercase tracking-wide">{e.l}</span>
@@ -726,9 +726,9 @@ export default function QuantSuiteView() {
                     <SectionHeader icon={<TrendingUp className="w-3.5 h-3.5 text-[var(--text-tertiary)]" />} label="Variance Risk Premium (IV − RV)" />
                     <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                       <StatTile label="ATM IV" value={`${(defaultIv * 100).toFixed(2)}%`} />
-                      <StatTile label="Yang-Zhang RV" value={`${(volSuite.yangZhang * 100).toFixed(2)}%`} tone="text-[#FBBF24]" />
-                      <StatTile label="VRP Spread" value={`${(volSuite.varianceRiskPremium * 100).toFixed(2)} pts`} tone={volSuite.varianceRiskPremium >= 0 ? 'text-[#4ADE80]' : 'text-[#F87171]'} />
-                      <StatTile label="VRP Percentile" value={`${volSuite.vrpPercentile}th`} tone="text-[#4ADE80]" />
+                      <StatTile label="Yang-Zhang RV" value={`${(volSuite.yangZhang * 100).toFixed(2)}%`} tone="text-[var(--warning)]" />
+                      <StatTile label="VRP Spread" value={`${(volSuite.varianceRiskPremium * 100).toFixed(2)} pts`} tone={volSuite.varianceRiskPremium >= 0 ? 'text-[var(--success)]' : 'text-[var(--danger)]'} />
+                      <StatTile label="VRP Percentile" value={`${volSuite.vrpPercentile}th`} tone="text-[var(--success)]" />
                     </div>
                   </div>
                 </div>
@@ -742,7 +742,7 @@ export default function QuantSuiteView() {
                         <th className="font-semibold">MIN</th>
                         <th className="font-semibold">P50</th>
                         <th className="font-semibold">MAX</th>
-                        <th className="text-right font-semibold text-[#FBBF24]">CUR</th>
+                        <th className="text-right font-semibold text-[var(--warning)]">CUR</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -752,7 +752,7 @@ export default function QuantSuiteView() {
                           <td className="text-[var(--text-tertiary)]">{(c.min * 100).toFixed(0)}%</td>
                           <td>{(c.p50 * 100).toFixed(0)}%</td>
                           <td className="text-[var(--text-tertiary)]">{(c.max * 100).toFixed(0)}%</td>
-                          <td className="text-right text-[#4ADE80] font-bold tabular-nums">{(c.current * 100).toFixed(0)}%</td>
+                          <td className="text-right text-[var(--success)] font-bold tabular-nums">{(c.current * 100).toFixed(0)}%</td>
                         </tr>
                       ))}
                     </tbody>
@@ -783,7 +783,7 @@ export default function QuantSuiteView() {
                         onClick={() => setActivePreset(p)}
                         className={`px-2 py-2 text-[10px] font-bold uppercase tracking-wide rounded-md border cursor-pointer transition-colors ${
                           activePreset === p
-                            ? 'border-[#4ADE80]/50 bg-[#4ADE80]/10 text-[#4ADE80]'
+                            ? 'border-[var(--success)]/50 bg-[var(--success)]/10 text-[var(--success)]'
                             : 'border-[var(--border)] text-[var(--text-tertiary)] hover:text-[var(--text-primary)] hover:bg-[var(--surface-2)]'
                         }`}
                       >
@@ -803,10 +803,10 @@ export default function QuantSuiteView() {
                     </div>
                     {strategyLegs.map(leg => (
                       <div key={leg.id} className="grid grid-cols-12 gap-2 items-center bg-[var(--surface-2)] border border-[var(--border)] rounded-md px-2 py-2 text-[11px]">
-                        <span className={`col-span-3 font-bold uppercase ${leg.action === 'buy' ? 'text-[#4ADE80]' : 'text-[#F87171]'}`}>
+                        <span className={`col-span-3 font-bold uppercase ${leg.action === 'buy' ? 'text-[var(--success)]' : 'text-[var(--danger)]'}`}>
                           {leg.action === 'buy' ? 'Long' : 'Short'}
                         </span>
-                        <span className={`col-span-2 text-center font-bold uppercase ${leg.type === 'call' ? 'text-[#4ADE80]' : 'text-[#F87171]'}`}>
+                        <span className={`col-span-2 text-center font-bold uppercase ${leg.type === 'call' ? 'text-[var(--success)]' : 'text-[var(--danger)]'}`}>
                           {leg.type}
                         </span>
                         <span className="col-span-3 text-right font-bold tabular-nums text-[var(--text-primary)]">{leg.strike.toLocaleString()}</span>
@@ -853,23 +853,23 @@ export default function QuantSuiteView() {
                     <StatTile
                       label="Net Debit / Credit"
                       value={strategySuite.netPremium >= 0 ? `Dr $${Math.abs(strategySuite.netPremium).toLocaleString()}` : `Cr $${Math.abs(strategySuite.netPremium).toLocaleString()}`}
-                      tone={strategySuite.netPremium >= 0 ? 'text-[#FBBF24]' : 'text-[#4ADE80]'}
+                      tone={strategySuite.netPremium >= 0 ? 'text-[var(--warning)]' : 'text-[var(--success)]'}
                     />
-                    <StatTile label="Prob. of Profit" value={`${(strategySuite.pop * 100).toFixed(1)}%`} tone="text-[#FBBF24]" />
+                    <StatTile label="Prob. of Profit" value={`${(strategySuite.pop * 100).toFixed(1)}%`} tone="text-[var(--warning)]" />
                     <StatTile
                       label="Max Profit"
                       value={typeof strategySuite.maxProfit === 'number' ? `$${strategySuite.maxProfit.toLocaleString()}` : strategySuite.maxProfit}
-                      tone="text-[#4ADE80]"
+                      tone="text-[var(--success)]"
                     />
                     <StatTile
                       label="Max Loss"
                       value={typeof strategySuite.maxLoss === 'number' ? `$${Math.abs(strategySuite.maxLoss).toLocaleString()}` : strategySuite.maxLoss}
-                      tone="text-[#F87171]"
+                      tone="text-[var(--danger)]"
                     />
                   </div>
 
                   <div className="bg-[var(--surface-2)] border border-[var(--border)] p-3 rounded-md">
-                    <span className="text-[10px] text-[#4ADE80] font-semibold uppercase tracking-wide block">Half-Kelly Size</span>
+                    <span className="text-[10px] text-[var(--success)] font-semibold uppercase tracking-wide block">Half-Kelly Size</span>
                     <span className="text-[16px] font-bold text-[var(--text-primary)] block mt-1 tabular-nums">{(strategySuite.kellySizing * 100).toFixed(1)}% of capital</span>
                     <p className="text-[10px] text-[var(--text-tertiary)] mt-1 leading-relaxed">
                       Sized from the RND-implied edge. Capped at 20% to bound drawdowns.
@@ -955,7 +955,7 @@ export default function QuantSuiteView() {
                                 style={{ backgroundColor: bg, borderColor: bd }}
                                 title={`Spot ${(spotScr * 100).toFixed(0)}% · Vol ${(volScr * 100).toFixed(0)}%`}
                               >
-                                <span className={`text-[10px] ${pnlValue > 0 ? 'text-[#4ADE80]' : pnlValue < 0 ? 'text-[#F87171]' : 'text-[var(--text-tertiary)]'}`}>
+                                <span className={`text-[10px] ${pnlValue > 0 ? 'text-[var(--success)]' : pnlValue < 0 ? 'text-[var(--danger)]' : 'text-[var(--text-tertiary)]'}`}>
                                   {pnlValue === 0 ? '$0' : pnlValue > 0 ? `+$${pnlValue.toLocaleString(undefined, { maximumFractionDigits: 0 })}` : `-$${Math.abs(pnlValue).toLocaleString(undefined, { maximumFractionDigits: 0 })}`}
                                 </span>
                               </div>
@@ -977,12 +977,12 @@ export default function QuantSuiteView() {
                     <div className="grid grid-cols-1 gap-2">
                       <div className="bg-[var(--surface-2)] border border-[var(--border)] rounded-md p-3">
                         <span className="text-[10px] text-[var(--text-tertiary)] uppercase tracking-wide block">Worst Case ({selectedDteScenario}d)</span>
-                        <span className="text-[15px] font-bold text-[#F87171] tabular-nums block mt-1">{fmtMoney(scenarioExtremes.worst.pnl)}</span>
+                        <span className="text-[15px] font-bold text-[var(--danger)] tabular-nums block mt-1">{fmtMoney(scenarioExtremes.worst.pnl)}</span>
                         <span className="text-[10px] text-[var(--text-tertiary)]">at spot {(scenarioExtremes.worst.spotChange * 100).toFixed(0)}% · vol {(scenarioExtremes.worst.volChange * 100).toFixed(0)}%</span>
                       </div>
                       <div className="bg-[var(--surface-2)] border border-[var(--border)] rounded-md p-3">
                         <span className="text-[10px] text-[var(--text-tertiary)] uppercase tracking-wide block">Best Case ({selectedDteScenario}d)</span>
-                        <span className="text-[15px] font-bold text-[#4ADE80] tabular-nums block mt-1">{fmtMoney(scenarioExtremes.best.pnl)}</span>
+                        <span className="text-[15px] font-bold text-[var(--success)] tabular-nums block mt-1">{fmtMoney(scenarioExtremes.best.pnl)}</span>
                         <span className="text-[10px] text-[var(--text-tertiary)]">at spot {(scenarioExtremes.best.spotChange * 100).toFixed(0)}% · vol {(scenarioExtremes.best.volChange * 100).toFixed(0)}%</span>
                       </div>
                     </div>
@@ -1001,8 +1001,8 @@ export default function QuantSuiteView() {
                     right={
                       <div className="flex gap-1.5">
                         <button onClick={handleAddPortfolioStock} className="px-2 py-1 border border-[var(--border)] text-[10px] rounded font-semibold hover:bg-[var(--surface-2)] uppercase tracking-wide cursor-pointer text-[var(--text-secondary)]">+ Shares</button>
-                        <button onClick={() => handleAddPortfolioOption('call')} className="px-2 py-1 border border-[var(--border)] text-[10px] rounded font-semibold hover:bg-[var(--surface-2)] uppercase tracking-wide cursor-pointer text-[#4ADE80]">+ Call</button>
-                        <button onClick={() => handleAddPortfolioOption('put')} className="px-2 py-1 border border-[var(--border)] text-[10px] rounded font-semibold hover:bg-[var(--surface-2)] uppercase tracking-wide cursor-pointer text-[#F87171]">+ Put</button>
+                        <button onClick={() => handleAddPortfolioOption('call')} className="px-2 py-1 border border-[var(--border)] text-[10px] rounded font-semibold hover:bg-[var(--surface-2)] uppercase tracking-wide cursor-pointer text-[var(--success)]">+ Call</button>
+                        <button onClick={() => handleAddPortfolioOption('put')} className="px-2 py-1 border border-[var(--border)] text-[10px] rounded font-semibold hover:bg-[var(--surface-2)] uppercase tracking-wide cursor-pointer text-[var(--danger)]">+ Put</button>
                       </div>
                     }
                   />
@@ -1016,7 +1016,7 @@ export default function QuantSuiteView() {
                       portfolio.map(p => (
                         <div key={p.id} className="flex items-center justify-between bg-[var(--surface-2)] border border-[var(--border)] p-2.5 rounded-md text-[11px]">
                           <div className="flex items-center gap-2 min-w-0">
-                            <span className={`w-9 text-[10px] text-center font-bold px-1 py-0.5 rounded uppercase ${p.type === 'stock' ? 'bg-[var(--surface-3)] text-[var(--text-secondary)]' : p.type === 'call' ? 'bg-[#4ADE80]/10 text-[#4ADE80]' : 'bg-[#F87171]/10 text-[#F87171]'}`}>
+                            <span className={`w-9 text-[10px] text-center font-bold px-1 py-0.5 rounded uppercase ${p.type === 'stock' ? 'bg-[var(--surface-3)] text-[var(--text-secondary)]' : p.type === 'call' ? 'bg-[var(--success)]/10 text-[var(--success)]' : 'bg-[var(--danger)]/10 text-[var(--danger)]'}`}>
                               {p.type === 'stock' ? 'eq' : p.type}
                             </span>
                             <span className="font-semibold text-[var(--text-primary)] truncate">{p.symbol}</span>
@@ -1030,7 +1030,7 @@ export default function QuantSuiteView() {
                               <span className="text-[10px] text-[var(--text-tertiary)]">Qty</span>
                               <span className="font-semibold text-[var(--text-primary)] tabular-nums">{p.qty > 0 ? `+${p.qty}` : p.qty}</span>
                             </div>
-                            <button onClick={() => handleRemovePortfolioItem(p.id)} className="p-1 border border-[var(--border)] text-[var(--text-tertiary)] hover:text-[#F87171] hover:border-[#F87171]/40 rounded cursor-pointer">
+                            <button onClick={() => handleRemovePortfolioItem(p.id)} className="p-1 border border-[var(--border)] text-[var(--text-tertiary)] hover:text-[var(--danger)] hover:border-[var(--danger)]/40 rounded cursor-pointer">
                               <X className="w-3 h-3" />
                             </button>
                           </div>
@@ -1044,11 +1044,11 @@ export default function QuantSuiteView() {
                   <SectionHeader icon={<Gauge className="w-3.5 h-3.5 text-[var(--text-tertiary)]" />} label="Book Greeks (Totals)" />
                   <div className="flex flex-col gap-2.5">
                     {[
-                      { l: 'Net Delta', v: portfolioResult.delta.toFixed(2), t: portfolioResult.delta >= 0 ? 'text-[#4ADE80]' : 'text-[#F87171]' },
+                      { l: 'Net Delta', v: portfolioResult.delta.toFixed(2), t: portfolioResult.delta >= 0 ? 'text-[var(--success)]' : 'text-[var(--danger)]' },
                       { l: 'Net Gamma', v: portfolioResult.gamma.toFixed(4), t: 'text-[var(--text-primary)]' },
-                      { l: 'Total Vega', v: `$${portfolioResult.vega.toFixed(1)}`, t: 'text-[#4ADE80]' },
-                      { l: 'Daily Theta', v: `$${portfolioResult.theta.toFixed(1)}`, t: 'text-[#F87171]' },
-                      { l: 'Vanna', v: portfolioResult.vanna.toFixed(3), t: 'text-[#FBBF24]' },
+                      { l: 'Total Vega', v: `$${portfolioResult.vega.toFixed(1)}`, t: 'text-[var(--success)]' },
+                      { l: 'Daily Theta', v: `$${portfolioResult.theta.toFixed(1)}`, t: 'text-[var(--danger)]' },
+                      { l: 'Vanna', v: portfolioResult.vanna.toFixed(3), t: 'text-[var(--warning)]' },
                       { l: 'Charm', v: portfolioResult.charm.toFixed(3), t: 'text-[var(--text-secondary)]' },
                     ].map((row, i) => (
                       <div key={i} className="flex justify-between border-b border-[var(--border)] pb-1.5 text-[11px]">
@@ -1058,7 +1058,7 @@ export default function QuantSuiteView() {
                     ))}
                     <div className="mt-3 bg-[var(--surface-2)] border border-[var(--border)] p-3 rounded-md flex items-center justify-between">
                       <span className="text-[10px] text-[var(--text-tertiary)] uppercase tracking-wide">Net P&amp;L</span>
-                      <span className={`text-[14px] font-bold tabular-nums ${portfolioResult.totalProfit >= 0 ? 'text-[#4ADE80]' : 'text-[#F87171]'}`}>
+                      <span className={`text-[14px] font-bold tabular-nums ${portfolioResult.totalProfit >= 0 ? 'text-[var(--success)]' : 'text-[var(--danger)]'}`}>
                         {fmtMoney(Math.round(portfolioResult.totalProfit))}
                       </span>
                     </div>
@@ -1077,7 +1077,7 @@ export default function QuantSuiteView() {
                     right={
                       <button
                         onClick={() => handleAddSpotRule(Math.round((spotPrice * 1.03) / strikeStep) * strikeStep)}
-                        className="px-2 py-1 border border-[var(--border)] text-[10px] rounded font-semibold uppercase tracking-wide text-[#4ADE80] hover:bg-[var(--surface-2)] cursor-pointer"
+                        className="px-2 py-1 border border-[var(--border)] text-[10px] rounded font-semibold uppercase tracking-wide text-[var(--success)] hover:bg-[var(--surface-2)] cursor-pointer"
                       >
                         + Spot Rule
                       </button>
@@ -1094,7 +1094,7 @@ export default function QuantSuiteView() {
                         </div>
                         <button
                           onClick={() => handleToggleRule(rule.id)}
-                          className={`px-2 py-1 text-[10px] font-bold border uppercase tracking-wide rounded cursor-pointer ${rule.isActive ? 'bg-[#4ADE80]/10 border-[#4ADE80]/50 text-[#4ADE80]' : 'bg-[var(--surface-3)] border-[var(--border)] text-[var(--text-tertiary)]'}`}
+                          className={`px-2 py-1 text-[10px] font-bold border uppercase tracking-wide rounded cursor-pointer ${rule.isActive ? 'bg-[var(--success)]/10 border-[var(--success)]/50 text-[var(--success)]' : 'bg-[var(--surface-3)] border-[var(--border)] text-[var(--text-tertiary)]'}`}
                         >
                           {rule.isActive ? 'Active' : 'Muted'}
                         </button>
@@ -1118,7 +1118,7 @@ export default function QuantSuiteView() {
                         <div
                           key={idx}
                           className="bg-[var(--surface-2)] border border-[var(--border)] p-2.5 rounded-md text-[11px] flex flex-col gap-1 border-l-2"
-                          style={{ borderLeftColor: log.type === 'danger' ? '#F87171' : log.type === 'warning' ? '#FBBF24' : '#4ADE80' }}
+                          style={{ borderLeftColor: log.type === 'danger' ? 'var(--danger)' : log.type === 'warning' ? 'var(--warning)' : 'var(--success)' }}
                         >
                           <div className="flex justify-between text-[10px] text-[var(--text-tertiary)] uppercase tracking-wide">
                             <span className="truncate">{log.ruleName}</span>
@@ -1143,7 +1143,7 @@ export default function QuantSuiteView() {
                     right={
                       <button
                         onClick={handleLogCurrentSetup}
-                        className="px-2 py-1 border border-[var(--border)] text-[10px] rounded font-semibold uppercase tracking-wide text-[#FBBF24] hover:bg-[var(--surface-2)] cursor-pointer"
+                        className="px-2 py-1 border border-[var(--border)] text-[10px] rounded font-semibold uppercase tracking-wide text-[var(--warning)] hover:bg-[var(--surface-2)] cursor-pointer"
                       >
                         + Log {PRESET_LABELS[activePreset]}
                       </button>
@@ -1170,18 +1170,18 @@ export default function QuantSuiteView() {
                           <div className="flex items-center gap-2">
                             {trade.outcome === 'OPEN' ? (
                               <>
-                                <button onClick={() => handleResolveTrade(trade.id, 'WIN')} className="px-2 py-0.5 bg-[#4ADE80]/10 text-[#4ADE80] border border-[#4ADE80]/40 text-[10px] font-bold rounded cursor-pointer">WIN</button>
-                                <button onClick={() => handleResolveTrade(trade.id, 'LOSS')} className="px-2 py-0.5 bg-[#F87171]/10 text-[#F87171] border border-[#F87171]/40 text-[10px] font-bold rounded cursor-pointer">LOSS</button>
+                                <button onClick={() => handleResolveTrade(trade.id, 'WIN')} className="px-2 py-0.5 bg-[var(--success)]/10 text-[var(--success)] border border-[var(--success)]/40 text-[10px] font-bold rounded cursor-pointer">WIN</button>
+                                <button onClick={() => handleResolveTrade(trade.id, 'LOSS')} className="px-2 py-0.5 bg-[var(--danger)]/10 text-[var(--danger)] border border-[var(--danger)]/40 text-[10px] font-bold rounded cursor-pointer">LOSS</button>
                               </>
                             ) : (
                               <div className="flex items-center gap-3 text-right">
-                                <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded uppercase ${trade.outcome === 'WIN' ? 'bg-[#4ADE80]/10 text-[#4ADE80]' : 'bg-[#F87171]/10 text-[#F87171]'}`}>{trade.outcome}</span>
-                                <span className={`font-bold tabular-nums ${trade.pnl && trade.pnl >= 0 ? 'text-[#4ADE80]' : 'text-[#F87171]'}`}>
+                                <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded uppercase ${trade.outcome === 'WIN' ? 'bg-[var(--success)]/10 text-[var(--success)]' : 'bg-[var(--danger)]/10 text-[var(--danger)]'}`}>{trade.outcome}</span>
+                                <span className={`font-bold tabular-nums ${trade.pnl && trade.pnl >= 0 ? 'text-[var(--success)]' : 'text-[var(--danger)]'}`}>
                                   {typeof trade.pnl === 'number' ? fmtMoney(trade.pnl) : ''}
                                 </span>
                               </div>
                             )}
-                            <button onClick={() => handleRemoveTrade(trade.id)} className="p-1 border border-[var(--border)] text-[var(--text-tertiary)] hover:text-[#F87171] hover:border-[#F87171]/40 rounded cursor-pointer">
+                            <button onClick={() => handleRemoveTrade(trade.id)} className="p-1 border border-[var(--border)] text-[var(--text-tertiary)] hover:text-[var(--danger)] hover:border-[var(--danger)]/40 rounded cursor-pointer">
                               <X className="w-3 h-3" />
                             </button>
                           </div>
@@ -1200,21 +1200,21 @@ export default function QuantSuiteView() {
                   ) : (
                     <>
                       <div className="grid grid-cols-2 gap-2">
-                        <StatTile label="Win Rate" value={`${(calibrationLoop.winRate * 100).toFixed(1)}%`} tone="text-[#4ADE80]" />
+                        <StatTile label="Win Rate" value={`${(calibrationLoop.winRate * 100).toFixed(1)}%`} tone="text-[var(--success)]" />
                         <StatTile label="Avg P&L" value={`$${calibrationLoop.averageReturn.toLocaleString(undefined, { maximumFractionDigits: 0 })}`} tone="text-[var(--text-primary)]" />
-                        <StatTile label="Max Drawdown" value={`-${calibrationLoop.maxDrawdown.toFixed(1)}%`} tone="text-[#F87171]" />
-                        <StatTile label="Sharpe" value={calibrationLoop.sharpeRatio.toFixed(2)} tone="text-[#FBBF24]" />
+                        <StatTile label="Max Drawdown" value={`-${calibrationLoop.maxDrawdown.toFixed(1)}%`} tone="text-[var(--danger)]" />
+                        <StatTile label="Sharpe" value={calibrationLoop.sharpeRatio.toFixed(2)} tone="text-[var(--warning)]" />
                       </div>
 
                       <div className="grid grid-cols-2 gap-2">
                         <div className="bg-[var(--surface-2)] border border-[var(--border)] p-3 rounded-md text-center">
                           <span className="text-[10px] text-[var(--text-tertiary)] uppercase tracking-wide block">Brier Score</span>
-                          <span className="text-[15px] font-bold text-[#FBBF24] mt-1 block tabular-nums">{calibrationLoop.brierScore.toFixed(4)}</span>
+                          <span className="text-[15px] font-bold text-[var(--warning)] mt-1 block tabular-nums">{calibrationLoop.brierScore.toFixed(4)}</span>
                           <p className="text-[10px] text-[var(--text-tertiary)] mt-1">0.00 = perfect</p>
                         </div>
                         <div className="bg-[var(--surface-2)] border border-[var(--border)] p-3 rounded-md text-center">
                           <span className="text-[10px] text-[var(--text-tertiary)] uppercase tracking-wide block">ECE</span>
-                          <span className="text-[15px] font-bold text-[#FBBF24] mt-1 block tabular-nums">{(calibrationLoop.expectedCalibrationError * 100).toFixed(2)}%</span>
+                          <span className="text-[15px] font-bold text-[var(--warning)] mt-1 block tabular-nums">{(calibrationLoop.expectedCalibrationError * 100).toFixed(2)}%</span>
                           <p className="text-[10px] text-[var(--text-tertiary)] mt-1">confidence drift</p>
                         </div>
                       </div>
@@ -1227,7 +1227,7 @@ export default function QuantSuiteView() {
                               <span className="text-[var(--text-secondary)] truncate">{s.setup}</span>
                               <div className="flex gap-3 text-right tabular-nums">
                                 <span className="text-[var(--text-tertiary)]">{(s.winRate * 100).toFixed(0)}%</span>
-                                <span className={`font-bold ${s.expectancy >= 0 ? 'text-[#4ADE80]' : 'text-[#F87171]'}`}>{fmtMoney(s.expectancy)}</span>
+                                <span className={`font-bold ${s.expectancy >= 0 ? 'text-[var(--success)]' : 'text-[var(--danger)]'}`}>{fmtMoney(s.expectancy)}</span>
                               </div>
                             </div>
                           ))}
@@ -1250,21 +1250,21 @@ export default function QuantSuiteView() {
             <div className="flex flex-col gap-2 text-[11px]">
               <div className="flex justify-between border-b border-[var(--border)] pb-1.5">
                 <span className="text-[var(--text-tertiary)] uppercase tracking-wide text-[10px]">Net GEX</span>
-                <span className={`font-bold tabular-nums ${(gexProfile.netGex ?? 0) >= 0 ? 'text-[#4ADE80]' : 'text-[#F87171]'}`}>
+                <span className={`font-bold tabular-nums ${(gexProfile.netGex ?? 0) >= 0 ? 'text-[var(--success)]' : 'text-[var(--danger)]'}`}>
                   {typeof gexProfile.netGex === 'number' ? `${(gexProfile.netGex / 1e9).toFixed(2)}B` : '—'}
                 </span>
               </div>
               <div className="flex justify-between border-b border-[var(--border)] pb-1.5">
                 <span className="text-[var(--text-tertiary)] uppercase tracking-wide text-[10px]">Gamma Flip</span>
-                <span className="font-bold text-[#FBBF24] tabular-nums">{gexProfile.gammaFlip ? gexProfile.gammaFlip.toLocaleString(undefined, { maximumFractionDigits: 0 }) : '—'}</span>
+                <span className="font-bold text-[var(--warning)] tabular-nums">{gexProfile.gammaFlip ? gexProfile.gammaFlip.toLocaleString(undefined, { maximumFractionDigits: 0 }) : '—'}</span>
               </div>
               <div className="flex justify-between border-b border-[var(--border)] pb-1.5">
                 <span className="text-[var(--text-tertiary)] uppercase tracking-wide text-[10px]">Call Wall</span>
-                <span className="font-bold text-[#4ADE80] tabular-nums">{gexProfile.callWall ? gexProfile.callWall.toLocaleString(undefined, { maximumFractionDigits: 0 }) : '—'}</span>
+                <span className="font-bold text-[var(--success)] tabular-nums">{gexProfile.callWall ? gexProfile.callWall.toLocaleString(undefined, { maximumFractionDigits: 0 }) : '—'}</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-[var(--text-tertiary)] uppercase tracking-wide text-[10px]">Put Wall</span>
-                <span className="font-bold text-[#F87171] tabular-nums">{gexProfile.putWall ? gexProfile.putWall.toLocaleString(undefined, { maximumFractionDigits: 0 }) : '—'}</span>
+                <span className="font-bold text-[var(--danger)] tabular-nums">{gexProfile.putWall ? gexProfile.putWall.toLocaleString(undefined, { maximumFractionDigits: 0 }) : '—'}</span>
               </div>
             </div>
           ) : (
@@ -1284,7 +1284,7 @@ export default function QuantSuiteView() {
             {expiryGex.map((node, idx) => (
               <div key={idx} className="bg-[var(--surface-2)] border border-[var(--border)] rounded-md p-2 flex flex-col items-center text-center">
                 <span className="text-[11px] font-bold text-[var(--text-primary)]">{node.expiry}</span>
-                <span className={`text-[11px] font-bold tabular-nums mt-1 ${node.totalGex >= 0 ? 'text-[#4ADE80]' : 'text-[#F87171]'}`}>
+                <span className={`text-[11px] font-bold tabular-nums mt-1 ${node.totalGex >= 0 ? 'text-[var(--success)]' : 'text-[var(--danger)]'}`}>
                   {node.totalGex >= 0 ? `+$${(node.totalGex / 1e6).toFixed(1)}M` : `-$${Math.abs(node.totalGex / 1e6).toFixed(1)}M`}
                 </span>
                 <span className="text-[10px] text-[var(--text-tertiary)] mt-1">K {node.dominantStrike.toLocaleString(undefined, { maximumFractionDigits: 0 })}</span>

@@ -28,7 +28,9 @@ interface DiscoveryViewProps {
   onSelectContract: (asset: AssetInfo, strike: number, isCall: boolean) => void;
 }
 
-// Complete database of 30 institutional-grade options contracts
+// SAMPLE / ILLUSTRATIVE options tiles — static demo rows used to seed the layout
+// before/without a connected options feed. These are NOT a live scan and the
+// numbers are placeholders; the UI labels this view "SAMPLE DATA".
 const INITIAL_CONTRACTS = [
   // SHELF: CONVICTION
   {
@@ -820,7 +822,7 @@ export function DiscoveryView({
     } else if (c.shelf === 'improved') {
       return `Rapid volume surge detected over the last few minutes. Buyers are sweeping contracts on the ask, preparing the asset for a classic option squeeze. High-velocity setup ideal for a quick, fast-exit momentum scalp.`;
     } else if (c.shelf === 'mispriced') {
-      return `Severe model mismatch. Broker ask is priced at $${c.price.toFixed(2)}, but our calculated mathematical fair value is $${(c.price * 1.4).toFixed(2)}. Highly underpriced premium grants an immediate edge over retail books.`;
+      return `Illustrative example of a model/market gap: a sample ask of $${c.price.toFixed(2)} against a sample model value of $${(c.price * 1.4).toFixed(2)}. Demo data — not a live mispricing.`;
     } else if (c.shelf === 'invalidation') {
       return `Option is coming back to primary support buffers. Hovering right near the crucial put wall invalidation level. Entering here offers a safe, highly-defined rebound setup with extremely tight loss limits.`;
     } else if (c.shelf === 'whale') {
@@ -834,7 +836,9 @@ export function DiscoveryView({
   const [globalGex, setGlobalGex] = useState(485.4);
   const [scanRate, setScanRate] = useState(14.8);
 
-  // Establish live SSE stream directly from our backend for options discoveries
+  // Subscribe to the backend discovery SSE stream. NOTE: this stream currently
+  // carries the SAMPLE seed rows with light server-side jitter — it does not read
+  // the live option chain/flows — so the view presents it as sample/demo data.
   useEffect(() => {
     const url = '/api/stream/discovery';
     const eventSource = new EventSource(url);
@@ -871,7 +875,9 @@ export function DiscoveryView({
     };
   }, []);
 
-  // HIGH FREQUENCY LOCAL TICK FLUIDITY (Make prices dynamically tick in real-time for high-performance scalp feel!)
+  // SAMPLE animation only: gently jitters the demo tile prices so the illustrative
+  // layout isn't perfectly static. This is NOT a live market feed — it runs purely
+  // on the SAMPLE seed rows and is presented under the view's "SAMPLE DATA" label.
   useEffect(() => {
     const flashTimers: ReturnType<typeof setTimeout>[] = [];
     const tickInterval = setInterval(() => {
@@ -1056,17 +1062,19 @@ export function DiscoveryView({
 
   const currentManualText = SHELF_EXPLANATIONS[activeShelf];
 
-  // Dynamic light mode theme classes mapping
-  const c_bgMain = isLight ? "bg-[#fcfcfd]" : "bg-transparent";
-  const c_textColor = isLight ? "text-zinc-800" : "text-zinc-200";
-  const c_cardBg = isLight ? "bg-white border-black shadow-sm text-zinc-800" : "bg-black border-black shadow-2xl text-zinc-100";
-  const c_cardBorder = isLight ? "border-black" : "border-black";
-  const c_textWhite = isLight ? "text-zinc-950 font-black" : "text-[#E5E5E5] font-black";
-  const c_textMuted = isLight ? "text-zinc-550 font-medium" : "text-zinc-400";
-  const c_pillBg = isLight ? "bg-black border-black" : "bg-black/60 border-black";
-  const c_innerCardBg = isLight ? "bg-zinc-50 border-black" : "bg-black border-black";
-  const c_innerWellBg = isLight ? "bg-black border-black" : "bg-black/60 border-black/60";
-  const c_glassBg = isLight ? "bg-black border border-black shadow-md text-zinc-800" : "bg-black border border-black/80 shadow-xl text-zinc-200";
+  // Theme classes mapping — driven by design tokens so cards/wells render on the
+  // real surface/border in BOTH light and dark (was hardcoded bg-black/border-black
+  // in both modes, plus an invalid zinc-550).
+  const c_bgMain = "bg-[var(--surface)]";
+  const c_textColor = "text-[var(--text-primary)]";
+  const c_cardBg = "bg-[var(--surface)] border-[var(--border)] shadow-sm text-[var(--text-primary)]";
+  const c_cardBorder = "border-[var(--border)]";
+  const c_textWhite = "text-[var(--text-primary)] font-black";
+  const c_textMuted = "text-[var(--text-tertiary)] font-medium";
+  const c_pillBg = "bg-[var(--surface-2)] border-[var(--border)]";
+  const c_innerCardBg = "bg-[var(--surface-2)] border-[var(--border)]";
+  const c_innerWellBg = "bg-[var(--surface)] border-[var(--border)]";
+  const c_glassBg = "bg-[var(--surface)] border border-[var(--border)] shadow-md text-[var(--text-primary)]";
 
   return (
     <div className={`w-full flex flex-col font-mono select-none antialiased space-y-6 max-w-6xl mx-auto pt-2 pb-12 ${c_textColor}`}>
@@ -1078,30 +1086,33 @@ export function DiscoveryView({
           <Target className="w-4 h-4 text-[#4ADE80] shrink-0" />
           <div>
             <h1 className={`text-xs font-black tracking-widest uppercase ${c_textWhite}`}>
-              Trade Finder <span className="text-[var(--text-tertiary)]">/ Live Options Scanner</span>
+              Trade Finder <span className="text-[var(--text-tertiary)]">/ Options Scanner</span>
+              <span className="ml-2 align-middle text-[8px] font-bold px-1.5 py-0.5 rounded bg-[#FBBF24]/15 text-[#FBBF24] border border-[#FBBF24]/30 tracking-wider">
+                SAMPLE DATA
+              </span>
             </h1>
             <p className="text-[9.5px] text-[var(--text-tertiary)] mt-0.5 uppercase tracking-wide">
-              Live setups, updating in real time
+              Illustrative setups — demo data, not a live scan
             </p>
           </div>
         </div>
 
-        {/* Live statistics (server-streamed) */}
+        {/* Sample cockpit statistics (illustrative, not a live market reading) */}
         <div className="flex items-center gap-5 flex-wrap text-left text-[10px] md:border-l md:pl-5 border-[var(--border)]">
           <div className="space-y-0.5">
-            <span className="text-[7.5px] text-[var(--text-tertiary)] uppercase block tracking-wider font-extrabold">Dealer Support</span>
+            <span className="text-[9.5px] text-[var(--text-tertiary)] uppercase block tracking-wider font-extrabold">Dealer Support</span>
             <span className="text-[#4ADE80] font-bold block font-mono">
               +{globalGex.toFixed(1)}M
             </span>
           </div>
           <div className="space-y-0.5">
-            <span className="text-[7.5px] text-[var(--text-tertiary)] uppercase block tracking-wider font-extrabold">Model Accuracy</span>
+            <span className="text-[9.5px] text-[var(--text-tertiary)] uppercase block tracking-wider font-extrabold">Model Accuracy</span>
             <span className={`font-mono font-bold block ${c_textWhite}`}>
               {brierScore.toFixed(4)}
             </span>
           </div>
           <div className="space-y-0.5">
-            <span className="text-[7.5px] text-[var(--text-tertiary)] uppercase block tracking-wider font-extrabold">Scan Rate</span>
+            <span className="text-[9.5px] text-[var(--text-tertiary)] uppercase block tracking-wider font-extrabold">Scan Rate</span>
             <span className="text-[#60A5FA] font-bold block font-mono">
               {scanRate.toFixed(1)}/s
             </span>
@@ -1347,7 +1358,7 @@ export function DiscoveryView({
                     </div>
                   </div>
                   <div className="text-[8px] text-[var(--text-tertiary)] border-t pt-1.5 tracking-wide border-[var(--border)]">
-                    Updates automatically in real time.
+                    Sample data — illustrative, not a live scan.
                   </div>
                 </div>
 
@@ -1605,7 +1616,7 @@ export function DiscoveryView({
                                     </span>
                                   </div>
                                   <div className="text-right">
-                                    <span className="text-[7.5px] text-[var(--text-tertiary)] uppercase block tracking-wider font-bold">Live Mid</span>
+                                    <span className="text-[7.5px] text-[var(--text-tertiary)] uppercase block tracking-wider font-bold">Sample Mid</span>
                                     <motion.span
                                       animate={isFlashing ? { scale: [1, 1.1, 1] } : {}}
                                       className={`text-xs font-black block font-mono ${
@@ -1680,7 +1691,7 @@ export function DiscoveryView({
             <div className="space-y-1">
               <span className="text-[8.5px] text-[#60A5FA] tracking-widest uppercase font-black block">How This Works</span>
               <p className="text-[10px] tracking-wide leading-relaxed font-sans font-medium text-[var(--text-secondary)]">
-                We scan dealer positioning, expected moves, and option pricing across thousands of contracts in real time. Tap any contract above to see its price targets.
+                This is a sample layout illustrating how dealer positioning, expected moves, and option pricing would be ranked. It is demo data, not a live scan. Tap any contract above to see its illustrative price targets.
               </p>
             </div>
             <div className="flex gap-5 shrink-0 text-left border-t md:border-t-0 md:border-l pt-3 md:pt-0 md:pl-5 border-[var(--border)]">
@@ -1780,7 +1791,7 @@ export function DiscoveryView({
               <div className="flex items-center gap-2">
                 <Database className="w-4 h-4 text-[#60A5FA]" />
                 <h2 className={`text-[10.5px] font-black uppercase tracking-widest ${c_textWhite}`}>
-                  Live Option Flow
+                  Sample Option Flow
                 </h2>
               </div>
             </div>

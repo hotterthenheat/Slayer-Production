@@ -42,7 +42,7 @@ export function Pane({ title, isMaximized, onClose, onMaximize, onHeaderPointerD
             {isMaximized ? <Minimize2 className="w-3 h-3" /> : <Maximize2 className="w-3 h-3" />}
           </button>
           {onClose && (
-            <button onClick={onClose} className="w-5 h-5 flex items-center justify-center rounded-[2px] text-[var(--text-tertiary)] hover:text-[#F87171] hover:bg-[var(--surface-3)] transition-colors">
+            <button onClick={onClose} className="w-5 h-5 flex items-center justify-center rounded-[2px] text-[var(--text-tertiary)] hover:text-[var(--danger)] hover:bg-[var(--surface-3)] transition-colors">
               <X className="w-3 h-3" />
             </button>
           )}
@@ -62,7 +62,7 @@ const Empty = ({ label = 'Awaiting live feed' }: { label?: string }) => (
     <span className="text-[10px] font-medium uppercase tracking-[0.18em] text-[var(--text-tertiary)]">
       {label}
     </span>
-    <span className="text-[10px] text-[var(--text-tertiary)]/60">No data on this tick</span>
+    <span className="text-[10px] text-[var(--text-tertiary)]">No data on this tick</span>
   </div>
 );
 
@@ -76,10 +76,10 @@ const SubHead = ({ children, accent }: { children: React.ReactNode; accent?: str
 );
 
 const STATUS_COLOR: Record<string, string> = {
-  up: '#4ADE80',
-  down: '#F87171',
-  flat: '#A3A3A3',
-  warn: '#FBBF24',
+  up: 'var(--success)',
+  down: 'var(--danger)',
+  flat: 'var(--text-tertiary)',
+  warn: 'var(--warning)',
 };
 
 function biasTone(v?: string): 'up' | 'down' | 'flat' {
@@ -105,7 +105,7 @@ const fmtNum = (n?: number) => (typeof n === 'number' && isFinite(n) ? n.toLocal
 const MetricTile = ({ label, value, sub, tone = 'flat' }: { label: string; value: string; sub?: string; tone?: 'up' | 'down' | 'flat' | 'warn' }) => (
   <div className="flex flex-col h-full w-full items-center justify-center text-center gap-1 bg-[var(--surface-2)] border border-[var(--border)] rounded-[3px] p-3">
     <div className="text-[10px] font-semibold uppercase tracking-[0.16em] text-[var(--text-tertiary)]">{label}</div>
-    <div className="text-2xl font-bold tabular-nums leading-none" style={{ color: STATUS_COLOR[tone] === '#A3A3A3' ? 'var(--text-primary)' : STATUS_COLOR[tone] }}>
+    <div className="text-2xl font-bold tabular-nums leading-none" style={{ color: STATUS_COLOR[tone] === 'var(--text-tertiary)' ? 'var(--text-primary)' : STATUS_COLOR[tone] }}>
       {value}
     </div>
     {sub && <div className="text-[10px] text-[var(--text-tertiary)] uppercase tracking-[0.12em]">{sub}</div>}
@@ -169,7 +169,7 @@ const TerminalTable = ({
 };
 
 const toned = (text: string, tone: 'up' | 'down' | 'flat' | 'warn') => (
-  <span className="font-semibold" style={{ color: STATUS_COLOR[tone] === '#A3A3A3' ? 'var(--text-primary)' : STATUS_COLOR[tone] }}>{text}</span>
+  <span className="font-semibold" style={{ color: STATUS_COLOR[tone] === 'var(--text-tertiary)' ? 'var(--text-primary)' : STATUS_COLOR[tone] }}>{text}</span>
 );
 
 /* ------------------------------------------------------------------ */
@@ -298,7 +298,7 @@ const SkysVisionScannerWidget = React.memo(() => {
   return (
     <div className="flex flex-col h-full gap-2">
       <div className="flex items-center justify-between bg-[var(--surface-2)] border border-[var(--border)] rounded-[3px] px-2.5 py-1.5 shrink-0">
-        <span className="text-[10px] font-semibold uppercase tracking-[0.14em]" style={{ color: sv ? '#4ADE80' : 'var(--text-tertiary)' }}>
+        <span className="text-[10px] font-semibold uppercase tracking-[0.14em]" style={{ color: sv ? 'var(--success)' : 'var(--text-tertiary)' }}>
           Scanner {sv ? 'Active' : 'Idle'}
         </span>
         <span className="text-[10px] font-medium uppercase tracking-[0.12em] text-[var(--text-tertiary)]">

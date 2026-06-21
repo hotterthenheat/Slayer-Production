@@ -74,10 +74,10 @@ export const FeatureMatrix: React.FC<FeatureMatrixProps> = ({ onEnterApp }) => {
               <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-indigo-550 via-purple-500 to-indigo-550" />
               <div className="flex justify-between items-center border-b border-black/60 pb-3 mb-4 font-mono text-[9px] text-zinc-505">
                 <span className="font-extrabold uppercase text-[#E5E5E5] tracking-widest flex items-center gap-1.5">
-                  <span className="w-1.5 h-1.5 rounded-full bg-indigo-400 animate-pulse" />
+                  <span className="w-1.5 h-1.5 rounded-full bg-indigo-400" />
                   SKYSEYE v1.2 // TRADE DASHBOARD
                 </span>
-                <span className="uppercase text-zinc-650 font-bold">LIVE</span>
+                <span className="uppercase text-[#A3A3A3] font-bold border border-white/10 rounded px-1.5 py-0.5 text-[8px] tracking-widest">EXAMPLE</span>
               </div>
 
               <div className="space-y-4">
@@ -254,10 +254,10 @@ export const FeatureMatrix: React.FC<FeatureMatrixProps> = ({ onEnterApp }) => {
               <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-[#d4d4d8] via-zinc-300 to-zinc-300" />
               <div className="flex justify-between items-center border-b border-black/60 pb-3 mb-4 font-mono text-[9px] text-zinc-500">
                 <span className="font-extrabold uppercase text-[#E5E5E5] tracking-widest flex items-center gap-1.5">
-                  <span className="w-1.5 h-1.5 rounded-full bg-black/40 animate-pulse" />
+                  <span className="w-1.5 h-1.5 rounded-full bg-black/40" />
                   PINPOINT // GEX BY STRIKE
                 </span>
-                <span className="uppercase text-zinc-650 font-bold">LIVE</span>
+                <span className="uppercase text-[#A3A3A3] font-bold border border-white/10 rounded px-1.5 py-0.5 text-[8px] tracking-widest">EXAMPLE</span>
               </div>
 
               {/* Simulated GEX Strike Histogram bar layout */}
@@ -318,42 +318,39 @@ export const FeatureMatrix: React.FC<FeatureMatrixProps> = ({ onEnterApp }) => {
               <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-zinc-600 via-[#d4d4d8]/50 to-zinc-500" />
               <div className="flex justify-between items-center border-b border-black/60 pb-3 mb-4 font-mono text-[9px] text-zinc-500">
                 <span className="font-extrabold uppercase text-[#E5E5E5] tracking-widest flex items-center gap-1.5">
-                  <span className="w-1.5 h-1.5 rounded-full bg-black animate-pulse" />
+                  <span className="w-1.5 h-1.5 rounded-full bg-black" />
                   TRADE HISTORY ARCHIVE
                 </span>
-                <span className="uppercase text-zinc-650 font-bold">AUDITED</span>
+                <span className="uppercase text-[#A3A3A3] font-bold border border-white/10 rounded px-1.5 py-0.5 text-[8px] tracking-widest">EXAMPLE</span>
               </div>
 
-              {/* Cryptographic rolling table */}
+              {/* Illustrative trade-history table (example rows, not actual trades) */}
               <div className="space-y-2.5 font-mono">
                 <div className="grid grid-cols-12 text-[7.5px] uppercase font-bold text-zinc-500 px-2 pb-1 border-b border-black">
-                  <span className="col-span-3 text-left">CONTRACT</span>
-                  <span className="col-span-3 text-center">ENTRANCE</span>
-                  <span className="col-span-3 text-center">RESULT</span>
-                  <span className="col-span-3 text-right">HASH SIGN</span>
+                  <span className="col-span-4 text-left">CONTRACT</span>
+                  <span className="col-span-4 text-center">ENTRANCE</span>
+                  <span className="col-span-4 text-right">RESULT</span>
                 </div>
 
                 <div className="space-y-1.5">
                   {[
-                    { contract: 'SPX 7620C', enter: '$11.20', result: '+38.2% Exit', rColor: 'text-[#d4d4d8]', hash: '0xbd5a...1e9f' },
-                    { contract: 'QQQ 515C', enter: '$2.10', result: '+22.4% Exit', rColor: 'text-[#d4d4d8]', hash: '0xf3e2...8d9e' },
-                    { contract: 'NDX 18300C', enter: '$165.40', result: '-12.5% Out', rColor: 'text-[#F87171]', hash: '0xab91...4c5a' }
+                    { contract: 'SPX 7620C', enter: '$11.20', result: '+38.2% Exit', rColor: 'text-[#d4d4d8]' },
+                    { contract: 'QQQ 515C', enter: '$2.10', result: '+22.4% Exit', rColor: 'text-[#d4d4d8]' },
+                    { contract: 'NDX 18300C', enter: '$165.40', result: '-12.5% Out', rColor: 'text-[#F87171]' }
                   ].map((row, idx) => (
                     <div key={idx} className="grid grid-cols-12 items-center text-[9px] bg-black/70 p-2 rounded border border-black/50">
-                      <span className="col-span-3 font-bold text-[#E5E5E5] uppercase text-[8.5px] sm:text-[9.5px]">{row.contract}</span>
-                      <span className="col-span-3 text-center text-zinc-400">{row.enter}</span>
-                      <span className={`col-span-3 text-center font-bold ${row.rColor} text-[8.5px] sm:text-[9.5px]`}>{row.result}</span>
-                      <span className="col-span-3 text-right text-[7.5px] text-zinc-600">{row.hash}</span>
+                      <span className="col-span-4 font-bold text-[#E5E5E5] uppercase text-[8.5px] sm:text-[9.5px]">{row.contract}</span>
+                      <span className="col-span-4 text-center text-zinc-400">{row.enter}</span>
+                      <span className={`col-span-4 text-right font-bold ${row.rColor} text-[8.5px] sm:text-[9.5px]`}>{row.result}</span>
                     </div>
                   ))}
                 </div>
 
-                <div className="flex justify-between items-center bg-black/60 px-3 py-2 rounded border border-black text-[8px] text-zinc-550 uppercase">
-                  <span className="flex items-center gap-1.5 font-bold text-[#d4d4d8]">
-                    <span className="w-1.5 h-1.5 rounded-full bg-[#4ADE80] animate-ping" />
-                    SEC COMPLIANT AUDIT TRACE
+                <div className="flex justify-between items-center bg-black/60 px-3 py-2 rounded border border-black text-[8px] text-[#A3A3A3] uppercase tracking-wide">
+                  <span className="font-bold text-[#A3A3A3]">
+                    Illustrative example — not actual trades
                   </span>
-                  <span>1.8ms Log footprint latency</span>
+                  <span>Sample data</span>
                 </div>
               </div>
             </div>
@@ -370,28 +367,28 @@ export const FeatureMatrix: React.FC<FeatureMatrixProps> = ({ onEnterApp }) => {
             <div className="space-y-2">
               <span className="text-[9px] font-mono tracking-[0.2em] text-[#d4d4d8] uppercase font-bold flex items-center gap-1.5">
                 <Database className="w-3 h-3 text-zinc-500" />
-                VERIFIED TRADE HISTORY
+                TRADE HISTORY
               </span>
               <h3 className="text-2xl md:text-3xl font-black text-[#E5E5E5] uppercase tracking-tight font-sans">
-                The Trust Ledger
+                The Trade Ledger
               </h3>
             </div>
             <p className="text-zinc-400 text-xs md:text-sm leading-relaxed font-sans font-light">
-              No deleted calls, no edited screenshots. Every signal sent to subscribers is permanently recorded in a publicly verifiable trade log.
+              No deleted calls, no edited screenshots. As the engine logs trades, each one is recorded with its entry and outcome so the track record stays in one place.
             </p>
 
             <ul className="space-y-3 font-mono text-[9px] md:text-[10px] text-zinc-350">
               <li className="flex gap-2 items-start">
-                <Check className="w-3.5 h-3.5 text-[#d4d4d8] shrink-0 mt-0.5 animate-pulse" />
-                <span><strong className="text-[#E5E5E5] uppercase font-black mr-1">Signed Trade Logs:</strong> Every alert is timestamped and signed so results cannot be altered.</span>
+                <Check className="w-3.5 h-3.5 text-[#d4d4d8] shrink-0 mt-0.5" />
+                <span><strong className="text-[#E5E5E5] uppercase font-black mr-1">Timestamped Logs:</strong> Each logged trade keeps the time and entry it was recorded at.</span>
               </li>
               <li className="flex gap-2 items-start">
-                <Check className="w-3.5 h-3.5 text-[#d4d4d8] shrink-0 mt-0.5 animate-pulse" />
-                <span><strong className="text-[#E5E5E5] uppercase font-black mr-1">Historical Accuracy:</strong> Check past performance against the exact entry prices sent to subscribers.</span>
+                <Check className="w-3.5 h-3.5 text-[#d4d4d8] shrink-0 mt-0.5" />
+                <span><strong className="text-[#E5E5E5] uppercase font-black mr-1">Historical Record:</strong> Review past entries and outcomes as they were logged.</span>
               </li>
               <li className="flex gap-2 items-start">
-                <Check className="w-3.5 h-3.5 text-[#d4d4d8] shrink-0 mt-0.5 animate-pulse" />
-                <span><strong className="text-[#E5E5E5] uppercase font-black mr-1">Full Transparency:</strong> Open audit trail built to meet SEC disclosure standards.</span>
+                <Check className="w-3.5 h-3.5 text-[#d4d4d8] shrink-0 mt-0.5" />
+                <span><strong className="text-[#E5E5E5] uppercase font-black mr-1">One Track Record:</strong> Wins and losses sit together in the same ledger.</span>
               </li>
             </ul>
 
@@ -471,13 +468,13 @@ export const FeatureMatrix: React.FC<FeatureMatrixProps> = ({ onEnterApp }) => {
                   <span className="font-bold text-[#E5E5E5] bg-[#5865F2] px-2 py-0.5 rounded-sm text-[7px] leading-relaxed">DISCORD</span>
                   #spx-realtime-alerts webhook
                 </span>
-                <span className="uppercase text-zinc-650 font-bold">CLIENT CONNECTED</span>
+                <span className="uppercase text-[#A3A3A3] font-bold border border-white/10 rounded px-1.5 py-0.5 text-[8px] tracking-widest">EXAMPLE</span>
               </div>
 
               {/* Mock discord message embed card */}
               <div className="bg-[#2f3136] rounded-lg p-4 font-sans text-left border border-black/40 space-y-3 relative overflow-hidden shadow-xl select-none">
                 <div className="absolute top-0 right-0 bg-[#4ADE80]/15 text-[#d4d4d8] text-[7.5px] font-mono tracking-widest px-2.5 py-1.5 rounded-bl-lg font-black uppercase">
-                  ALERT DISPATCHED
+                  SAMPLE ALERT
                 </div>
 
                 <div className="flex items-center gap-2 font-mono">
@@ -537,10 +534,10 @@ export const FeatureMatrix: React.FC<FeatureMatrixProps> = ({ onEnterApp }) => {
               <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-zinc-300 via-zinc-300 to-[#d4d4d8]" />
               <div className="flex justify-between items-center border-b border-black/60 pb-3 mb-4 font-mono text-[9px] text-zinc-500">
                 <span className="font-extrabold uppercase text-[#E5E5E5] tracking-widest flex items-center gap-1.5">
-                  <span className="w-1.5 h-1.5 rounded-full bg-black/40 animate-pulse" />
-                  DEALER FLOW // LIVE SWEEPS
+                  <span className="w-1.5 h-1.5 rounded-full bg-black/40" />
+                  DEALER FLOW // SWEEPS
                 </span>
-                <span className="uppercase text-zinc-650 font-bold">LIVE</span>
+                <span className="uppercase text-[#A3A3A3] font-bold border border-white/10 rounded px-1.5 py-0.5 text-[8px] tracking-widest">EXAMPLE</span>
               </div>
 
               {/* Simulated live sweeps ticker flow */}

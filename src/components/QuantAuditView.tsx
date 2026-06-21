@@ -527,7 +527,7 @@ export function QuantAuditView({
             TRADE HISTORY
           </span>
           <h1 className="text-2xl font-black text-[var(--text-primary)] tracking-tight">
-            Verified Trade Record
+            Trade Record
           </h1>
         </div>
 
@@ -698,7 +698,7 @@ export function QuantAuditView({
       {/* Footer */}
       <div className="text-center pt-4 border-t border-[var(--border)]">
         <span className="text-[var(--text-tertiary)] text-[10px] uppercase tracking-[0.28em] font-bold">
-          {stats.total} {stats.total === 1 ? 'Trade' : 'Trades'} · Record Verified
+          {stats.total} {stats.total === 1 ? 'Trade' : 'Trades'} · Logged This Session
         </span>
       </div>
     </div>
