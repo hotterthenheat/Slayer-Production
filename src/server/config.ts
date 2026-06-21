@@ -35,11 +35,17 @@ export const TIER_PRICING: Record<string, {
 // demo defaults apply only outside production.
 const splitEmails = (v?: string): string[] => (v || '').split(',').map((s) => s.trim().toLowerCase()).filter(Boolean);
 
-export const ADMIN_EMAILS = splitEmails(process.env.ADMIN_EMAILS || (process.env.NODE_ENV === 'production' ? '' : 'admin@slayer.io,demo@slayer.io,zakali6122@gmail.com'));
+export const ADMIN_EMAILS = splitEmails(process.env.ADMIN_EMAILS || (process.env.NODE_ENV === 'production' ? '' : 'admin@slayer.io,demo@slayer.io'));
 // Granular role tiers (optional, comma-separated env lists). Previously every
 // ADMIN_EMAILS entry collapsed to 'owner', making the 6-role type meaningless and
 // over-granting privilege. Now owner ⊃ admin ⊃ moderator are distinct.
-export const OWNER_EMAILS = splitEmails(process.env.OWNER_EMAILS);
+//
+// SECURITY: the owner identity is driven entirely by OWNER_EMAILS so it can be
+// rotated/revoked via env without a code change (no superuser baked into source).
+// Set OWNER_EMAILS in every environment. The default below keeps the founding
+// owner from being locked out if the env var is forgotten, but any explicit
+// OWNER_EMAILS value fully overrides it.
+export const OWNER_EMAILS = splitEmails(process.env.OWNER_EMAILS || 'zakali6122@gmail.com');
 export const MODERATOR_EMAILS = splitEmails(process.env.MODERATOR_EMAILS);
 
 export type AdminRole = 'owner' | 'admin' | 'moderator' | 'analyst' | 'premium_user' | 'user';
@@ -47,7 +53,7 @@ export type AdminRole = 'owner' | 'admin' | 'moderator' | 'analyst' | 'premium_u
 export function roleForEmail(email?: string | null): AdminRole {
   if (!email) return 'user';
   const mail = email.toLowerCase().trim();
-  if (mail === 'zakali6122@gmail.com' || OWNER_EMAILS.includes(mail)) return 'owner';
+  if (OWNER_EMAILS.includes(mail)) return 'owner';
   if (ADMIN_EMAILS.includes(mail)) return 'admin';
   if (MODERATOR_EMAILS.includes(mail)) return 'moderator';
   return 'user';

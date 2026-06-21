@@ -231,10 +231,13 @@ const cdnStorage = new Map<string, { data: string; mime: string }>();
 
 
 // Sandbox Session Activator setting httpOnly cookies.
-// SECURITY: dev-only. In production this (and /api/auth/callback) would let anyone
-// mint an authenticated session for ANY email with no credential, so it is disabled.
+// SECURITY: dev-only. This (and /api/auth/callback) would let anyone mint an
+// authenticated session for ANY email with no credential, so it FAILS CLOSED:
+// disabled unless ALLOW_SANDBOX_AUTH==='true' is explicitly set. Gating on a
+// positive opt-in (rather than NODE_ENV!=='production') means a misconfigured
+// NODE_ENV can never silently expose it in production.
 app.get('/api/auth/sandbox', async (req, res) => {
-  if (process.env.NODE_ENV === 'production') {
+  if (process.env.ALLOW_SANDBOX_AUTH !== 'true') {
     return res.status(404).json({ error: 'Not found.' });
   }
   res.redirect('/api/auth/callback?provider=sandbox&name=Sandbox%20Quant%20User&email=sandbox@slayer.io');
@@ -415,10 +418,12 @@ app.post('/api/auth/clerk-login', express.json(), async (req, res) => {
   }
 
   if (!user) {
-    // SECURITY: never auto-create accounts from the login endpoint in production —
-    // it enables silent account enumeration/pollution and first-password capture.
-    // Real registration goes through /api/auth/clerk-signup.
-    if (process.env.NODE_ENV === 'production') {
+    // SECURITY: never auto-create accounts from the login endpoint — it enables
+    // silent account enumeration/pollution and first-password capture. FAILS
+    // CLOSED: auto-provisioning only when ALLOW_SANDBOX_AUTH==='true' (so a
+    // misconfigured NODE_ENV can't open it). Real registration goes through
+    // /api/auth/clerk-signup.
+    if (process.env.ALLOW_SANDBOX_AUTH !== 'true') {
       return res.status(400).json({ error: 'No account found for this email. Please sign up first.' });
     }
     // Dev-only auto-provisioning for fast local testing.
@@ -454,10 +459,11 @@ app.post('/api/auth/clerk-login', express.json(), async (req, res) => {
       console.error('clerk-login reconstruct persist failed for', userEmail, dbErr);
       return res.status(500).json({ error: 'Could not establish account. Please retry.' });
     }
-  } else if (password && !user.passwordHash && process.env.NODE_ENV !== 'production') {
-    // Dev-only: auto-set a first password when none exists. Disabled in production
-    // (a first password must be set via the authenticated change-password flow, so
-    // an attacker who knows a password-less account's email can't claim it).
+  } else if (password && !user.passwordHash && process.env.ALLOW_SANDBOX_AUTH === 'true') {
+    // Dev-only: auto-set a first password when none exists. FAILS CLOSED (off
+    // unless ALLOW_SANDBOX_AUTH==='true') — a first password must otherwise be set
+    // via the authenticated change-password flow, so an attacker who knows a
+    // password-less account's email can't claim it.
     const passwordErr = validatePasswordStrength(password);
     if (!passwordErr) {
       user.passwordHash = bcrypt.hashSync(password, 12);
@@ -489,10 +495,11 @@ app.post('/api/auth/clerk-login', express.json(), async (req, res) => {
 app.get('/api/auth/callback', async (req, res) => {
   // SECURITY: this endpoint derives identity from an unauthenticated query param
   // and issues a fully-signed session — a complete auth bypass if exposed. It is a
-  // dev/sandbox convenience only and is disabled in production. A real OAuth
-  // integration must exchange an authorization code with the provider before
-  // issuing a session.
-  if (process.env.NODE_ENV === 'production') {
+  // dev/sandbox convenience only and FAILS CLOSED: disabled unless
+  // ALLOW_SANDBOX_AUTH==='true' is explicitly set (so a misconfigured NODE_ENV
+  // cannot expose it). A real OAuth integration must exchange an authorization
+  // code with the provider before issuing a session.
+  if (process.env.ALLOW_SANDBOX_AUTH !== 'true') {
     return res.status(404).json({ error: 'Not found.' });
   }
   const { provider, name, email } = req.query;
@@ -1393,6 +1400,29 @@ async function findUserForSubscription(sub: any): Promise<any | null> {
   return null;
 }
 
+// Resolve a Stripe Subscription back to our internal access tier. Prefers the
+// active item's amount+interval (survives dashboard plan-swaps/proration, which
+// do NOT update metadata) and falls back to metadata.plan. Returns null if the
+// subscription doesn't match any known plan so we never grant a guessed tier.
+function tierFromStripeSubscription(sub: any): { accessTier: string; plan: string } | null {
+  const item = sub?.items?.data?.[0];
+  const amount = item?.price?.unit_amount;
+  const interval = item?.price?.recurring?.interval; // 'month' | 'year'
+  if (typeof amount === 'number') {
+    for (const [plan, p] of Object.entries(TIER_PRICING)) {
+      if (interval === 'year' && p.annual === amount) return { accessTier: p.accessTier, plan };
+      if (interval === 'month' && p.monthly === amount) return { accessTier: p.accessTier, plan };
+    }
+  }
+  const metaPlan = String(sub?.metadata?.plan || '');
+  if (TIER_PRICING[metaPlan]) return { accessTier: TIER_PRICING[metaPlan].accessTier, plan: metaPlan };
+  return null;
+}
+
+// Stripe subscription statuses that should hold paid access vs. revoke it.
+const STRIPE_ACTIVE_STATUSES = new Set(['active', 'trialing']);
+const STRIPE_REVOKE_STATUSES = new Set(['past_due', 'unpaid', 'canceled', 'incomplete_expired']);
+
 app.post('/api/billing/webhook', express.raw({ type: 'application/json' }), async (req, res) => {
   if (!stripeClient) {
     return res.status(503).json({ error: 'Payments are not configured yet.' });
@@ -1432,6 +1462,15 @@ app.post('/api/billing/webhook', express.raw({ type: 'application/json' }), asyn
         const plan = checkoutSession.metadata?.plan || '';
         const pricing = TIER_PRICING[plan];
 
+        // SECURITY: only grant access on a genuinely paid session. Stripe sets
+        // payment_status to 'paid' (or 'no_payment_required' for $0/trial); an
+        // 'unpaid' session must never elevate a tier.
+        const paid = checkoutSession.payment_status === 'paid' || checkoutSession.payment_status === 'no_payment_required';
+        if (!paid) {
+          console.warn(`[STRIPE WEBHOOK] checkout.session.completed not granting — payment_status=${checkoutSession.payment_status} for ${email}`);
+          break;
+        }
+
         if (email && pricing) {
           const user = await dbGetUser(email);
           if (user) {
@@ -1469,8 +1508,19 @@ app.post('/api/billing/webhook', express.raw({ type: 'application/json' }), asyn
         const user = await findUserForSubscription(sub);
         if (user) {
           user.cancels_at_period_end = !!sub.cancel_at_period_end;
+          // Re-sync entitlement to the subscription's CURRENT state. Previously
+          // this only copied cancel_at_period_end, so a plan-swap/proration in the
+          // Stripe dashboard, or a lapse into past_due/unpaid, never changed the
+          // user's access_tier (entitlement drift / revenue leak).
+          const status = String(sub.status || '');
+          if (STRIPE_REVOKE_STATUSES.has(status)) {
+            user.access_tier = 'guest';
+          } else if (STRIPE_ACTIVE_STATUSES.has(status)) {
+            const mapped = tierFromStripeSubscription(sub);
+            if (mapped) user.access_tier = mapped.accessTier;
+          }
           await persistUser(user.email, user);
-          console.log(`[STRIPE WEBHOOK] subscription.updated -> ${user.email} cancels_at_period_end=${user.cancels_at_period_end}`);
+          console.log(`[STRIPE WEBHOOK] subscription.updated -> ${user.email} status=${status} tier=${user.access_tier} cancels_at_period_end=${user.cancels_at_period_end}`);
         }
         break;
       }
