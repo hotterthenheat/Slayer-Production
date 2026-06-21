@@ -7,7 +7,7 @@ const CORE_WORDS_MAP: Record<string, string[]> = {
     "flow.gex # -1.2bn  flip 5980","skysvision.scan() -> 5 setups","pinpoint.dealers() -> gex -1.2bn","flip 5,980   build 5.2.1",
     "NET GEX -1.2bn   FLIP 5,980","DEX +0.42   VEX 0.78","SPX 6050C 0DTE   92","NDX 21800P 1DTE   87","QQQ 505C WK   81",
     "IWM 232P 0DTE   74","upper = ema + k * atr","if px >= upper: return HOLDING","if px <= lower: return FAILING",
-    "return TESTING","regime: short gamma","> live","slayer:~ $","setups = rank(chain, strat)","score = wilson(w, n)",
+    "return TESTING","gamma: short","> live","slayer:~ $","setups = rank(chain, strat)","score = wilson(w, n)",
     "reprice(S, sigma - 0.012*dPct)","CALL WALL 6100   PUT WALL 5950","P_cal 0.64   EV +0.31R","SLAYER/LIVE  09:41:06 ET",
     "0DTE  filled  6050C  +34%","dealers.hedge -> accel up","ev = sum p(x)*payoff(x)","chain('SPX', 0DTE).rank()"
   ],

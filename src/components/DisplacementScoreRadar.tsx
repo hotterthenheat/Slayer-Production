@@ -31,7 +31,7 @@ export function DisplacementScoreRadar({ score }: ScoreRadarProps) {
     { name: 'Structure Break', val: score.structureQuality, max: 10, desc: 'Clean breakout strength and sequence of higher highs/lows.' },
     { name: 'Liquidity Sweep', val: score.liquiditySweep, max: 10, desc: 'Price swept a key high/low liquidity level.' },
     { name: 'Higher TF Agreement', val: score.htfAgreement, max: 10, desc: 'How many higher timeframes agree with the current move.' },
-    { name: 'Vol Regime Alignment', val: score.volatilityRegime, max: 10, desc: 'IV expansion backing the price move.' },
+    { name: 'Volatility Alignment', val: score.volatilityRegime, max: 10, desc: 'IV expansion backing the price move.' },
     { name: 'Premium / Discount', val: score.premiumDiscount, max: 5, desc: 'Where price sits in the current dealing range.' },
     { name: 'Momentum Acceleration', val: score.momentumAcceleration, max: 10, desc: 'Price velocity and short-term impulse strength.' },
   ];

@@ -209,7 +209,7 @@ export function QuantAuditView({
       timeTaken: 11,
       whatTargetReachedFirst: "None",
       finalOutcome: "Failure",
-      failureReasons: ["Stop Loss threshold breached in sudden liquid cascade", "Order flow sell block surge"]
+      failureReasons: ["Stop loss hit during a sudden liquidity crunch", "Order flow sell block surge"]
     },
     {
       id: "stat-5",

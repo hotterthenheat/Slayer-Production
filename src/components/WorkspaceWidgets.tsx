@@ -52,7 +52,7 @@ const RegimeScan = React.memo(({ ticker }: { ticker: string }) => {
   return (
     <div className="space-y-2">
       <div className="flex items-center justify-between">
-        <span className="text-[10px] text-[#A3A3A3] uppercase tracking-widest">{ticker} Regime</span>
+        <span className="text-[10px] text-[#A3A3A3] uppercase tracking-widest">{ticker} State</span>
         <span className={`text-[10px] font-bold ${status === 'HOLDING' ? 'text-[#4ADE80]' : status === 'TESTING' ? 'text-[#A1A1AA]' : 'text-[#F87171]'}`}>[{status}]</span>
       </div>
       <div className="text-3xl font-black text-[#E5E5E5] tabular-nums">{Math.round(score)}</div>
@@ -283,7 +283,7 @@ const MarketRegimeWidget = React.memo(() => {
   return (
     <div className="flex flex-col h-full justify-between space-y-2">
       <div className="flex justify-between items-center bg-[#111] border border-[#1F1F1F] p-1.5 rounded-sm">
-         <span className="text-[8.5px] font-black text-[#4ADE80] uppercase tracking-widest">Current Regime: EXPANSION</span>
+         <span className="text-[8.5px] font-black text-[#4ADE80] uppercase tracking-widest">Current State: EXPANSION</span>
       </div>
       <div className="flex-1 flex flex-col items-center justify-center border border-[#1F1F1F] bg-[#0A0A0A] rounded-sm">
          <div className="text-[32px] font-black text-[#E5E5E5] leading-none mb-1">{sys}</div>

@@ -72,7 +72,7 @@ export const WIDGETS: WidgetMeta[] = [
   { type: 'charm', title: 'CHARM EXPOSURE', minW: 3, minH: 3 },
   { type: 'loaded_strikes', title: 'LOADED STRIKES', minW: 3, minH: 3 },
   { type: 'dealer_flow_analysis', title: 'DEALER FLOW ANALYSIS', minW: 4, minH: 3 },
-  { type: 'market_regime', title: 'MARKET REGIME', minW: 4, minH: 3 },
+  { type: 'market_regime', title: 'MARKET STATE', minW: 4, minH: 3 },
   { type: 'key_levels', title: 'KEY LEVELS (PINPOINT)', minW: 3, minH: 3 },
   { type: 'institutional_positioning', title: 'INSTITUTIONAL POSITIONING', minW: 4, minH: 4 },
 

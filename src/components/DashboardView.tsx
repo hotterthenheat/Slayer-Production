@@ -18,9 +18,9 @@ export function DashboardView() {
   // Derived values for identical layout aesthetic
   const marketStateLabel = useMemo(() => {
     if (momentum === 'ACCELERATING') {
-      return 'Continuous Dispersion / Trend Accel Regime';
+      return 'Trending — moves are speeding up';
     }
-    return 'Dampened Volatility / Range Decay Regime';
+    return 'Calm — range-bound, low movement';
   }, [momentum]);
 
   const dealerBiasLabel = useMemo(() => {
@@ -77,13 +77,13 @@ export function DashboardView() {
             {/* Market State Block */}
             <div className="bg-black/40 border border-white/5 p-5 rounded-xl flex flex-col justify-between text-left">
               <div>
-                <span className="text-[8px] text-zinc-500 tracking-wider uppercase block">CURRENT MARKET REGIME</span>
+                <span className="text-[8px] text-zinc-500 tracking-wider uppercase block">CURRENT MARKET STATE</span>
                 <span className="text-xl md:text-2xl font-extrabold text-[#E5E5E5] font-sans uppercase block tracking-tight pt-1 leading-tight">
                   {marketStateLabel}
                 </span>
               </div>
               <div className="text-[9.5px] text-zinc-400 pt-3 border-t border-white/5 leading-relaxed font-sans">
-                Live regime read verified against CBOE order flow.
+                Live read of current market conditions, checked against CBOE order flow.
               </div>
             </div>
 
@@ -173,7 +173,7 @@ export function DashboardView() {
                 <span className="text-[#E5E5E5] font-bold">{serverState?.system_score?.htfAgreement >= 7 ? 'VERIFIED' : 'DIVERGENT'}</span>
               </div>
               <div className="flex justify-between">
-                <span>Vol Regime:</span>
+                <span>Volatility:</span>
                 <span className="text-[#E5E5E5]">{serverState?.system_score?.volatilityRegime >= 6 ? 'STABLE' : 'EXPANDING'}</span>
               </div>
             </div>
@@ -214,7 +214,7 @@ export function DashboardView() {
         </div>
         <div className="text-[11px] leading-relaxed text-zinc-400 font-sans space-y-2">
           <p>
-            Slayer continuously scores each setup using dealer gamma positioning, order flow, and historical regime data. Signals are cross-checked against CBOE clearing records so only high-probability setups are flagged.
+            Slayer continuously scores each setup using dealer gamma positioning, order flow, and past market conditions. Signals are cross-checked against CBOE clearing records so only high-probability setups are flagged.
           </p>
           <p>
             Risk levels are defined before entry. Expected move ranges, support, and resistance levels update in real time to keep your stops and targets current.

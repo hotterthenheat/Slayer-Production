@@ -369,7 +369,7 @@ export function AnalyticsSection({
               <span className="text-[#3b82f6] font-bold">{htfRating}</span>
             </div>
             <div className="flex justify-between">
-              <span>Volatility Regime:</span>
+              <span>Volatility State:</span>
               <span className="text-zinc-200">{volRegime}</span>
             </div>
             <div className="flex justify-between">

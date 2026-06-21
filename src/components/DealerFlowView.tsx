@@ -799,7 +799,7 @@ export function DealerFlowView() {
           }`}
         >
           <Zap className="w-3.5 h-3.5 text-amber-400" />
-          DEALER MECHANICS & CASCADES
+          DEALER MECHANICS
         </button>
         <button
           onClick={() => setActiveEngineView('institutional')}
@@ -821,7 +821,7 @@ export function DealerFlowView() {
           }`}
         >
           <Waves className="w-3.5 h-3.5 text-cyan-400" />
-          ORDER FLOW & MICROSTRUCTURE
+          ORDER FLOW
         </button>
       </div>
 

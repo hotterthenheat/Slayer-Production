@@ -18,7 +18,7 @@ export function TradePlanCard() {
   if (!plan) {
     return (
       <div className="rounded-lg border border-black/60 bg-black/40 p-4 text-center">
-        <p className="text-[10px] uppercase tracking-widest text-zinc-500 animate-pulse">Synthesizing trade plan…</p>
+        <p className="text-[10px] uppercase tracking-widest text-zinc-500 animate-pulse">Building trade plan…</p>
       </div>
     );
   }
@@ -98,7 +98,7 @@ export function TradePlanCard() {
         <span className="flex items-center justify-between"><span className="text-zinc-500 uppercase tracking-widest text-[8px]">Flow</span><span className="font-bold" style={{ color: plan.dealerFlow.includes('Positive') ? '#4ADE80' : '#F87171' }}>{plan.dealerFlow.split(' ')[0]} γ</span></span>
         <span className="flex items-center justify-between"><span className="text-zinc-500 uppercase tracking-widest text-[8px]">Confirm</span><span className="flex items-center gap-1" style={{ color: plan.flowConfirmation ? '#4ADE80' : '#A1A1AA' }}>{plan.flowConfirmation ? <CheckCircle2 className="w-3 h-3" /> : <XCircle className="w-3 h-3" />}{plan.flowConfirmation ? 'Yes' : 'No'}</span></span>
         <span className="flex items-center justify-between"><span className="text-zinc-500 uppercase tracking-widest text-[8px]">Win Rate</span><span className="tabular-nums font-bold" style={{ color: plan.winRate >= 65 ? '#4ADE80' : plan.winRate >= 50 ? '#FBBF24' : '#F87171' }}>{plan.winRate}%</span></span>
-        <span className="flex items-center justify-between sm:col-span-2"><span className="text-zinc-500 uppercase tracking-widest text-[8px] flex items-center gap-1"><Activity className="w-3 h-3" />Regime</span><span className="text-zinc-300">{plan.trendRegime}</span></span>
+        <span className="flex items-center justify-between sm:col-span-2"><span className="text-zinc-500 uppercase tracking-widest text-[8px] flex items-center gap-1"><Activity className="w-3 h-3" />Trend</span><span className="text-zinc-300">{plan.trendRegime}</span></span>
       </div>
 
       <div className="flex flex-col gap-1 pt-1">

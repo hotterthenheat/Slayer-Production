@@ -68,7 +68,7 @@ const SCENARIOS: Record<string, MockScenario> = {
   },
   liquidCollapse: {
     name: 'Macro Panic Collapse',
-    desc: 'Heavy put OI, thin liquidity, and a large sell MOC imbalance combine in the final hour, driving a rapid sell-off cascade.',
+    desc: 'Heavy put OI, thin liquidity, and a large sell MOC imbalance combine in the final hour, driving a rapid sell-off.',
     spotPrice: 4950,
     timeMin: 955, // 3:55 PM EST (Power hour close)
     eventMode: 'extreme_event',
@@ -608,7 +608,7 @@ export function MicrostructureLabView() {
             <div className="flex items-center gap-2">
               <div className="w-2 h-2 rounded-full bg-cyan-400 animate-pulse" />
               <div className="font-sans font-black text-xs tracking-widest text-zinc-100 uppercase">
-                Dealer Hedging Cascade (25-Step Simulation)
+                Dealer Hedging Chain Reaction (25-Step Simulation)
               </div>
             </div>
             

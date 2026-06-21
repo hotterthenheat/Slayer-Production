@@ -373,9 +373,9 @@ export default function App() {
     const mergedContracts = [...convertedLive, ...staticContracts];
 
     const toolsItems = [
-      { ticker: 'SVI', name: 'SVI Volatility Solver', pnl: 'Physics Module', id: 'svi-solver', isTool: true },
-      { ticker: 'G3D', name: '3D Gamma Topography', pnl: 'Visualizer', id: 'gamma-surface', isTool: true },
-      { ticker: 'VPIN', name: 'Order Flow Toxicity', pnl: 'Microstructure', id: 'vpin-tracker', isTool: true }
+      { ticker: 'SVI', name: 'SVI Volatility Solver', pnl: 'Volatility Tool', id: 'svi-solver', isTool: true },
+      { ticker: 'G3D', name: '3D Gamma Map', pnl: 'Visualizer', id: 'gamma-surface', isTool: true },
+      { ticker: 'VPIN', name: 'Order Flow Toxicity', pnl: 'Order Flow', id: 'vpin-tracker', isTool: true }
     ];
 
     const navItems = [

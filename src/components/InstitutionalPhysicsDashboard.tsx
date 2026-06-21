@@ -144,7 +144,7 @@ const TICKER_PROFILES: Record<string, TICKER_PROFILE_METRICS> = {
     friction: 0.0008,
     volState: 'VOL FALLING',
     marketEnergy: '0.288 λ',
-    impliedRegime: 'EQUILIBRIUM / BALANCED',
+    impliedRegime: 'BALANCED',
     expectedMovePct: 0.018,
   },
   SPY: {
@@ -203,7 +203,7 @@ export function InstitutionalPhysicsDashboard({ profile: externalProfile, ticker
   // Local calculation states
   const [ticker, setTicker] = useState<string>(activeTicker);
   const [profile, setProfile] = useState<TICKER_PROFILE_METRICS>(customProfile);
-  const [systemState, setSystemState] = useState<'SYSTEM ACTIVE' | 'COMPUTING CASCADE...'>('SYSTEM ACTIVE');
+  const [systemState, setSystemState] = useState<'SYSTEM ACTIVE' | 'COMPUTING...'>('SYSTEM ACTIVE');
 
   // Control over surface topography model setting: 'call' | 'put' | 'neutral'
   const [surfaceMode, setSurfaceMode] = useState<'call' | 'put' | 'neutral'>('neutral');
@@ -268,7 +268,7 @@ export function InstitutionalPhysicsDashboard({ profile: externalProfile, ticker
 
   // Run autonomous quantitative computation simulation when switching tickers
   const handleSelectTickerObj = (selectedTk: string) => {
-    setSystemState('COMPUTING CASCADE...');
+    setSystemState('COMPUTING...');
     
     // Instant execution to remove slow rendering delays
     const asset = ASSET_LIST.find(a => a.ticker === selectedTk);
@@ -1057,21 +1057,21 @@ export function InstitutionalPhysicsDashboard({ profile: externalProfile, ticker
                   onClick={() => setSurfaceMode('neutral')}
                   className={`px-3 py-1 text-[8.5px] uppercase font-extrabold tracking-wider rounded-xs focus:outline-none transition-colors ${surfaceMode === 'neutral' ? 'bg-black text-zinc-200' : 'text-zinc-500 hover:text-zinc-400'}`}
                 >
-                  ● NEUTRAL TOPOGRAPHY
+                  ● NEUTRAL VIEW
                 </button>
                 <button
                   type="button"
                   onClick={() => setSurfaceMode('call')}
                   className={`px-3 py-1 text-[8.5px] uppercase font-extrabold tracking-wider rounded-xs focus:outline-none transition-colors ${surfaceMode === 'call' ? 'bg-black/40 border border-black text-[#4ADE80]' : 'text-zinc-500 hover:text-zinc-400'}`}
                 >
-                  CALL WALL Topography
+                  CALL WALL VIEW
                 </button>
                 <button
                   type="button"
                   onClick={() => setSurfaceMode('put')}
                   className={`px-3 py-1 text-[8.5px] uppercase font-extrabold tracking-wider rounded-xs focus:outline-none transition-colors ${surfaceMode === 'put' ? 'bg-rose-950 border border-rose-900 text-[#F87171]' : 'text-zinc-500 hover:text-zinc-400'}`}
                 >
-                  PUT WALL Topography
+                  PUT WALL VIEW
                 </button>
                 <button
                   type="button"
@@ -1281,7 +1281,7 @@ export function InstitutionalPhysicsDashboard({ profile: externalProfile, ticker
           {/* Module 1: Market Structuring parameters */}
           <div className="mb-4">
             <div className="panel-header-alt">
-              <span>VOLATILITY & MICROSTRUCTURE</span>
+              <span>VOLATILITY & ORDER FLOW</span>
               <ShieldAlert className="w-3.5 h-3.5 text-zinc-600" />
             </div>
 

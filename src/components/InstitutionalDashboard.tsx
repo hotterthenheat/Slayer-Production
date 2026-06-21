@@ -41,7 +41,7 @@ export function InstitutionalDashboard() {
                 <div className={`text-[12px] font-bold ${dealerBias === 'LONG GAMMA' ? 'text-[#4ADE80]' : 'text-[#F87171]'}`}>{dealerBias}</div>
               </div>
               <div>
-                <span className="text-[8px] text-zinc-500 tracking-wider">CURRENT REGIME</span>
+                <span className="text-[8px] text-zinc-500 tracking-wider">MARKET STATE</span>
                 <div className={`text-[12px] font-bold text-[#E5E5E5]`}>{dealerBias === 'LONG GAMMA' ? 'RANGE BOUND' : 'TRENDING / UNSTABLE'}</div>
               </div>
             </div>
