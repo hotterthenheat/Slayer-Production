@@ -228,7 +228,7 @@ export function ClerkGate({ onSuccess, referralCodeFromUrl, onClose }: ClerkGate
 
         <div className="border-t border-[#1f1f1f] pt-5 mt-6 text-center">
           <p className="text-xs text-zinc-500 font-sans">
-            By continuing, you agree to Slayer Trade's Terms of Service and Privacy Policy. Secure SSL connection.
+            By continuing, you agree to Slayer Terminal's Terms of Service and Privacy Policy. Secure SSL connection.
           </p>
         </div>
       </motion.div>

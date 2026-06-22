@@ -468,9 +468,11 @@ export function SubscriptionPricing({ onUpgradeComplete, onEnterApp, session, on
         transition={{ duration: 0.5 }}
         className="border-t border-[var(--border)] py-10 px-6 text-center mt-auto relative z-10 w-full"
       >
-        <p className="text-[12px] text-[var(--text-tertiary)]">&copy; 2026 Slayer Trade. All rights reserved.</p>
-        <p className="mt-1.5 text-[11px] text-[var(--text-tertiary)]/70">
-          Slayer provides real-time data and analysis tools. Not investment advice.
+        <p className="text-[12px] text-[var(--text-tertiary)]">&copy; 2026 Slayer Terminal. All rights reserved.</p>
+        <p className="mt-2 mx-auto max-w-2xl text-[11px] leading-relaxed text-[var(--text-tertiary)]">
+          Slayer Terminal provides analytics and informational tools only — not investment advice, a recommendation, or a
+          solicitation to buy or sell any security. Options carry substantial risk and are not suitable for every investor.
+          Modeled results and past performance do not guarantee future outcomes. All trading decisions are your own.
         </p>
       </motion.footer>
 
