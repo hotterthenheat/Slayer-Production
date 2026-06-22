@@ -398,7 +398,7 @@ export function SkyseyeAlertHub() {
                       ? 'border-rose-500/30 bg-rose-500/10 text-[#F87171]'
                       : 'border-black/80 bg-black text-zinc-400'
                 }`}>
-                  {toast.rating === 'GOOD' ? '★ ENTER' : toast.rating === 'WEAK' ? '⚠ AVOID' : '✦ HOLD'}
+                  {toast.rating === 'GOOD' ? ' ENTER' : toast.rating === 'WEAK' ? ' AVOID' : ' HOLD'}
                 </div>
               </div>
 
@@ -463,19 +463,19 @@ export function SkyseyeAlertHub() {
               <div className="text-[9px] text-zinc-400 text-left leading-relaxed font-sans px-0.5">
                 {toast.type === 'MULTIPLE' ? (
                   <span className="text-[#4ADE80] font-mono font-medium">
-                    ⚡ <strong>Multiple setups flagged.</strong> Click to open SkyVision and review all alerts.
+                     <strong>Multiple setups flagged.</strong> Click to open SkyVision and review all alerts.
                   </span>
                 ) : toast.rating === 'GOOD' ? (
                   <span className="text-[#4ADE80] font-mono font-medium">
-                    ⚡ <strong>Strong setup detected.</strong> Click to review. Dealers are holding heavy delta support.
+                     <strong>Strong setup detected.</strong> Click to review. Dealers are holding heavy delta support.
                   </span>
                 ) : toast.rating === 'WEAK' ? (
                   <span className="text-[#F87171]/90 font-mono font-medium">
-                    ⚠ <strong>Weak setup.</strong> Click to view. Dealer hedging is limiting upside.
+                     <strong>Weak setup.</strong> Click to view. Dealer hedging is limiting upside.
                   </span>
                 ) : (
                   <span className="text-[#4ADE80]/90 font-mono font-medium text-left">
-                    ✦ <strong>Consolidating.</strong> Click to review. Balanced call/put ratio.
+                     <strong>Consolidating.</strong> Click to review. Balanced call/put ratio.
                   </span>
                 )}
               </div>

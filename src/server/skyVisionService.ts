@@ -24,6 +24,7 @@
  */
 import { db } from './state';
 import { ASSET_LIST, optionDteDays } from '../data';
+import type { AssetInfo } from '../types';
 import {
   snapshotFromMarket,
   scoreContract,
@@ -173,10 +174,16 @@ function trendScore(hist: ContractSnapshot[], pick: (s: ContractSnapshot) => num
   return Math.round(clamp(50 + 50 * Math.tanh(3 * rel), 0, 100));
 }
 
-/** Advance the engine one tick for every focus ticker and cache the result. */
-export function tickSkyVision(): void {
+/**
+ * Advance the engine one tick for the SCOPED focus tickers (the market engine's
+ * round-robin bucket UNION the subscribed tickers) and cache the result. Defaults to
+ * the full ASSET_LIST for callers that don't pass a scope. Folding this into the
+ * round-robin avoids a second full 100-asset loop every second; tickers not in scope
+ * keep their last cached SkyVision block, which the SSE broadcast still ships.
+ */
+export function tickSkyVision(scope: AssetInfo[] = ASSET_LIST): void {
   tickIndex++;
-  for (const asset of ASSET_LIST) {
+  for (const asset of scope) {
     try {
       computeForAsset(asset);
     } catch (e) {

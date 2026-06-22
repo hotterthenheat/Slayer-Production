@@ -16,6 +16,7 @@ import { AssetInfo } from '../types';
 import { ASSET_LIST } from '../data';
 import { useContractStore } from '../lib/store';
 import { formatTime } from '../lib/timeUtils';
+import { AssetSparkline } from './AssetSparkline';
 
 interface DiscoveryViewProps {
   systemScore: any;
@@ -1424,11 +1425,19 @@ export function DiscoveryView({
 
                     {/* Ticker Section Title segment */}
                     <div className="flex items-center justify-between border-b pb-2.5 mb-1 border-[var(--border)]">
-                      <div className="flex items-center gap-2">
-                        <span className={`text-xs font-black tracking-widest uppercase font-mono ${c_textWhite}`}>{ticker}</span>
-                        <span className="bg-[#60A5FA]/10 border border-[#60A5FA]/20 text-[#60A5FA] text-[8px] font-bold px-1.5 py-0.5 rounded uppercase tracking-wider">
-                          {tickerContracts.length} found
-                        </span>
+                      <div className="flex items-center gap-4">
+                        <div className="flex items-center gap-2">
+                          <span className={`text-xs font-black tracking-widest uppercase font-mono ${c_textWhite}`}>{ticker}</span>
+                          <span className="bg-[#60A5FA]/10 border border-[#60A5FA]/20 text-[#60A5FA] text-[8px] font-bold px-1.5 py-0.5 rounded uppercase tracking-wider">
+                            {tickerContracts.length} found
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-2.5 bg-[var(--surface-2)]/60 px-2 py-0.5 rounded border border-[var(--border)]/40">
+                          <AssetSparkline ticker={ticker} width={50} height={12} strokeWidth={1.25} />
+                          <span className="text-[9px] font-mono font-bold text-[var(--text-secondary)] opacity-90">
+                            ${(useContractStore.getState().serverState?.liveSpotPrices?.[ticker] || ASSET_LIST.find(a => a.ticker === ticker)?.defaultPrice || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                          </span>
+                        </div>
                       </div>
                       <span className="text-[7.5px] text-[var(--text-tertiary)] uppercase tracking-widest font-black">
                         Strongest → Weakest

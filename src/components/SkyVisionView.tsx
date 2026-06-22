@@ -8,6 +8,7 @@ import { ASSET_LIST, optionExpiryLabel } from '../data';
 import { Zap, FileText, CheckCircle2, Maximize2, Minimize2, Layers, Target, Activity } from 'lucide-react';
 import { DiscoveryView } from './DiscoveryView';
 import { SkyVisionV2Panel } from './SkyVisionV2Panel';
+import { AssetSparkline } from './AssetSparkline';
 // Pure, client-safe math (no server-only deps): shared Black-Scholes greeks used
 // as a clearly-labelled MODEL fallback when the premium-gated server option_chain
 // is unavailable. `ChainContract` mirrors the server's per-strike chain shape.
@@ -417,19 +418,22 @@ export function SkyVisionView() {
         </div>
 
         <div className="flex items-center gap-2.5 flex-wrap">
-          <div className="flex items-center bg-[var(--surface-2)] p-0.5 border border-[var(--border)] rounded-md">
+          <div className="flex items-center bg-[var(--surface-2)] p-0.5 border border-[var(--border)] rounded-md gap-x-1">
             {ASSET_LIST.map(asset => (
               <button
                 key={asset.ticker}
                 type="button"
                 onClick={() => setSelectedAsset(asset)}
-                className={`px-3.5 py-1 text-[9px] uppercase font-black tracking-widest rounded transition-colors cursor-pointer ${
+                className={`flex items-center gap-2 px-3 py-1.5 text-[9px] uppercase font-black tracking-widest rounded transition-colors cursor-pointer ${
                   selectedAsset.ticker === asset.ticker
-                    ? 'bg-[var(--surface-3)] text-[var(--text-primary)]'
-                    : 'text-[var(--text-tertiary)] hover:text-[var(--text-primary)]'
+                    ? 'bg-[var(--surface-3)] text-[var(--text-primary)] border border-white/5'
+                    : 'text-[var(--text-tertiary)] hover:text-[var(--text-primary)] border border-transparent'
                 }`}
               >
-                {asset.ticker}
+                <span>{asset.ticker}</span>
+                <span className="opacity-80 scale-90 origin-left" style={{ filter: 'brightness(1.1)' }}>
+                  <AssetSparkline ticker={asset.ticker} width={45} height={12} strokeWidth={1.25} />
+                </span>
               </button>
             ))}
           </div>

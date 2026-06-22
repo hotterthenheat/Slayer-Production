@@ -38,7 +38,7 @@ export class ErrorBoundary extends React.Component<Props, State> {
       <div className="w-full min-h-[240px] flex items-center justify-center p-8">
         <div className="max-w-md w-full bg-black/80 border border-rose-500/30 rounded-lg p-6 text-center font-mono">
           <div className="text-[10px] uppercase tracking-[0.25em] text-rose-400/80 mb-3">
-            ⚠ Subsystem Fault{this.props.label ? ` · ${this.props.label}` : ''}
+             Subsystem Fault{this.props.label ? ` · ${this.props.label}` : ''}
           </div>
           <p className="text-zinc-400 text-xs mb-1">
             This panel hit an error and was isolated to keep the rest of the terminal running.

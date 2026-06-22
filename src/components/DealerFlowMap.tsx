@@ -13,6 +13,25 @@ export function DealerFlowMap({ profile, decimals }: DealerFlowMapProps) {
   useEffect(() => {
     if (!containerRef.current || !profile || !profile.strikes || profile.strikes.length === 0) return;
 
+    // Resolve the active theme tokens once so the D3 chart matches the rest of
+    // the token-driven UI (light/dark/custom themes) instead of hardcoded hexes.
+    const css = getComputedStyle(document.documentElement);
+    const tok = (name: string, fallback: string) => {
+      const v = css.getPropertyValue(name).trim();
+      return v || fallback;
+    };
+    const theme = {
+      success: tok('--success', '#4ADE80'),
+      danger: tok('--danger', '#F87171'),
+      warning: tok('--warning', '#FBBF24'),
+      info: tok('--info', '#60A5FA'),
+      surface: tok('--surface', '#141414'),
+      border: tok('--border-strong', 'rgba(255,255,255,0.18)'),
+      grid: tok('--border', 'rgba(255,255,255,0.10)'),
+      textPrimary: tok('--text-primary', '#E5E5E5'),
+      textTertiary: tok('--text-tertiary', '#A3A3A3'),
+    };
+
     const strikes = profile.strikes;
     const spot = profile.spot;
     const callWall = profile.callWall;
@@ -59,17 +78,19 @@ export function DealerFlowMap({ profile, decimals }: DealerFlowMapProps) {
       .attr('x2', width)
       .attr('y1', y(0))
       .attr('y2', y(0))
-      .attr('stroke', '#3f3f46')
+      .attr('stroke', theme.border)
       .attr('stroke-width', 2);
 
     // X axis
     const defaultTicks = x.domain().filter((_, i) => i % 2 === 0);
     svg.append('g')
       .attr('transform', `translate(0,${height})`)
-      .call(d3.axisBottom(x).tickValues(defaultTicks))
-      .attr('class', 'text-zinc-500 font-mono text-[9px]')
+      .call(d3.axisBottom(x).tickValues(defaultTicks).tickFormat(d => parseFloat(d).toLocaleString()))
+      .attr('class', 'font-mono text-[9px]')
+      .attr('fill', theme.textTertiary)
       .call(g => g.select('.domain').attr('stroke', 'none'))
       .call(g => g.selectAll('.tick line').attr('stroke', 'none'))
+      .call(g => g.selectAll('text').attr('fill', theme.textTertiary))
       .selectAll("text")
       .attr("transform", "rotate(-45)")
       .style("text-anchor", "end")
@@ -80,15 +101,16 @@ export function DealerFlowMap({ profile, decimals }: DealerFlowMapProps) {
     svg.append('g')
       .call(d3.axisLeft(y).ticks(6).tickFormat(d => {
         const val = +d;
-        if (Math.abs(val) >= 1e9) return `${(val / 1e9).toFixed(1)}B`;
-        if (Math.abs(val) >= 1e6) return `${(val / 1e6).toFixed(1)}M`;
-        if (Math.abs(val) >= 1e3) return `${(val / 1e3).toFixed(1)}K`;
-        return val.toString();
+        if (Math.abs(val) >= 1e9) return `${(val / 1e9).toLocaleString(undefined, { minimumFractionDigits: 1, maximumFractionDigits: 1 })}B`;
+        if (Math.abs(val) >= 1e6) return `${(val / 1e6).toLocaleString(undefined, { minimumFractionDigits: 1, maximumFractionDigits: 1 })}M`;
+        if (Math.abs(val) >= 1e3) return `${(val / 1e3).toLocaleString(undefined, { minimumFractionDigits: 1, maximumFractionDigits: 1 })}K`;
+        return val.toLocaleString();
       }))
-      .attr('class', 'text-zinc-500 font-mono text-[9px]')
+      .attr('class', 'font-mono text-[9px]')
+      .call(g => g.selectAll('text').attr('fill', theme.textTertiary))
       .call(g => g.select('.domain').attr('stroke', 'none'))
       .call(g => g.selectAll('.tick line')
-        .attr('stroke', '#27272a')
+        .attr('stroke', theme.grid)
         .attr('stroke-dasharray', '2 2')
         .attr('x2', width)
       );
@@ -104,16 +126,16 @@ export function DealerFlowMap({ profile, decimals }: DealerFlowMapProps) {
       .attr('id', 'pos-gex-grad')
       .attr('x1', '0%').attr('y1', '0%')
       .attr('x2', '0%').attr('y2', '100%');
-    posGradient.append('stop').attr('offset', '0%').attr('stop-color', '#4ade80').attr('stop-opacity', 0.9);
-    posGradient.append('stop').attr('offset', '100%').attr('stop-color', '#22c55e').attr('stop-opacity', 0.4);
+    posGradient.append('stop').attr('offset', '0%').attr('stop-color', theme.success).attr('stop-opacity', 0.95);
+    posGradient.append('stop').attr('offset', '100%').attr('stop-color', theme.success).attr('stop-opacity', 0.45);
 
     // Negative Gradient
     const negGradient = defs.append('linearGradient')
       .attr('id', 'neg-gex-grad')
       .attr('x1', '0%').attr('y1', '0%')
       .attr('x2', '0%').attr('y2', '100%');
-    negGradient.append('stop').attr('offset', '0%').attr('stop-color', '#ef4444').attr('stop-opacity', 0.4);
-    negGradient.append('stop').attr('offset', '100%').attr('stop-color', '#f87171').attr('stop-opacity', 0.9);
+    negGradient.append('stop').attr('offset', '0%').attr('stop-color', theme.danger).attr('stop-opacity', 0.45);
+    negGradient.append('stop').attr('offset', '100%').attr('stop-color', theme.danger).attr('stop-opacity', 0.95);
 
     const bars = svg.selectAll('.bar')
       .data(visibleStrikes)
@@ -126,99 +148,109 @@ export function DealerFlowMap({ profile, decimals }: DealerFlowMapProps) {
       .attr('fill', d => d.netGex > 0 ? 'url(#pos-gex-grad)' : 'url(#neg-gex-grad)')
       .attr('rx', 2);
 
-    // Call Wall line
-    if (callWall && visibleStrikes.some(s => s.strike === callWall)) {
-      const cwX = x(callWall.toString())! + x.bandwidth() / 2;
-      svg.append('line')
-        .attr('x1', cwX).attr('x2', cwX)
-        .attr('y1', 0).attr('y2', height)
-        .attr('stroke', '#4ade80')
-        .attr('stroke-width', 1.5)
-        .attr('stroke-dasharray', '4 4')
-        .attr('opacity', 0.8);
+    // Initialize group map for all active markers to perform collision-free stacking
+    interface MarkerDef {
+      type: string;
+      label: string;
+      color: string;
+      border: string;
+      lineColor: string;
+      lineStyle: 'solid' | 'dashed' | 'dotted';
+    }
+    const strikeMarkers = new Map<number, MarkerDef[]>();
+    const addMarker = (strike: number, def: MarkerDef) => {
+      const parsedStrike = typeof strike === 'string' ? parseFloat(strike) : strike;
+      if (!visibleStrikes.some(s => Math.abs(s.strike - parsedStrike) < 0.1)) return;
+      const key = visibleStrikes.find(s => Math.abs(s.strike - parsedStrike) < 0.1)!.strike;
+      const list = strikeMarkers.get(key) || [];
+      list.push(def);
+      strikeMarkers.set(key, list);
+    };
 
-      svg.append('text')
-        .attr('x', cwX)
-        .attr('y', -10)
-        .attr('fill', '#4ade80')
-        .attr('text-anchor', 'middle')
-        .attr('class', 'font-mono text-[9px] font-black uppercase tracking-widest')
-        .text('CALL WALL');
+    if (callWall) {
+      addMarker(callWall, { type: 'callWall', label: 'CALL WALL', color: theme.success, border: theme.success, lineColor: theme.success, lineStyle: 'dashed' });
+    }
+    if (putWall) {
+      addMarker(putWall, { type: 'putWall', label: 'PUT WALL', color: theme.danger, border: theme.danger, lineColor: theme.danger, lineStyle: 'dashed' });
+    }
+    if (magnet) {
+      addMarker(magnet, { type: 'magnet', label: 'PIN MAGNET', color: theme.info, border: theme.info, lineColor: theme.info, lineStyle: 'dotted' });
     }
 
-    // Put Wall line
-    if (putWall && visibleStrikes.some(s => s.strike === putWall)) {
-      const pwX = x(putWall.toString())! + x.bandwidth() / 2;
-      svg.append('line')
-        .attr('x1', pwX).attr('x2', pwX)
-        .attr('y1', 0).attr('y2', height)
-        .attr('stroke', '#f87171')
-        .attr('stroke-width', 1.5)
-        .attr('stroke-dasharray', '4 4')
-        .attr('opacity', 0.8);
-
-      svg.append('text')
-        .attr('x', pwX)
-        .attr('y', -10)
-        .attr('fill', '#f87171')
-        .attr('text-anchor', 'middle')
-        .attr('class', 'font-mono text-[9px] font-black uppercase tracking-widest')
-        .text('PUT WALL');
-    }
-
-    // Pinning / Magnet line
-    if (magnet && visibleStrikes.some(s => s.strike === magnet)) {
-        const magX = x(magnet.toString())! + x.bandwidth() / 2;
-        svg.append('line')
-          .attr('x1', magX).attr('x2', magX)
-          .attr('y1', 0).attr('y2', height)
-          .attr('stroke', '#38bdf8')
-          .attr('stroke-width', 1.5)
-          .attr('stroke-dasharray', '2 2');
-  
-        svg.append('text')
-          .attr('x', magX)
-          .attr('y', height + 25)
-          .attr('fill', '#38bdf8')
-          .attr('text-anchor', 'middle')
-          .attr('class', 'font-mono text-[9px] font-black uppercase tracking-widest')
-          .text('PIN MAGNET');
-    }
-
-    // Adding Spotlight
     const closestStrikeObj = visibleStrikes[closestIdx - startIdx];
     if (closestStrikeObj) {
-      const spotX = x(closestStrikeObj.strike.toString())! + x.bandwidth() / 2;
-      svg.append('line')
-        .attr('x1', spotX).attr('x2', spotX)
-        .attr('y1', 0).attr('y2', height)
-        .attr('stroke', '#e5e5e5')
-        .attr('stroke-width', 1)
-        .attr('opacity', 0.4);
-
-      svg.append('rect')
-         .attr('x', spotX - 22)
-         .attr('y', y(0) - 9)
-         .attr('width', 44)
-         .attr('height', 18)
-         .attr('fill', 'black')
-         .attr('stroke', '#e5e5e5')
-         .attr('stroke-width', 1)
-         .attr('rx', 3);
-
-      svg.append('text')
-        .attr('x', spotX)
-        .attr('y', y(0) + 3)
-        .attr('fill', '#e5e5e5')
-        .attr('text-anchor', 'middle')
-        .attr('class', 'font-mono text-[8px] font-black uppercase tracking-widest')
-        .text('SPOT');
+      addMarker(closestStrikeObj.strike, { type: 'spot', label: 'SPOT', color: theme.textPrimary, border: theme.textPrimary, lineColor: theme.textTertiary, lineStyle: 'solid' });
     }
+
+    // Sort marked strikes to stagger starting position when closest neighbors conflict
+    const markedStrikes = Array.from(strikeMarkers.keys()).sort((a, b) => a - b);
+    const startYOffsetMap = new Map<number, number>();
+    let prevX = -999;
+    let currentYBase = 15;
+
+    markedStrikes.forEach(strike => {
+      const xPos = x(strike.toString())! + x.bandwidth() / 2;
+      if (xPos - prevX < 85) {
+        currentYBase = (currentYBase === 15) ? 65 : 15;
+      } else {
+        currentYBase = 15;
+      }
+      startYOffsetMap.set(strike, currentYBase);
+      prevX = xPos;
+    });
+
+    // Render unified lines and stacked capsule badges
+    markedStrikes.forEach(strike => {
+      const list = strikeMarkers.get(strike)!;
+      const xPos = x(strike.toString())! + x.bandwidth() / 2;
+
+      const primaryMarker = list.find(m => m.type === 'spot') ||
+                            list.find(m => m.type === 'callWall') ||
+                            list.find(m => m.type === 'putWall') ||
+                            list[0];
+
+      // Vertical line
+      svg.append('line')
+        .attr('x1', xPos).attr('x2', xPos)
+        .attr('y1', 0).attr('y2', height)
+        .attr('stroke', primaryMarker.lineColor)
+        .attr('stroke-width', primaryMarker.type === 'spot' ? 1.5 : 1)
+        .attr('stroke-dasharray', primaryMarker.lineStyle === 'dashed' ? '4 4' : primaryMarker.lineStyle === 'dotted' ? '2 2' : 'none')
+        .attr('opacity', primaryMarker.type === 'spot' ? 0.6 : 0.85);
+
+      // capsule badges
+      const startY = startYOffsetMap.get(strike) || 15;
+      list.forEach((marker, index) => {
+        const badgeY = startY + index * 18;
+        const textWidth = Math.max(58, marker.label.length * 6.4 + 14);
+
+        // capsule
+        svg.append('rect')
+          .attr('x', xPos - textWidth / 2)
+          .attr('y', badgeY - 8)
+          .attr('width', textWidth)
+          .attr('height', 14)
+          .attr('rx', 4)
+          .attr('fill', theme.surface)
+          .attr('stroke', marker.border)
+          .attr('stroke-width', 1)
+          .attr('opacity', 0.95);
+
+        // text
+        svg.append('text')
+          .attr('x', xPos)
+          .attr('y', badgeY + 1)
+          .attr('fill', marker.color)
+          .attr('text-anchor', 'middle')
+          .attr('class', 'font-mono text-[9px] font-black uppercase tracking-widest')
+          .text(marker.label);
+      });
+    });
 
     // Interaction Overlay
     const hoverLine = svg.append('line')
       .attr('y1', 0).attr('y2', height)
-      .attr('stroke', '#e5e5e5')
+      .attr('stroke', theme.textPrimary)
       .attr('stroke-width', 1)
       .attr('stroke-dasharray', '2 2')
       .style('opacity', 0)
@@ -245,7 +277,7 @@ export function DealerFlowMap({ profile, decimals }: DealerFlowMapProps) {
 
         bars.filter(b => b.strike === d.strike)
           .attr('opacity', 1)
-          .attr('stroke', d.netGex > 0 ? '#4ade80' : '#f87171')
+          .attr('stroke', d.netGex > 0 ? theme.success : theme.danger)
           .attr('stroke-width', 1.5);
       })
       .on('mousemove', function(event, d) {
@@ -267,10 +299,10 @@ export function DealerFlowMap({ profile, decimals }: DealerFlowMapProps) {
   }, [profile, decimals]);
 
   const formatNumber = (val: number) => {
-    if (Math.abs(val) > 1e9) return `${(val / 1e9).toFixed(2)}B`;
-    if (Math.abs(val) > 1e6) return `${(val / 1e6).toFixed(1)}M`;
-    if (Math.abs(val) > 1e3) return `${(val / 1e3).toFixed(1)}K`;
-    return val.toFixed(1);
+    if (Math.abs(val) > 1e9) return `${(val / 1e9).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}B`;
+    if (Math.abs(val) > 1e6) return `${(val / 1e6).toLocaleString(undefined, { minimumFractionDigits: 1, maximumFractionDigits: 1 })}M`;
+    if (Math.abs(val) > 1e3) return `${(val / 1e3).toLocaleString(undefined, { minimumFractionDigits: 1, maximumFractionDigits: 1 })}K`;
+    return val.toLocaleString(undefined, { minimumFractionDigits: 1, maximumFractionDigits: 1 });
   };
 
   return (
@@ -286,23 +318,23 @@ export function DealerFlowMap({ profile, decimals }: DealerFlowMapProps) {
           }}
         >
           <div className="flex items-center gap-2 mb-2 border-b border-[var(--border)] pb-1">
-            <span className="w-2 h-2 rounded-full bg-[#60A5FA] animate-pulse" />
-            <span className="font-mono text-[var(--text-primary)] font-bold text-[11px] tracking-widest uppercase">Strike ${tooltip.data.strike}</span>
+            <span className="w-2 h-2 rounded-full bg-[var(--info)]" />
+            <span className="font-mono text-[var(--text-primary)] font-bold text-[11px] tracking-widest uppercase tabular-nums">Strike ${tooltip.data.strike.toLocaleString()}</span>
           </div>
-          <div className="space-y-1 text-left font-mono">
+          <div className="space-y-1 text-left font-mono tabular-nums">
              <div className="flex justify-between items-center gap-4 text-[10px]">
                <span className="text-[var(--text-tertiary)]">Net GEX</span>
-               <span className={`font-bold ${tooltip.data.netGex > 0 ? 'text-[#4ade80]' : 'text-[#f87171]'}`}>
+               <span className={`font-bold ${tooltip.data.netGex > 0 ? 'text-[var(--success)]' : 'text-[var(--danger)]'}`}>
                  {tooltip.data.netGex > 0 ? '+' : ''}{formatNumber(tooltip.data.netGex)}
                </span>
              </div>
              <div className="flex justify-between items-center gap-4 text-[10px]">
                <span className="text-[var(--text-tertiary)]">Call GEX</span>
-               <span className="text-[#4ade80] font-bold">+{formatNumber(tooltip.data.callGex || 0)}</span>
+               <span className="text-[var(--success)] font-bold">+{formatNumber(tooltip.data.callGex || 0)}</span>
              </div>
              <div className="flex justify-between items-center gap-4 text-[10px]">
                <span className="text-[var(--text-tertiary)]">Put GEX</span>
-               <span className="text-[#f87171] font-bold">{formatNumber(tooltip.data.putGex || 0)}</span>
+               <span className="text-[var(--danger)] font-bold">{formatNumber(tooltip.data.putGex || 0)}</span>
              </div>
           </div>
         </div>

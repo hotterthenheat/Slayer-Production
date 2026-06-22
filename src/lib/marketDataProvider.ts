@@ -5,6 +5,7 @@
 
 import { ASSET_LIST } from '../data.js';
 import { AssetInfo } from '../types.js';
+import { calculateAnalyticGreeks } from './v11Math';
 
 const CACHE_TTL_MS = 6000; // 6-second caching to prevent rate-limit exhaustion during active SSE ticks
 
@@ -197,6 +198,8 @@ export async function fetchLiveOptionChain(asset: AssetInfo, spotPrice: number):
       }
     }
 
+    const num = (v: any): number | null => { const n = Number(v); return Number.isFinite(n) ? n : null; };
+
     const contracts: LiveOptionContract[] = activeResults.map((item: any) => {
       const details = item.details || {};
       const greeks = item.greeks || {};
@@ -206,20 +209,48 @@ export async function fetchLiveOptionChain(asset: AssetInfo, spotPrice: number):
       const type = details.contract_type === 'call' ? 'C' : 'P';
       const parsedOi = item.open_interest || 0;
       const parsedVol = day.volume || 0;
-      const parsedIv = item.implied_volatility || 0.15;
+      const ivRaw = num(item.implied_volatility);
+      const impliedVolatility = ivRaw && ivRaw > 0 ? ivRaw : 0.15;
+      // Scale the strike before deriving analytic greeks so the BSM moneyness
+      // matches the (index-scaled) strike the contract is reported at.
+      const scaledStrike = strikeRatio !== 1 ? Number((parsedStrike * strikeRatio).toFixed(2)) : parsedStrike;
+
+      // Mirror Tradier/ThetaData: when Polygon omits a greek, derive it analytically
+      // from the same BSM inputs instead of defaulting to a constant (which silently
+      // collapses GEX/DEX/VEX and dealer math to a flat fabricated value on live data).
+      let delta = num(greeks.delta);
+      let gamma = num(greeks.gamma);
+      let theta = num(greeks.theta);
+      let vega = num(greeks.vega);
+      if (delta == null || gamma == null || theta == null || vega == null) {
+        const expDate = details.expiration_date ? new Date(`${details.expiration_date}T20:00:00Z`).getTime() : 0;
+        const dteDays = expDate > 0 ? Math.max(1 / 365, (expDate - now) / 86400000) : 1 / 365;
+        try {
+          const ag = calculateAnalyticGreeks(spotPrice, scaledStrike || parsedStrike || spotPrice, dteDays, impliedVolatility, type === 'C');
+          delta = delta ?? ag.delta;
+          gamma = gamma ?? ag.gamma;
+          theta = theta ?? ag.theta;
+          vega = vega ?? ag.vega;
+        } catch {
+          delta = delta ?? (type === 'C' ? 0.5 : -0.5);
+          gamma = gamma ?? 0.05;
+          theta = theta ?? -1.2;
+          vega = vega ?? 0.15;
+        }
+      }
 
       return {
         contract: typeof item.ticker === 'string' ? item.ticker.replace('O:', '') : '',
-        strike: strikeRatio !== 1 ? Number((parsedStrike * strikeRatio).toFixed(2)) : parsedStrike, // Scale ETF→index strikes by live spot ratio
+        strike: scaledStrike, // Scale ETF→index strikes by live spot ratio
         type,
         oi: parsedOi,
         volume: parsedVol,
-        impliedVolatility: parsedIv,
+        impliedVolatility,
         greeks: {
-          delta: greeks.delta || (type === 'C' ? 0.5 : -0.5),
-          gamma: greeks.gamma || 0.05,
-          theta: greeks.theta || -1.2,
-          vega: greeks.vega || 0.15
+          delta: delta!,
+          gamma: gamma!,
+          theta: theta!,
+          vega: vega!
         },
         bid: item.last_quote?.bid || 0,
         ask: item.last_quote?.ask || 0,

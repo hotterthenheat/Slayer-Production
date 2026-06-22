@@ -226,6 +226,11 @@ export interface GexProfileData {
   totalPutOi?: number;
   callPutOiRatio?: string;
   expectedMovePct?: number;
+  // Confidence flags (optional, additive): false ⇒ gammaFlip is a bounded fallback
+  // (no GEX zero-crossing) / walls are a fallback (no dominant wall). UI can flag
+  // these as estimated rather than authoritative.
+  gammaFlipConfident?: boolean;
+  wallsConfident?: boolean;
   feed?: string;
   strikes?: GexStrikeDetail[];
 }

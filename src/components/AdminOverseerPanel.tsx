@@ -259,7 +259,7 @@ function UsersTab() {
                     <select value={u.access_tier} onChange={(e) => changeTier(u.email, e.target.value)} className="bg-[var(--surface-2)] border border-[var(--border)] text-[var(--text-secondary)] uppercase px-2 py-1 rounded outline-none focus:border-[var(--border-strong)]">
                       {['guest', 'discord', 'intraday', 'quant', 'enterprise', 'lifetime'].map(t => <option key={t} value={t}>{t}</option>)}
                     </select>
-                    {u.role !== 'user' && <span className="text-[#FBBF24]" title={u.role}>★</span>}
+                    {u.role !== 'user' && <span className="text-[#FBBF24]" title={u.role}></span>}
                   </div>
                 </td>
                 <td className="p-3 text-[#4ADE80] tabular-nums">{u.referral_tokens_pool}</td>

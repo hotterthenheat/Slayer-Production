@@ -78,6 +78,108 @@ const bootstrappedAssets: Record<string, boolean> = {};
 let sandboxTimeShift = 0; // Accelerates time in sandbox mode
 const sandboxMomentum: Record<string, number> = {}; // per-asset AR(1) momentum for the synthetic walk
 
+// ---------------------------------------------------------------------------
+// FETCH SCHEDULING (rate-limit control)
+//
+// The universe grew 20 → 100+ assets. Fetching a spot + a ~4-request option-chain
+// chain for every asset on every 1s tick issued ~500 provider HTTP req/s and blew
+// the rate limit. Instead we round-robin: ASSET_LIST is split into NUM_BUCKETS
+// buckets and only ONE bucket is fetched per tick (each asset refreshes ~every
+// NUM_BUCKETS seconds), UNION the set of currently-subscribed tickers (the asset
+// each SSE client is actually viewing) so the user's selected ticker stays
+// real-time. Fetches run with bounded concurrency rather than a serial await, and
+// the SSE broadcast cadence stays at 1s off cached db state (decoupled from fetch).
+// ---------------------------------------------------------------------------
+const NUM_BUCKETS = 10;
+const FETCH_CONCURRENCY = 5;
+let bucketCursor = 0;
+
+/** Bounded-concurrency map: run `worker` over `items`, at most `limit` in flight. */
+async function runWithConcurrency<T>(items: T[], limit: number, worker: (item: T) => Promise<void>): Promise<void> {
+  let idx = 0;
+  const runners: Promise<void>[] = [];
+  const next = async (): Promise<void> => {
+    while (idx < items.length) {
+      const i = idx++;
+      try { await worker(items[i]); } catch { /* never let one asset break the batch */ }
+    }
+  };
+  for (let i = 0; i < Math.min(limit, items.length); i++) runners.push(next());
+  await Promise.all(runners);
+}
+
+/** Tickers currently selected by at least one connected SSE client. */
+function subscribedTickers(): Set<string> {
+  const s = new Set<string>();
+  for (const c of sse.clients) {
+    if (c.params && c.params.asset) s.add(c.params.asset);
+  }
+  return s;
+}
+
+/**
+ * The assets to FETCH this tick: the current round-robin bucket UNION every
+ * subscribed ticker (so a viewer's ticker refreshes every second regardless of
+ * which bucket it falls in). Returns the AssetInfo objects.
+ */
+function assetsToFetchThisTick(): AssetInfo[] {
+  const subscribed = subscribedTickers();
+  const bucket = bucketCursor;
+  bucketCursor = (bucketCursor + 1) % NUM_BUCKETS;
+  const picked: AssetInfo[] = [];
+  const seen = new Set<string>();
+  for (let i = 0; i < ASSET_LIST.length; i++) {
+    const a = ASSET_LIST[i];
+    if (i % NUM_BUCKETS === bucket || subscribed.has(a.ticker)) {
+      if (!seen.has(a.ticker)) { seen.add(a.ticker); picked.push(a); }
+    }
+  }
+  return picked;
+}
+
+// ---------------------------------------------------------------------------
+// LIVE FLOW DEDUP
+//
+// collectUnifiedFlows ranks the heaviest contracts and re-emits the SAME top-N
+// every tick, so the global flow feed filled with duplicate "sweeps" that never
+// actually traded again. Dedup on a stable content key (ticker|strike|type) and
+// only emit a flow when that contract's reported volume INCREASED vs the last time
+// we saw it (i.e. real new prints). Stamp each emitted flow with a timestamp and
+// drop stale entries from the feed so it's a rolling window, not an ever-growing
+// pile of the same names.
+// ---------------------------------------------------------------------------
+const lastFlowVolume: Record<string, number> = {}; // key -> last observed volume
+const FLOW_MAX_AGE_MS = 5 * 60 * 1000; // drop flows older than 5 minutes
+function flowKey(ticker: string, strike: any, type: any): string {
+  return `${ticker}|${strike}|${String(type).toUpperCase()}`;
+}
+function ingestLiveFlows(ticker: string, flows: any[]): void {
+  const now = Date.now();
+  const fresh: any[] = [];
+  for (const f of flows) {
+    const strike = f.strike ?? f.contract;
+    const type = f.type === 'C' || f.type === 'P' ? f.type : (f.side ?? f.type);
+    const key = flowKey(ticker, strike, type);
+    const vol = Number(f.size ?? f.volume ?? 0) || 0;
+    const prev = lastFlowVolume[key];
+    // Emit only when volume actually grew (new prints) or this contract is brand-new.
+    if (prev === undefined || vol > prev) {
+      lastFlowVolume[key] = vol;
+      fresh.push({ ...f, dedupKey: key, timestamp: f.timestamp ?? now });
+    } else {
+      lastFlowVolume[key] = vol;
+    }
+  }
+  if (fresh.length === 0) return;
+  // Prepend the genuinely-new flows, drop any prior entry sharing a dedupKey so the
+  // newest print for a contract replaces the older one, then prune by age + cap.
+  const freshKeys = new Set(fresh.map((f) => f.dedupKey));
+  const retained = db.globalFlowFeed.filter(
+    (f: any) => !(f.dedupKey && freshKeys.has(f.dedupKey)) && (now - (f.timestamp || now) <= FLOW_MAX_AGE_MS),
+  );
+  db.globalFlowFeed = [...fresh, ...retained].slice(0, 50);
+}
+
 // ---- Quant "edge" analytics cache (RND / VRP / skew / dealer clock) ----
 // Computed once per asset per tick and reused across all SSE clients (cheap
 // broadcast) rather than recomputed per client inside constructPayload.
@@ -204,8 +306,17 @@ function liveChainToContracts(live: any[], fallbackIv: number, spot?: number, dt
   });
 }
 
-function refreshEdgeCache() {
-  for (const asset of ASSET_LIST) {
+// Cross-asset analytics are O(n²) (transfer-entropy market leader + PCA residuals).
+// They were running over all 100+ assets every 1s — quadratic CPU that saturates the
+// event loop. Cap them to the liquid index/ETF complex (the first slice of ASSET_LIST,
+// which is ordered indices/ETFs → single names) and recompute on a SLOW cadence,
+// reusing the cached result between recomputes.
+const CROSS_ASSET_SUBSET_SIZE = 20;
+const CROSS_ASSET_REFRESH_MS = 25000; // ~25s
+let lastCrossAssetAt = 0;
+
+function refreshEdgeCache(assets: AssetInfo[] = ASSET_LIST) {
+  for (const asset of assets) {
     try {
       const spot = db.liveSpotPrices[asset.ticker] || asset.defaultPrice;
       const live = db.liveOptionChains[asset.ticker];
@@ -242,22 +353,37 @@ function refreshEdgeCache() {
       // Never let an edge-calc error break the tick.
     }
   }
-  // Cross-asset passes (one over the whole index complex): PCA stat-arb residuals
-  // and the transfer-entropy lead→lag market leader.
-  try {
-    const series: Record<string, any[]> = {};
-    for (const asset of ASSET_LIST) series[asset.ticker] = db.candles[`${asset.ticker}-5m`] || [];
-    const pca = pcaResidualZScores(series);
-    const lead = marketLeader(series);
+  // Cross-asset passes (PCA stat-arb residuals + transfer-entropy lead→lag market
+  // leader). These are O(n²); run them on a SLOW cadence over the LIQUID SUBSET only
+  // (the first CROSS_ASSET_SUBSET_SIZE assets — the index/ETF complex), and reuse the
+  // cached pca/leadLag between recomputes so every tick still ships a value.
+  const now = Date.now();
+  if (now - lastCrossAssetAt >= CROSS_ASSET_REFRESH_MS) {
+    lastCrossAssetAt = now;
+    try {
+      const subset = ASSET_LIST.slice(0, CROSS_ASSET_SUBSET_SIZE);
+      const series: Record<string, any[]> = {};
+      for (const asset of subset) series[asset.ticker] = db.candles[`${asset.ticker}-5m`] || [];
+      const pca = pcaResidualZScores(series);
+      const lead = marketLeader(series);
+      lastPca = pca;
+      lastLeadLag = lead;
+    } catch (e) {
+      // Cross-asset failure must not break the tick.
+    }
+  }
+  // Apply the (possibly cached) cross-asset results to every asset's edge block.
+  if (lastLeadLag !== null) {
     for (const asset of ASSET_LIST) {
       if (!edgeCache[asset.ticker]) continue;
-      edgeCache[asset.ticker].pca = pca[asset.ticker] || null;
-      edgeCache[asset.ticker].leadLag = lead;
+      edgeCache[asset.ticker].pca = lastPca[asset.ticker] || null;
+      edgeCache[asset.ticker].leadLag = lastLeadLag;
     }
-  } catch (e) {
-    // Cross-asset failure must not break the tick.
   }
 }
+// Cached cross-asset outputs reused between slow recomputes.
+let lastPca: Record<string, any> = {};
+let lastLeadLag: any = null;
 
 // Simulation ticks run continuously server-side
 const TICK_INTERVAL = 1000; // 1s for fast real-time telemetry but stable chart
@@ -268,44 +394,67 @@ export async function runTickerCycle() {
     const mode = getDataSourceType();
     db.dataSource = mode as any;
     db.apiStatusMessage = getProviderStatusMessage();
-    
-    if (mode === 'SANDBOX_SYNTHETIC') {
+    const isSandbox = mode === 'SANDBOX_SYNTHETIC';
+
+    if (isSandbox) {
        sandboxTimeShift += 5000; // Fast time in simulation (5s per 1s tick)
+    } else if (sandboxTimeShift !== 0) {
+       // A provider came online mid-session. The accelerated sandbox clock would
+       // otherwise keep stamping LIVE candles with future timestamps — reset it the
+       // moment we leave the synthetic sandbox so live bars use real wall-clock time.
+       sandboxTimeShift = 0;
     }
     const currentTickTime = Date.now() + sandboxTimeShift;
 
-    // 1. Tick/Fetch spot prices & options chains for all assets
-    for (const asset of ASSET_LIST) {
-      let spotPrice = asset.defaultPrice;
+    // Compute the per-tick working set ONCE (advances the round-robin cursor once):
+    // the current bucket UNION the subscribed tickers. Used for both the network
+    // fetch phase and the heavy per-asset analytics so they share one schedule.
+    const scopedAssets = assetsToFetchThisTick();
 
-      const spotRes = await getUnifiedSpotPrice(asset.ticker, asset.defaultPrice);
-      if (spotRes.source !== 'SANDBOX_SYNTHETIC') {
-        spotPrice = spotRes.price;
+    // 1a. NETWORK FETCH PHASE (rate-limit controlled): only the scoped assets, with
+    // bounded concurrency. The candle/spot propagation below still runs for ALL
+    // assets every tick off cached db state, so charts stay live while we throttle.
+    if (!isSandbox) {
+      await runWithConcurrency(scopedAssets, FETCH_CONCURRENCY, async (asset) => {
+        const spotRes = await getUnifiedSpotPrice(asset.ticker, asset.defaultPrice);
+        if (spotRes.source === 'SANDBOX_SYNTHETIC') {
+          // This asset has no live source right now — leave its cached state alone.
+          return;
+        }
+        const spotPrice = spotRes.price;
         db.liveSpotPrices[asset.ticker] = spotPrice;
-
-        // Fetch unified options chain
-        getUnifiedOptionChain(asset, spotPrice)
-          .then(chainRes => {
-            if (chainRes && chainRes.contracts && chainRes.contracts.length > 0) {
-              db.liveOptionChains[asset.ticker] = chainRes.contracts;
-
-              // Collect unified flows
-              collectUnifiedFlows(asset.ticker, spotPrice, chainRes.contracts)
-                .then(liveFlows => {
-                  if (liveFlows && liveFlows.length > 0) {
-                    db.globalFlowFeed = [...liveFlows, ...db.globalFlowFeed].slice(0, 50);
-                  }
-                })
-                .catch(e => {
-                  // Safe catch
-                });
-            } else {
-              db.liveOptionChains[asset.ticker] = [];
-            }
-          })
-          .catch(e => {
+        try {
+          const chainRes = await getUnifiedOptionChain(asset, spotPrice);
+          if (chainRes && chainRes.contracts && chainRes.contracts.length > 0) {
+            db.liveOptionChains[asset.ticker] = chainRes.contracts;
+            // Track the ACTUAL source of THIS chain so feedLabel can be honest about
+            // ThetaData vs Tradier vs Polygon per ticker (a single db.dataSource label
+            // mislabels e.g. ThetaData chains as LIVE_TRADIER).
+            db.chainSource[asset.ticker] = chainRes.source;
+            try {
+              const liveFlows = await collectUnifiedFlows(asset.ticker, spotPrice, chainRes.contracts);
+              if (liveFlows && liveFlows.length > 0) ingestLiveFlows(asset.ticker, liveFlows);
+            } catch { /* safe */ }
+          } else {
             db.liveOptionChains[asset.ticker] = [];
-          });
+            db.chainSource[asset.ticker] = chainRes?.source || mode;
+          }
+        } catch {
+          db.liveOptionChains[asset.ticker] = [];
+        }
+      });
+    }
+
+    // 1b. SPOT-UPDATE + CANDLE PROPAGATION for ALL assets every tick.
+    for (const asset of ASSET_LIST) {
+      let spotPrice: number;
+      let spotIsLive: boolean;
+
+      const cachedLive = db.liveSpotPrices[asset.ticker];
+      if (!isSandbox && typeof cachedLive === 'number' && cachedLive > 0) {
+        // Use the most-recent live spot (refreshed by the fetch phase on its bucket).
+        spotPrice = cachedLive;
+        spotIsLive = true;
       } else {
         // High-fidelity sandbox walk: persistent momentum (AR(1)) + light
         // mean-reversion to the anchor + occasional volatility bursts. This gives
@@ -323,6 +472,7 @@ export async function runTickerCycle() {
         sandboxMomentum[asset.ticker] = mom * 0.6; // decay carried momentum
         spotPrice = Number((lastPrice + mom).toFixed(asset.decimals));
         db.liveSpotPrices[asset.ticker] = spotPrice;
+        spotIsLive = false;
 
         // Generate synthetic flow trades
         if (Math.random() > 0.4) {
@@ -349,14 +499,15 @@ export async function runTickerCycle() {
             type: typeStr,
             contract: `${contracts.toLocaleString()} ${asset.ticker} ${strk}${isCall ? 'C' : 'P'}`,
             desc: `${sideDesc} • $${premiumM.toFixed(2)}M Premium`,
-            side: isCall ? 'C' : 'P'
+            side: isCall ? 'C' : 'P',
+            timestamp: Date.now(),
           };
           db.globalFlowFeed.unshift(newFlow);
         }
       }
 
       // Adapt historical candles to first live spot price block (bootstrap backfill)
-      if (spotRes.source !== 'SANDBOX_SYNTHETIC' && !bootstrappedAssets[asset.ticker]) {
+      if (spotIsLive && !bootstrappedAssets[asset.ticker]) {
         bootstrappedAssets[asset.ticker] = true;
         const ratio = spotPrice / asset.defaultPrice;
         for (const tf of TIMEFRAMES) {
@@ -419,18 +570,27 @@ export async function runTickerCycle() {
       }
     }
 
-    if (db.globalFlowFeed.length > 50) {
-      db.globalFlowFeed = db.globalFlowFeed.slice(0, 50);
+    // Prune stale flows by age (rolling window) then cap.
+    {
+      const cutoff = Date.now() - FLOW_MAX_AGE_MS;
+      db.globalFlowFeed = db.globalFlowFeed
+        .filter((f: any) => !f.timestamp || f.timestamp >= cutoff)
+        .slice(0, 50);
     }
 
-    // Refresh the per-asset edge analytics (RND / VRP / skew / dealer clock) once
-    // per tick so every SSE client reuses the same cached block.
-    refreshEdgeCache();
+    // Per-tick heavy analytics are scoped to `scopedAssets` (the round-robin bucket
+    // UNION the subscribed tickers, computed once above). This folds the skyVision +
+    // edge passes into the same round-robin/subscribed-only schedule so they aren't a
+    // second full 100-asset loop per second. Non-scoped assets keep their last cached
+    // block (the SSE broadcast still ships it).
+    //
+    // Refresh the per-asset edge analytics (RND / VRP / skew / dealer clock) for the
+    // scoped assets; cross-asset (O(n²)) work inside is throttled + subset-capped.
+    refreshEdgeCache(scopedAssets);
 
     // Sky Vision v2.0 contract-intelligence engine (per-contract strength, rotation
-    // scanner, EMA target ladder, swing, master score) — computed once per tick and
-    // cached per ticker, so every SSE client reuses the same block.
-    tickSkyVision();
+    // scanner, EMA target ladder, swing, master score) — cached per ticker.
+    tickSkyVision(scopedAssets);
 
     // 2. Tick active trade logs outcomes
     db.v8Trades = db.v8Trades.map((t) => {
@@ -587,9 +747,51 @@ export function gatePayloadByTier<T extends Record<string, any>>(payload: T, tie
   return payload;
 }
 
+// ---------------------------------------------------------------------------
+// PER-TICK PAYLOAD MEMOIZATION
+//
+// constructPayload was rebuilt from scratch for EVERY connected client every tick,
+// even though most clients cluster on the same (asset,timeframe,isCall,strike,
+// positionOpen) — e.g. everyone on SPX/5m. Memoize the heavy build per param-key for
+// the duration of one broadcast pass and reuse it across clients sharing that key.
+// Each client still gets a fresh shallow-cloned top-level object so per-tier gating
+// (which nulls blocks) can't corrupt another client's view.
+// ---------------------------------------------------------------------------
+const payloadMemo = new Map<string, ReturnType<typeof buildPayload>>();
+function payloadKeyOf(p: { asset: string; timeframe: string; isCall: boolean; strike: number | null; positionOpen: boolean }): string {
+  return `${p.asset}|${p.timeframe}|${p.isCall ? 1 : 0}|${p.strike ?? 'auto'}|${p.positionOpen ? 1 : 0}`;
+}
+
+// Per-asset market-structure read (pure function of 5m candles, isCall/strike
+// independent) — cached for the duration of one broadcast pass so it's computed once
+// per asset instead of once per client. Cleared alongside payloadMemo.
+const structureReadMemo = new Map<string, ReturnType<typeof analyzeMarketStructure>>();
+function getAssetStructureRead(ticker: string, candles5m: any[]): ReturnType<typeof analyzeMarketStructure> {
+  let r = structureReadMemo.get(ticker);
+  if (!r) {
+    r = analyzeMarketStructure(candles5m);
+    structureReadMemo.set(ticker, r);
+  }
+  return r;
+}
+
+// Debounce presence writes to ~45s/user instead of once per client per tick.
+const REDIS_PRESENCE_DEBOUNCE_MS = 45000;
+const lastPresenceAt: Record<string, number> = {};
+function maybeUpdatePresence(email: string): void {
+  const e = email.toLowerCase().trim();
+  const now = Date.now();
+  if (now - (lastPresenceAt[e] || 0) >= REDIS_PRESENCE_DEBOUNCE_MS) {
+    lastPresenceAt[e] = now;
+    updateRedisPresence(e);
+  }
+}
+
 export const broadcastSSE = () => {
+  payloadMemo.clear(); // fresh per-tick memo across all clients in this pass
+  structureReadMemo.clear();
   for (const client of sse.clients) {
-    if (client.userEmail) { updateRedisPresence(client.userEmail.toLowerCase().trim()); }
+    if (client.userEmail) { maybeUpdatePresence(client.userEmail); }
     try {
       const payload = gatePayloadByTier(constructPayload(client.params), client.tier ?? 0);
       client.res.write(`data: ${JSON.stringify(payload)}\n\n`);
@@ -597,6 +799,8 @@ export const broadcastSSE = () => {
       console.error("Error writing SSE to client", client.id, e);
     }
   }
+  payloadMemo.clear();
+  structureReadMemo.clear();
 };
 
 export const broadcastDiscoverySSE = () => {
@@ -610,7 +814,7 @@ export const broadcastDiscoverySSE = () => {
     flashDirection: db.discoveryFlashDirection
   };
   for (const client of sse.discoveryClients) {
-    if (client.userEmail) { updateRedisPresence(client.userEmail); }
+    if (client.userEmail) { maybeUpdatePresence(client.userEmail); }
     try {
       client.res.write(`data: ${JSON.stringify(payload)}\n\n`);
     } catch (e) {
@@ -696,14 +900,33 @@ const tickDiscoveryData = () => {
   db.discoveryScanRate = Number(Math.max(5, Math.min(30, db.discoveryScanRate + (Math.random() * 1.2 - 0.6))).toFixed(1));
 };
 
-// Generates the server-assembled payload (The Universal Payload)
-export const constructPayload = (params: {
+type PayloadParams = {
   asset: string;
   timeframe: string;
   isCall: boolean;
   strike: number | null;
   positionOpen: boolean;
-}) => {
+};
+
+/**
+ * Memoizing entry point used by the SSE broadcast. Within a single broadcast pass
+ * (payloadMemo is cleared at the start/end of broadcastSSE) the heavy buildPayload
+ * work is computed once per param-key and reused across clients sharing that key. A
+ * shallow clone is returned so per-client tier gating can't mutate the shared cache.
+ */
+export const constructPayload = (params: PayloadParams) => {
+  const key = payloadKeyOf(params);
+  let base = payloadMemo.get(key);
+  if (!base) {
+    base = buildPayload(params);
+    payloadMemo.set(key, base);
+  }
+  // Shallow clone: cheap relative to the rebuild, and isolates gating mutations.
+  return { ...base };
+};
+
+// Generates the server-assembled payload (The Universal Payload)
+const buildPayload = (params: PayloadParams) => {
   const assetName = params.asset || 'SPX';
   const timeframe = params.timeframe || '5m';
   const isCall = params.isCall;
@@ -753,8 +976,11 @@ export const constructPayload = (params: {
   const chainForMetrics: ChainContract[] | undefined = (liveChain && liveChain.length > 0)
     ? liveChainToContracts(liveChain, asset.volatility, liveSpot, optDteDays)
     : undefined;
+  // Perf: V10 internally calls V11 (which builds + sorts a 1000-row KNN db). Compute
+  // V11 ONCE and feed it into V10 so the heavy pipeline runs a single time per
+  // (asset,contract) per tick instead of twice.
   const metricsV11 = calculateV11Metrics(asset, isCall, systemScore, optionPremiumFloat, optionStrike, chainForMetrics, liveSpot, optDteDays);
-  const metricsV10 = calculateV10Metrics(asset, isCall, systemScore, optionPremiumFloat, optionStrike, chainForMetrics, liveSpot, optDteDays);
+  const metricsV10 = calculateV10Metrics(asset, isCall, systemScore, optionPremiumFloat, optionStrike, chainForMetrics, liveSpot, optDteDays, metricsV11);
 
   // Strict mapping: decision can only be: 'ENTER', 'HOLD', 'REDUCE', 'EXIT'
   // Let's resolve what decision to emit
@@ -890,8 +1116,14 @@ export const constructPayload = (params: {
   };
 
   const isChainLive = db.liveOptionChains[asset.ticker] && db.liveOptionChains[asset.ticker].length > 0;
-  const feedLabel: "LIVE_POLYGON" | "LIVE_TRADIER" | "DETERMINISTIC_MODEL" = isChainLive
-    ? (db.dataSource === "POLYGON_LIVE" ? "LIVE_POLYGON" : "LIVE_TRADIER")
+  // Honesty: derive the feed label from the ACTUAL source of THIS ticker's chain
+  // (db.chainSource[ticker], set from getUnifiedOptionChain().source) rather than the
+  // single global db.dataSource — which mislabeled ThetaData chains as LIVE_TRADIER.
+  const chainSrc = db.chainSource[asset.ticker] || db.dataSource;
+  const feedLabel: "LIVE_THETADATA" | "LIVE_POLYGON" | "LIVE_TRADIER" | "DETERMINISTIC_MODEL" = isChainLive
+    ? (chainSrc === "THETADATA_LIVE" ? "LIVE_THETADATA"
+      : chainSrc === "POLYGON_LIVE" ? "LIVE_POLYGON"
+      : "LIVE_TRADIER")
     : "DETERMINISTIC_MODEL";
 
   // Pre-calculated Targets section
@@ -1000,7 +1232,14 @@ export const constructPayload = (params: {
     chainLive: isChainLive,
   };
 
-  // 1. Recover values from Polygon/Tradier live chain if available, or generate a high-fidelity mock chain
+  // 1. Recover values from Polygon/Tradier live chain if available, or generate a high-fidelity mock chain.
+  // Capture whether the REAL chain is empty BEFORE the mock backfill below — once we
+  // backfill `chain` with a model chain, chain.length is never 0, which made the
+  // "Data Unavailable" gate downstream dead. When a provider is live but returned no
+  // chain for this ticker, we must NOT present model-derived dealer dollars / expected
+  // move as authoritative live readings.
+  const liveButEmptyChain = db.dataSource !== 'SANDBOX_SYNTHETIC'
+    && (!db.liveOptionChains[asset.ticker] || db.liveOptionChains[asset.ticker].length === 0);
   let chain = db.liveOptionChains[asset.ticker] || [];
   if (chain.length === 0) {
     const mockContracts = generateMockOptionsChain(lastPrice, asset.volatility);
@@ -1220,13 +1459,17 @@ export const constructPayload = (params: {
     },
     impact_contracts: impactContracts,
     strike_metrics: {
-      totalOi,
-      netExposure,
-      callPutRatio,
-      hedgeSensitivity,
-      dealerExposure: dealerBias === 'DATA UNAVAILABLE' ? 'DATA UNAVAILABLE' : (dealerBias === 'LONG GAMMA' ? 'SHORT GAMMA' : 'LONG GAMMA'),
-      gammaContribution: activeGammaContribution,
-      deltaContribution: activeDeltaContribution,
+      totalOi: liveButEmptyChain ? 0 : totalOi,
+      // When live-but-empty, the dollar net-exposure headline would be derived from a
+      // MOCK chain — surface it as unavailable instead of an authoritative live figure.
+      netExposure: liveButEmptyChain ? 'Data Unavailable' : netExposure,
+      callPutRatio: liveButEmptyChain ? '—' : callPutRatio,
+      hedgeSensitivity: liveButEmptyChain ? 'DATA UNAVAILABLE' : hedgeSensitivity,
+      dealerExposure: liveButEmptyChain ? 'DATA UNAVAILABLE'
+        : dealerBias === 'DATA UNAVAILABLE' ? 'DATA UNAVAILABLE'
+        : (dealerBias === 'LONG GAMMA' ? 'SHORT GAMMA' : 'LONG GAMMA'),
+      gammaContribution: liveButEmptyChain ? '—' : activeGammaContribution,
+      deltaContribution: liveButEmptyChain ? '—' : activeDeltaContribution,
       feed: feedLabel
     },
     whale_detection: {
@@ -1319,6 +1562,11 @@ export const constructPayload = (params: {
     totalPutOi,
     callPutOiRatio: callPutRatio,
     expectedMovePct: metricsV11.surface.expectedMovePct,
+    // Confidence flags from the dealer-inventory solver: false ⇒ the flip is a bounded
+    // fallback (spot*0.995, no GEX zero-crossing) and/or the walls are a fallback (no
+    // dominant wall). Surface them so the UI can render those as estimated, not confident.
+    gammaFlipConfident: metricsV11.dealer.gammaFlipConfident,
+    wallsConfident: metricsV11.dealer.wallsConfident,
     feed: feedLabel,
     strikes: Object.values(strikesMap)
   };
@@ -1508,7 +1756,10 @@ export const constructPayload = (params: {
   const tfCandles1m = db.candles[`${asset.ticker}-1m`] || candles;
   const tfCandles5m = db.candles[`${asset.ticker}-5m`] || candles;
   const tfCandles15m = db.candles[`${asset.ticker}-15m`] || candles;
-  const structureRead = analyzeMarketStructure(tfCandles5m);
+  // structureRead is a pure function of the 5m candles (no isCall/strike dependency),
+  // so cache it per-asset for the duration of one broadcast pass and reuse across all
+  // clients on this asset rather than recomputing it per client.
+  const structureRead = getAssetStructureRead(asset.ticker, tfCandles5m);
   const technicalRead = computeTechnicalRead({
     candles1m: tfCandles1m, candles5m: tfCandles5m, candles15m: tfCandles15m,
     spot: lastPrice, systemScoreTotal: systemScore.total, structureTrend: structureRead.trend,
@@ -1556,8 +1807,11 @@ export const constructPayload = (params: {
       feed: "DETERMINISTIC_MODEL"
     },
     expected_move: {
-      pct: db.dataSource !== 'SANDBOX_SYNTHETIC' && chain.length === 0 ? 'Data Unavailable' : `±${(metricsV11.surface.expectedMovePct * 100).toFixed(1)}%`,
-      range: db.dataSource !== 'SANDBOX_SYNTHETIC' && chain.length === 0 ? 'Data Unavailable' : `±${(lastPrice * metricsV11.surface.expectedMovePct).toFixed(1)} pts`,
+      // Gate on the REAL chain being empty (liveButEmptyChain, captured before the mock
+      // backfill) — the old `chain.length === 0` could never fire because chain is
+      // always backfilled with a model chain above.
+      pct: liveButEmptyChain ? 'Data Unavailable' : `±${(metricsV11.surface.expectedMovePct * 100).toFixed(1)}%`,
+      range: liveButEmptyChain ? 'Data Unavailable' : `±${(lastPrice * metricsV11.surface.expectedMovePct).toFixed(1)} pts`,
       term_structure: metricsV11.surface.termStructure,
       skew: metricsV11.surface.skewCurve,
       ivRank: metricsV11.surface.ivRank,

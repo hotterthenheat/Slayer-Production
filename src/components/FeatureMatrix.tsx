@@ -490,7 +490,7 @@ export const FeatureMatrix: React.FC<FeatureMatrixProps> = ({ onEnterApp }) => {
                 {/* Main Embed section */}
                 <div className="bg-black border-l-4 border-[#d4d4d8] p-3.5 rounded-r-md space-y-2 text-xs">
                   <div className="font-mono text-[10.5px] font-black text-[#d4d4d8] uppercase">
-                    🚨 SPX ALERT: HIGH-SCORE SETUP FOUND
+                     SPX ALERT: HIGH-SCORE SETUP FOUND
                   </div>
                   <p className="text-[#4ADE80] text-[10.5px] font-light leading-snug">
                     Large options order flow detected on SPX. IV is compressing above key support.

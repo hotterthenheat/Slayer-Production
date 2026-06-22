@@ -1270,6 +1270,11 @@ export interface V11MathResult {
     charmExposureText: string;
     vannaExposureText: string;
     gexStrikes: { strike: number; gex: number }[];
+    // Confidence flags from computeDealerInventory: false ⇒ the flip / walls are a
+    // bounded fallback (no GEX zero-crossing / no dominant wall), so the UI should
+    // render them as estimated rather than authoritative.
+    gammaFlipConfident: boolean;
+    wallsConfident: boolean;
   };
   similarTrades: SimilarTrade[];
   outcomeDistribution: OutcomeEvent[];
@@ -1490,7 +1495,11 @@ export function calculateV11Metrics(
     gammaExposureText: dealerRes.netGex > 0 ? 'NET POSITIVE GAMMA (STABILISING FORCE)' : 'NET NEGATIVE GAMMA (ACCELERATIVE VECTOR)',
     charmExposureText: dealerRes.netCharm > 0 ? 'DEALER CHARM BUY TAILWINDS ON EXPIRY TIME DECAY' : 'DEALER CHARM SELL FRICTION DRAIN',
     vannaExposureText: 'VANNA COMPRESSION EXTINGUISHES OUTLIER SPIKES',
-    gexStrikes: dealerRes.gexStrikes
+    gexStrikes: dealerRes.gexStrikes,
+    // Surface the confidence flags so gex_profile/UI can flag a fallback flip
+    // (spot*0.995) or fallback walls instead of rendering them as confident.
+    gammaFlipConfident: dealerRes.gammaFlipConfident,
+    wallsConfident: dealerRes.wallsConfident,
   };
 
   const entryZoneMin = optionPremiumFloat * 0.91;
@@ -1660,10 +1669,15 @@ export function calculateV10Metrics(
   optionStrike?: number,
   liveChain?: ChainContract[],
   liveSpot?: number,
-  dteDays = 1
+  dteDays = 1,
+  // Perf: callers that already computed V11 (e.g. constructPayload) pass it in so
+  // the heavy V11 pipeline — which builds and sorts a 1000-row KNN db — runs ONCE
+  // per (asset,contract) per tick instead of twice (V10 used to recompute it).
+  precomputedV11?: V11MathResult
 ) {
-  const v11 = calculateV11Metrics(asset, isCall, systemScore, optionPremiumFloat, optionStrike, liveChain, liveSpot, dteDays);
-  
+  const v11 = precomputedV11
+    ?? calculateV11Metrics(asset, isCall, systemScore, optionPremiumFloat, optionStrike, liveChain, liveSpot, dteDays);
+
   // Dynamic offset decomposition to prevent credibility gaps
   const baseWin = Number(v11.baseWinRate.toFixed(1));
   const postWin = Number(v11.posteriorWinRate.toFixed(1));
