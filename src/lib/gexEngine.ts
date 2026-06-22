@@ -1,5 +1,5 @@
 import { LiveOptionContract } from './marketDataProvider';
-import { stdNormalPDF } from './v11Math';
+import { gammaFlipSpot } from './skyQuantCore';
 
 export interface GexStrikeRow {
   strike: number; callGex: number; putGex: number; netGex: number;
@@ -10,23 +10,6 @@ export interface GexProfile {
   callWall: number; putWall: number; gammaFlip: number; magnet: number;
   totalCallOi: number; totalPutOi: number; callPutOiRatio: number;
   expectedMovePct: number; dealerBias: 'LONG GAMMA' | 'SHORT GAMMA'; aboveFlip: boolean;
-}
-
-function bsGamma(S: number, K: number, tauYears: number, iv: number, r = 0.05, q = 0): number {
-  const T = Math.max(0.0001, tauYears);
-  const sigma = Math.max(0.01, iv);
-  const d1 = (Math.log(S / K) + (r - q + (sigma * sigma) / 2) * T) / (sigma * Math.sqrt(T));
-  // q threaded for consistency with the full pricer; q=0 ⇒ e^{-qT}=1 (no change).
-  return (Math.exp(-q * T) * stdNormalPDF(d1)) / (S * sigma * Math.sqrt(T));
-}
-
-function totalGexAtSpot(S: number, chain: LiveOptionContract[], tauYears: number): number {
-  let sum = 0;
-  for (const c of chain) {
-    const sign = c.type === 'C' ? 1 : -1;
-    sum += bsGamma(S, c.strike, tauYears, c.impliedVolatility) * c.oi * 100 * S * S * 0.01 * sign;
-  }
-  return sum;
 }
 
 export function buildGexProfile(
@@ -60,23 +43,15 @@ export function buildGexProfile(
   const pool = nearSpot.length ? nearSpot : allRows;
   const magnet = pool.reduce((b, r) => Math.abs(r.netGex) > Math.abs(b.netGex) ? r : b, pool[0]).strike;
 
-  // Gamma flip: grid + linear interpolation at the sign change. Never invented.
-  // NOTE: the gexEngine-vs-skyQuantCore gamma-flip reconciliation is intentionally
-  // left unchanged here pending a separately-reviewed pass (regime/leader-flag
-  // sensitive); do not "fix" the two flips to agree without that validation.
-  let gammaFlip = spot, found = false;
-  const minS = spot * 0.9, maxS = spot * 1.1, steps = 60;
-  let prevS = minS, prevG = totalGexAtSpot(minS, chain, tauYears);
-  for (let i = 1; i <= steps; i++) {
-    const S = minS + ((maxS - minS) * i) / steps;
-    const g = totalGexAtSpot(S, chain, tauYears);
-    if (!found && (g === 0 || (prevG !== 0 && Math.sign(g) !== Math.sign(prevG)))) {
-      gammaFlip = g === 0 ? S : prevS + (-prevG / (g - prevG)) * (S - prevS);
-      found = true;
-    }
-    prevS = S; prevG = g;
-  }
-  if (!found) gammaFlip = netGex >= 0 ? putWall : callWall; // bounded fallback, labeled by aboveFlip semantics
+  // Gamma flip ("zero gamma"): CANONICAL cumulative-net-GEX-by-strike convention,
+  // shared with skyQuantCore.gammaFlipSpot and v11Math.computeDealerInventory so
+  // the platform reports ONE flip price per chain. (Previously this used a
+  // pointwise grid that re-priced gamma at hypothetical spots — a different
+  // definition that could disagree with the by-strike flip quoted elsewhere.)
+  const flip = gammaFlipSpot(allRows.map((r) => r.strike), allRows.map((r) => r.netGex));
+  const found = flip !== null;
+  // Bounded fallback when no zero-crossing exists (one-sided book), labeled by aboveFlip semantics.
+  const gammaFlip = found ? flip! : (netGex >= 0 ? putWall : callWall);
 
   const atm = chain.reduce((b, c) => Math.abs(c.strike - spot) < Math.abs(b.strike - spot) ? c : b, chain[0]);
   const expectedMovePct = Math.max(0.0005, atm.impliedVolatility * Math.sqrt(Math.max(tauYears, 0.0001)));

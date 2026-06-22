@@ -63,6 +63,23 @@ export async function ensureSchema(): Promise<void> {
       );
     `);
     await db.execute(sql`CREATE INDEX IF NOT EXISTS users_email_idx ON users (email);`);
+    // Durable moderation state (bans/suspensions + a session-revocation watermark)
+    // and webhook idempotency, so they survive process restarts/redeploys instead
+    // of resetting (in-memory was the prior behavior).
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS moderation (
+        email text PRIMARY KEY,
+        banned boolean NOT NULL DEFAULT false,
+        suspended boolean NOT NULL DEFAULT false,
+        sessions_valid_after bigint NOT NULL DEFAULT 0
+      );
+    `);
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS processed_webhook_events (
+        event_id text PRIMARY KEY,
+        processed_at bigint NOT NULL DEFAULT 0
+      );
+    `);
     // Ensure email is UNIQUE so user upserts can conflict-on email (the business
     // key) instead of uid. Idempotent; isolated try-catch so a pre-existing dup
     // (from the old uid-based upsert) doesn't abort the rest of schema bootstrap.
@@ -82,5 +99,65 @@ export async function ensureSchema(): Promise<void> {
     console.log('[db] schema ready (users table verified).');
   } catch (e) {
     console.error('[db] ensureSchema failed (DB-backed features may not work):', e);
+  }
+}
+
+// ===========================================================================
+// Durable moderation + webhook-idempotency helpers. Each is a no-op (or safe
+// empty result) when SQL_HOST is unset (no-DB dev mode) and never throws — the
+// in-memory caches in the app layer remain the source of truth for hot reads.
+// ===========================================================================
+export interface ModerationRow { email: string; banned: boolean; suspended: boolean; sessions_valid_after: number; }
+
+export async function dbLoadModeration(): Promise<ModerationRow[]> {
+  if (!process.env.SQL_HOST) return [];
+  try {
+    const res: any = await db.execute(sql`SELECT email, banned, suspended, sessions_valid_after FROM moderation`);
+    return (res.rows || []).map((r: any) => ({
+      email: String(r.email || '').toLowerCase(),
+      banned: !!r.banned,
+      suspended: !!r.suspended,
+      sessions_valid_after: Number(r.sessions_valid_after) || 0,
+    }));
+  } catch (e) {
+    console.error('[db] dbLoadModeration failed:', e);
+    return [];
+  }
+}
+
+export async function dbSetModeration(email: string, s: { banned: boolean; suspended: boolean; sessions_valid_after: number }): Promise<void> {
+  if (!process.env.SQL_HOST) return;
+  try {
+    const e = email.toLowerCase().trim();
+    await db.execute(sql`
+      INSERT INTO moderation (email, banned, suspended, sessions_valid_after)
+      VALUES (${e}, ${s.banned}, ${s.suspended}, ${s.sessions_valid_after})
+      ON CONFLICT (email) DO UPDATE SET
+        banned = ${s.banned}, suspended = ${s.suspended}, sessions_valid_after = ${s.sessions_valid_after}
+    `);
+  } catch (e) {
+    console.error('[db] dbSetModeration failed:', e);
+  }
+}
+
+export async function dbIsWebhookProcessed(eventId: string): Promise<boolean> {
+  if (!process.env.SQL_HOST) return false;
+  try {
+    const res: any = await db.execute(sql`SELECT 1 FROM processed_webhook_events WHERE event_id = ${eventId} LIMIT 1`);
+    return (res.rows || []).length > 0;
+  } catch (e) {
+    console.error('[db] dbIsWebhookProcessed failed:', e);
+    return false;
+  }
+}
+
+export async function dbMarkWebhookProcessed(eventId: string): Promise<void> {
+  if (!process.env.SQL_HOST) return;
+  try {
+    await db.execute(sql`INSERT INTO processed_webhook_events (event_id, processed_at) VALUES (${eventId}, ${Date.now()}) ON CONFLICT (event_id) DO NOTHING`);
+    // Opportunistic prune so the table can't grow unbounded (events older than 30d).
+    await db.execute(sql`DELETE FROM processed_webhook_events WHERE processed_at < ${Date.now() - 30 * 24 * 3600 * 1000}`);
+  } catch (e) {
+    console.error('[db] dbMarkWebhookProcessed failed:', e);
   }
 }

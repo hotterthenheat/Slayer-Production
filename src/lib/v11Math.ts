@@ -10,6 +10,7 @@ import {
   DEFAULT_DEALER_COUPLING,
 } from './dealerSignals';
 import { stdNormalCDF, stdNormalPDF } from './normalDist';
+import { gammaFlipSpot } from './skyQuantCore';
 
 // ==========================================
 // TIER 0: SEEDED PRNG FOR DETERMINISTIC REPLICABILITY
@@ -545,29 +546,6 @@ export interface DealerPosEngineResult {
   vexStrikes: { strike: number; vex: number }[];
   expectedMovePct: number;
 }
-function quickGamma(S: number, K: number, dte: number, iv: number, r = 0.05, q = 0): number {
-  const T = Math.max(0.0001, dte / 365);
-  const sigma = Math.max(0.01, iv);
-  const d1 = (Math.log(S / K) + (r - q + (sigma * sigma) / 2) * T) / (sigma * Math.sqrt(T));
-  // q=0 ⇒ no dividend discount on the gamma factor (BSM e^{-qT}=1); threaded for
-  // consistency with the rest of the pricer. Negligible numeric change at q=0.
-  return (Math.exp(-q * T) * stdNormalPDF(d1)) / (S * sigma * Math.sqrt(T));
-}
-
-function totalGammaAtSpot(S: number, chain: ChainContract[], dte = 1): number {
-  let sumGex = 0;
-  chain.forEach(c => {
-    // Standard dealer convention: calls positive, puts negative GEX contribution
-    const isCallType = c.type === 'call';
-    const sign = isCallType ? 1 : -1;
-    const g = quickGamma(S, c.strike, dte, c.iv);
-    // GEX = gamma * OI * 100 * S * S * 0.01 * sign
-    const gex = g * c.openInterest * 100 * (S * S) * 0.01 * sign;
-    sumGex += gex;
-  });
-  return sumGex;
-}
-
 export function computeDealerInventory(
   chain: ChainContract[],
   spot: number,
@@ -616,38 +594,17 @@ export function computeDealerInventory(
     gexPerStrike[c.strike] = (gexPerStrike[c.strike] || 0) + GEX_strike;
   });
 
-  // Mathematically correct grid search solver for Gamma Flip (S*) crossing level
-  let gammaFlip = spot * 0.995; // default fallback
-  let gammaFlipConfident = false;
-  const gridPoints: { S: number; gex: number }[] = [];
-  const minSpot = spot * 0.85;
-  const maxSpot = spot * 1.15;
-  const intervals = 60;
-  for (let i = 0; i <= intervals; i++) {
-    const S = minSpot + (i / intervals) * (maxSpot - minSpot);
-    const gex = totalGammaAtSpot(S, chain, dte);
-    gridPoints.push({ S, gex });
-  }
-
-  // Find where the total net GEX crosses 0
-  for (let i = 0; i < gridPoints.length - 1; i++) {
-    const ptA = gridPoints[i];
-    const ptB = gridPoints[i + 1];
-    // Treat an exact zero node as the flip itself; otherwise interpolate the
-    // sign change. (The old `ptA.gex !== 0` guard skipped a true crossing that
-    // landed exactly on zero — possible with symmetric synthetic chains.)
-    if (ptA.gex === 0) {
-      gammaFlip = ptA.S;
-      gammaFlipConfident = true;
-      break;
-    }
-    if (Math.sign(ptA.gex) !== Math.sign(ptB.gex)) {
-      const t = -ptA.gex / (ptB.gex - ptA.gex);
-      gammaFlip = ptA.S + t * (ptB.S - ptA.S);
-      gammaFlipConfident = true;
-      break;
-    }
-  }
+  // Gamma flip ("zero gamma"): CANONICAL cumulative-net-GEX-by-strike convention,
+  // shared with skyQuantCore.gammaFlipSpot and gexEngine.buildGexProfile so the
+  // platform reports ONE flip price per chain. (Previously this ran a pointwise
+  // grid solver for the spot S* where total GEX RE-EVALUATED at a hypothetical
+  // spot crossed zero — a genuinely different definition that could disagree with
+  // the by-strike "zero gamma" level quoted by the other dealer-flow engines.)
+  // gammaFlipSpot aggregates the per-contract GEX (computed at the real spot) by
+  // strike before finding the cumulative crossing.
+  const flip = gammaFlipSpot(GEX_strike_list.map((g) => g.strike), GEX_strike_list.map((g) => g.gex));
+  const gammaFlipConfident = flip !== null; // false ⇒ no zero-crossing (one-sided book); Phase 3 abstains
+  const gammaFlip = gammaFlipConfident ? flip! : spot * 0.995; // bounded fallback when not confident
 
   // Find walls — the strike with the maximum absolute Gamma Exposure (GEX).
   // Enforce the directional convention: the call wall (resistance) is the

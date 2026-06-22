@@ -146,11 +146,30 @@ export function netCharmStrike(oiC: number, charmC: number, oiP: number, charmP:
   return (oiC * charmC - oiP * charmP) * CONTRACT_MULTIPLIER * timeDecayFactor;
 }
 
-/** Spot where cumulative Net GEX crosses zero (linear interp on first sign change). */
+/**
+ * CANONICAL gamma-flip ("zero gamma") level — the SqueezeMetrics convention used
+ * platform-wide. Strikes are aggregated and sorted ascending, net GEX is
+ * accumulated by strike, and the flip is the strike (linearly interpolated) where
+ * the CUMULATIVE net GEX first crosses zero. This is the single source of truth:
+ * gexEngine.buildGexProfile and v11Math.computeDealerInventory both delegate here
+ * so the platform never reports two different flip prices for one chain.
+ *
+ * Duplicate strikes (e.g. a call and a put row at the same strike) are summed, so
+ * raw per-contract GEX arrays can be passed directly. Returns null when no
+ * zero-crossing exists (e.g. a one-sided/all-positive book) — callers then
+ * abstain rather than fabricate a level.
+ */
 export function gammaFlipSpot(strikes: number[], netGexByStrike: number[]): number | null {
-  const order = strikes.map((s, i) => i).sort((a, b) => strikes[a] - strikes[b]);
-  const sk = order.map((i) => strikes[i]);
-  const g = order.map((i) => netGexByStrike[i]);
+  // Aggregate net GEX per unique strike (handles call+put rows on one strike).
+  const byStrike = new Map<number, number>();
+  for (let i = 0; i < strikes.length; i++) {
+    const k = strikes[i];
+    if (!isFinite(k)) continue;
+    byStrike.set(k, (byStrike.get(k) || 0) + (netGexByStrike[i] || 0));
+  }
+  const sk = [...byStrike.keys()].sort((a, b) => a - b);
+  if (sk.length < 2) return null;
+  const g = sk.map((k) => byStrike.get(k)!);
   let cum = 0;
   const cums = g.map((v) => (cum += v));
   for (let i = 0; i < cums.length - 1; i++) {

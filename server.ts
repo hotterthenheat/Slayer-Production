@@ -28,7 +28,7 @@ import {
 } from './src/lib/providerAbstraction';
 import { buildGexProfile, computeDealerFlowGauge } from './src/lib/gexEngine';
 import { getLastTradierError } from './src/lib/tradierProvider';
-import { ensureSchema } from './src/db/index.ts';
+import { ensureSchema, dbLoadModeration, dbSetModeration, dbIsWebhookProcessed, dbMarkWebhookProcessed } from './src/db/index.ts';
 import bcrypt from 'bcryptjs';
 import { PORT, stripeClient, TIER_PRICING, ADMIN_EMAILS, roleForEmail, type AdminRole } from './src/server/config';
 import {
@@ -37,6 +37,7 @@ import {
   type UserAccount, validatePasswordStrength, generateDefaultUsername, fillDefaultPrivacySettings, sanitizeUser,
   dbGetUser, dbSetUser, persistUser, dbDeleteUser, dbGetAllUsers, dbHasUser,
   getSessionFromCookies, setSessionCookie,
+  getSessionsValidAfter, setSessionsValidAfterLocal,
   verifyTOTP, totpLockRemainingMs, registerTotpFailure, clearTotpAttempts,
   loginLockRemainingMs, registerLoginFailure, clearLoginAttempts,
   generateReferralCode,
@@ -934,10 +935,22 @@ app.post('/api/auth/revoke-sessions', express.json(), async (req, res) => {
     }
   }
 
-  res.json({ 
-    success: true, 
+  // Durable revocation: bump the session-valid-after watermark so cookies on other
+  // devices (older iat) are rejected even across a restart, then re-issue THIS
+  // device's cookie with a fresh iat so the current session stays valid.
+  const now = Date.now();
+  setSessionsValidAfterLocal(emailLower, now);
+  await dbSetModeration(emailLower, {
+    banned: BANNED_USERS.has(emailLower),
+    suspended: SUSPENDED_USERS.has(emailLower),
+    sessions_valid_after: now,
+  });
+  await setSessionCookie(res, session, req);
+
+  res.json({
+    success: true,
     revokedCount: count,
-    message: 'All other devices logged out successfully.' 
+    message: 'All other devices logged out successfully.'
   });
 });
 
@@ -1487,11 +1500,14 @@ app.post('/api/billing/webhook', express.raw({ type: 'application/json' }), asyn
     return res.status(400).send('Webhook signature verification failed');
   }
 
-  // Idempotency / replay protection: skip events we've already processed.
-  if (processedWebhookEvents.has(event.id)) {
+  // Idempotency / replay protection: skip events we've already processed. Backed
+  // by the durable store so a Stripe retry AFTER a restart isn't re-processed
+  // (the in-memory Set alone reset on restart); in-memory stays a fast first check.
+  if (processedWebhookEvents.has(event.id) || await dbIsWebhookProcessed(event.id)) {
     return res.json({ received: true, duplicate: true });
   }
   processedWebhookEvents.add(event.id);
+  await dbMarkWebhookProcessed(event.id);
   if (processedWebhookEvents.size > 5000) {
     // Bound memory: drop the oldest ~1000 ids (insertion order preserved by Set).
     for (const id of Array.from(processedWebhookEvents).slice(0, 1000)) processedWebhookEvents.delete(id);
@@ -2636,7 +2652,7 @@ app.patch('/api/admin/users/:email/tier', requireAdmin(['owner', 'admin', 'moder
 });
 
 function moderationHandler(action: 'suspend' | 'unsuspend' | 'ban' | 'unban' | 'force-logout') {
-  return (req: any, res: any) => {
+  return async (req: any, res: any) => {
     const email = String(req.params.email || '').toLowerCase().trim();
     if (!email) return res.status(400).json({ error: 'Target email required.' });
     // Block moderating ANY privileged account (owner/admin/moderator), not just
@@ -2645,9 +2661,17 @@ function moderationHandler(action: 'suspend' | 'unsuspend' | 'ban' | 'unban' | '
     if (roleForEmail(email) !== 'user') return res.status(403).json({ error: 'Cannot moderate a privileged account.' });
     if (action === 'suspend') SUSPENDED_USERS.add(email);
     if (action === 'unsuspend') SUSPENDED_USERS.delete(email);
-    if (action === 'ban') { BANNED_USERS.add(email); FORCE_LOGOUT_USERS.add(email); }
+    // ban / force-logout also bump the durable session-revocation watermark so all
+    // existing cookies for the account are invalidated (and stay invalid across restart).
+    if (action === 'ban') { BANNED_USERS.add(email); FORCE_LOGOUT_USERS.add(email); setSessionsValidAfterLocal(email, Date.now()); }
     if (action === 'unban') BANNED_USERS.delete(email);
-    if (action === 'force-logout') FORCE_LOGOUT_USERS.add(email);
+    if (action === 'force-logout') { FORCE_LOGOUT_USERS.add(email); setSessionsValidAfterLocal(email, Date.now()); }
+    // Write through to the durable store (no-op without a DB) so the action survives restarts.
+    await dbSetModeration(email, {
+      banned: BANNED_USERS.has(email),
+      suspended: SUSPENDED_USERS.has(email),
+      sessions_valid_after: getSessionsValidAfter(email),
+    });
     logAudit(req, `USER_${action.toUpperCase().replace('-', '_')}`, email);
     res.json({ success: true, action, email });
   };
@@ -2722,6 +2746,21 @@ async function startServer() {
   // ensureSchema() no-ops when SQL_HOST is unset and swallows connection errors,
   // so this is safe in keyless/sandbox mode too.
   await ensureSchema();
+
+  // Hydrate the in-memory moderation caches from the durable store so bans,
+  // suspensions, and session-revocation watermarks survive restarts/redeploys
+  // (no-op without a DB — falls back to in-memory only).
+  try {
+    const modRows = await dbLoadModeration();
+    for (const r of modRows) {
+      if (r.banned) BANNED_USERS.add(r.email);
+      if (r.suspended) SUSPENDED_USERS.add(r.email);
+      if (r.sessions_valid_after) setSessionsValidAfterLocal(r.email, r.sessions_valid_after);
+    }
+    if (modRows.length) console.log(`[moderation] hydrated ${modRows.length} record(s) from durable store.`);
+  } catch (e) {
+    console.error('[moderation] hydrate failed (continuing with in-memory only):', e);
+  }
 
 // ==========================================
 // QUANT CO-PILOT — local, deterministic options-structure analysis.

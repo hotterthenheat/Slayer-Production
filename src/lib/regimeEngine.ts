@@ -66,27 +66,59 @@ export function hurstExponent(series: number[]): number {
 export interface OUResult {
   theta: number; // mean-reversion speed (per bar)
   mu: number; // long-term mean (price)
-  halfLifeBars: number; // ln(2)/theta
+  halfLifeBars: number; // ln(2)/theta, in bars
+  halfLifeMinutes: number; // halfLifeBars × candle interval (minutes)
   meanReverting: boolean;
 }
 
-/** Ornstein-Uhlenbeck calibration via AR(1) regression on the price series. */
-export function ornsteinUhlenbeck(series: number[]): OUResult {
+/**
+ * Ornstein-Uhlenbeck calibration on a STATIONARIZED series.
+ *
+ * Regressing Δx_t on the RAW level x_{t-1} biases the AR(1) slope toward 0 for a
+ * trending (non-stationary) price — so `meanReverting` skews false and the
+ * half-life is unreliable. Instead we regress the change on the DEVIATION from a
+ * rolling mean:  Δx_t = a + b·(x_{t-1} − m_{t-1}) + e, where m_t is a trailing
+ * SMA. The de-meaned regressor strips the local drift, so b estimates the true
+ * pull-to-equilibrium and θ = −ln(1+b) is the correct OU mean-reversion speed.
+ *
+ * Half-life is reported BOTH in bars (`halfLifeBars`) and in MINUTES
+ * (`halfLifeMinutes` = bars × interval). `intervalMin` defaults to 5 (the
+ * platform's default bar) so existing number[]-only callers keep working; pass
+ * the real candle interval (see realizedVol.intervalMinutes) for an accurate
+ * minutes figure.
+ */
+export function ornsteinUhlenbeck(series: number[], intervalMin = 5, meanWindow = 20): OUResult {
   const px = series.filter((x) => x > 0 && isFinite(x));
-  if (px.length < 20) return { theta: 0, mu: mean(px), halfLifeBars: Infinity, meanReverting: false };
-  // Δx_t = a + b·x_{t-1} + e ; θ = −ln(1+b), reverting when b<0.
-  const x = px.slice(0, -1);
-  const dx = px.slice(1).map((v, i) => v - px[i]);
-  const mxx = mean(x), mdx = mean(dx);
+  if (px.length < 20) return { theta: 0, mu: mean(px), halfLifeBars: Infinity, halfLifeMinutes: Infinity, meanReverting: false };
+  // Trailing rolling mean m_{t} over the prior `meanWindow` levels (causal, no look-ahead).
+  const w = Math.max(2, Math.min(meanWindow, px.length - 1));
+  const rollMean = (idx: number) => { const lo = Math.max(0, idx - w + 1); let s = 0; for (let j = lo; j <= idx; j++) s += px[j]; return s / (idx - lo + 1); };
+  // Stationarized regressor: deviation of x_{t-1} from its trailing mean.
+  // Δx_t = a + b·(x_{t-1} − m_{t-1}) + e ; θ = −ln(1+b), reverting when b<0.
+  const dev: number[] = [];
+  const dx: number[] = [];
+  for (let i = 1; i < px.length; i++) { dev.push(px[i - 1] - rollMean(i - 1)); dx.push(px[i] - px[i - 1]); }
+  const mDev = mean(dev), mdx = mean(dx);
   let num = 0, den = 0;
-  for (let i = 0; i < x.length; i++) { num += (x[i] - mxx) * (dx[i] - mdx); den += (x[i] - mxx) * (x[i] - mxx); }
+  for (let i = 0; i < dev.length; i++) { num += (dev[i] - mDev) * (dx[i] - mdx); den += (dev[i] - mDev) * (dev[i] - mDev); }
   const b = den > 0 ? num / den : 0;
-  const a = mdx - b * mxx;
+  const a = mdx - b * mDev;
   const onePlusB = 1 + b;
   const theta = onePlusB > 0 && onePlusB < 1 ? -ln(onePlusB) : (b < 0 ? -b : 0);
-  const mu = b !== 0 ? -a / b : mxx;
+  // Equilibrium price: deviation regression centers on the rolling mean of the
+  // latest bar, offset by the regression intercept (a + b·dev = 0 ⇒ dev = −a/b).
+  const lastMean = rollMean(px.length - 1);
+  const mu = b !== 0 ? lastMean - a / b : lastMean;
   const halfLifeBars = theta > 1e-9 ? ln(2) / theta : Infinity;
-  return { theta: Number(theta.toFixed(5)), mu: Number(mu.toFixed(2)), halfLifeBars: isFinite(halfLifeBars) ? Number(halfLifeBars.toFixed(1)) : Infinity, meanReverting: b < -1e-4 };
+  const safeInterval = intervalMin > 0 && isFinite(intervalMin) ? intervalMin : 5;
+  const halfLifeMinutes = isFinite(halfLifeBars) ? halfLifeBars * safeInterval : Infinity;
+  return {
+    theta: Number(theta.toFixed(5)),
+    mu: Number(mu.toFixed(2)),
+    halfLifeBars: isFinite(halfLifeBars) ? Number(halfLifeBars.toFixed(1)) : Infinity,
+    halfLifeMinutes: isFinite(halfLifeMinutes) ? Number(halfLifeMinutes.toFixed(1)) : Infinity,
+    meanReverting: b < -1e-4,
+  };
 }
 
 export type RegimeState = 'TREND_EXPANSION' | 'MEAN_REVERSION' | 'TAIL_RISK';

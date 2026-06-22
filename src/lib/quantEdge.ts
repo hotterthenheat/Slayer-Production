@@ -10,7 +10,7 @@
  */
 import { Candle } from '../types';
 import { ChainContract } from './v11Math';
-import { computeRealizedVol, computeVRP, RealizedVolResult, VRPResult } from './realizedVol';
+import { computeRealizedVol, computeVRP, intervalMinutes, RealizedVolResult, VRPResult } from './realizedVol';
 import { computeRiskNeutralDensity, RiskNeutralResult } from './riskNeutral';
 import { computeSkew, percentileRank, SkewResult } from './skewAnalytics';
 import { computeDealerClock, DealerClock } from './dealerClock';
@@ -93,7 +93,7 @@ export function computeAssetEdge(params: {
 
   // Statistical regime matrix + microstructure toxicity (keyless, from candles).
   const regime = classifyRegime(candles);
-  const ou = ornsteinUhlenbeck(candles.map((c) => c.close));
+  const ou = ornsteinUhlenbeck(candles.map((c) => c.close), intervalMinutes(candles));
   const compression = volCompression(candles);
   const expansion = volExpansion(candles);
   const forwardVol = forwardVolMatrix(candles);
