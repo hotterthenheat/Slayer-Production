@@ -225,7 +225,10 @@ export function SkyseyeAlertHub() {
         const timestamp = formatTime(now);
 
         candidates.push({
-          id: flow.id || Math.random().toString(36).substring(2, 9),
+          // Stable, content-derived id: used as the AnimatePresence key. A
+          // Math.random() id changed every render, remounting the toast and
+          // resetting its enter/exit animation + 4.5s auto-dismiss timer.
+          id: flow.id || `${ticker}-${strike}-${optionType}`,
           ticker,
           strike,
           type: optionType,
@@ -260,7 +263,7 @@ export function SkyseyeAlertHub() {
         const textSummary = `Optimal flows parsed: ${optimalCandidates.map(c => `${c.ticker} ${c.strike}${c.type}`).join(', ')}`;
         
         const multipleToast: ToastItem = {
-          id: 'multiple-' + Math.random().toString(36).substring(2, 9),
+          id: 'multiple-' + optimalCandidates.map(c => `${c.ticker}${c.strike}${c.type}`).join('_'),
           ticker: 'MULTIPLE',
           strike: 0,
           type: 'MULTIPLE',

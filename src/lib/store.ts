@@ -274,7 +274,8 @@ export function useTierValidation() {
 
     // 1. Instantly force sync from local drift before network
     if (typeof window !== 'undefined') {
-      const localSync = Number(localStorage.getItem('slayer_tier') || '0');
+      const rawTier = Number(localStorage.getItem('slayer_tier') || '0');
+      const localSync = Number.isFinite(rawTier) ? rawTier : 0; // corrupt/non-numeric -> 0, not NaN
       const authSync = localStorage.getItem('slayer_auth') === 'true';
       setPurchasedTier(localSync);
       setIsAuthenticated(authSync);
@@ -371,7 +372,7 @@ export const useContractStore = create<ContractStore>((set, get) => ({
   isAuthenticated: false,
   setIsAuthenticated: (auth) => set({ isAuthenticated: auth }),
 
-  purchasedTier: typeof window !== 'undefined' ? (isLocalDevEnv() ? 5 : Number(localStorage.getItem('slayer_tier') || '0')) : 0,
+  purchasedTier: typeof window !== 'undefined' ? (isLocalDevEnv() ? 5 : (() => { const n = Number(localStorage.getItem('slayer_tier') || '0'); return Number.isFinite(n) ? n : 0; })()) : 0,
   setPurchasedTier: (tier) => {
     if (typeof window !== 'undefined') {
       localStorage.setItem('slayer_tier', String(tier));
@@ -512,7 +513,11 @@ export const useContractStore = create<ContractStore>((set, get) => ({
   },
 
   updateFromSSE: (payload: ServerStatePayload) => {
-    if (!payload) return;
+    // Guard the contract field too: the SSE stream can deliver control/heartbeat
+    // frames (or partial JSON) that parse to an object without `contract`. The
+    // old `payload.contract.replace(...)` then threw inside the rAF flush loop,
+    // killing all further updates until the effect re-ran.
+    if (!payload || typeof payload.contract !== 'string') return;
 
     // 1. Race condition guard: Ensure the received payload is for the currently selected asset, option type, and strike!
     const payloadTicker = payload.contract.replace('-', ' ').split(' ')[0];

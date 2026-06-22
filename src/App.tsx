@@ -72,7 +72,7 @@ const TickerTape = memo(() => {
     const isUp = prev === undefined ? true : price >= prev;
     return { ...m, price, isUp, live };
   });
-  React.useEffect(() => { items.forEach((it) => { prevRef.current[it.ticker] = it.price; }); });
+  React.useEffect(() => { items.forEach((it) => { prevRef.current[it.ticker] = it.price; }); }, [liveSpot]);
   const staticTickers = [...items, ...items, ...items];
 
   return (
@@ -105,7 +105,8 @@ const FooterClock: React.FC = () => {
   const [time, setTime] = useState<string>('');
 
   useEffect(() => {
-    const tick = () => setTime(formatTime(new Date(), 'EST', '12H'));
+    // No overrides → formatTime reads the user's stored timezone/format prefs.
+    const tick = () => setTime(formatTime(new Date()));
     tick();
     const interval = setInterval(tick, 1000);
     return () => clearInterval(interval);
