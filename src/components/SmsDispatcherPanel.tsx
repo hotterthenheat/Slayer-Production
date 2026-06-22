@@ -51,14 +51,13 @@ export function SmsDispatcherPanel({
     setPhoneNumber(formatted);
   };
 
+  // SIMULATION ONLY. No real SMS is sent and no network/carrier call is made —
+  // these lines preview how an alert payload would be assembled client-side.
   const mockTwilioSequence = [
-    'ESTABLISHING TWILIO REST GATEWAY CLOUD GATEWAY LINK ...',
-    'VERIFYING CRYPTOGRAPHIC HMAC TOKEN CARRIER BRIDGE ...',
-    'COMPILING DEVIATION THREAD: CALCULATING P(WIN) AND DYNAMIC FAIR VALUE ...',
-    'MESSAGE GENERATION SUCCESSFUL // FORMATTING ENCRYPTED PAYLOAD ...',
-    'HANDSHARKING WITH MOBILITY PROTOCOLS (AT&T, VERIZON, T-MOBILE) ...',
-    'CARRIER REPROJECTION: SUCCESS // DISPATCHED THROUGH HIGH-VOLUME SMS DIRECT SHORTCODE 75293 ...',
-    'BROADCAST PROTOCOL COMPLETE // ALERT CONFIRMED ON TARGET CELLULAR TRANSPANEL'
+    '[SIMULATION] Building alert payload from current contract metrics ...',
+    '[SIMULATION] Calculating P(win) and dynamic fair value locally ...',
+    '[SIMULATION] Formatting subscriber message preview ...',
+    '[SIMULATION] Preview ready — NO message was transmitted to any device.'
   ];
 
   const handleSendSMS = () => {
@@ -78,7 +77,8 @@ export function SmsDispatcherPanel({
         dispatchIntervalRef.current = null;
         setIsDispatching(false);
 
-        // Record the actual sent alert details to display on our mock mobile device screen!
+        // Build the simulated preview message shown on the mock device screen.
+        // This is never transmitted — it only previews alert formatting locally.
         const alertMsg = `[SLAYER.TRADE ALERT] Best Contract detected: ${activeContractTicker} | Buy Zone: $${(metrics.entryZoneMin ?? 0).toFixed(2)}-$${(metrics.entryZoneMax ?? 0).toFixed(2)} | Current: $${(optionPremiumFloat ?? 0).toFixed(2)} | Bayesian Win Prob: ${metrics.posteriorWinRate}% | Expected Value (EV): +${(metrics.expectedValuePct ?? 0).toFixed(1)}% | GEX Support: supportive. Track at slayer.trade.`;
         setSentAlerts((prev) => [
           {
@@ -107,64 +107,64 @@ export function SmsDispatcherPanel({
   }, [dispatchLogs]);
 
   return (
-    <div className="bg-black border border-black rounded-sm font-mono p-5 overflow-hidden shadow-lg h-full flex flex-col justify-between">
+    <div className="bg-[var(--surface)] border border-[var(--border)] rounded-sm font-mono p-5 overflow-hidden shadow-lg h-full flex flex-col justify-between">
       <div>
-        <div className="flex items-center justify-between border-b border-black pb-3 mb-4">
+        <div className="flex items-center justify-between border-b border-[var(--border)] pb-3 mb-4">
           <div className="flex items-center gap-1.5">
-            <Smartphone className="w-4 h-4 text-[#4ADE80] animate-pulse" />
-            <span className="text-xs tracking-[0.2em] font-bold text-[#E0E0E0]">DIRECT SMS DISPATCH COCKPIT</span>
+            <Smartphone className="w-4 h-4 text-[var(--success)]" />
+            <span className="text-xs tracking-[0.2em] font-bold text-[var(--text-primary)]">SMS DISPATCH PREVIEW</span>
           </div>
-          <span className="text-[9px] text-[#888888] font-bold uppercase select-none border border-black px-2 bg-black/40 py-0.5">V10 MOBILITY EDGE</span>
+          <span className="text-[10px] text-[var(--warning)] font-bold uppercase select-none border border-[var(--warning)]/40 px-2 bg-[var(--surface-2)] py-0.5">SIMULATION</span>
         </div>
 
-        <p className="text-[11px] text-zinc-400 leading-normal mb-4 font-sans">
-          Route this high Expected Value contract directly to your device via Twilio SMS carrier streams. Subscribers receive real-time updates as Bayesian offsets fluctuate.
+        <p className="text-[11px] text-[var(--text-secondary)] leading-normal mb-4 font-sans">
+          Preview how this high Expected Value contract would format as an SMS alert. This is a client-side simulation only &mdash; no real message is sent and no Twilio/carrier call is made.
         </p>
 
         {/* Input area */}
-        <div className="bg-black/40 border border-black p-4 rounded-sm mb-4">
+        <div className="bg-[var(--surface-2)] border border-[var(--border)] p-4 rounded-sm mb-4">
           <div className="flex flex-col gap-2.5">
-            <label className="text-[10px] text-zinc-500 uppercase font-bold">DEVICE REGISTER (MOBILE PHONE NUMBER)</label>
+            <label className="text-[10px] text-[var(--text-tertiary)] uppercase font-bold">DEVICE REGISTER (MOBILE PHONE NUMBER)</label>
             <div className="flex gap-2">
               <div className="relative flex-1">
-                <span className="absolute left-3 top-2 text-zinc-650 text-xs">+1</span>
+                <span className="absolute left-3 top-2 text-[var(--text-tertiary)] text-xs tabular-nums">+1</span>
                 <input
                   type="text"
                   placeholder="(555) 000-0000"
                   value={phoneNumber}
                   onChange={handlePhoneChange}
                   disabled={isDispatching}
-                  className="w-full bg-black text-[#E5E5E5] border border-black focus:border-black rounded-sm py-1.5 pl-8 pr-3 text-xs focus:outline-none transition-all font-mono"
+                  className="w-full bg-[var(--surface)] text-[var(--text-primary)] border border-[var(--border)] focus:border-[var(--border-strong)] rounded-sm py-1.5 pl-8 pr-3 text-xs focus:outline-none transition-all font-mono tabular-nums"
                 />
               </div>
 
               <button
                 onClick={handleSendSMS}
                 disabled={isDispatching || phoneNumber.length < 10}
-                className="px-4 py-1.5 bg-black/40 border border-black hover:border-black text-[#4ADE80] font-bold uppercase rounded-sm cursor-pointer disabled:opacity-40 disabled:hover:border-transparent transition-all text-xs flex items-center gap-1 shrink-0"
+                className="px-4 py-1.5 bg-[var(--surface-2)] border border-[var(--border)] hover:border-[var(--border-strong)] text-[var(--success)] font-bold uppercase rounded-sm cursor-pointer disabled:opacity-40 disabled:hover:border-[var(--border)] transition-all text-xs flex items-center gap-1 shrink-0"
               >
                 {isDispatching ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Send className="w-3.5 h-3.5" />}
-                <span>{isDispatching ? 'ROUTING' : 'DISPATCH'}</span>
+                <span>{isDispatching ? 'BUILDING' : 'SIMULATE'}</span>
               </button>
             </div>
             {phoneNumber.length > 0 && phoneNumber.length < 14 && (
-              <span className="text-[9px] text-[#F87171] flex items-center gap-1 mt-0.5">
-                <AlertCircle className="w-3" /> Minimum 10 digits required for telecom routing
+              <span className="text-[10px] text-[var(--danger)] flex items-center gap-1 mt-0.5">
+                <AlertCircle className="w-3" /> Minimum 10 digits required to build the preview
               </span>
             )}
           </div>
         </div>
 
-        {/* Twilio Handshake Debug Logs */}
+        {/* Simulation pipeline logs */}
         {dispatchLogs.length > 0 && (
-          <div className="bg-black border border-black rounded-sm p-3 mb-4 h-[120px] overflow-y-auto custom-scrollbar text-[9px] leading-relaxed text-zinc-400 select-text">
-            <div className="text-zinc-550 border-b border-black pb-1 mb-1 font-bold tracking-wider text-[8px] uppercase">
-              DEVIATION SMS DISPATCH PIPELINE LOGS
+          <div className="bg-[var(--surface)] border border-[var(--border)] rounded-sm p-3 mb-4 h-[120px] overflow-y-auto custom-scrollbar text-[10px] leading-relaxed text-[var(--text-secondary)] select-text">
+            <div className="text-[var(--text-tertiary)] border-b border-[var(--border)] pb-1 mb-1 font-bold tracking-wider text-[10px] uppercase">
+              SMS PREVIEW PIPELINE [SIMULATION]
             </div>
             {dispatchLogs.map((log, i) => {
               const isLast = i === dispatchLogs.length - 1;
               return (
-                <div key={i} className={`${isLast ? 'text-[#4ADE80] font-semibold' : 'text-zinc-400'}`}>
+                <div key={i} className={`tabular-nums ${isLast ? 'text-[var(--success)] font-semibold' : 'text-[var(--text-secondary)]'}`}>
                   {log}
                 </div>
               );
@@ -174,16 +174,16 @@ export function SmsDispatcherPanel({
         )}
       </div>
 
-      {/* Mock Physical Phone Screen Interface displaying the text alert! */}
+      {/* Mock phone screen displaying the simulated alert preview */}
       <div>
-        <div className="text-[8.5px] uppercase text-zinc-650 font-bold mb-1.5 select-none text-center">
+        <div className="text-[10px] uppercase text-[var(--text-tertiary)] font-bold mb-1.5 select-none text-center">
            SIMULATED SUBSCRIBER MESSAGE PREVIEW
         </div>
-        <div className="bg-black border border-black rounded-sm p-3 font-sans relative overflow-hidden min-h-[92px]">
+        <div className="bg-[var(--surface)] border border-[var(--border)] rounded-sm p-3 font-sans relative overflow-hidden min-h-[92px]">
           {/* Top Status Bar of Phone */}
-          <div className="flex justify-between items-center text-[8px] text-zinc-550 font-mono tracking-tighter border-b border-black pb-1 mb-2">
+          <div className="flex justify-between items-center text-[10px] text-[var(--text-tertiary)] font-mono tracking-tighter border-b border-[var(--border)] pb-1 mb-2">
             <span>SLAYER MOBILE HUB</span>
-            <div className="flex gap-1.5 items-center">
+            <div className="flex gap-1.5 items-center tabular-nums">
               <span>LTE</span>
               <span>100%</span>
             </div>
@@ -192,17 +192,17 @@ export function SmsDispatcherPanel({
           {sentAlerts.length > 0 ? (
             <div className="flex flex-col gap-2">
               {sentAlerts.slice(0, 1).map((alert, idx) => (
-                <div key={idx} className="bg-black text-[#E5E5E5] p-2.5 rounded-lg text-[10px] leading-snug w-[92%] ml-auto shadow-md border border-black animate-slideUp relative">
-                  <span className="absolute -left-10 text-[8px] font-mono text-zinc-600 top-1">{alert.timestamp}</span>
-                  <div className="font-semibold font-mono text-[9px] text-[#4ADE80] mb-0.5">SLAYER.TRADE</div>
+                <div key={idx} className="bg-[var(--surface-2)] text-[var(--text-primary)] p-2.5 rounded-lg text-[10px] leading-snug w-[92%] ml-auto shadow-md border border-[var(--border)] animate-slideUp relative">
+                  <span className="absolute -left-10 text-[10px] font-mono tabular-nums text-[var(--text-tertiary)] top-1">{alert.timestamp}</span>
+                  <div className="font-semibold font-mono text-[10px] text-[var(--success)] mb-0.5">SLAYER.TRADE</div>
                   {alert.message}
                 </div>
               ))}
             </div>
           ) : (
-            <div className="flex flex-col items-center justify-center py-3 text-center text-zinc-600 text-[10.5px]">
-              <Smartphone className="w-5 text-zinc-700 mb-1" />
-              <span>Enter phone above and commit Direct Dispatch to receive live simulated SMS on this display framework.</span>
+            <div className="flex flex-col items-center justify-center py-3 text-center text-[var(--text-tertiary)] text-[10.5px]">
+              <Smartphone className="w-5 text-[var(--text-tertiary)] mb-1" />
+              <span>Enter a phone number above and run Simulate to build a preview SMS on this mock display. Nothing is sent.</span>
             </div>
           )}
         </div>

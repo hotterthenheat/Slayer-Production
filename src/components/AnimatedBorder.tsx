@@ -1,7 +1,7 @@
 import { motion } from 'motion/react';
 import React from 'react';
 
-export function AnimatedBorder({ radius = 16, color = '#ffffff', duration = 5 }) {
+export function AnimatedBorder({ radius = 16, color = 'var(--text-primary)', duration = 5 }) {
   return (
     <svg className="absolute inset-0 w-full h-full pointer-events-none z-0" style={{ borderRadius: 'inherit' }}>
       <rect
@@ -10,7 +10,7 @@ export function AnimatedBorder({ radius = 16, color = '#ffffff', duration = 5 })
         style={{ width: 'calc(100% - 1.5px)', height: 'calc(100% - 1.5px)' }}
         rx={radius}
         fill="none"
-        stroke="rgba(255, 255, 255, 0.05)"
+        stroke="var(--border)"
         strokeWidth="1"
       />
       <motion.rect

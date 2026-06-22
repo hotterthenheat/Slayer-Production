@@ -100,89 +100,62 @@ export function AlertsView() {
     return candidates[0] || null;
   }, [candidates, bestTradesList, lockedTradeId]);
 
-  // General telemetry priority queue alerts
-  const [telemetryAlerts, setTelemetryAlerts] = useState<AlertItem[]>([
-    {
-      id: 'alt-5a21',
-      timestamp: '14:22:04',
-      priority: 'CRITICAL',
-      type: 'LIQUIDITY SWEEP',
-      message: 'Institutional sweep void detected immediately below SPX 7620 node. Net dealer GEX shelter buffers shifted 15% lower.',
-      source: 'CBOE DIRECT FEED'
-    },
-    {
-      id: 'alt-12b4',
-      timestamp: '14:15:30',
-      priority: 'HIGH',
-      type: 'EXPECTED RANGE EXCURSION',
-      message: 'Spot price deviated past first standard boundary threshold. Underlying volatility index expanding rapidly.',
-      source: 'VOLATILITY PIPELINE'
-    },
-    {
-      id: 'alt-88c9',
-      timestamp: '14:02:11',
-      priority: 'MEDIUM',
-      type: 'GAMMA FLIP SHIFT',
-      message: 'Dealer gamma profile rebalancing near active strike nodes. Re-hedging pressures build on short positions.',
-      source: 'GEX SKEW ENGINE'
-    },
-    {
-      id: 'alt-09f1',
-      timestamp: '13:58:15',
-      priority: 'LOW',
-      type: 'TIME DECAY COMPILING',
-      message: 'Theta parameters accelerated on front-month QQQ expiration sets as market enters consolidation block.',
-      source: 'SURFACE MATRIX'
-    }
-  ]);
+  // Real alert feed: derived from the server's live flow feed when present.
+  // (Premium-gated: deep_intelligence / flow_feed can be undefined.)
+  const flowFeed = serverState?.deep_intelligence?.flow_feed;
+  const hasLiveFeed = Array.isArray(flowFeed) && flowFeed.length > 0;
+
+  const feedAlerts = useMemo<AlertItem[]>(() => {
+    if (!hasLiveFeed) return [];
+    return flowFeed!.slice(0, 12).map((f, i) => {
+      const t = (f.type || '').toUpperCase();
+      const priority: AlertItem['priority'] =
+        t.includes('SWEEP') || t.includes('BLOCK') ? 'HIGH' :
+        t.includes('UNUSUAL') || t.includes('WHALE') ? 'CRITICAL' :
+        i < 3 ? 'MEDIUM' : 'LOW';
+      return {
+        id: f.id || `flow-${i}`,
+        timestamp: formatTime(new Date()),
+        priority,
+        type: f.type || 'FLOW EVENT',
+        message: `${f.contract ? f.contract + ' — ' : ''}${f.desc || ''}`.trim(),
+        source: 'LIVE FLOW FEED',
+      };
+    });
+  }, [flowFeed, hasLiveFeed]);
+
+  // User-injected demo alerts (clearly labeled DEMO; not measurements).
+  const [demoAlerts, setDemoAlerts] = useState<AlertItem[]>([]);
+
+  // Display list: real feed first, then any demo alerts the user added.
+  const telemetryAlerts = useMemo<AlertItem[]>(
+    () => [...demoAlerts, ...feedAlerts],
+    [demoAlerts, feedAlerts]
+  );
 
   const addSimulatedAlert = (priority: 'CRITICAL' | 'HIGH' | 'MEDIUM' | 'LOW') => {
     const time = formatTime(new Date());
-    let newAlert: AlertItem;
+    const templates: Record<typeof priority, { type: string; message: string }> = {
+      CRITICAL: { type: 'TAIL EXCURSION (DEMO)', message: `Sample tail-risk scenario on ${selectedAsset.ticker}. Illustrative only — not a live measurement.` },
+      HIGH: { type: 'MOMENTUM ALIGNMENT (DEMO)', message: `Sample higher-timeframe trend agreement on ${selectedAsset.ticker}. Illustrative only.` },
+      MEDIUM: { type: 'VOLUME SPIKE (DEMO)', message: `Sample volume-profile expansion event. Illustrative only.` },
+      LOW: { type: 'FEED SYNC (DEMO)', message: `Sample feed-sync notice. Illustrative only.` },
+    } as const;
 
-    if (priority === 'CRITICAL') {
-      newAlert = {
-        id: `alt-${Math.random().toString(36).substring(2, 6)}`,
-        timestamp: time,
-        priority: 'CRITICAL',
-        type: 'TAIL EXCURSION WARNING',
-        message: `Tail Risk VaR exceeded 95% boundaries on ${selectedAsset.ticker} index. Dynamic hedge safeguards activated.`,
-        source: 'RISK CONTROL ENGINE'
-      };
-    } else if (priority === 'HIGH') {
-      newAlert = {
-        id: `alt-${Math.random().toString(36).substring(2, 6)}`,
-        timestamp: time,
-        priority: 'HIGH',
-        type: 'MOMENTUM VELOCITY ALIGNMENT',
-        message: `High Timeframe trend agreement confirmed on ${selectedAsset.ticker}. Execution signals registered on V11.`,
-        source: 'COPTIC TRACKER'
-      };
-    } else if (priority === 'MEDIUM') {
-      newAlert = {
-        id: `alt-${Math.random().toString(36).substring(2, 6)}`,
-        timestamp: time,
-        priority: 'MEDIUM',
-        type: 'VOLUME PROFILE SPIKE',
-        message: `Trading volume expanded 3.2x normal standards over 5-minute index blocks. Spreads consolidating inside nodes.`,
-        source: 'CME BLOCK SCANNER'
-      };
-    } else {
-      newAlert = {
-        id: `alt-${Math.random().toString(36).substring(2, 6)}`,
-        timestamp: time,
-        priority: 'LOW',
-        type: 'FEED SYNC NOTICE',
-        message: `Direct clearing socket latency checked at 0.82 seconds. All data coordinates synchronized perfectly.`,
-        source: 'TELEMETRY'
-      };
-    }
+    const newAlert: AlertItem = {
+      id: `demo-${Math.random().toString(36).substring(2, 6)}`,
+      timestamp: time,
+      priority,
+      type: templates[priority].type,
+      message: templates[priority].message,
+      source: 'DEMO',
+    };
 
-    setTelemetryAlerts((prev) => [newAlert, ...prev]);
+    setDemoAlerts((prev) => [newAlert, ...prev]);
   };
 
   const clearAlerts = () => {
-    setTelemetryAlerts([]);
+    setDemoAlerts([]);
   };
 
   // Switch contract on central workspace
@@ -193,19 +166,20 @@ export function AlertsView() {
   };
 
   return (
-    <div className="w-full text-[#4ADE80] flex flex-col font-mono select-none antialiased space-y-6">
-      
+    <div className="w-full text-[var(--success)] flex flex-col font-mono select-none antialiased space-y-6">
+
       {/* 1. HEADER (COMMAND DECK) */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center apple-glass p-5 rounded-2xl gap-2 shadow-lg">
         <div className="flex gap-2 items-center">
-          <Terminal className="w-4 h-4 text-[#4ADE80] animate-pulse" />
-          <span className="text-[9.5px] text-[#4ADE80] uppercase tracking-widest font-black">
-            SLAYER PRIORITIZED ALERTS COCKPIT // REALTIME SIGNAL STREAM
+          <Terminal className="w-4 h-4 text-[var(--success)]" />
+          <span className="text-[10px] text-[var(--success)] uppercase tracking-widest font-black">
+            SLAYER PRIORITIZED ALERTS COCKPIT // SIGNAL STREAM
           </span>
         </div>
-        <div className="flex items-center gap-1.5 bg-black/40 p-1 px-1.5 border border-white/5 rounded-lg">
-          <span className="text-[8.5px] uppercase tracking-widest text-[#4ADE80] px-2 font-black">
-            LIVE TELEMETRY ACTIVE
+        <div className="flex items-center gap-1.5 bg-[var(--surface)] p-1 px-1.5 border border-[var(--border)] rounded-lg">
+          <span className={`h-1.5 w-1.5 rounded-full ${hasLiveFeed ? 'bg-[var(--success)]' : 'bg-[var(--warning)]'}`} />
+          <span className={`text-[10px] uppercase tracking-widest px-1 font-black ${hasLiveFeed ? 'text-[var(--success)]' : 'text-[var(--warning)]'}`}>
+            {hasLiveFeed ? 'LIVE FEED CONNECTED' : 'NO LIVE FEED — DEMO ONLY'}
           </span>
         </div>
       </div>
@@ -215,66 +189,63 @@ export function AlertsView() {
         
         {hasMultiple && !lockedTradeId ? (
           /* MULTIPLE TRADES FOUND STATE */
-          <div className="apple-glass rounded-2xl p-6 md:p-8 relative overflow-hidden shadow-2xl border border-amber-500/20 space-y-6">
-            <div className="absolute top-0 left-0 right-0 h-[3px] bg-gradient-to-r from-amber-400 via-yellow-500 to-amber-500 shadow-lg" />
-            
-            <div className="flex flex-col sm:flex-row justify-between items-start gap-4 border-b border-white/10 pb-4">
+          <div className="apple-glass rounded-2xl p-6 md:p-8 relative overflow-hidden shadow-2xl border border-[var(--warning)]/20 space-y-6">
+            <div className="absolute top-0 left-0 right-0 h-[3px] bg-gradient-to-r from-[var(--warning)] via-yellow-500 to-[var(--warning)] shadow-lg" />
+
+            <div className="flex flex-col sm:flex-row justify-between items-start gap-4 border-b border-[var(--border)] pb-4">
               <div className="space-y-1.5 text-left">
-                <div className="inline-flex items-center gap-1.5 bg-amber-500/10 text-amber-400 px-3 py-1 border border-amber-500/20 rounded-md text-[9px] font-black uppercase tracking-widest">
-                  <AlertTriangle className="w-3.5 h-3.5 animate-bounce" />
+                <div className="inline-flex items-center gap-1.5 bg-[var(--surface-2)] text-[var(--warning)] px-3 py-1 border border-[var(--warning)]/20 rounded-md text-[10px] font-black uppercase tracking-widest">
+                  <AlertTriangle className="w-3.5 h-3.5" />
                   <span>Multiple Trades Found</span>
                 </div>
-                <h2 className="text-xl md:text-2xl font-black text-[#E5E5E5] font-sans uppercase tracking-tight">
+                <h2 className="text-xl md:text-2xl font-black text-[var(--text-primary)] font-sans uppercase tracking-tight">
                   OPTION DISCOVERY CLUSTER DETECTED
                 </h2>
               </div>
-              <div className="bg-amber-400/10 text-amber-300 font-extrabold border border-amber-400/20 px-3 py-1 rounded-lg text-sm font-mono uppercase tracking-widest shrink-0">
+              <div className="bg-[var(--surface-2)] text-[var(--warning)] font-extrabold border border-[var(--warning)]/20 px-3 py-1 rounded-lg text-sm font-mono uppercase tracking-widest shrink-0 tabular-nums">
                 Found Counts: {bestTradesList.length}
               </div>
             </div>
 
-            <p className="text-[11px] font-sans text-zinc-400 leading-relaxed text-left max-w-3xl">
-              The automated quantitative engine has surfaced **{bestTradesList.length} trades** with exceptional ratings. In accordance with system safety constraints, execution is restricted to <span className="text-[#E5E5E5] font-bold">one isolated contract at a time</span> to avoid overlapping GEX hedge correlation. Select one option setup from the cluster below to lock the focused 100% Best Trade:
+            <p className="text-[11px] font-sans text-[var(--text-secondary)] leading-relaxed text-left max-w-3xl">
+              The discovery engine surfaced {bestTradesList.length} candidates with high health scores. Activate any candidate in one click to open it in the workspace.
             </p>
 
             {/* List of high confidence options during "Multiple Found" mode */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {bestTradesList.map((trade) => (
-                <div 
+                <div
                   key={trade.id}
-                  onClick={() => setLockedTradeId(trade.id)}
-                  className="bg-black/30 border border-white/5 hover:border-amber-500/40 p-5 rounded-xl cursor-pointer text-left transition-all hover:scale-[1.01] hover:bg-black/50 space-y-3 shadow-md"
+                  className="bg-[var(--surface)] border border-[var(--border)] hover:border-[var(--warning)]/40 p-5 rounded-xl text-left transition-all hover:bg-[var(--surface-2)] space-y-3 shadow-md"
                 >
                   <div className="flex justify-between items-start">
                     <div>
-                      <span className="text-[8px] text-zinc-500 font-black block tracking-widest uppercase">OPTION TARGET</span>
-                      <span className="text-lg font-black text-[#E5E5E5]">{trade.ticker} {trade.strike} {trade.type}</span>
+                      <span className="text-[10px] text-[var(--text-tertiary)] font-black block tracking-widest uppercase">OPTION TARGET</span>
+                      <span className="text-lg font-black text-[var(--text-primary)]">{trade.ticker} {trade.strike} {trade.type}</span>
                     </div>
                     <div className="text-right">
-                      <span className="text-[8.5px] text-zinc-500 block">HEALTH INDEX</span>
-                      <span className="text-[#4ADE80] font-black text-sm">{trade.health}/100</span>
+                      <span className="text-[10px] text-[var(--text-tertiary)] block">HEALTH INDEX</span>
+                      <span className="text-[var(--success)] font-black text-sm tabular-nums">{trade.health}/100</span>
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-2 text-[10.5px] py-1 border-t border-white/5">
+                  <div className="grid grid-cols-2 gap-2 text-[10.5px] py-1 border-t border-[var(--border)]">
                     <div>
-                      <span className="text-zinc-500 text-[8px] block">MARKET VALUE</span>
-                      <span className="text-[#4ADE80] font-bold">${trade.marketPrice.toFixed(2)}</span>
+                      <span className="text-[var(--text-tertiary)] text-[10px] block">MARKET VALUE</span>
+                      <span className="text-[var(--success)] font-bold tabular-nums">${trade.marketPrice.toFixed(2)}</span>
                     </div>
                     <div>
-                      <span className="text-zinc-500 text-[8px] block">EXPECTED ZONE</span>
-                      <span className="text-[#4ADE80] font-bold">{trade.entryZone}</span>
+                      <span className="text-[var(--text-tertiary)] text-[10px] block">EXPECTED ZONE</span>
+                      <span className="text-[var(--success)] font-bold tabular-nums">{trade.entryZone}</span>
                     </div>
                   </div>
 
-                  <button 
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setLockedTradeId(trade.id);
-                    }}
-                    className="w-full py-2 bg-amber-500 hover:bg-amber-450 text-black font-black uppercase text-[9px] tracking-widest rounded-lg transition-all duration-300 flex items-center justify-center gap-1.5 shadow"
+                  {/* 1-click activate: open this candidate directly in the workspace. */}
+                  <button
+                    onClick={() => handleActivateOnWorkspace(trade)}
+                    className="w-full py-2 bg-[var(--warning)] hover:opacity-90 text-black font-black uppercase text-[10px] tracking-widest rounded-lg transition-all duration-300 flex items-center justify-center gap-1.5 shadow cursor-pointer"
                   >
-                    <span>Isolate & Lock Alert</span>
+                    <span>Activate in Workspace</span>
                     <ArrowRight className="w-3" />
                   </button>
                 </div>
@@ -285,25 +256,25 @@ export function AlertsView() {
         ) : (
           /* SINGLE 100% BEST TRADE LOCKED STATE */
           activeTrade && (
-            <div className="apple-glass rounded-2xl p-6 md:p-8 relative overflow-hidden shadow-2xl border border-black space-y-5">
-              <div className="absolute top-0 left-0 right-0 h-[3px] bg-gradient-to-r from-[#4ADE80] via-zinc-300 to-[#d4d4d8] shadow-lg" />
+            <div className="apple-glass rounded-2xl p-6 md:p-8 relative overflow-hidden shadow-2xl border border-[var(--border)] space-y-5">
+              <div className="absolute top-0 left-0 right-0 h-[3px] bg-gradient-to-r from-[var(--success)] via-zinc-300 to-[var(--text-secondary)] shadow-lg" />
 
-              <div className="flex flex-col sm:flex-row justify-between items-start gap-4 border-b border-white/10 pb-4">
+              <div className="flex flex-col sm:flex-row justify-between items-start gap-4 border-b border-[var(--border)] pb-4">
                 <div className="space-y-1 text-left">
-                  <div className="inline-flex items-center gap-1.5 bg-black/10 text-[#d4d4d8] px-3 py-1 border border-[#d4d4d8]/20 rounded-md text-[9px] font-black uppercase tracking-widest">
-                    <CheckCircle2 className="w-3.5 h-3.5 animate-pulse" />
-                    <span>100% Best Trade Locked</span>
+                  <div className="inline-flex items-center gap-1.5 bg-[var(--surface-2)] text-[var(--text-secondary)] px-3 py-1 border border-[var(--border)] rounded-md text-[10px] font-black uppercase tracking-widest">
+                    <CheckCircle2 className="w-3.5 h-3.5" />
+                    <span>Top Candidate Selected</span>
                   </div>
-                  <h2 className="text-2xl font-black text-[#E5E5E5] font-sans uppercase tracking-tight">
-                    OPTIMAL CONSOLIDATING EXPOSURE BOUNDS
+                  <h2 className="text-2xl font-black text-[var(--text-primary)] font-sans uppercase tracking-tight">
+                    OPTIMAL EXPOSURE CANDIDATE
                   </h2>
                 </div>
-                
+
                 {/* Reset button if multiple exist in array */}
                 {bestTradesList.length > 1 && (
-                  <button 
+                  <button
                     onClick={() => setLockedTradeId(null)}
-                    className="bg-white/5 hover:bg-white/10 text-zinc-400 hover:text-[#E5E5E5] px-2.5 py-1 text-[8px] border border-white/10 rounded uppercase font-bold shrink-0 self-start sm:self-center transition-colors"
+                    className="bg-[var(--surface-2)] hover:bg-[var(--surface-3)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] px-2.5 py-1 text-[10px] border border-[var(--border)] rounded uppercase font-bold shrink-0 self-start sm:self-center transition-colors"
                   >
                     Show Other Candidates ({bestTradesList.length})
                   </button>
@@ -314,75 +285,76 @@ export function AlertsView() {
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-stretch mb-2">
                 
                 {/* Left Block Contract Name */}
-                <div className="bg-black/40 border border-white/5 p-5 rounded-2xl flex flex-col justify-between text-left space-y-4 shadow-md md:col-span-1">
+                <div className="bg-[var(--surface)] border border-[var(--border)] p-5 rounded-2xl flex flex-col justify-between text-left space-y-4 shadow-md md:col-span-1">
                   <div>
-                    <span className="text-[8px] text-zinc-500 tracking-wider uppercase block">LOCKED CONTRACT</span>
-                    <span className="text-2xl font-black text-[#E5E5E5] font-sans block tracking-tight uppercase leading-snug pt-1">
+                    <span className="text-[10px] text-[var(--text-tertiary)] tracking-wider uppercase block">SELECTED CONTRACT</span>
+                    <span className="text-2xl font-black text-[var(--text-primary)] font-sans block tracking-tight uppercase leading-snug pt-1">
                       {activeTrade.ticker} {activeTrade.strike}{activeTrade.isCall ? 'C' : 'P'}
                     </span>
-                    <span className="text-[10px] text-zinc-400 block pt-1 uppercase">Direction: {activeTrade.type} EXPOSURE</span>
+                    <span className="text-[10px] text-[var(--text-secondary)] block pt-1 uppercase">Direction: {activeTrade.type} EXPOSURE</span>
                   </div>
-                  
-                  <div className="pt-2 border-t border-white/5 flex justify-between items-end">
+
+                  <div className="pt-2 border-t border-[var(--border)] flex justify-between items-end">
                     <div>
-                      <span className="text-[8.5px] text-zinc-500 uppercase block">DECISION SCORES</span>
-                      <span className="text-xl font-extrabold text-[#d4d4d8]">{activeTrade.health} <span className="text-[10px] text-zinc-550 font-bold uppercase">SECURED</span></span>
+                      <span className="text-[10px] text-[var(--text-tertiary)] uppercase block">HEALTH INDEX</span>
+                      <span className="text-xl font-extrabold text-[var(--text-secondary)] tabular-nums">{activeTrade.health} <span className="text-[10px] text-[var(--text-tertiary)] font-bold uppercase">/ 100</span></span>
                     </div>
-                    <span className="text-[8px] text-zinc-650 uppercase font-black">V11 PLATINUM CODE</span>
                   </div>
                 </div>
 
                 {/* Middle Block Pricing details */}
-                <div className="bg-black/20 border border-white/5 p-5 rounded-2xl flex flex-col justify-between text-left relative overflow-hidden shadow-md md:col-span-2">
+                <div className="bg-[var(--surface)] border border-[var(--border)] p-5 rounded-2xl flex flex-col justify-between text-left relative overflow-hidden shadow-md md:col-span-2">
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                     <div>
-                      <span className="text-zinc-500 text-[8.5px] block uppercase">SPOT REF</span>
-                      <span className="text-[#E5E5E5] font-bold text-sm">
-                        ${(serverState?.pinpoint_map?.spot_price || 6100).toFixed(1)}
+                      <span className="text-[var(--text-tertiary)] text-[10px] block uppercase">SPOT REF</span>
+                      <span className="text-[var(--text-primary)] font-bold text-sm tabular-nums">
+                        {serverState?.pinpoint_map?.spot_price != null
+                          ? `$${serverState.pinpoint_map.spot_price.toFixed(1)}`
+                          : '—'}
                       </span>
                     </div>
                     <div>
-                      <span className="text-zinc-500 text-[8.5px] block uppercase">MARKET BID</span>
-                      <span className="text-[#d4d4d8] font-bold text-sm">${activeTrade.marketPrice.toFixed(2)}</span>
+                      <span className="text-[var(--text-tertiary)] text-[10px] block uppercase">MARKET BID</span>
+                      <span className="text-[var(--text-secondary)] font-bold text-sm tabular-nums">${activeTrade.marketPrice.toFixed(2)}</span>
                     </div>
                     <div>
-                      <span className="text-zinc-500 text-[8.5px] block uppercase">MODEL VALUE</span>
-                      <span className="text-[#E5E5E5] font-bold text-sm">${activeTrade.modelValue.toFixed(2)}</span>
+                      <span className="text-[var(--text-tertiary)] text-[10px] block uppercase">MODEL VALUE</span>
+                      <span className="text-[var(--text-primary)] font-bold text-sm tabular-nums">${activeTrade.modelValue.toFixed(2)}</span>
                     </div>
                     <div>
-                      <span className="text-zinc-500 text-[8.5px] block uppercase">MISPRICING SKEW</span>
-                      <span className="text-indigo-400 font-black text-sm">
+                      <span className="text-[var(--text-tertiary)] text-[10px] block uppercase">MISPRICING SKEW</span>
+                      <span className="text-[var(--info)] font-black text-sm tabular-nums">
                         +{(((activeTrade.modelValue - activeTrade.marketPrice) / activeTrade.marketPrice) * 100).toFixed(0)}%
                       </span>
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-4 border-t border-white/5 text-[11px] font-sans">
-                    <div className="flex justify-between items-center bg-black/40 px-3 py-2 rounded-lg border border-white/5">
-                      <span className="text-zinc-500 font-mono text-[9px] uppercase font-bold">Entry Zone:</span>
-                      <span className="text-[#d4d4d8] font-mono font-bold text-xs">{activeTrade.entryZone}</span>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-4 border-t border-[var(--border)] text-[11px] font-sans">
+                    <div className="flex justify-between items-center bg-[var(--surface-2)] px-3 py-2 rounded-lg border border-[var(--border)]">
+                      <span className="text-[var(--text-tertiary)] font-mono text-[10px] uppercase font-bold">Entry Zone:</span>
+                      <span className="text-[var(--text-secondary)] font-mono font-bold text-xs tabular-nums">{activeTrade.entryZone}</span>
                     </div>
-                    <div className="flex justify-between items-center bg-black/40 px-3 py-2 rounded-lg border border-white/5">
-                      <span className="text-zinc-500 font-mono text-[9px] uppercase font-bold">Goalposts:</span>
-                      <span className="text-[#E5E5E5] font-mono font-bold text-xs">T1: +25% | T2: +50%</span>
+                    <div className="flex justify-between items-center bg-[var(--surface-2)] px-3 py-2 rounded-lg border border-[var(--border)]">
+                      <span className="text-[var(--text-tertiary)] font-mono text-[10px] uppercase font-bold">Goalposts:</span>
+                      <span className="text-[var(--text-primary)] font-mono font-bold text-xs tabular-nums">T1: +25% | T2: +50%</span>
                     </div>
                   </div>
                 </div>
 
               </div>
 
-              {/* Action buttons with high glow */}
-              <div className="border-t border-white/10 pt-4 flex flex-col sm:flex-row justify-between items-center gap-4">
-                <p className="text-[10px] font-sans text-zinc-450 leading-relaxed text-left">
-                  This 100% Isolated Trade is verified by net historical delta flow curves. Rebalancing weights are mathematically calibrated against extreme tail risk, achieving near-perfect GEX asymmetry.
+              {/* Action: single-click activation into the workspace */}
+              <div className="border-t border-[var(--border)] pt-4 flex flex-col sm:flex-row justify-between items-center gap-4">
+                <p className="text-[10px] font-sans text-[var(--text-secondary)] leading-relaxed text-left">
+                  This candidate is ranked by the discovery engine's health score and model-vs-market mispricing. Review the full thesis in the workspace before placing any trade.
                 </p>
-                
-                <button 
+
+                <button
                   onClick={() => handleActivateOnWorkspace(activeTrade)}
-                  className="w-full sm:w-auto px-6 py-3 bg-white hover:bg-black text-black font-extrabold uppercase text-[10px] tracking-widest rounded-xl transition-all duration-300 flex items-center justify-center gap-2 cursor-pointer shadow-lg hover:scale-[1.02] shrink-0"
+                  className="w-full sm:w-auto px-6 py-3 bg-white hover:bg-[var(--surface-3)] hover:text-[var(--text-primary)] text-black font-extrabold uppercase text-[10px] tracking-widest rounded-xl transition-all duration-300 flex items-center justify-center gap-2 cursor-pointer shadow-lg shrink-0"
                 >
                   <span>Activate Option Terminal Workspace</span>
-                  <ArrowRight className="w-4 h-4 text-black" />
+                  <ArrowRight className="w-4 h-4" />
                 </button>
               </div>
 
@@ -392,73 +364,78 @@ export function AlertsView() {
 
       </div>
 
-      {/* 3. DYNAMIC INCIDENT LIST TABLE (Now Apple glass styled) */}
+      {/* 3. DYNAMIC INCIDENT LIST TABLE */}
       <div className="w-full animate-fadeIn">
         <div className="apple-glass rounded-2xl p-6 md:p-8 relative overflow-hidden shadow-2xl space-y-4">
-          <div className="absolute top-0 left-0 right-0 h-[3px] bg-gradient-to-r from-[#d4d4d8]/50 via-indigo-500/50 to-rose-450/50" />
-          
-          <div className="border-b border-black pb-3 flex justify-between items-start">
+          <div className="absolute top-0 left-0 right-0 h-[3px] bg-gradient-to-r from-[var(--text-secondary)]/50 via-indigo-500/50 to-[var(--danger)]/50" />
+
+          <div className="border-b border-[var(--border)] pb-3 flex justify-between items-start">
             <div className="text-left space-y-1">
-              <span className="text-[8px] text-[#d4d4d8] tracking-[0.25em] font-black block">SYSTEM SEVERITY DISPATCH QUEUE</span>
-              <h2 className="text-xl font-black text-[#E5E5E5] uppercase tracking-tight font-sans">
+              <span className="text-[10px] text-[var(--text-secondary)] tracking-[0.25em] font-black block">SYSTEM SEVERITY DISPATCH QUEUE</span>
+              <h2 className="text-xl font-black text-[var(--text-primary)] uppercase tracking-tight font-sans flex items-center gap-2">
                 TELEMETRY PRIORITY BOARD
+                {!hasLiveFeed && (
+                  <span className="text-[10px] text-[var(--warning)] font-black tracking-widest border border-[var(--warning)]/40 px-1.5 py-0.5 rounded">DEMO</span>
+                )}
               </h2>
             </div>
-            <div className="text-right bg-rose-400/10 text-[#F87171] font-extrabold border border-rose-400/20 px-3 py-1 rounded-lg text-sm">
-              <span className="text-zinc-500 uppercase text-[8px] block">CRITICAL STATUS</span>
-              <span className="font-extrabold text-[13px] block">
+            <div className="text-right bg-[var(--surface-2)] text-[var(--danger)] font-extrabold border border-[var(--danger)]/20 px-3 py-1 rounded-lg text-sm">
+              <span className="text-[var(--text-tertiary)] uppercase text-[10px] block">CRITICAL COUNT</span>
+              <span className="font-extrabold text-[13px] block tabular-nums">
                 {telemetryAlerts.filter(a => a.priority === 'CRITICAL').length}
               </span>
             </div>
           </div>
 
-          <p className="text-[11px] font-sans text-zinc-400 leading-relaxed max-w-3xl font-light text-left">
-            Dynamic threshold alerts sorted automatically on mathematical relevance. When a spot boundary slips or GEX imbalances cross established risk parameters, direct updates compile here in real-time.
+          <p className="text-[11px] font-sans text-[var(--text-secondary)] leading-relaxed max-w-3xl font-light text-left">
+            {hasLiveFeed
+              ? 'Alerts derived from the live options flow feed. Items refresh as the server publishes new flow events.'
+              : 'No live flow feed is connected for this session. The list below shows only DEMO entries you add with the simulator — these are illustrative, not measurements.'}
           </p>
 
           {/* Incident stream layout list block */}
           <div className="space-y-3.5 max-h-[380px] overflow-y-auto pr-1">
             {telemetryAlerts.length > 0 ? (
               telemetryAlerts.map((al) => {
-                const priorityClasses = 
+                const priorityClasses =
                   al.priority === 'CRITICAL'
-                    ? 'text-[#E5E5E5] border-white bg-white/5'
+                    ? 'text-[var(--danger)] border-[var(--danger)]/40 bg-[var(--surface-2)]'
                     : al.priority === 'HIGH'
-                    ? 'text-[#4ADE80] border-black bg-black'
+                    ? 'text-[var(--success)] border-[var(--border)] bg-[var(--surface)]'
                     : al.priority === 'MEDIUM'
-                    ? 'text-zinc-450 border-black bg-black'
-                    : 'text-zinc-550 border-black bg-black/40';
+                    ? 'text-[var(--text-secondary)] border-[var(--border)] bg-[var(--surface)]'
+                    : 'text-[var(--text-tertiary)] border-[var(--border)] bg-[var(--surface)]';
 
                 return (
                   <motion.div
                     key={al.id}
                     layoutId={al.id}
-                    className="p-4 bg-black/30 border border-white/5 hover:border-white/10 rounded-xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-left transition-all"
+                    className="p-4 bg-[var(--surface)] border border-[var(--border)] hover:border-[var(--border-strong)] rounded-xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-left transition-all"
                   >
                     <div className="space-y-1 flex-1">
                       <div className="flex items-center gap-2 flex-wrap">
-                        <span className={`px-2 py-0.5 text-[8px] font-black border uppercase tracking-wider rounded ${priorityClasses}`}>
+                        <span className={`px-2 py-0.5 text-[10px] font-black border uppercase tracking-wider rounded ${priorityClasses}`}>
                           {al.priority}
                         </span>
-                        <span className="text-[9.5px] font-black text-[#E5E5E5] uppercase">{al.type}</span>
-                        <span className="text-[7.5px] text-zinc-600 uppercase font-bold">•</span>
-                        <span className="text-[8px] text-zinc-500 uppercase tracking-wider">{al.source}</span>
+                        <span className="text-[10px] font-black text-[var(--text-primary)] uppercase">{al.type}</span>
+                        <span className="text-[10px] text-[var(--text-tertiary)] uppercase font-bold">•</span>
+                        <span className="text-[10px] text-[var(--text-tertiary)] uppercase tracking-wider">{al.source}</span>
                       </div>
-                      <p className="text-[10.5px] text-zinc-400 font-sans leading-normal">
+                      <p className="text-[10.5px] text-[var(--text-secondary)] font-sans leading-normal">
                         {al.message}
                       </p>
                     </div>
 
-                    <div className="text-right text-[8.5px] text-[#A1A1AA] shrink-0 font-bold self-start sm:self-center font-mono">
-                      {al.timestamp} GMT
+                    <div className="text-right text-[10px] text-[var(--text-tertiary)] shrink-0 font-bold self-start sm:self-center font-mono tabular-nums">
+                      {al.timestamp}
                     </div>
                   </motion.div>
                 );
               })
             ) : (
-              <div className="py-12 text-center text-zinc-600 text-[10.5px] bg-black/30 border border-white/5 rounded-2xl uppercase">
-                <CheckSquare className="w-5 text-zinc-700 mx-auto mb-1 animate-bounce" />
-                <span>Zero prioritized incidents currently on telemetry stream channels.</span>
+              <div className="py-12 text-center text-[var(--text-tertiary)] text-[10.5px] bg-[var(--surface)] border border-[var(--border)] rounded-2xl uppercase">
+                <CheckSquare className="w-5 text-[var(--text-tertiary)] mx-auto mb-1" />
+                <span>No incidents on the stream. Connect a live feed or add a DEMO alert below.</span>
               </div>
             )}
           </div>
@@ -472,41 +449,41 @@ export function AlertsView() {
         {/* Simulate Controls */}
         <div className="apple-glass p-5 rounded-2xl flex flex-col justify-between text-left space-y-4 shadow-md">
           <div className="space-y-1">
-            <span className="text-[8px] text-[#d4d4d8] block uppercase font-bold tracking-widest">COMMAND SIGNALS SIMULATOR</span>
-            <h4 className="text-xs font-black text-[#E5E5E5] uppercase">DEPLOYS THRESHOLDS</h4>
-            <p className="text-[10.5px] text-zinc-400 font-sans leading-relaxed">
-              Manually deploy simulated market events downstream. Verify compliance speeds, SMPP dispatch routing, and prioritizations.
+            <span className="text-[10px] text-[var(--text-secondary)] block uppercase font-bold tracking-widest">DEMO SIGNAL SIMULATOR</span>
+            <h4 className="text-xs font-black text-[var(--text-primary)] uppercase">ADD SAMPLE ALERTS</h4>
+            <p className="text-[10.5px] text-[var(--text-secondary)] font-sans leading-relaxed">
+              Add illustrative DEMO alerts to preview each priority style. These are clearly labeled DEMO and are not real market measurements.
             </p>
           </div>
 
           <div className="grid grid-cols-2 gap-2.5">
             <button
               onClick={() => addSimulatedAlert('CRITICAL')}
-              className="py-2.5 bg-white hover:bg-black text-black font-extrabold uppercase rounded-lg transition-colors cursor-pointer text-[8.5px] tracking-widest flex items-center justify-center gap-1 shadow"
+              className="py-2.5 bg-white hover:bg-[var(--surface-3)] hover:text-[var(--text-primary)] text-black font-extrabold uppercase rounded-lg transition-colors cursor-pointer text-[10px] tracking-widest flex items-center justify-center gap-1 shadow"
             >
               <PlusCircle className="w-3" />
-              <span>TEST CRITICAL</span>
+              <span>DEMO CRITICAL</span>
             </button>
             <button
               onClick={() => addSimulatedAlert('HIGH')}
-              className="py-2.5 bg-black/60 hover:bg-black border border-white/10 text-[#E5E5E5] font-extrabold uppercase rounded-lg transition-colors cursor-pointer text-[8.5px] tracking-widest flex items-center justify-center gap-1"
+              className="py-2.5 bg-[var(--surface)] hover:bg-[var(--surface-2)] border border-[var(--border)] text-[var(--text-primary)] font-extrabold uppercase rounded-lg transition-colors cursor-pointer text-[10px] tracking-widest flex items-center justify-center gap-1"
             >
               <PlusCircle className="w-3" />
-              <span>TEST HIGH</span>
+              <span>DEMO HIGH</span>
             </button>
             <button
               onClick={() => addSimulatedAlert('MEDIUM')}
-              className="py-2.5 bg-black/40 hover:bg-black border border-white/5 text-zinc-400 font-extrabold uppercase rounded-lg transition-colors cursor-pointer text-[8.5px] tracking-widest flex items-center justify-center gap-1"
+              className="py-2.5 bg-[var(--surface)] hover:bg-[var(--surface-2)] border border-[var(--border)] text-[var(--text-secondary)] font-extrabold uppercase rounded-lg transition-colors cursor-pointer text-[10px] tracking-widest flex items-center justify-center gap-1"
             >
               <PlusCircle className="w-3" />
-              <span>TEST MEDIUM</span>
+              <span>DEMO MEDIUM</span>
             </button>
             <button
               onClick={() => addSimulatedAlert('LOW')}
-              className="py-2.5 bg-black/40 hover:bg-black border border-white/5 text-zinc-550 font-extrabold uppercase rounded-lg transition-colors cursor-pointer text-[8.5px] tracking-widest flex items-center justify-center gap-1"
+              className="py-2.5 bg-[var(--surface)] hover:bg-[var(--surface-2)] border border-[var(--border)] text-[var(--text-tertiary)] font-extrabold uppercase rounded-lg transition-colors cursor-pointer text-[10px] tracking-widest flex items-center justify-center gap-1"
             >
               <PlusCircle className="w-3" />
-              <span>TEST LOW</span>
+              <span>DEMO LOW</span>
             </button>
           </div>
         </div>
@@ -514,49 +491,49 @@ export function AlertsView() {
         {/* Action console clears */}
         <div className="apple-glass p-5 rounded-2xl flex flex-col justify-between text-left space-y-4 shadow-md">
           <div className="space-y-1">
-            <span className="text-[8px] text-[#d4d4d8] block uppercase font-bold tracking-widest">INCIDENT CONSOLE HOUSEKEEPING</span>
-            <h4 className="text-xs font-black text-[#E5E5E5] uppercase">FLUSH COMPLIANT LEDGERS</h4>
-            <p className="text-[10.5px] text-zinc-400 font-sans leading-relaxed">
-              Clear current active logs. This performing action maintains local isolation parameters, purging transient setup events completely on active node sessions.
+            <span className="text-[10px] text-[var(--text-secondary)] block uppercase font-bold tracking-widest">INCIDENT CONSOLE HOUSEKEEPING</span>
+            <h4 className="text-xs font-black text-[var(--text-primary)] uppercase">CLEAR DEMO ALERTS</h4>
+            <p className="text-[10.5px] text-[var(--text-secondary)] font-sans leading-relaxed">
+              Clear the DEMO alerts you have added. This only affects local demo entries; the live feed (when connected) is unaffected.
             </p>
           </div>
 
           <button
             onClick={clearAlerts}
-            disabled={telemetryAlerts.length === 0}
-            className="w-full py-2.5 bg-black/60 hover:bg-black/90 border border-white/10 hover:border-red-400/40 text-[#F87171] hover:text-red-400 font-extrabold uppercase rounded-lg cursor-pointer transition-all disabled:opacity-35 text-[8.5px] tracking-widest flex items-center justify-center gap-1"
+            disabled={demoAlerts.length === 0}
+            className="w-full py-2.5 bg-[var(--surface)] hover:bg-[var(--surface-2)] border border-[var(--border)] hover:border-[var(--danger)]/40 text-[var(--danger)] font-extrabold uppercase rounded-lg cursor-pointer transition-all disabled:opacity-35 text-[10px] tracking-widest flex items-center justify-center gap-1"
           >
             <Trash2 className="w-3.5 h-3.5" />
-            <span>FLUSH TELEMETRY ALERTS QUEUE</span>
+            <span>CLEAR DEMO ALERTS</span>
           </button>
         </div>
 
       </div>
 
-      {/* 5. CBOE SUMMARY BLOCK */}
+      {/* 5. ALARM STANDARDS SUMMARY BLOCK */}
       <div className="apple-glass p-6 rounded-2xl text-left space-y-3 shadow-lg">
-        <div className="flex items-center gap-2 border-b border-white/5 pb-2">
-          <Layers className="w-3.5 h-3.5 text-zinc-550" />
-          <h4 className="text-[10.5px] font-black text-[#E5E5E5] uppercase tracking-wider block">
-            CBOE Deviation Alarm Standards
+        <div className="flex items-center gap-2 border-b border-[var(--border)] pb-2">
+          <Layers className="w-3.5 h-3.5 text-[var(--text-tertiary)]" />
+          <h4 className="text-[10.5px] font-black text-[var(--text-primary)] uppercase tracking-wider block">
+            Deviation Alarm Standards
           </h4>
         </div>
-        <div className="text-[11px] leading-relaxed text-zinc-400 font-sans space-y-2">
+        <div className="text-[11px] leading-relaxed text-[var(--text-secondary)] font-sans space-y-2">
           <p>
-            Alarm triggers follow rigorous regulatory parameters aligned with SEC Rule 15c3-5 for high-performance visual terminal devices. System coordinates monitor continuous asset distributions using double-signed covariant algorithms, establishing immediate alarms under high-imbalance shifts:
+            Alarms monitor continuous asset distributions and surface notable shifts in spot, expected-move boundaries, and dealer GEX imbalances.
           </p>
           <p>
-            A Critical notification is registered when a spot value breaks past established Standard Deviations, or if GEX dealer protection falls below 4.2 Billion Dollars in the respective contract set.
+            A critical notification is registered when spot breaks past an established expected-move boundary or dealer-gamma protection weakens materially for the active contract set.
           </p>
         </div>
       </div>
 
       {/* 6. COCKPIT DESK STATUS BAR */}
-      <div className="apple-glass min-h-[30px] p-3 rounded-xl flex items-center justify-between text-[8px] text-zinc-400 uppercase tracking-widest pl-4 font-black shadow-md">
-        <span>INCIDENTS RECONCILED ACCORDING TO CBOE TELEMETRICS</span>
-        <div className="flex items-center gap-1.5 text-[#E5E5E5]">
-          <span className="h-1.5 w-1.5 bg-[#d4d4d8] rounded-full animate-ping" />
-          <span>DESK SECURED</span>
+      <div className="apple-glass min-h-[30px] p-3 rounded-xl flex items-center justify-between text-[10px] text-[var(--text-tertiary)] uppercase tracking-widest pl-4 font-black shadow-md">
+        <span>{hasLiveFeed ? `LIVE FEED · ${feedAlerts.length} EVENTS` : 'NO LIVE FEED CONNECTED'}</span>
+        <div className="flex items-center gap-1.5 text-[var(--text-secondary)]">
+          <span className={`h-1.5 w-1.5 rounded-full ${hasLiveFeed ? 'bg-[var(--success)]' : 'bg-[var(--warning)]'}`} />
+          <span>{hasLiveFeed ? 'FEED ACTIVE' : 'DEMO MODE'}</span>
         </div>
       </div>
 

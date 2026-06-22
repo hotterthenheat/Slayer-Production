@@ -32,10 +32,17 @@ function tint(s: string) {
   return (Math.random() > 0.8) ? 'text-[#6B7177]' : 'text-[#454E58]';
 }
 
-export function TerminalRain({ activeTab = 'home' }: { activeTab?: string }) {
+export function TerminalRain({ activeTab = 'home', enabled = false }: { activeTab?: string; enabled?: boolean }) {
   const [cols, setCols] = useState<any[]>([]);
 
   useEffect(() => {
+    // Opt-in only: this is a full-screen ambient overlay that competes with real
+    // content. When disabled (the default) we skip column generation entirely so
+    // it never burns layout/animation work or buries text.
+    if (!enabled) {
+      setCols([]);
+      return;
+    }
     const w = window.innerWidth;
     const numCols = Math.max(4, Math.min(10, Math.floor(w / 170)));
     const newCols = [];
@@ -57,7 +64,10 @@ export function TerminalRain({ activeTab = 'home' }: { activeTab?: string }) {
       newCols.push({ left, dur, isUp, delay, opacity, lines: parsedLines, id: c });
     }
     setCols(newCols);
-  }, [activeTab]);
+  }, [activeTab, enabled]);
+
+  // Off by default: render nothing so the overlay can never bury foreground text.
+  if (!enabled) return null;
 
   return (
     <div className="fixed inset-0 z-[1] overflow-hidden pointer-events-none select-none">

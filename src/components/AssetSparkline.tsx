@@ -90,7 +90,8 @@ export function AssetSparkline({
   const currentPrice = prices[prices.length - 1];
   const startPrice = prices[0];
   const isBullish = currentPrice >= startPrice;
-  const strokeColor = isBullish ? '#4ADE80' : '#F87171'; // Green vs Red theme matching
+  // Tokenized success/danger so the sparkline tracks the active theme palette.
+  const strokeColor = isBullish ? 'var(--success)' : 'var(--danger)';
 
   const endX = width - padding;
   const endY = height - ((currentPrice - min) / range) * (height - padding * 2) - padding;

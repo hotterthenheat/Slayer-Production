@@ -13,6 +13,25 @@ export function DealerFlowMap({ profile, decimals }: DealerFlowMapProps) {
   useEffect(() => {
     if (!containerRef.current || !profile || !profile.strikes || profile.strikes.length === 0) return;
 
+    // Resolve the active theme tokens once so the D3 chart matches the rest of
+    // the token-driven UI (light/dark/custom themes) instead of hardcoded hexes.
+    const css = getComputedStyle(document.documentElement);
+    const tok = (name: string, fallback: string) => {
+      const v = css.getPropertyValue(name).trim();
+      return v || fallback;
+    };
+    const theme = {
+      success: tok('--success', '#4ADE80'),
+      danger: tok('--danger', '#F87171'),
+      warning: tok('--warning', '#FBBF24'),
+      info: tok('--info', '#60A5FA'),
+      surface: tok('--surface', '#141414'),
+      border: tok('--border-strong', 'rgba(255,255,255,0.18)'),
+      grid: tok('--border', 'rgba(255,255,255,0.10)'),
+      textPrimary: tok('--text-primary', '#E5E5E5'),
+      textTertiary: tok('--text-tertiary', '#A3A3A3'),
+    };
+
     const strikes = profile.strikes;
     const spot = profile.spot;
     const callWall = profile.callWall;
@@ -59,7 +78,7 @@ export function DealerFlowMap({ profile, decimals }: DealerFlowMapProps) {
       .attr('x2', width)
       .attr('y1', y(0))
       .attr('y2', y(0))
-      .attr('stroke', '#3f3f46')
+      .attr('stroke', theme.border)
       .attr('stroke-width', 2);
 
     // X axis
@@ -67,9 +86,11 @@ export function DealerFlowMap({ profile, decimals }: DealerFlowMapProps) {
     svg.append('g')
       .attr('transform', `translate(0,${height})`)
       .call(d3.axisBottom(x).tickValues(defaultTicks).tickFormat(d => parseFloat(d).toLocaleString()))
-      .attr('class', 'text-zinc-500 font-mono text-[9px]')
+      .attr('class', 'font-mono text-[9px]')
+      .attr('fill', theme.textTertiary)
       .call(g => g.select('.domain').attr('stroke', 'none'))
       .call(g => g.selectAll('.tick line').attr('stroke', 'none'))
+      .call(g => g.selectAll('text').attr('fill', theme.textTertiary))
       .selectAll("text")
       .attr("transform", "rotate(-45)")
       .style("text-anchor", "end")
@@ -85,10 +106,11 @@ export function DealerFlowMap({ profile, decimals }: DealerFlowMapProps) {
         if (Math.abs(val) >= 1e3) return `${(val / 1e3).toLocaleString(undefined, { minimumFractionDigits: 1, maximumFractionDigits: 1 })}K`;
         return val.toLocaleString();
       }))
-      .attr('class', 'text-zinc-500 font-mono text-[9px]')
+      .attr('class', 'font-mono text-[9px]')
+      .call(g => g.selectAll('text').attr('fill', theme.textTertiary))
       .call(g => g.select('.domain').attr('stroke', 'none'))
       .call(g => g.selectAll('.tick line')
-        .attr('stroke', '#27272a')
+        .attr('stroke', theme.grid)
         .attr('stroke-dasharray', '2 2')
         .attr('x2', width)
       );
@@ -104,16 +126,16 @@ export function DealerFlowMap({ profile, decimals }: DealerFlowMapProps) {
       .attr('id', 'pos-gex-grad')
       .attr('x1', '0%').attr('y1', '0%')
       .attr('x2', '0%').attr('y2', '100%');
-    posGradient.append('stop').attr('offset', '0%').attr('stop-color', '#34d399').attr('stop-opacity', 0.95);
-    posGradient.append('stop').attr('offset', '100%').attr('stop-color', '#065f46').attr('stop-opacity', 0.85);
+    posGradient.append('stop').attr('offset', '0%').attr('stop-color', theme.success).attr('stop-opacity', 0.95);
+    posGradient.append('stop').attr('offset', '100%').attr('stop-color', theme.success).attr('stop-opacity', 0.45);
 
     // Negative Gradient
     const negGradient = defs.append('linearGradient')
       .attr('id', 'neg-gex-grad')
       .attr('x1', '0%').attr('y1', '0%')
       .attr('x2', '0%').attr('y2', '100%');
-    negGradient.append('stop').attr('offset', '0%').attr('stop-color', '#7f1d1d').attr('stop-opacity', 0.85);
-    negGradient.append('stop').attr('offset', '100%').attr('stop-color', '#f87171').attr('stop-opacity', 0.95);
+    negGradient.append('stop').attr('offset', '0%').attr('stop-color', theme.danger).attr('stop-opacity', 0.45);
+    negGradient.append('stop').attr('offset', '100%').attr('stop-color', theme.danger).attr('stop-opacity', 0.95);
 
     const bars = svg.selectAll('.bar')
       .data(visibleStrikes)
@@ -146,18 +168,18 @@ export function DealerFlowMap({ profile, decimals }: DealerFlowMapProps) {
     };
 
     if (callWall) {
-      addMarker(callWall, { type: 'callWall', label: 'CALL WALL', color: '#10B981', border: '#10B981', lineColor: '#10B981', lineStyle: 'dashed' });
+      addMarker(callWall, { type: 'callWall', label: 'CALL WALL', color: theme.success, border: theme.success, lineColor: theme.success, lineStyle: 'dashed' });
     }
     if (putWall) {
-      addMarker(putWall, { type: 'putWall', label: 'PUT WALL', color: '#EF4444', border: '#EF4444', lineColor: '#EF4444', lineStyle: 'dashed' });
+      addMarker(putWall, { type: 'putWall', label: 'PUT WALL', color: theme.danger, border: theme.danger, lineColor: theme.danger, lineStyle: 'dashed' });
     }
     if (magnet) {
-      addMarker(magnet, { type: 'magnet', label: 'PIN MAGNET', color: '#38BDF8', border: '#38BDF8', lineColor: '#38BDF8', lineStyle: 'dotted' });
+      addMarker(magnet, { type: 'magnet', label: 'PIN MAGNET', color: theme.info, border: theme.info, lineColor: theme.info, lineStyle: 'dotted' });
     }
-    
+
     const closestStrikeObj = visibleStrikes[closestIdx - startIdx];
     if (closestStrikeObj) {
-      addMarker(closestStrikeObj.strike, { type: 'spot', label: 'SPOT', color: '#E4E4E7', border: '#E4E4E7', lineColor: '#A1A1AA', lineStyle: 'solid' });
+      addMarker(closestStrikeObj.strike, { type: 'spot', label: 'SPOT', color: theme.textPrimary, border: theme.textPrimary, lineColor: theme.textTertiary, lineStyle: 'solid' });
     }
 
     // Sort marked strikes to stagger starting position when closest neighbors conflict
@@ -200,7 +222,7 @@ export function DealerFlowMap({ profile, decimals }: DealerFlowMapProps) {
       const startY = startYOffsetMap.get(strike) || 15;
       list.forEach((marker, index) => {
         const badgeY = startY + index * 18;
-        const textWidth = Math.max(54, marker.label.length * 5.2 + 12);
+        const textWidth = Math.max(58, marker.label.length * 6.4 + 14);
 
         // capsule
         svg.append('rect')
@@ -209,7 +231,7 @@ export function DealerFlowMap({ profile, decimals }: DealerFlowMapProps) {
           .attr('width', textWidth)
           .attr('height', 14)
           .attr('rx', 4)
-          .attr('fill', '#09090b')
+          .attr('fill', theme.surface)
           .attr('stroke', marker.border)
           .attr('stroke-width', 1)
           .attr('opacity', 0.95);
@@ -220,7 +242,7 @@ export function DealerFlowMap({ profile, decimals }: DealerFlowMapProps) {
           .attr('y', badgeY + 1)
           .attr('fill', marker.color)
           .attr('text-anchor', 'middle')
-          .attr('class', 'font-mono text-[7px] font-black uppercase tracking-widest')
+          .attr('class', 'font-mono text-[9px] font-black uppercase tracking-widest')
           .text(marker.label);
       });
     });
@@ -228,7 +250,7 @@ export function DealerFlowMap({ profile, decimals }: DealerFlowMapProps) {
     // Interaction Overlay
     const hoverLine = svg.append('line')
       .attr('y1', 0).attr('y2', height)
-      .attr('stroke', '#e5e5e5')
+      .attr('stroke', theme.textPrimary)
       .attr('stroke-width', 1)
       .attr('stroke-dasharray', '2 2')
       .style('opacity', 0)
@@ -255,7 +277,7 @@ export function DealerFlowMap({ profile, decimals }: DealerFlowMapProps) {
 
         bars.filter(b => b.strike === d.strike)
           .attr('opacity', 1)
-          .attr('stroke', d.netGex > 0 ? '#4ade80' : '#f87171')
+          .attr('stroke', d.netGex > 0 ? theme.success : theme.danger)
           .attr('stroke-width', 1.5);
       })
       .on('mousemove', function(event, d) {
@@ -296,23 +318,23 @@ export function DealerFlowMap({ profile, decimals }: DealerFlowMapProps) {
           }}
         >
           <div className="flex items-center gap-2 mb-2 border-b border-[var(--border)] pb-1">
-            <span className="w-2 h-2 rounded-full bg-[#60A5FA] animate-pulse" />
-            <span className="font-mono text-[var(--text-primary)] font-bold text-[11px] tracking-widest uppercase">Strike ${tooltip.data.strike.toLocaleString()}</span>
+            <span className="w-2 h-2 rounded-full bg-[var(--info)]" />
+            <span className="font-mono text-[var(--text-primary)] font-bold text-[11px] tracking-widest uppercase tabular-nums">Strike ${tooltip.data.strike.toLocaleString()}</span>
           </div>
-          <div className="space-y-1 text-left font-mono">
+          <div className="space-y-1 text-left font-mono tabular-nums">
              <div className="flex justify-between items-center gap-4 text-[10px]">
                <span className="text-[var(--text-tertiary)]">Net GEX</span>
-               <span className={`font-bold ${tooltip.data.netGex > 0 ? 'text-[#4ade80]' : 'text-[#f87171]'}`}>
+               <span className={`font-bold ${tooltip.data.netGex > 0 ? 'text-[var(--success)]' : 'text-[var(--danger)]'}`}>
                  {tooltip.data.netGex > 0 ? '+' : ''}{formatNumber(tooltip.data.netGex)}
                </span>
              </div>
              <div className="flex justify-between items-center gap-4 text-[10px]">
                <span className="text-[var(--text-tertiary)]">Call GEX</span>
-               <span className="text-[#4ade80] font-bold">+{formatNumber(tooltip.data.callGex || 0)}</span>
+               <span className="text-[var(--success)] font-bold">+{formatNumber(tooltip.data.callGex || 0)}</span>
              </div>
              <div className="flex justify-between items-center gap-4 text-[10px]">
                <span className="text-[var(--text-tertiary)]">Put GEX</span>
-               <span className="text-[#f87171] font-bold">{formatNumber(tooltip.data.putGex || 0)}</span>
+               <span className="text-[var(--danger)] font-bold">{formatNumber(tooltip.data.putGex || 0)}</span>
              </div>
           </div>
         </div>

@@ -63,7 +63,9 @@ export function AnalyticsSection({
   else if (score.total >= 60) displacementClass = 'Moderate';
 
   // 2. RSI CASCADE ENGINE
-  // Simulated cascade based on score indicators
+  // SAMPLE / derived: these per-timeframe RSI values are not measured per timeframe
+  // — they are derived from the single score.rsiCascade input scaled by fixed
+  // multipliers. Labelled SAMPLE in the UI so they are not read as real multi-TF RSI.
   const rsi1m = Math.min(94, Math.max(10, Math.floor(score.rsiCascade * 6.5 + (currentCandle.close > currentCandle.open ? 15 : -15))));
   const rsi5m = Math.min(88, Math.max(15, Math.floor(score.rsiCascade * 6.0 + (currentCandle.close > currentCandle.open ? 8 : -8))));
   const rsi15m = Math.min(84, Math.max(20, Math.floor(score.rsiCascade * 5.8)));
@@ -153,157 +155,162 @@ export function AnalyticsSection({
     <div id="analytics-engine" className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
       
       {/* Module 1: Displacement Analytics */}
-      <div className="bg-black/40 border border-black rounded-sm p-4 flex flex-col justify-between">
+      <div className="bg-[var(--surface-2)] border border-[var(--border)] rounded-sm p-4 flex flex-col justify-between">
         <div>
-          <div className="flex items-center justify-between border-b border-black/60 pb-2.5 mb-3">
+          <div className="flex items-center justify-between border-b border-[var(--border)] pb-2.5 mb-3">
             <div className="flex items-center gap-2">
-              <Activity className="w-4 text-[#4ADE80]" />
-              <h4 className="font-display font-semibold text-xs tracking-wide text-zinc-100 uppercase">
+              <Activity className="w-4 text-[var(--success)]" />
+              <h4 className="font-display font-semibold text-xs tracking-wide text-[var(--text-primary)] uppercase">
                 Displacement Analytics
               </h4>
             </div>
-            <span className="text-[10px] font-mono font-bold uppercase text-[#4ADE80] bg-black/40 px-1.5 py-0.5 rounded">
+            <span className="text-[10px] font-mono font-bold uppercase text-[var(--success)] bg-[var(--surface-3)] px-1.5 py-0.5 rounded">
               {displacementClass}
             </span>
           </div>
 
-          <div className="space-y-2 font-mono text-[11px] text-zinc-400">
+          <div className="space-y-2 font-mono text-[11px] text-[var(--text-secondary)]">
             <div className="flex justify-between">
               <span>Body Expansion Multiple:</span>
-              <span className="text-zinc-200">{bodyMultiple}x</span>
+              <span className="text-[var(--text-primary)] tabular-nums">{bodyMultiple}x</span>
             </div>
             <div className="flex justify-between">
               <span>Range Expansion Multiple:</span>
-              <span className="text-zinc-200">{rangeMultiple}x</span>
+              <span className="text-[var(--text-primary)] tabular-nums">{rangeMultiple}x</span>
             </div>
             <div className="flex justify-between">
               <span>ATR Expansion Ratio:</span>
-              <span className="text-zinc-200">{ATRRatio}x</span>
+              <span className="text-[var(--text-primary)] tabular-nums">{ATRRatio}x</span>
             </div>
             <div className="flex justify-between">
               <span>Displacement Velocity:</span>
-              <span className="text-zinc-200">{displacementVelocity} m/s</span>
+              <span className="text-[var(--text-primary)] tabular-nums">{displacementVelocity} m/s</span>
             </div>
             <div className="flex justify-between">
               <span>Efficiency Index Ratio:</span>
-              <span className="text-zinc-200">{efficiencyRatio}%</span>
+              <span className="text-[var(--text-primary)] tabular-nums">{efficiencyRatio}%</span>
             </div>
             <div className="flex justify-between">
               <span>Price Velocity Bias:</span>
-              <span className="text-zinc-200">{priceVelocity}</span>
+              <span className="text-[var(--text-primary)]">{priceVelocity}</span>
             </div>
           </div>
         </div>
-        <div className="mt-3.5 bg-black/40 p-2 rounded border border-black text-[10px] font-mono text-zinc-500 leading-normal">
+        <div className="mt-3.5 bg-[var(--surface-3)] p-2 rounded border border-[var(--border)] text-[10px] font-mono text-[var(--text-tertiary)] leading-normal">
           Calculates full candle body mass relative to absolute price variance to identify authentic orders.
         </div>
       </div>
 
       {/* Module 2: RSI Cascade Model */}
-      <div className="bg-black/40 border border-black rounded-sm p-4 flex flex-col justify-between">
+      <div className="bg-[var(--surface-2)] border border-[var(--border)] rounded-sm p-4 flex flex-col justify-between">
         <div>
-          <div className="flex items-center justify-between border-b border-black/60 pb-2.5 mb-3">
+          <div className="flex items-center justify-between border-b border-[var(--border)] pb-2.5 mb-3">
             <div className="flex items-center gap-2">
-              <Zap className="w-4 text-amber-500 animate-pulse" />
-              <h4 className="font-display font-semibold text-xs tracking-wide text-zinc-100 uppercase">
+              <Zap className="w-4 text-[var(--warning)]" />
+              <h4 className="font-display font-semibold text-xs tracking-wide text-[var(--text-primary)] uppercase">
                 RSI Cascade Engine
               </h4>
             </div>
-            <span className="text-[10px] font-mono font-bold uppercase text-amber-400 bg-amber-950/30 px-1.5 py-0.5 rounded">
+            <span className="text-[10px] font-mono font-bold uppercase text-[var(--warning)] bg-[var(--surface-3)] px-1.5 py-0.5 rounded">
               {momentumState}
             </span>
           </div>
 
+          {/* Honesty label: these per-TF RSI values are derived from a single score input, not measured per timeframe. */}
+          <div className="text-[10px] font-mono uppercase tracking-wider text-[var(--warning)] mb-2">
+            SAMPLE — derived from composite score (not measured per timeframe)
+          </div>
+
           <div className="space-y-2 mt-1">
             <div className="space-y-1">
-              <div className="flex justify-between text-[10px] font-mono text-zinc-500">
+              <div className="flex justify-between text-[10px] font-mono text-[var(--text-tertiary)]">
                 <span>1M Short Horizon RSI:</span>
-                <span className="text-[#4ADE80]">{rsi1m}</span>
+                <span className="text-[var(--success)] tabular-nums">{rsi1m}</span>
               </div>
-              <div className="w-full bg-black h-1 rounded-full overflow-hidden">
-                <div className="h-full bg-[#4ADE80] text-black rounded-full" style={{ width: `${rsi1m}%` }} />
+              <div className="w-full bg-[var(--surface)] h-1 rounded-full overflow-hidden">
+                <div className="h-full bg-[var(--success)] rounded-full" style={{ width: `${rsi1m}%` }} />
               </div>
             </div>
 
             <div className="space-y-1">
-              <div className="flex justify-between text-[10px] font-mono text-zinc-500">
+              <div className="flex justify-between text-[10px] font-mono text-[var(--text-tertiary)]">
                 <span>5M Core Trigger RSI:</span>
-                <span className="text-[#4ADE80]">{rsi5m}</span>
+                <span className="text-[var(--success)] tabular-nums">{rsi5m}</span>
               </div>
-              <div className="w-full bg-black h-1 rounded-full overflow-hidden">
-                <div className="h-full bg-black/40 rounded-full" style={{ width: `${rsi5m}%` }} />
+              <div className="w-full bg-[var(--surface)] h-1 rounded-full overflow-hidden">
+                <div className="h-full bg-[var(--success)] rounded-full" style={{ width: `${rsi5m}%` }} />
               </div>
             </div>
 
             <div className="space-y-1">
-              <div className="flex justify-between text-[10px] font-mono text-zinc-500">
+              <div className="flex justify-between text-[10px] font-mono text-[var(--text-tertiary)]">
                 <span>15M Macro Check RSI:</span>
-                <span className="text-[#4ADE80]">{rsi15m}</span>
+                <span className="text-[var(--success)] tabular-nums">{rsi15m}</span>
               </div>
-              <div className="w-full bg-black h-1 rounded-full overflow-hidden">
-                <div className="h-full bg-black rounded-full" style={{ width: `${rsi15m}%` }} />
+              <div className="w-full bg-[var(--surface)] h-1 rounded-full overflow-hidden">
+                <div className="h-full bg-[var(--success)] rounded-full" style={{ width: `${rsi15m}%` }} />
               </div>
             </div>
 
             <div className="space-y-1">
-              <div className="flex justify-between text-[10px] font-mono text-zinc-500">
+              <div className="flex justify-between text-[10px] font-mono text-[var(--text-tertiary)]">
                 <span>1H Anchor Horizon RSI:</span>
-                <span className="text-[#4ADE80]">{rsi1h}</span>
+                <span className="text-[var(--success)] tabular-nums">{rsi1h}</span>
               </div>
-              <div className="w-full bg-black h-1 rounded-full overflow-hidden">
-                <div className="h-full bg-black rounded-full" style={{ width: `${rsi1h}%` }} />
+              <div className="w-full bg-[var(--surface)] h-1 rounded-full overflow-hidden">
+                <div className="h-full bg-[var(--success)] rounded-full" style={{ width: `${rsi1h}%` }} />
               </div>
             </div>
           </div>
         </div>
-        <div className="bg-black/40 p-2 rounded border border-black text-[10px] font-mono text-zinc-500 leading-normal mt-3">
+        <div className="bg-[var(--surface-3)] p-2 rounded border border-[var(--border)] text-[10px] font-mono text-[var(--text-tertiary)] leading-normal mt-3">
           Synthesizes short and long lookback momentum zones to emit early warnings before structural break.
         </div>
       </div>
 
       {/* Module 3: VWAP Intelligence & volume */}
-      <div className="bg-black/40 border border-black rounded-sm p-4 flex flex-col justify-between">
+      <div className="bg-[var(--surface-2)] border border-[var(--border)] rounded-sm p-4 flex flex-col justify-between">
         <div>
-          <div className="flex items-center justify-between border-b border-black/60 pb-2.5 mb-3">
+          <div className="flex items-center justify-between border-b border-[var(--border)] pb-2.5 mb-3">
             <div className="flex items-center gap-2">
-              <BarChart4 className="w-4 text-[#4ADE80]" />
-              <h4 className="font-display font-semibold text-xs tracking-wide text-zinc-100 uppercase">
+              <BarChart4 className="w-4 text-[var(--success)]" />
+              <h4 className="font-display font-semibold text-xs tracking-wide text-[var(--text-primary)] uppercase">
                 VWAP & Volume Intelligence
               </h4>
             </div>
-            <span className="text-[10px] font-mono font-bold uppercase text-zinc-400 bg-black px-1.5 py-0.5 rounded">
+            <span className="text-[10px] font-mono font-bold uppercase text-[var(--text-secondary)] bg-[var(--surface-3)] px-1.5 py-0.5 rounded tabular-nums">
               Score: {participationScore}/10
             </span>
           </div>
 
-          <div className="space-y-2 font-mono text-[11px] text-zinc-400">
+          <div className="space-y-2 font-mono text-[11px] text-[var(--text-secondary)]">
             <div className="flex justify-between">
               <span>Slope Vector:</span>
-              <span className="text-zinc-200">{vwapSlope}</span>
+              <span className="text-[var(--text-primary)]">{vwapSlope}</span>
             </div>
             <div className="flex justify-between">
               <span>Distance to average:</span>
-              <span className="text-zinc-200">{distancePct}%</span>
+              <span className="text-[var(--text-primary)] tabular-nums">{distancePct}%</span>
             </div>
             <div className="flex justify-between">
               <span>VWAP Rejection Level:</span>
-              <span className="text-zinc-200">{vwapRejection}</span>
+              <span className="text-[var(--text-primary)]">{vwapRejection}</span>
             </div>
             <div className="flex justify-between">
               <span>Institutional Bias:</span>
-              <span className="text-zinc-200 font-bold">{vwapBias}</span>
+              <span className="text-[var(--text-primary)] font-bold">{vwapBias}</span>
             </div>
-            <div className="flex justify-between border-t border-black/60 pt-2 mt-1">
+            <div className="flex justify-between border-t border-[var(--border)] pt-2 mt-1">
               <span>Relative Volume (RV):</span>
-              <span className="text-zinc-200">{relativeVolume}x</span>
+              <span className="text-[var(--text-primary)] tabular-nums">{relativeVolume}x</span>
             </div>
             <div className="flex justify-between">
               <span>Estimated Share Pool:</span>
-              <span className="text-zinc-200">{volConfidence} Trust</span>
+              <span className="text-[var(--text-primary)]">{volConfidence} Trust</span>
             </div>
           </div>
         </div>
-        <div className="mt-3.5 bg-black/40 p-2 rounded border border-black text-[10px] font-mono text-zinc-500 leading-normal">
+        <div className="mt-3.5 bg-[var(--surface-3)] p-2 rounded border border-[var(--border)] text-[10px] font-mono text-[var(--text-tertiary)] leading-normal">
           Locks volume weights on real-time transaction points instead of raw ticks to identify smart money.
         </div>
       </div>

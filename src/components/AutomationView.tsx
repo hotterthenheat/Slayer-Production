@@ -1,5 +1,4 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { motion } from 'motion/react';
 import { Smartphone, RefreshCw, Send, AlertCircle, Cpu, Wifi, Database, Layers } from 'lucide-react';
 import { useContractStore } from '../lib/store';
 import { formatTime } from '../lib/timeUtils';
@@ -7,8 +6,9 @@ import { formatTime } from '../lib/timeUtils';
 export function AutomationView() {
   const selectedAsset = useContractStore((s) => s.selectedAsset);
   const activeContract = useContractStore((s) => s.activeContract);
-  
-  // Twilio Sms state
+  const serverState = useContractStore((s) => s.serverState);
+
+  // SMS state (simulation only — see handleSendSMS)
   const [phoneNumber, setPhoneNumber] = useState('');
   const [isDispatching, setIsDispatching] = useState(false);
   const [dispatchLogs, setDispatchLogs] = useState<string[]>([]);
@@ -16,9 +16,13 @@ export function AutomationView() {
   const logsEndRef = useRef<HTMLDivElement | null>(null);
   const dispatchTimers = useRef<ReturnType<typeof setTimeout>[]>([]);
 
-  const activePrice = 4.20;
+  // Real per-tick option premium from the server payload (falls back to the
+  // preloaded contract bridge value, then 0). No fabricated execution price.
+  const activePrice = serverState?.optionPremiumFloat ?? 0;
+  const hasLivePrice = typeof serverState?.optionPremiumFloat === 'number';
   const decisionStrategy = activeContract?.recommendation || 'HOLD';
   const expectedValuePct = activeContract?.expectedMove || 1.1;
+  const pipelineLive = !!serverState;
 
   const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     let clean = e.target.value.replace(/\D/g, '');
@@ -48,12 +52,12 @@ export function AutomationView() {
     dispatchTimers.current = [];
 
     const cleanNum = phoneNumber.replace(/\D/g, '');
+    // SIMULATION ONLY — no SMPP socket, no Twilio call, no message transmitted.
     const steps = [
-      `Initializing direct SMPP socket connection to Twilio Gateway us-east-1...`,
-      `Validating telecom route credentials for +1 ${cleanNum}...`,
-      `Encoding payload parameters for ${selectedAsset.ticker} ${decisionStrategy} signal...`,
-      `Handshake check passed. Dynamic SMS dispatch outbound initiated...`,
-      `Twilio direct carrier delivery handshake completed. Packet delivered.`
+      `[SIMULATION] Building alert payload for +1 ${cleanNum} ...`,
+      `[SIMULATION] Encoding parameters for ${selectedAsset.ticker} ${decisionStrategy} signal ...`,
+      `[SIMULATION] Formatting subscriber message preview ...`,
+      `[SIMULATION] Preview ready — NO SMS was transmitted to any device.`
     ];
 
     steps.forEach((step, idx) => {
@@ -61,7 +65,8 @@ export function AutomationView() {
         setDispatchLogs((prev) => [...prev, `[${formatTime(new Date())}] ${step}`]);
         if (idx === steps.length - 1) {
           setIsDispatching(false);
-          const alertMsg = `Slayer Private Terminal: ${selectedAsset.ticker} ${decisionStrategy} signal triggered! Expected target premium movement +${expectedValuePct}%. Execute at $${activePrice.toFixed(2)}. GEX bounds consolidated.`;
+          const priceStr = hasLivePrice ? `$${activePrice.toFixed(2)}` : 'n/a (no live premium)';
+          const alertMsg = `Slayer Terminal [SAMPLE]: ${selectedAsset.ticker} ${decisionStrategy} signal. Expected target premium movement +${expectedValuePct}%. Premium ${priceStr}. GEX bounds consolidated.`;
           setSentAlerts((prev) => [
             { message: alertMsg, timestamp: formatTime(new Date()) },
             ...prev
@@ -82,112 +87,55 @@ export function AutomationView() {
   useEffect(() => () => { dispatchTimers.current.forEach(clearTimeout); }, []);
 
   return (
-    <div className="w-full text-[#4ADE80] flex flex-col font-mono select-none antialiased space-y-6">
-      
+    <div className="w-full text-[var(--success)] flex flex-col font-mono select-none antialiased space-y-6">
+
       {/* 1. HEADER (DISPATCH SEQUENCE) */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center apple-glass p-5 rounded-2xl gap-2 shadow-lg">
         <div className="flex gap-2 items-center">
-          <Cpu className="w-4 h-4 text-[#4ADE80] animate-pulse" />
-          <span className="text-[9.5px] text-[#4ADE80] uppercase tracking-widest font-black">
-            SLAYER AUTOMATION PIPELINE MANAGER // SMS DISPATCH
+          <Cpu className="w-4 h-4 text-[var(--success)]" />
+          <span className="text-[10px] text-[var(--success)] uppercase tracking-widest font-black">
+            SLAYER AUTOMATION PIPELINE // SMS PREVIEW
           </span>
         </div>
-        <div className="flex items-center gap-1.5 bg-black/40 p-1 px-1.5 border border-white/5 rounded-lg text-[9px] text-[#4ADE80] font-bold uppercase">
-          TWILIO CARRIER GATEWAY ACTIVE
+        <div className="flex items-center gap-1.5 bg-[var(--surface-2)] p-1 px-1.5 border border-[var(--warning)]/40 rounded-lg text-[10px] text-[var(--warning)] font-bold uppercase">
+          DEMO — NO REAL SMS SENT
         </div>
       </div>
 
-      {/* 2. PRIMARY HERO CARD (Animated SVG node network) */}
+      {/* 2. PIPELINE STATUS ROW (compact, textual — no decorative node graph) */}
       <div className="w-full animate-fadeIn">
-        <div className="apple-glass rounded-2xl p-6 relative overflow-hidden shadow-2xl space-y-4 border border-white/5">
-          <div className="absolute top-0 left-0 right-0 h-[3px] bg-gradient-to-r from-[#4ADE80] via-indigo-500 to-[#4ADE80]" />
-
-          {/* Node Graph Header */}
-          <div className="border-b border-black/40 pb-3 flex justify-between items-start">
+        <div className="apple-glass rounded-2xl p-6 relative overflow-hidden shadow-2xl space-y-4 border border-[var(--border)]">
+          <div className="border-b border-[var(--border)] pb-3 flex justify-between items-start">
             <div className="text-left space-y-1">
-              <span className="text-[8px] text-zinc-500 tracking-[0.25em] font-black block">SYSTEM LOGICAL FLOW INTERFACE</span>
-              <h2 className="text-xl font-black text-[#E5E5E5] uppercase tracking-tight font-sans">
-                REALTIME DISPATCH NETWORK ENGINE
+              <span className="text-[10px] text-[var(--text-tertiary)] tracking-[0.25em] font-black block">PIPELINE STATUS</span>
+              <h2 className="text-xl font-black text-[var(--text-primary)] uppercase tracking-tight font-sans">
+                DISPATCH PIPELINE
               </h2>
             </div>
-            <span className="text-[9px] bg-white text-black font-extrabold px-3 py-1.5 rounded-lg uppercase tracking-widest leading-none">
-              SYSTEM LEVEL: V11 CORE
+            <span className="text-[10px] bg-[var(--warning)]/20 text-[var(--warning)] border border-[var(--warning)]/40 font-extrabold px-3 py-1.5 rounded-lg uppercase tracking-widest leading-none">
+              DEMO
             </span>
           </div>
 
-          {/* SVG Animated Node Graph Canvas */}
-          <div className="w-full h-[180px] bg-black/30 border border-white/5 p-4 rounded-xl relative flex items-center justify-between overflow-hidden">
-            
-            {/* SVG Path drawing animating lines */}
-            <svg className="absolute inset-0 w-full h-full pointer-events-none z-0">
-              <defs>
-                <linearGradient id="silver-grad" x1="0%" y1="0%" x2="100%" y2="0%">
-                  <stop offset="0%" stopColor="#1e1e24" />
-                  <stop offset="50%" stopColor="#d4d4d8" />
-                  <stop offset="100%" stopColor="#1e1e24" />
-                </linearGradient>
-              </defs>
-              
-              {/* Animating dash lines */}
-              <path 
-                d="M 120 90 L 260 90 L 460 90 L 660 90" 
-                fill="none" 
-                stroke="url(#silver-grad)" 
-                strokeWidth="1.5" 
-                strokeDasharray="6, 12"
-                className="animate-dash"
-                style={{ animationDuration: '6s' }}
-              />
-            </svg>
-
-            {/* Node 1 */}
-            <div className="bg-black/40 border border-white/5 p-3.5 h-[95px] w-[135px] rounded-xl text-left flex flex-col justify-between z-10 shadow-md">
-              <div>
-                <span className="text-[7.5px] text-zinc-550 font-bold block uppercase">FEED</span>
-                <span className="text-[9.5px] font-black text-[#E5E5E5] block uppercase animate-pulse">CME DIRECT</span>
+          {/* Compact textual pipeline-status row (replaces the decorative SVG graph) */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+            {[
+              { stage: 'FEED', label: 'Market Data', state: pipelineLive ? 'CONNECTED' : 'WAITING', icon: <Wifi className="w-3" /> },
+              { stage: 'ENGINE', label: 'GEX / Edge', state: pipelineLive ? 'COMPUTED' : 'IDLE', icon: <Database className="w-3" /> },
+              { stage: 'RISK', label: 'Invalidation', state: decisionStrategy, icon: <Layers className="w-3" /> },
+              { stage: 'DISPATCH', label: 'SMS Preview', state: 'SIMULATED', icon: <Smartphone className="w-3" /> },
+            ].map((node) => (
+              <div key={node.stage} className="bg-[var(--surface-2)] border border-[var(--border)] p-3 rounded-xl text-left flex flex-col justify-between gap-2 shadow-md">
+                <div>
+                  <span className="text-[10px] text-[var(--text-tertiary)] font-bold block uppercase">{node.stage}</span>
+                  <span className="text-[11px] font-black text-[var(--text-primary)] block">{node.label}</span>
+                </div>
+                <div className="flex items-center gap-1.5 text-[10px] text-[var(--text-secondary)] tabular-nums">
+                  {node.icon}
+                  <span className="uppercase font-bold">{node.state}</span>
+                </div>
               </div>
-              <div className="flex items-center gap-1.5 text-[8px] text-zinc-400">
-                <Wifi className="w-3 text-[#d4d4d8]" />
-                <span>0.8s sync</span>
-              </div>
-            </div>
-
-            {/* Node 2 */}
-            <div className="bg-black/40 border border-white/5 p-3.5 h-[95px] w-[135px] rounded-xl text-left flex flex-col justify-between z-10 shadow-md">
-              <div>
-                <span className="text-[7.5px] text-zinc-550 font-bold block uppercase">ENGINE</span>
-                <span className="text-[9.5px] font-black text-[#E5E5E5] block uppercase">GEX MAPS</span>
-              </div>
-              <div className="flex items-center gap-1.5 text-[8px] text-zinc-400">
-                <Database className="w-3 text-indigo-400" />
-                <span>100% active</span>
-              </div>
-            </div>
-
-            {/* Node 3 */}
-            <div className="bg-black/40 border border-white/5 p-3.5 h-[95px] w-[135px] rounded-xl text-left flex flex-col justify-between z-10 shadow-md">
-              <div>
-                <span className="text-[7.5px] text-zinc-550 font-bold block uppercase">RISK</span>
-                <span className="text-[9.5px] font-black text-[#E5E5E5] block uppercase">TAIL MONITOR</span>
-              </div>
-              <div className="flex items-center gap-1.5 text-[8px] text-zinc-400">
-                <Layers className="w-3 text-purple-400" />
-                <span>VaR Locked</span>
-              </div>
-            </div>
-
-            {/* Node 4 */}
-            <div className="bg-black/60 border border-white/10 p-3.5 h-[95px] w-[135px] rounded-xl text-left flex flex-col justify-between z-10 shadow-lg bg-gradient-to-tr from-black/80 to-zinc-950/20">
-              <div>
-                <span className="text-[7.5px] text-[#d4d4d8] font-bold block uppercase text-[#d4d4d8]">DISPATCH</span>
-                <span className="text-[9.5px] font-black text-[#E5E5E5] block uppercase">SUBSCRIBER</span>
-              </div>
-              <div className="flex items-center gap-1.5 text-[8px] text-[#d4d4d8] font-bold">
-                <Smartphone className="w-3" />
-                <span>Outbound queue</span>
-              </div>
-            </div>
-
+            ))}
           </div>
 
         </div>
@@ -196,59 +144,59 @@ export function AutomationView() {
       {/* 3. SECONDARY ANALYSIS CARDS (Side-by-side dispatcher inputs + cell view) */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 w-full">
         
-        {/* Left Side: SMS Cockpit Input & Handshake Logs */}
-        <div className="apple-glass p-6 rounded-2xl flex flex-col justify-between space-y-4 shadow-lg border border-white/5">
+        {/* Left Side: SMS Cockpit Input & Simulation Logs */}
+        <div className="apple-glass p-6 rounded-2xl flex flex-col justify-between space-y-4 shadow-lg border border-[var(--border)]">
           <div className="text-left space-y-3">
-            <div className="flex items-center justify-between border-b border-black/40 pb-2">
-              <span className="text-xs font-black text-[#E5E5E5] uppercase tracking-wider">SMS CONTROL CHANNELS</span>
-              <span className="text-[7px] text-zinc-500 font-bold">TELECOM PORT: SMPP5</span>
+            <div className="flex items-center justify-between border-b border-[var(--border)] pb-2">
+              <span className="text-xs font-black text-[var(--text-primary)] uppercase tracking-wider">SMS PREVIEW INPUT</span>
+              <span className="text-[10px] text-[var(--warning)] font-bold uppercase">SIMULATION</span>
             </div>
 
-            <p className="text-[11px] text-zinc-400 font-sans leading-relaxed leading-snug">
-              Route current high expected value model thresholds directly to your physical terminal device via Twilio telecom pipelines.
+            <p className="text-[11px] text-[var(--text-secondary)] font-sans leading-snug">
+              Preview how the current high expected value contract would format as an SMS alert. This is a client-side simulation &mdash; no message is transmitted.
             </p>
 
-            <div className="bg-black/40 border border-white/5 p-4 rounded-xl flex flex-col gap-3">
-              <span className="text-[8px] text-zinc-550 uppercase font-black block">DEVICE PHONE REGISTRY</span>
+            <div className="bg-[var(--surface-2)] border border-[var(--border)] p-4 rounded-xl flex flex-col gap-3">
+              <span className="text-[10px] text-[var(--text-tertiary)] uppercase font-black block">DEVICE PHONE REGISTRY</span>
               <div className="flex gap-2.5">
                 <div id="phone-prefix-wrap" className="relative flex-1">
-                  <span className="absolute left-3 top-2.5 text-zinc-650 text-xs font-bold">+1</span>
+                  <span className="absolute left-3 top-2.5 text-[var(--text-tertiary)] text-xs font-bold tabular-nums">+1</span>
                   <input
                     type="text"
                     placeholder="(500) 000-0000"
                     value={phoneNumber}
                     onChange={handlePhoneChange}
                     disabled={isDispatching}
-                    className="w-full bg-black/40 text-[#E5E5E5] border border-white/10 focus:border-black rounded-lg py-2.5 pl-8 pr-3 text-xs focus:outline-none transition-all font-mono font-bold"
+                    className="w-full bg-[var(--surface)] text-[var(--text-primary)] border border-[var(--border)] focus:border-[var(--border-strong)] rounded-lg py-2.5 pl-8 pr-3 text-xs focus:outline-none transition-all font-mono font-bold tabular-nums"
                   />
                 </div>
 
                 <button
                   onClick={handleSendSMS}
                   disabled={isDispatching || phoneNumber.replace(/\D/g, '').length < 10}
-                  className="px-5 py-2.5 bg-white hover:bg-black text-black font-extrabold uppercase rounded-lg cursor-pointer disabled:opacity-30 disabled:hover:bg-white transition-all text-[9.5px] flex items-center gap-1 shrink-0 shadow hover:scale-[1.01]"
+                  className="px-5 py-2.5 bg-[var(--surface-3)] border border-[var(--border)] hover:border-[var(--border-strong)] text-[var(--text-primary)] font-extrabold uppercase rounded-lg cursor-pointer disabled:opacity-30 transition-all text-[10px] flex items-center gap-1 shrink-0 shadow hover:scale-[1.01]"
                 >
                   {isDispatching ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Send className="w-3.5 h-3.5" />}
-                  <span>{isDispatching ? 'ROUTING' : 'DISPATCH'}</span>
+                  <span>{isDispatching ? 'BUILDING' : 'SIMULATE'}</span>
                 </button>
               </div>
               {phoneNumber.length > 0 && phoneNumber.replace(/\D/g, '').length < 10 && (
-                <span className="text-[8px] text-amber-400 flex items-center gap-1">
-                  <AlertCircle className="w-3" /> INPUT VALID PHONE IDENTIFIER (MIN 10 COUNTS)
+                <span className="text-[10px] text-[var(--warning)] flex items-center gap-1">
+                  <AlertCircle className="w-3" /> ENTER A VALID PHONE NUMBER (MIN 10 DIGITS)
                 </span>
               )}
             </div>
 
-            {/* Handshake Logs */}
+            {/* Simulation Logs */}
             {dispatchLogs.length > 0 && (
-              <div className="bg-black/40 border border-white/5 rounded-xl p-3 h-[110px] overflow-y-auto text-[8.5px] leading-relaxed text-zinc-400 scrolling-auto select-text font-mono">
-                <span className="text-zinc-500 font-bold block uppercase border-b border-black/40 pb-1 mb-1.5 font-sans tracking-wide">
-                  COGNITIVE CARRIER SOCKET STREAM
+              <div className="bg-[var(--surface-2)] border border-[var(--border)] rounded-xl p-3 h-[110px] overflow-y-auto text-[10px] leading-relaxed text-[var(--text-secondary)] scrolling-auto select-text font-mono">
+                <span className="text-[var(--text-tertiary)] font-bold block uppercase border-b border-[var(--border)] pb-1 mb-1.5 font-sans tracking-wide">
+                  SMS PREVIEW PIPELINE [SIMULATION]
                 </span>
                 {dispatchLogs.map((log, i) => {
                   const isLast = i === dispatchLogs.length - 1;
                   return (
-                    <div key={i} className={isLast ? 'text-[#E5E5E5] font-bold' : 'text-zinc-550'}>
+                    <div key={i} className={`tabular-nums ${isLast ? 'text-[var(--text-primary)] font-bold' : 'text-[var(--text-secondary)]'}`}>
                       {log}
                     </div>
                   );
@@ -260,40 +208,40 @@ export function AutomationView() {
         </div>
 
         {/* Right Side: Mock Device Preview Phone Screen */}
-        <div className="apple-glass p-6 rounded-2xl flex flex-col justify-between shadow-lg border border-white/5">
+        <div className="apple-glass p-6 rounded-2xl flex flex-col justify-between shadow-lg border border-[var(--border)]">
           <div className="text-left space-y-3">
-            <div className="border-b border-black/40 pb-2">
-              <span className="text-[8px] text-zinc-500 uppercase tracking-widest font-black block">SUBSCRIBER MOBILE HUB PREVIEW</span>
-              <h3 className="text-[11px] font-black text-[#E5E5E5] uppercase tracking-wider mt-0.5">
-                Physical Device Simulation
+            <div className="border-b border-[var(--border)] pb-2">
+              <span className="text-[10px] text-[var(--text-tertiary)] uppercase tracking-widest font-black block">SUBSCRIBER MOBILE HUB PREVIEW</span>
+              <h3 className="text-[11px] font-black text-[var(--text-primary)] uppercase tracking-wider mt-0.5">
+                Device Simulation
               </h3>
             </div>
 
-            <div className="bg-black/40 border border-white/5 rounded-xl p-4 font-sans relative overflow-hidden min-h-[140px] flex flex-col justify-between">
-              
+            <div className="bg-[var(--surface-2)] border border-[var(--border)] rounded-xl p-4 font-sans relative overflow-hidden min-h-[140px] flex flex-col justify-between">
+
               {/* Phone Status Grid */}
-              <div className="flex justify-between items-center text-[7.5px] text-zinc-600 font-mono tracking-wider border-b border-black/40 pb-1 mb-2 font-black">
+              <div className="flex justify-between items-center text-[10px] text-[var(--text-tertiary)] font-mono tracking-wider border-b border-[var(--border)] pb-1 mb-2 font-black">
                 <span>SLAYER NODE HUB</span>
-                <div className="flex gap-2 items-center">
+                <div className="flex gap-2 items-center tabular-nums">
                   <span>NET5</span>
-                  <span className="text-[#d4d4d8] font-bold">100% SECURE</span>
+                  <span className="text-[var(--text-secondary)] font-bold">100%</span>
                 </div>
               </div>
 
               {sentAlerts.length > 0 ? (
                 <div className="flex flex-col gap-2">
                   {sentAlerts.slice(0, 1).map((alert, idx) => (
-                    <div key={idx} className="bg-black/80 text-[#E5E5E5] p-3 rounded-lg text-[9.5px] leading-relaxed w-[95%] ml-auto shadow-md border border-white/5 animate-slideUp relative">
-                      <span className="absolute -left-9 text-[7px] font-mono text-zinc-650 top-1">{alert.timestamp}</span>
-                      <div className="font-extrabold font-mono text-[8px] text-[#d4d4d8] mb-0.5">SLAYER.TRADE</div>
+                    <div key={idx} className="bg-[var(--surface-3)] text-[var(--text-primary)] p-3 rounded-lg text-[10px] leading-relaxed w-[95%] ml-auto shadow-md border border-[var(--border)] animate-slideUp relative">
+                      <span className="absolute -left-9 text-[10px] font-mono tabular-nums text-[var(--text-tertiary)] top-1">{alert.timestamp}</span>
+                      <div className="font-extrabold font-mono text-[10px] text-[var(--text-secondary)] mb-0.5">SLAYER.TRADE</div>
                       {alert.message}
                     </div>
                   ))}
                 </div>
               ) : (
-                <div className="flex flex-col items-center justify-center py-6 text-center text-zinc-600 text-[10px] font-mono leading-relaxed uppercase">
-                  <Smartphone className="w-5 text-zinc-700 mb-1" />
-                  <span>Execute Telecom Outbound dispatch to paint live message distributions on this module display.</span>
+                <div className="flex flex-col items-center justify-center py-6 text-center text-[var(--text-tertiary)] text-[10px] font-mono leading-relaxed uppercase">
+                  <Smartphone className="w-5 text-[var(--text-tertiary)] mb-1" />
+                  <span>Run Simulate to build a preview message on this mock display. Nothing is sent.</span>
                 </div>
               )}
 
@@ -305,29 +253,29 @@ export function AutomationView() {
       </div>
 
       {/* 4. SUPPORTING INFORMATION */}
-      <div className="apple-glass p-6 rounded-2xl text-left space-y-3 shadow-lg border border-white/5">
-        <div className="flex items-center gap-2 border-b border-white/5 pb-2">
-          <Layers className="w-3.5 h-3.5 text-zinc-550" />
-          <h4 className="text-[10.5px] font-black text-[#E5E5E5] uppercase tracking-wider block">
-            SMPP Carrier Gateway Routing Rules
+      <div className="apple-glass p-6 rounded-2xl text-left space-y-3 shadow-lg border border-[var(--border)]">
+        <div className="flex items-center gap-2 border-b border-[var(--border)] pb-2">
+          <Layers className="w-3.5 h-3.5 text-[var(--text-tertiary)]" />
+          <h4 className="text-[10.5px] font-black text-[var(--text-primary)] uppercase tracking-wider block">
+            About this preview [DEMO]
           </h4>
         </div>
-        <div className="text-[11px] leading-relaxed text-zinc-400 font-sans space-y-2">
+        <div className="text-[11px] leading-relaxed text-[var(--text-secondary)] font-sans space-y-2">
           <p>
-            The Direct Outbound SMS engine communicates via Short Message Peer-to-Peer (SMPP v3.4) connections directly routed into Tier-1 telecommunication switches. This bypasses typical client-side latency blocks, maintaining alert propagation under 0.6 seconds worldwide.
+            This panel is a client-side simulation of how a contract alert would be formatted for SMS delivery. It does not open any network socket, does not contact Twilio or any carrier, and does not transmit a message to the entered phone number.
           </p>
           <p>
-            Signal queues are rate-limited to 10 alerts per minute to prevent provider spam filtering triggers relative to CBOE spot movements, securing reliable reception inside high-frequency volatility windows.
+            The premium shown in the preview is the live <code className="text-[var(--text-primary)]">optionPremiumFloat</code> from the server payload when available; all other copy is illustrative sample text.
           </p>
         </div>
       </div>
 
       {/* 5. STATUS BAR */}
-      <div className="apple-glass min-h-[30px] p-3 rounded-xl flex items-center justify-between text-[8px] text-zinc-400 uppercase tracking-widest pl-4 font-black shadow-md">
-        <span>SMPP CONNECTION STYLED SYNC ENGINE OVER CARRIER TR-8</span>
-        <div className="flex items-center gap-1.5 text-[#d4d4d8] font-bold">
-          <span className="h-1.5 w-1.5 bg-black rounded-full animate-ping" />
-          <span>SOCKET CONNECTED</span>
+      <div className="apple-glass min-h-[30px] p-3 rounded-xl flex items-center justify-between text-[10px] text-[var(--text-secondary)] uppercase tracking-widest pl-4 font-black shadow-md">
+        <span>SMS PREVIEW — SIMULATION ONLY, NO TRANSMISSION</span>
+        <div className="flex items-center gap-1.5 text-[var(--warning)] font-bold">
+          <span className="h-1.5 w-1.5 bg-[var(--warning)] rounded-full" />
+          <span>DEMO MODE</span>
         </div>
       </div>
 

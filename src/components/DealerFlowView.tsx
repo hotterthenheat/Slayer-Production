@@ -51,7 +51,7 @@ function FeedChip({ feed }: { feed?: string }) {
     <span
       className={`px-1.5 py-0.5 rounded-xs text-[7.5px] font-black tracking-widest uppercase border ${
         live
-          ? 'bg-[#4ADE80] text-black border-black'
+          ? 'bg-[var(--success)] text-black border-black'
           : 'bg-amber-500/10 border-amber-500/30 text-amber-500'
       }`}
     >
@@ -158,11 +158,11 @@ function ExposureProfileChart({ profile, decimals, type }: { profile: any; decim
         <div className="w-[72px] shrink-0">Strike</div>
         <div className="flex-1 flex">
           <div className={`flex-1 text-right pr-2 ${
-            type === 'gex' ? 'text-[#F87171]/70' : type === 'dex' ? 'text-amber-400/70' : 'text-fuchsia-400/70'
+            type === 'gex' ? 'text-[var(--danger)]/70' : type === 'dex' ? 'text-amber-400/70' : 'text-fuchsia-400/70'
           }`}>← Put {typeUpper}</div>
           <div className={`w-px ${isLight ? 'bg-black' : 'bg-black'}`} />
           <div className={`flex-1 pl-2 ${
-            type === 'gex' ? 'text-[#4ADE80]/70' : type === 'dex' ? 'text-sky-400/70' : 'text-indigo-400/70'
+            type === 'gex' ? 'text-[var(--success)]/70' : type === 'dex' ? 'text-sky-400/70' : 'text-indigo-400/70'
           }`}>Call {typeUpper} →</div>
         </div>
         <div className="w-[64px] text-right shrink-0">Net</div>
@@ -195,14 +195,14 @@ function ExposureProfileChart({ profile, decimals, type }: { profile: any; decim
                 const isFailing = r.strike < profile.spot;
                 const isTesting = Math.abs(r.strike - profile.spot) / profile.spot < 0.005;
                 const status = isFailing ? 'FAILING' : isTesting ? 'TESTING' : 'HOLDING';
-                const sColor = isFailing ? 'text-[#F87171] bg-rose-500/10 border-rose-500/30' : isTesting ? 'text-amber-400 bg-amber-500/10 border-amber-500/30' : 'text-[#4ADE80] bg-[#4ADE80]/10 border-black';
+                const sColor = isFailing ? 'text-[var(--danger)] bg-rose-500/10 border-rose-500/30' : isTesting ? 'text-amber-400 bg-amber-500/10 border-amber-500/30' : 'text-[var(--success)] bg-[var(--success)]/10 border-black';
                 return <span className={`ml-1.5 px-1 py-[1px] rounded-[2px] text-[9px] align-middle font-black border tracking-widest ${sColor}`}>{status}</span>;
               })()}
               {isPutMax && (() => {
                 const isFailing = r.strike > profile.spot;
                 const isTesting = Math.abs(r.strike - profile.spot) / profile.spot < 0.005;
                 const status = isFailing ? 'FAILING' : isTesting ? 'TESTING' : 'HOLDING';
-                const sColor = isFailing ? 'text-[#F87171] bg-rose-500/10 border-rose-500/30' : isTesting ? 'text-amber-400 bg-amber-500/10 border-amber-500/30' : 'text-sky-400 bg-sky-500/10 border-sky-500/30';
+                const sColor = isFailing ? 'text-[var(--danger)] bg-rose-500/10 border-rose-500/30' : isTesting ? 'text-amber-400 bg-amber-500/10 border-amber-500/30' : 'text-sky-400 bg-sky-500/10 border-sky-500/30';
                 return <span className={`ml-1.5 px-1 py-[1px] rounded-[2px] text-[9px] align-middle font-black border tracking-widest ${sColor}`}>{status}</span>;
               })()}
             </div>
@@ -223,7 +223,7 @@ function ExposureProfileChart({ profile, decimals, type }: { profile: any; decim
                 <div className={`absolute left-0 top-full mt-0.5 z-30 hidden group-hover/put:block border rounded-[4px] p-2 text-[9px] font-mono whitespace-nowrap shadow-2xl backdrop-blur-md pointer-events-none ring-1 ${
                   isLight 
                     ? `bg-white text-zinc-650 ${type === 'gex' ? 'border-rose-200/80 ring-rose-500/5' : type === 'dex' ? 'border-amber-200/80 ring-amber-500/5' : 'border-fuchsia-200/80 ring-fuchsia-500/5'}` 
-                    : `bg-black/95 text-[#4ADE80] ${type === 'gex' ? 'border-rose-500/35 ring-rose-500/10' : type === 'dex' ? 'border-amber-500/35 ring-amber-500/10' : 'border-fuchsia-500/35 ring-fuchsia-500/10'}`
+                    : `bg-black/95 text-[var(--success)] ${type === 'gex' ? 'border-rose-500/35 ring-rose-500/10' : type === 'dex' ? 'border-amber-500/35 ring-amber-500/10' : 'border-fuchsia-500/35 ring-fuchsia-500/10'}`
                 }`}>
                   <div className="flex items-center gap-1.5 mb-1">
                     <span className={`w-1.5 h-1.5 rounded-full animate-pulse ${
@@ -232,16 +232,16 @@ function ExposureProfileChart({ profile, decimals, type }: { profile: any; decim
                     <span className={`font-black tracking-widest uppercase text-[8px] ${
                       isLight 
                         ? type === 'gex' ? 'text-rose-600' : type === 'dex' ? 'text-amber-600' : 'text-fuchsia-600'
-                        : type === 'gex' ? 'text-[#F87171]' : type === 'dex' ? 'text-amber-400' : 'text-fuchsia-400'
+                        : type === 'gex' ? 'text-[var(--danger)]' : type === 'dex' ? 'text-amber-400' : 'text-fuchsia-400'
                     }`}>PUT {typeUpper} OVERLAY</span>
-                    <span className={isLight ? 'text-[#4ADE80]' : 'text-zinc-650'}>|</span>
+                    <span className={isLight ? 'text-[var(--success)]' : 'text-zinc-650'}>|</span>
                     <span className={`font-bold ${isLight ? 'text-zinc-900' : 'text-[#E5E5E5]'}`}>STRIKE {r.strike.toFixed(0)}</span>
                   </div>
                   <div className="space-y-0.5 text-left">
                     <div>{typeUpper}: <span className={`font-extrabold ${
                       isLight 
                         ? type === 'gex' ? 'text-rose-600' : type === 'dex' ? 'text-amber-600' : 'text-fuchsia-600'
-                        : type === 'gex' ? 'text-[#F87171]' : type === 'dex' ? 'text-amber-300' : 'text-fuchsia-300'
+                        : type === 'gex' ? 'text-[var(--danger)]' : type === 'dex' ? 'text-amber-300' : 'text-fuchsia-300'
                     }`}>{fmtGreek(r.putValue)}</span></div>
                     <div>Open Interest: <span className={`font-bold ${isLight ? 'text-zinc-800' : 'text-zinc-100'}`}>{(r.putOi ?? 0).toLocaleString()}</span></div>
                     <div>Volume: <span className={`font-bold ${isLight ? 'text-zinc-800' : 'text-zinc-100'}`}>{(r.putVolume ?? 0).toLocaleString()}</span></div>
@@ -256,8 +256,8 @@ function ExposureProfileChart({ profile, decimals, type }: { profile: any; decim
                 <div
                   className={`h-[11px] rounded-r-[2px] ${
                     isCallMax
-                      ? type === 'gex' ? 'bg-[#4ADE80]' : type === 'dex' ? 'bg-sky-500' : 'bg-indigo-500'
-                      : type === 'gex' ? 'bg-[#4ADE80]/55' : type === 'dex' ? 'bg-sky-500/55' : 'bg-indigo-500/55'
+                      ? type === 'gex' ? 'bg-[var(--success)]' : type === 'dex' ? 'bg-sky-500' : 'bg-indigo-500'
+                      : type === 'gex' ? 'bg-[var(--success)]/55' : type === 'dex' ? 'bg-sky-500/55' : 'bg-indigo-500/55'
                   } cursor-help`}
                   style={{ width: `${callW}%` }}
                 />
@@ -266,25 +266,25 @@ function ExposureProfileChart({ profile, decimals, type }: { profile: any; decim
                 <div className={`absolute right-0 top-full mt-0.5 z-30 hidden group-hover/call:block border rounded-[4px] p-2 text-[9px] font-mono whitespace-nowrap shadow-2xl backdrop-blur-md pointer-events-none ring-1 ${
                   isLight 
                     ? 'bg-white border-black ring-zinc-555/5 text-zinc-650' 
-                    : 'bg-black/95 border-black ring-zinc-850 text-[#4ADE80]'
+                    : 'bg-black/95 border-black ring-zinc-850 text-[var(--success)]'
                 }`}>
                   <div className="flex items-center gap-1.5 mb-1">
                     <span className={`w-1.5 h-1.5 rounded-full animate-pulse ${
-                      type === 'gex' ? 'bg-[#4ADE80]' : type === 'dex' ? 'bg-sky-400' : 'bg-indigo-400'
+                      type === 'gex' ? 'bg-[var(--success)]' : type === 'dex' ? 'bg-sky-400' : 'bg-indigo-400'
                     }`} />
                     <span className={`font-black tracking-widest uppercase text-[8px] ${
                       isLight
-                        ? type === 'gex' ? 'text-[#4ADE80]' : type === 'dex' ? 'text-sky-600' : 'text-indigo-600'
-                        : type === 'gex' ? 'text-[#4ADE80]' : type === 'dex' ? 'text-sky-400' : 'text-indigo-400'
+                        ? type === 'gex' ? 'text-[var(--success)]' : type === 'dex' ? 'text-sky-600' : 'text-indigo-600'
+                        : type === 'gex' ? 'text-[var(--success)]' : type === 'dex' ? 'text-sky-400' : 'text-indigo-400'
                     }`}>CALL {typeUpper} OVERLAY</span>
-                    <span className={isLight ? 'text-[#4ADE80]' : 'text-zinc-650'}>|</span>
+                    <span className={isLight ? 'text-[var(--success)]' : 'text-zinc-650'}>|</span>
                     <span className={`font-bold ${isLight ? 'text-zinc-900' : 'text-[#E5E5E5]'}`}>STRIKE {r.strike.toFixed(0)}</span>
                   </div>
                   <div className="space-y-0.5 text-left">
                     <div>{typeUpper}: <span className={`font-extrabold ${
                       isLight
-                        ? type === 'gex' ? 'text-[#4ADE80]' : type === 'dex' ? 'text-sky-600' : 'text-indigo-600'
-                        : type === 'gex' ? 'text-[#4ADE80]' : type === 'dex' ? 'text-sky-300' : 'text-indigo-300'
+                        ? type === 'gex' ? 'text-[var(--success)]' : type === 'dex' ? 'text-sky-600' : 'text-indigo-600'
+                        : type === 'gex' ? 'text-[var(--success)]' : type === 'dex' ? 'text-sky-300' : 'text-indigo-300'
                     }`}>{fmtGreek(r.callValue)}</span></div>
                     <div>Open Interest: <span className={`font-bold ${isLight ? 'text-zinc-800' : 'text-zinc-100'}`}>{(r.callOi ?? 0).toLocaleString()}</span></div>
                     <div>Volume: <span className={`font-bold ${isLight ? 'text-zinc-800' : 'text-zinc-100'}`}>{(r.callVolume ?? 0).toLocaleString()}</span></div>
@@ -296,8 +296,8 @@ function ExposureProfileChart({ profile, decimals, type }: { profile: any; decim
             {/* Net Column */}
             <div className={`w-[64px] shrink-0 text-right text-[10px] font-bold tracking-[0.06em] tabular-nums pr-1 ${
               r.netValue >= 0 
-                ? type === 'gex' ? 'text-[#4ADE80]' : type === 'dex' ? 'text-sky-400/90' : 'text-indigo-400/90' 
-                : type === 'gex' ? 'text-[#F87171]/90' : type === 'dex' ? 'text-amber-400/90' : 'text-fuchsia-400/90'
+                ? type === 'gex' ? 'text-[var(--success)]' : type === 'dex' ? 'text-sky-400/90' : 'text-indigo-400/90' 
+                : type === 'gex' ? 'text-[var(--danger)]/90' : type === 'dex' ? 'text-amber-400/90' : 'text-fuchsia-400/90'
             }`}>
               {fmtGreek(r.netValue)}
             </div>
@@ -334,7 +334,7 @@ function ExposureProfileChart({ profile, decimals, type }: { profile: any; decim
             {/* Thin hairline reference line across the row */}
             <div className={`w-full h-[1px] ${
               type === 'gex'
-                ? 'bg-[#4ADE80]/40'
+                ? 'bg-[var(--success)]/40'
                 : type === 'dex'
                   ? 'bg-sky-400/40'
                   : 'bg-indigo-400/40'
@@ -415,7 +415,7 @@ export function DealerFlowView() {
           primaryText: 'text-zinc-900',
           buttonActive: 'bg-black border border-black text-[#E5E5E5] shadow-sm',
           buttonInactive: 'bg-zinc-50 border border-black text-zinc-500 hover:text-zinc-800 hover:border-black',
-          gexNetPlus: 'text-[#4ADE80] font-bold',
+          gexNetPlus: 'text-[var(--success)] font-bold',
           gexNetMinus: 'text-rose-600',
           themeSuffix: 'neutral',
           headerColor: 'text-zinc-900',
@@ -453,7 +453,7 @@ export function DealerFlowView() {
           primaryText: 'text-rose-955',
           buttonActive: 'bg-rose-600 border border-rose-750 text-[#E5E5E5] shadow-sm',
           buttonInactive: 'bg-rose-50 border border-rose-250 text-rose-650 hover:bg-rose-100',
-          gexNetPlus: 'text-[#4ADE80] font-bold',
+          gexNetPlus: 'text-[var(--success)] font-bold',
           gexNetMinus: 'text-rose-600',
           themeSuffix: 'put',
           headerColor: 'text-rose-955',
@@ -467,13 +467,13 @@ export function DealerFlowView() {
         text: 'text-zinc-250',
         border: 'border-white/10 hover:border-white/15',
         cardBg: 'bg-white/[0.03] backdrop-blur-md border border-white/10 shadow-[0_8px_32px_0_rgba(255,255,255,0.01)]',
-        chipBg: 'bg-white/5 border border-white/10 text-[#4ADE80]',
+        chipBg: 'bg-white/5 border border-white/10 text-[var(--success)]',
         iconColor: 'text-zinc-350',
         headerIconBg: 'bg-white/[0.04] border border-white/10',
         glow: 'rgba(255, 255, 255, 0.05)',
         primaryText: 'text-[#E5E5E5]',
         buttonActive: 'bg-white/10 border border-white/20 text-[#E5E5E5] shadow-[0_0_12px_rgba(255,255,255,0.06)]',
-        buttonInactive: 'bg-black/45 border border-black text-zinc-500 hover:text-[#4ADE80] hover:border-black',
+        buttonInactive: 'bg-black/45 border border-black text-zinc-500 hover:text-[var(--success)] hover:border-black',
         gexNetPlus: 'text-zinc-200 font-bold',
         gexNetMinus: 'text-zinc-400',
         themeSuffix: 'neutral',
@@ -484,38 +484,38 @@ export function DealerFlowView() {
     if (isCall) {
       return {
         accent: 'emerald',
-        text: 'text-[#4ADE80]',
-        border: 'border-[#4ADE80]/40 hover:border-[#4ADE80]',
-        cardBg: 'bg-[#4ADE80]/[0.08] backdrop-blur-md border border-[#4ADE80]/20 shadow-[0_8px_32px_0_rgba(16,185,129,0.01)]',
-        chipBg: 'bg-[#4ADE80]/10 border border-[#4ADE80]/20 text-[#4ADE80]',
-        iconColor: 'text-[#4ADE80]',
-        headerIconBg: 'bg-[#4ADE80]/10 border border-[#4ADE80]/30',
+        text: 'text-[var(--success)]',
+        border: 'border-[var(--success)]/40 hover:border-[var(--success)]',
+        cardBg: 'bg-[var(--success)]/[0.08] backdrop-blur-md border border-[var(--success)]/20 shadow-[0_8px_32px_0_rgba(16,185,129,0.01)]',
+        chipBg: 'bg-[var(--success)]/10 border border-[var(--success)]/20 text-[var(--success)]',
+        iconColor: 'text-[var(--success)]',
+        headerIconBg: 'bg-[var(--success)]/10 border border-[var(--success)]/30',
         glow: 'rgba(16, 185, 129, 0.06)',
-        primaryText: 'text-[#4ADE80]',
-        buttonActive: 'bg-[#4ADE80]/20 border border-[#4ADE80] text-[#E5E5E5] shadow-[0_0_12px_rgba(16,185,129,0.12)]',
-        buttonInactive: 'bg-black/45 border border-black text-zinc-500 hover:text-[#4ADE80] hover:border-black',
-        gexNetPlus: 'text-[#4ADE80] font-bold',
-        gexNetMinus: 'text-[#F87171]/90',
+        primaryText: 'text-[var(--success)]',
+        buttonActive: 'bg-[var(--success)]/20 border border-[var(--success)] text-[#E5E5E5] shadow-[0_0_12px_rgba(16,185,129,0.12)]',
+        buttonInactive: 'bg-black/45 border border-black text-zinc-500 hover:text-[var(--success)] hover:border-black',
+        gexNetPlus: 'text-[var(--success)] font-bold',
+        gexNetMinus: 'text-[var(--danger)]/90',
         themeSuffix: 'call',
-        headerColor: 'text-[#4ADE80]',
+        headerColor: 'text-[var(--success)]',
       };
     } else {
       return {
         accent: 'rose',
-        text: 'text-[#F87171]',
+        text: 'text-[var(--danger)]',
         border: 'border-rose-500/20 hover:border-rose-500/35',
         cardBg: 'bg-rose-950/[0.08] backdrop-blur-md border border-rose-500/15 shadow-[0_8px_32px_0_rgba(244,63,94,0.01)]',
-        chipBg: 'bg-rose-500/10 border border-rose-500/20 text-[#F87171]',
-        iconColor: 'text-[#F87171]',
+        chipBg: 'bg-rose-500/10 border border-rose-500/20 text-[var(--danger)]',
+        iconColor: 'text-[var(--danger)]',
         headerIconBg: 'bg-rose-500/10 border border-rose-500/20',
         glow: 'rgba(244, 63, 94, 0.06)',
         primaryText: 'text-rose-355',
         buttonActive: 'bg-rose-500/10 border border-rose-500 text-[#E5E5E5] shadow-[0_0_12px_rgba(244,63,94,0.12)]',
-        buttonInactive: 'bg-black/45 border border-black text-zinc-500 hover:text-[#4ADE80] hover:border-black',
-        gexNetPlus: 'text-[#4ADE80] font-bold',
-        gexNetMinus: 'text-[#F87171]/90',
+        buttonInactive: 'bg-black/45 border border-black text-zinc-500 hover:text-[var(--success)] hover:border-black',
+        gexNetPlus: 'text-[var(--success)] font-bold',
+        gexNetMinus: 'text-[var(--danger)]/90',
         themeSuffix: 'put',
-        headerColor: 'text-[#F87171]',
+        headerColor: 'text-[var(--danger)]',
       };
     }
   }, [isConSelected, isCall]);
@@ -526,13 +526,9 @@ export function DealerFlowView() {
   const tickerExpirations = useMemo(() => {
     const isDaily = selectedAsset.optionsStyle === 'daily' || selectedAsset.type === 'INDEXES' || selectedAsset.ticker === 'QQQ' || selectedAsset.ticker === 'SPY' || selectedAsset.ticker === 'IWM';
 
-    // Seeded deterministic generation for "100% real" options flow data lookup emulation
-    const s = (offset: number) => {
-        let h = 0;
-        for (let i = 0; i < selectedAsset.ticker.length; i++) h = selectedAsset.ticker.charCodeAt(i) + ((h << 5) - h);
-        return Math.abs(Math.sin(h * offset));
-    };
-
+    // Builds the real options-expiry calendar for this ticker (daily 0DTE series
+    // for indices/broad ETFs, weekly-front for single names) — dates only, no
+    // fabricated per-expiry flow figures.
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
@@ -597,27 +593,24 @@ export function DealerFlowView() {
         }
     }
 
-    const tones = ['amber', 'sky', 'blue', 'emerald', 'pink', 'rose', 'purple', 'indigo'];
-
     return uniqueDates.map((item, idx) => {
         const dStr = item.dateObj.toLocaleDateString('en-US', { year: '2-digit', month: '2-digit', day: '2-digit' });
         const dName = item.dateObj.toLocaleDateString('en-US', { weekday: 'short' });
-        
+
         const diffDays = Math.max(0, Math.round((item.dateObj.getTime() - today.getTime()) / 86400000));
         let label = `${diffDays}DTE ${item.labelMod}`.trim();
-        
+
         if (idx === 0 && diffDays <= 1) label = `0DTE FOCUS`;
 
-        const offset = idx * 4;
+        // NOTE: per-expiry GEX/OI/VOL/Gravity numbers are intentionally NOT
+        // produced here. The server delivers a single aggregated chain profile,
+        // not a per-expiration breakdown, so inventing per-tile figures would be
+        // a fabrication. Tiles expose only the real calendar date + DTE label.
         return {
             id: `exp-${idx}`,
             date: `${dStr} (${dName})`,
-            label: label,
-            gex: `${s(offset+1) > 0.5 ? '+' : '-'}${Number((s(offset+2)*20+1).toFixed(1)).toLocaleString(undefined, { minimumFractionDigits: 1, maximumFractionDigits: 1 })}B`,
-            oi: `${Number((s(offset+3)*5+0.5).toFixed(1)).toLocaleString(undefined, { minimumFractionDigits: 1, maximumFractionDigits: 1 })}M`,
-            vol: `${Math.floor(s(offset+4)*2000+100).toLocaleString()}K`,
-            gravity: Math.floor(s(offset+5)*40+60),
-            tone: tones[idx % tones.length]
+            label,
+            dteDays: diffDays,
         };
     });
   }, [selectedAsset]);
@@ -719,6 +712,44 @@ export function DealerFlowView() {
   const gauge = serverState?.dealer_flow;
   const disp = serverState?.displacement;
 
+  // GEX-page header analytics — derived entirely from the real (filtered) GEX
+  // profile. Previously these were five hardcoded constants ("POSITIVE GAMMA",
+  // "84%", "LOW", "HIGH", "92/100") that never changed. Now: regime from the
+  // net-gamma sign, pin-risk from how tightly spot is clamped to the pin magnet,
+  // vol/dealer-control from the gamma regime, and a composite control score.
+  const headerAnalytics = useMemo(() => {
+    const p = filteredProfile || profile;
+    if (!p || p.spot == null) return null;
+
+    const netGex = p.netGex ?? 0;
+    const positiveGamma = netGex >= 0;
+
+    // Pin risk: closeness of spot to the pin magnet, scaled by the chain's
+    // expected move (tighter clamp + positive gamma ⇒ higher pinning risk).
+    const pin = p.magnet ?? p.gammaFlip;
+    const em = (p.expectedMovePct ?? 0) || 0.01; // fraction; guard div-by-zero
+    let pinRiskPct: number | null = null;
+    if (pin != null && p.spot) {
+      const distFrac = Math.abs(p.spot - pin) / p.spot;
+      // 0 distance ⇒ ~95%, distance == expected move ⇒ ~30%.
+      const raw = 95 - (distFrac / em) * 65;
+      pinRiskPct = Math.max(5, Math.min(95, Math.round(raw)));
+    }
+
+    const regime = positiveGamma ? 'POSITIVE GAMMA' : 'NEGATIVE GAMMA';
+    const volRisk = positiveGamma ? 'LOW' : 'HIGH';        // +γ dampens vol
+    const dealerControl = positiveGamma ? 'HIGH' : 'LOW';  // +γ ⇒ dealers stabilize
+
+    // Composite 0–100 control score from real signals: gamma regime,
+    // pin tightness, and expected-move calmness.
+    const gammaPts = positiveGamma ? 55 : 25;
+    const pinPts = pinRiskPct != null ? (pinRiskPct / 100) * 30 : 15;
+    const calmPts = Math.max(0, 15 - Math.min(15, em * 100 * 3)); // smaller EM ⇒ more control
+    const controlScore = Math.max(0, Math.min(100, Math.round(gammaPts + pinPts + calmPts)));
+
+    return { regime, positiveGamma, pinRiskPct, volRisk, dealerControl, controlScore };
+  }, [filteredProfile, profile]);
+
   // Memoize array props for InteractiveChart so they keep a stable reference when the
   // underlying data is unchanged. The inline `|| []` + optional chaining otherwise create
   // a fresh array every render, forcing the chart effect to tear down & rebuild all series.
@@ -732,7 +763,7 @@ export function DealerFlowView() {
     return (
       <div className="w-full flex flex-col items-center justify-center min-h-[460px] bg-[var(--surface)] border border-[var(--border)] rounded-lg p-8 text-center space-y-4" id="dealerflow-data-pending">
         <div className="w-12 h-12 rounded-full bg-[var(--surface-2)] border border-[var(--border)] flex items-center justify-center">
-          <Waves className="w-6 h-6 text-[#4ADE80]" />
+          <Waves className="w-6 h-6 text-[var(--success)]" />
         </div>
         <div className="space-y-1.5">
           <h2 className="text-[11px] font-black tracking-widest text-[var(--text-primary)] uppercase font-sans">
@@ -743,7 +774,7 @@ export function DealerFlowView() {
           </p>
         </div>
         <div className="flex items-center gap-2 justify-center">
-          <span className="w-1.5 h-1.5 rounded-full bg-[#FBBF24] inline-block animate-pulse" />
+          <span className="w-1.5 h-1.5 rounded-full bg-[var(--warning)] inline-block animate-pulse" />
           <span className="text-[8px] font-mono tracking-widest text-[var(--text-tertiary)] font-bold uppercase">
             CONNECTING TO LIVE FEED...
           </span>
@@ -775,11 +806,11 @@ export function DealerFlowView() {
 
         <div className="grid grid-cols-3 sm:grid-cols-6 gap-2 lg:flex lg:flex-nowrap lg:items-center">
           {[
-            { label: 'Net GEX', value: filteredProfile ? fmtBn(filteredProfile.netGex) : '—', tone: (filteredProfile?.netGex ?? 0) >= 0 ? '#4ADE80' : '#F87171' },
-            { label: 'Call Wall', value: filteredProfile?.callWall?.toLocaleString(undefined, { maximumFractionDigits: 0 }) ?? '—', tone: '#4ADE80' },
-            { label: 'Put Wall', value: filteredProfile?.putWall?.toLocaleString(undefined, { maximumFractionDigits: 0 }) ?? '—', tone: '#F87171' },
-            { label: 'γ-Flip', value: filteredProfile?.gammaFlip?.toLocaleString(undefined, { maximumFractionDigits: 0 }) ?? '—', tone: '#FBBF24' },
-            { label: 'Pin Magnet', value: filteredProfile?.magnet?.toLocaleString(undefined, { maximumFractionDigits: 0 }) ?? '—', tone: '#60A5FA' },
+            { label: 'Net GEX', value: filteredProfile ? fmtBn(filteredProfile.netGex) : '—', tone: (filteredProfile?.netGex ?? 0) >= 0 ? 'var(--success)' : 'var(--danger)' },
+            { label: 'Call Wall', value: filteredProfile?.callWall?.toLocaleString(undefined, { maximumFractionDigits: 0 }) ?? '—', tone: 'var(--success)' },
+            { label: 'Put Wall', value: filteredProfile?.putWall?.toLocaleString(undefined, { maximumFractionDigits: 0 }) ?? '—', tone: 'var(--danger)' },
+            { label: 'γ-Flip', value: filteredProfile?.gammaFlip?.toLocaleString(undefined, { maximumFractionDigits: 0 }) ?? '—', tone: 'var(--warning)' },
+            { label: 'Pin Magnet', value: filteredProfile?.magnet?.toLocaleString(undefined, { maximumFractionDigits: 0 }) ?? '—', tone: 'var(--info)' },
             { label: 'Dist to Flip', value: filteredProfile?.gammaFlip ? `${Math.abs(filteredProfile.spot - filteredProfile.gammaFlip).toLocaleString(undefined, { minimumFractionDigits: 1, maximumFractionDigits: 1 })}` : '—', tone: 'var(--text-primary)' },
           ].map(card => (
             <div key={card.label} className="bg-[var(--surface-2)] border border-[var(--border)] rounded-md px-3 py-2 min-w-[84px] shrink-0" id={`card-${card.label.toLowerCase().replace(/\s+/g, '-')}`}>
@@ -810,22 +841,22 @@ export function DealerFlowView() {
             onClick={() => setActiveEngineView('targets')}
             className={`flex shrink-0 items-center gap-2 px-4 py-2.5 font-mono text-[9px] font-black uppercase tracking-wider border rounded-lg transition-colors cursor-pointer ${
               activeEngineView === 'targets'
-                ? 'bg-[var(--surface-3)] border-[#F87171]/50 text-[var(--text-primary)]'
+                ? 'bg-[var(--surface-3)] border-[var(--danger)]/50 text-[var(--text-primary)]'
                 : 'bg-[var(--surface-2)] border-[var(--border)] text-[var(--text-tertiary)] hover:text-[var(--text-primary)]'
             }`}
           >
-            <Target className="w-3.5 h-3.5 text-[#F87171]" />
+            <Target className="w-3.5 h-3.5 text-[var(--danger)]" />
             RANKED TARGETS
           </button>
           <button
             onClick={() => setActiveEngineView('physics')}
             className={`flex shrink-0 items-center gap-2 px-4 py-2.5 font-mono text-[9px] font-black uppercase tracking-wider border rounded-lg transition-colors cursor-pointer ${
               activeEngineView === 'physics'
-                ? 'bg-[var(--surface-3)] border-[#FBBF24]/50 text-[var(--text-primary)]'
+                ? 'bg-[var(--surface-3)] border-[var(--warning)]/50 text-[var(--text-primary)]'
                 : 'bg-[var(--surface-2)] border-[var(--border)] text-[var(--text-tertiary)] hover:text-[var(--text-primary)]'
             }`}
           >
-            <Zap className="w-3.5 h-3.5 text-[#FBBF24]" />
+            <Zap className="w-3.5 h-3.5 text-[var(--warning)]" />
             DEALER MECHANICS
           </button>
           <button
@@ -1006,33 +1037,33 @@ export function DealerFlowView() {
 
       {activeEngineView === 'profile' ? (
         <>
-          {/* ============== GEX PAGE HEADER ============== */}
+          {/* ============== GEX PAGE HEADER (derived from real GEX profile) ============== */}
           <div className="grid grid-cols-2 md:grid-cols-6 gap-2 mb-2 font-mono">
             <div className="flex flex-col p-3 rounded-lg border border-[var(--border)] bg-[var(--surface-2)] justify-center">
-              <span className="text-[9px] uppercase tracking-widest text-[var(--text-tertiary)] font-bold mb-1">Asset</span>
-              <span className="text-sm font-black text-white">{selectedAsset.ticker} <span className="text-zinc-500 font-medium">({profile?.spot.toLocaleString(undefined, { maximumFractionDigits: 0 }) || '7,600'})</span></span>
+              <span className="text-[10px] uppercase tracking-widest text-[var(--text-tertiary)] font-bold mb-1">Asset</span>
+              <span className="text-sm font-black text-[var(--text-primary)] tabular-nums">{selectedAsset.ticker} <span className="text-[var(--text-tertiary)] font-medium">({profile?.spot != null ? profile.spot.toLocaleString(undefined, { maximumFractionDigits: 0 }) : '—'})</span></span>
             </div>
             <div className="flex flex-col p-3 rounded-lg border border-[var(--border)] bg-[var(--surface-2)] justify-center">
-              <span className="text-[9px] uppercase tracking-widest text-[var(--text-tertiary)] font-bold mb-1">Regime</span>
-              <span className="text-sm font-black text-emerald-400">POSITIVE GAMMA</span>
+              <span className="text-[10px] uppercase tracking-widest text-[var(--text-tertiary)] font-bold mb-1">Regime</span>
+              <span className={`text-sm font-black ${headerAnalytics?.positiveGamma ? 'text-[var(--success)]' : 'text-[var(--danger)]'}`}>{headerAnalytics?.regime ?? '—'}</span>
             </div>
             <div className="flex flex-col p-3 rounded-lg border border-[var(--border)] bg-[var(--surface-2)] justify-center">
-              <span className="text-[9px] uppercase tracking-widest text-[var(--text-tertiary)] font-bold mb-1">Pin Risk</span>
-              <span className="text-sm font-black text-amber-400">84%</span>
+              <span className="text-[10px] uppercase tracking-widest text-[var(--text-tertiary)] font-bold mb-1">Pin Risk</span>
+              <span className="text-sm font-black text-[var(--warning)] tabular-nums">{headerAnalytics?.pinRiskPct != null ? `${headerAnalytics.pinRiskPct}%` : '—'}</span>
             </div>
             <div className="flex flex-col p-3 rounded-lg border border-[var(--border)] bg-[var(--surface-2)] justify-center">
-              <span className="text-[9px] uppercase tracking-widest text-[var(--text-tertiary)] font-bold mb-1">Vol Risk</span>
-              <span className="text-sm font-black text-sky-400">LOW</span>
+              <span className="text-[10px] uppercase tracking-widest text-[var(--text-tertiary)] font-bold mb-1">Vol Risk</span>
+              <span className={`text-sm font-black ${headerAnalytics?.volRisk === 'LOW' ? 'text-[var(--info)]' : 'text-[var(--danger)]'}`}>{headerAnalytics?.volRisk ?? '—'}</span>
             </div>
             <div className="flex flex-col p-3 rounded-lg border border-[var(--border)] bg-[var(--surface-2)] justify-center">
-              <span className="text-[9px] uppercase tracking-widest text-[var(--text-tertiary)] font-bold mb-1">Dealer Control</span>
-              <span className="text-sm font-black text-purple-400">HIGH</span>
+              <span className="text-[10px] uppercase tracking-widest text-[var(--text-tertiary)] font-bold mb-1">Dealer Control</span>
+              <span className={`text-sm font-black ${headerAnalytics?.dealerControl === 'HIGH' ? 'text-[var(--success)]' : 'text-[var(--warning)]'}`}>{headerAnalytics?.dealerControl ?? '—'}</span>
             </div>
             {/* Market Control Score */}
-            <div className="flex flex-col p-3 rounded-lg border border-purple-500/30 bg-purple-500/10 justify-center">
-              <span className="text-[9px] uppercase tracking-widest text-purple-400 font-bold mb-1">Market Control</span>
+            <div className="flex flex-col p-3 rounded-lg border border-[var(--info)]/30 bg-[var(--info)]/10 justify-center">
+              <span className="text-[10px] uppercase tracking-widest text-[var(--info)] font-bold mb-1">Market Control</span>
               <div className="flex items-end gap-2">
-                <span className="text-sm font-black text-white">92<span className="text-[10px] text-zinc-500 font-medium">/100</span></span>
+                <span className="text-sm font-black text-[var(--text-primary)] tabular-nums">{headerAnalytics?.controlScore ?? '—'}<span className="text-[10px] text-[var(--text-tertiary)] font-medium">/100</span></span>
               </div>
             </div>
           </div>
@@ -1043,11 +1074,16 @@ export function DealerFlowView() {
               <div className="flex flex-col gap-1">
                 <span className="text-[10px] font-black uppercase text-[var(--text-secondary)] tracking-widest leading-none flex items-center gap-2">
                   TRADER INTENT EXPIRY CADENCES
-                  <span className="text-[8px] bg-emerald-500/10 text-[#4ADE80] border border-emerald-500/20 px-1.5 py-0.5 rounded font-bold font-mono">
+                  <span className="text-[10px] bg-[var(--success)]/10 text-[var(--success)] border border-[var(--success)]/20 px-1.5 py-0.5 rounded font-bold font-mono">
                     {selectedAsset.ticker} PIPELINE
                   </span>
+                  {expiryTab !== 'aggregated' && (
+                    <span className="text-[10px] bg-[var(--warning)]/10 text-[var(--warning)] border border-[var(--warning)]/30 px-1.5 py-0.5 rounded font-black font-mono tracking-widest" title="Server delivers one aggregated chain; the per-expiry split shown when a single expiry is selected is a deterministic model, not a per-expiration feed.">
+                      MODEL SPLIT
+                    </span>
+                  )}
                 </span>
-                <span className="text-[11px] font-medium text-[var(--text-tertiary)]">Filter options chain and dealer hedging flow calculations by expiration matrix</span>
+                <span className="text-[11px] font-medium text-[var(--text-tertiary)]">Calendar is real; per-expiry hedging split is modeled from the aggregated chain (use ALL DATES for the live profile)</span>
               </div>
               
               {/* Dynamic Toggle Button */}
@@ -1067,12 +1103,12 @@ export function DealerFlowView() {
                 }}
                 className={`flex items-center gap-2 px-3 py-1.5 rounded-lg border text-[10px] font-bold tracking-wider uppercase transition-all duration-200 cursor-pointer ${
                   isMultiExpiry 
-                    ? 'bg-[#4ADE80]/15 border-[#4ADE80]/30 text-[#4ADE80] shadow-[0_0_12px_rgba(74,222,128,0.12)] font-black' 
+                    ? 'bg-[var(--success)]/15 border-[var(--success)]/30 text-[var(--success)] shadow-[0_0_12px_rgba(74,222,128,0.12)] font-black' 
                     : 'bg-[var(--surface-3)] border-[var(--border)] text-[var(--text-tertiary)] hover:text-[var(--text-primary)]'
                 }`}
                 id="multi-expiry-global-toggle"
               >
-                <div className={`w-3 h-3 rounded-full flex items-center justify-center border ${isMultiExpiry ? 'border-[#4ADE80] bg-[#4ADE80]' : 'border-zinc-500 bg-transparent'}`}>
+                <div className={`w-3 h-3 rounded-full flex items-center justify-center border ${isMultiExpiry ? 'border-[var(--success)] bg-[var(--success)]' : 'border-zinc-500 bg-transparent'}`}>
                   {isMultiExpiry && <div className="w-1.5 h-1.5 rounded-full bg-black/85" />}
                 </div>
                 <span> MULTI-EXPIRY AGGREGATION</span>
@@ -1092,32 +1128,22 @@ export function DealerFlowView() {
                   }`}
                 >
                   <span className="text-[7.5px] font-black uppercase tracking-widest text-[var(--text-tertiary)] flex items-center gap-1">
-                    <span className={`w-1 h-3 rounded-full ${expiryTab === 'aggregated' ? 'bg-[#4ADE80]' : 'bg-zinc-650'}`} />
+                    <span className={`w-1 h-3 rounded-full ${expiryTab === 'aggregated' ? 'bg-[var(--success)]' : 'bg-zinc-650'}`} />
                     MASTER PROFILE
                   </span>
                   <span className={`text-[11px] font-bold mt-1.5 leading-none ${expiryTab === 'aggregated' ? 'text-white' : 'text-[var(--text-secondary)]'}`}>
                     All Dates
                   </span>
-                  <span className={`text-[7.5px] font-black mt-2 tracking-widest ${expiryTab === 'aggregated' ? 'text-[#4ADE80]' : 'text-zinc-500'}`}>
+                  <span className={`text-[7.5px] font-black mt-2 tracking-widest ${expiryTab === 'aggregated' ? 'text-[var(--success)]' : 'text-zinc-500'}`}>
                     🌌 TOTAL GRAVITY
                   </span>
                 </button>
               )}
 
               {tickerExpirations.map((item) => {
-                const isActive = isMultiExpiry 
-                  ? activeExpiries.includes(item.id) 
+                const isActive = isMultiExpiry
+                  ? activeExpiries.includes(item.id)
                   : expiryTab === item.id;
-
-                const toneStyle = 
-                  item.tone === 'emerald' ? { text: 'text-emerald-400', bg: 'bg-emerald-500/10', border: 'border-emerald-500/30', glow: 'shadow-[0_0_12px_rgba(16,185,129,0.15)]' } :
-                  item.tone === 'amber' ? { text: 'text-amber-400', bg: 'bg-amber-500/10', border: 'border-amber-500/30', glow: 'shadow-[0_0_12px_rgba(245,158,11,0.15)]' } :
-                  item.tone === 'sky' ? { text: 'text-sky-400', bg: 'bg-sky-500/10', border: 'border-sky-500/30', glow: 'shadow-[0_0_12px_rgba(56,189,248,0.15)]' } :
-                  item.tone === 'blue' ? { text: 'text-blue-400', bg: 'bg-blue-500/10', border: 'border-blue-500/30', glow: 'shadow-[0_0_12px_rgba(59,130,246,0.15)]' } :
-                  item.tone === 'pink' ? { text: 'text-fuchsia-400', bg: 'bg-fuchsia-500/10', border: 'border-fuchsia-500/30', glow: 'shadow-[0_0_12px_rgba(217,70,239,0.15)]' } :
-                  item.tone === 'purple' ? { text: 'text-purple-400', bg: 'bg-purple-500/10', border: 'border-purple-500/30', glow: 'shadow-[0_0_12px_rgba(168,85,247,0.15)]' } :
-                  item.tone === 'indigo' ? { text: 'text-indigo-400', bg: 'bg-indigo-500/10', border: 'border-indigo-500/30', glow: 'shadow-[0_0_12px_rgba(99,102,241,0.15)]' } :
-                  { text: 'text-rose-400', bg: 'bg-rose-500/10', border: 'border-rose-500/30', glow: 'shadow-[0_0_12px_rgba(244,63,94,0.15)]' };
 
                 return (
                   <button
@@ -1136,44 +1162,36 @@ export function DealerFlowView() {
                       }
                     }}
                     className={`flex flex-col text-left p-2.5 rounded-lg border transition-all cursor-pointer relative overflow-hidden shrink-0 min-w-[130px] snap-start ${
-                      isActive 
-                        ? `${toneStyle.bg} ${toneStyle.border} ${isLight ? 'border-zinc-400/50' : ''} ${toneStyle.glow}` 
-                        : 'bg-[var(--surface-3)] border-[var(--border)] hover:bg-[var(--surface-2)] hover:border-zinc-700'
+                      isActive
+                        ? 'bg-[#06B6D4]/10 border-[#06B6D4]/40'
+                        : 'bg-[var(--surface-3)] border-[var(--border)] hover:bg-[var(--surface-2)] hover:border-[var(--border-strong)]'
                     }`}
                   >
                     {isMultiExpiry && (
                       <div className="absolute top-2 right-2">
-                        <div className={`w-3.5 h-3.5 rounded border flex items-center justify-center ${isActive ? 'border-current bg-current/10' : 'border-zinc-700 bg-transparent'}`} style={{ color: isActive ? toneStyle.text.replace('text-', '#').replace('fuchsia', '#d946ef') : undefined }}>
-                          {isActive && <div className="w-1.5 h-1.5 rounded-sm bg-current" />}
+                        <div className={`w-3.5 h-3.5 rounded border flex items-center justify-center ${isActive ? 'border-[#06B6D4] bg-[#06B6D4]/10' : 'border-[var(--border-strong)] bg-transparent'}`}>
+                          {isActive && <div className="w-1.5 h-1.5 rounded-sm bg-[#06B6D4]" />}
                         </div>
                       </div>
                     )}
-                    
+
                     <div className="flex items-center gap-1.5 mb-1.5">
-                      <span className={`text-[12px] font-black leading-none ${isActive ? 'text-white' : 'text-[var(--text-secondary)]'}`}>
+                      <span className={`text-[12px] font-black leading-none tabular-nums ${isActive ? 'text-[var(--text-primary)]' : 'text-[var(--text-secondary)]'}`}>
                         {item.date}
                       </span>
-                      <span className="text-[8px] font-black uppercase text-zinc-500 bg-zinc-900/50 px-1 rounded">
+                      <span className="text-[10px] font-black uppercase text-[var(--text-tertiary)] bg-[var(--surface-2)] px-1 rounded">
                         {item.label}
                       </span>
                     </div>
 
-                    <div className="flex flex-col gap-0.5 mt-1 border-t border-[var(--border)] pt-1">
-                      <span className={`text-[8.5px] font-mono flex justify-between ${isActive ? 'text-[var(--text-secondary)]' : 'text-[var(--text-tertiary)]'}`}>
-                        <span>GEX:</span> <span className={`font-bold ${isActive ? 'text-emerald-400' : ''}`}>{item.gex}</span>
+                    <div className="flex items-center gap-1 mt-1 border-t border-[var(--border)] pt-1.5">
+                      <span className="text-[10px] font-mono font-bold tabular-nums text-[var(--text-secondary)]">
+                        {item.dteDays}DTE
                       </span>
-                      <span className={`text-[8.5px] font-mono flex justify-between ${isActive ? 'text-[var(--text-secondary)]' : 'text-[var(--text-tertiary)]'}`}>
-                        <span>OI:</span> <span className="font-bold">{item.oi}</span>
-                      </span>
-                      <span className={`text-[8.5px] font-mono flex justify-between ${isActive ? 'text-[var(--text-secondary)]' : 'text-[var(--text-tertiary)]'}`}>
-                        <span>VOL:</span> <span className="font-bold">{item.vol}</span>
+                      <span className={`text-[10px] font-black tracking-widest ml-auto ${isActive ? 'text-[#06B6D4]' : 'text-[var(--text-tertiary)]'}`}>
+                        {isActive ? 'SELECTED' : 'SELECT'}
                       </span>
                     </div>
-
-                    <span className={`text-[9px] font-black mt-2 tracking-widest flex items-center gap-1 ${isActive ? toneStyle.text : 'text-zinc-500'}`}>
-                      <span className={`w-1 h-1 rounded-full ${isActive ? 'bg-current' : 'bg-zinc-600'}`} style={{ color: isActive ? 'currentColor' : undefined }} />
-                      Gravity: {item.gravity}
-                    </span>
                   </button>
                 );
               })}
@@ -1181,15 +1199,15 @@ export function DealerFlowView() {
           </div>
 
           {/* ============== DEALER FLOW MAP (Hero Chart) ============== */}
-          <div className="bg-[#0a0a0a] border border-zinc-800/80 rounded-sm p-5 shadow-sm" id="dealerflow-map-panel">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-5 pb-3 border-b border-zinc-800">
+          <div className="bg-[var(--surface)] border border-[var(--border)] rounded-sm p-5 shadow-sm" id="dealerflow-map-panel">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-5 pb-3 border-b border-[var(--border)]">
               <div className="flex items-center gap-2">
-                <Layers className="w-4 h-4 text-[#4ADE80] opacity-80" />
+                <Layers className="w-4 h-4 text-[var(--success)] opacity-80" />
                 <div className="flex flex-col leading-none">
-                  <span className="text-[11px] font-bold tracking-[0.15em] uppercase text-zinc-200">
+                  <span className="text-[11px] font-bold tracking-[0.15em] uppercase text-[var(--text-primary)]">
                     Dealer Net Gamma Map
                   </span>
-                  <span className="text-[8px] text-zinc-500 uppercase tracking-[0.2em] block mt-1.5 font-semibold">
+                  <span className="text-[10px] text-[var(--text-tertiary)] uppercase tracking-[0.2em] block mt-1.5 font-semibold">
                     inventory & pin levels by strike
                   </span>
                 </div>
@@ -1198,8 +1216,8 @@ export function DealerFlowView() {
               {/* Multi-Expiry Toggle segment controller */}
               <div className="flex items-center gap-3" id="multi-expiry-toggle-control">
                 {isMultiExpiry ? (
-                  <div className="flex items-center gap-2 bg-[#4ADE80]/10 border border-[#4ADE80]/20 px-2.5 py-1 rounded-md">
-                    <span className="text-[7.5px] font-black text-[#4ADE80] uppercase tracking-widest animate-pulse">
+                  <div className="flex items-center gap-2 bg-[var(--success)]/10 border border-[var(--success)]/20 px-2.5 py-1 rounded-md">
+                    <span className="text-[7.5px] font-black text-[var(--success)] uppercase tracking-widest animate-pulse">
                        MULTI-EXPIRY ACTIVE ({activeExpiries.length} DATES)
                     </span>
                     <button
@@ -1256,7 +1274,7 @@ export function DealerFlowView() {
             {/* GEX PROFILE */}
             <div className="bg-[var(--surface)] border border-[var(--border)] rounded-lg p-5 flex flex-col justify-between" id="gex-profile-chart-panel">
               <div>
-                <div className="flex items-center gap-2 text-[9px] font-black tracking-widest uppercase mb-4 text-[#4ADE80]">
+                <div className="flex items-center gap-2 text-[9px] font-black tracking-widest uppercase mb-4 text-[var(--success)]">
                   <Layers className="w-3.5 h-3.5" />
                   <span className="text-[var(--text-secondary)]">Gamma Exposure (GEX)</span>
                   <span className="text-[var(--text-tertiary)] font-normal normal-case tracking-normal">· $ per 1% move</span>
@@ -1269,13 +1287,13 @@ export function DealerFlowView() {
                 <div className="mt-4 pt-3 border-t border-[var(--border)] grid grid-cols-3 gap-2 text-center text-[10px] font-mono leading-none border-dashed border-[var(--border)]" id="gex-profile-chart-oi-footer">
                   <div>
                     <div className="text-[8px] text-[var(--text-tertiary)] font-black uppercase tracking-widest mb-1">Call GEX</div>
-                    <div className="text-[10px] font-mono text-[#4ADE80] font-bold">
+                    <div className="text-[10px] font-mono text-[var(--success)] font-bold">
                       {fmtGreek((filteredProfile || profile).strikes.map((cur: any) => cur.callGex || 0).reduce((acc: number, v: number) => acc + v, 0))}
                     </div>
                   </div>
                   <div>
                     <div className="text-[8px] text-[var(--text-tertiary)] font-black uppercase tracking-widest mb-1">Put GEX</div>
-                    <div className="text-[10px] font-mono text-[#F87171] font-bold">
+                    <div className="text-[10px] font-mono text-[var(--danger)] font-bold">
                       {fmtGreek((filteredProfile || profile).strikes.map((cur: any) => cur.putGex || 0).reduce((acc: number, v: number) => acc + v, 0))}
                     </div>
                   </div>
@@ -1311,7 +1329,7 @@ export function DealerFlowView() {
                   </div>
                   <div>
                     <div className="text-[8px] text-[var(--text-tertiary)] font-black uppercase tracking-widest mb-1">Put DEX</div>
-                    <div className="text-[10px] font-mono text-[#F87171] font-bold">
+                    <div className="text-[10px] font-mono text-[var(--danger)] font-bold">
                       {fmtGreek((filteredProfile || profile).strikes.map((cur: any) => cur.putDex || 0).reduce((acc: number, v: number) => acc + v, 0))}
                     </div>
                   </div>
@@ -1347,7 +1365,7 @@ export function DealerFlowView() {
                   </div>
                   <div>
                     <div className="text-[8px] text-[var(--text-tertiary)] font-black uppercase tracking-widest mb-1">Put VEX</div>
-                    <div className="text-[10px] font-mono text-[#F87171] font-bold">
+                    <div className="text-[10px] font-mono text-[var(--danger)] font-bold">
                       {fmtGreek((filteredProfile || profile).strikes.map((cur: any) => cur.putVex || 0).reduce((acc: number, v: number) => acc + v, 0))}
                     </div>
                   </div>
@@ -1382,7 +1400,7 @@ export function DealerFlowView() {
           <div className="bg-[var(--surface)] border border-[var(--border)] rounded-lg p-5 flex flex-col w-full overflow-hidden" id="displacement-overlay-chart-panel" style={{ minHeight: '380px' }}>
             <div className="flex items-center justify-between mb-3 shrink-0">
               <div className="flex items-center gap-2 text-[9px] font-black tracking-widest text-[var(--text-secondary)] uppercase">
-                <ShieldAlert className="w-3.5 h-3.5 text-[#F87171]" />
+                <ShieldAlert className="w-3.5 h-3.5 text-[var(--danger)]" />
                 Price Action — Supply/Demand & Imbalance Overlay
               </div>
               <FeedChip feed={serverState?.candle_feed} />

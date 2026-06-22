@@ -56,73 +56,74 @@ export function TargetsSection({ targets, assetName, decimals }: TargetsSectionP
   });
 
   return (
-    <div className="bg-black border border-black rounded-sm font-mono overflow-hidden shadow-lg p-5">
-      <div className="flex items-center justify-between border-b border-black pb-3 mb-4">
+    <div className="bg-[var(--surface)] border border-[var(--border)] rounded-sm font-mono overflow-hidden shadow-lg p-5">
+      <div className="flex items-center justify-between border-b border-[var(--border)] pb-3 mb-4">
         <div className="flex items-center gap-1.5">
-          <Crosshair className="w-4 h-4 text-[#4ADE80] animate-spin" style={{ animationDuration: '6s' }} />
-          <span className="text-xs tracking-[0.2em] font-bold text-[#E0E0E0]">PROJECTION TARGET ENGINE</span>
+          <Crosshair className="w-4 h-4 text-[var(--success)]" />
+          <span className="text-xs tracking-[0.2em] font-bold text-[var(--text-primary)]">PROJECTION TARGET ENGINE</span>
         </div>
-        <span className="text-[9px] text-[#888888] font-bold tracking-widest border border-black px-2 py-0.5 bg-black/40">MODEL: OPTION ESTIMATOR V3</span>
+        <span className="text-[10px] text-[var(--text-tertiary)] font-bold tracking-widest border border-[var(--border)] px-2 py-0.5 bg-[var(--surface-2)]">MODEL: OPTION ESTIMATOR V3</span>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         {optionTargets.map((item, idx) => {
-          let sideBorder = 'border-l-2 border-black';
-          let badgeBgColor = 'bg-black/40 text-[#4ADE80] border border-black';
-          let icon = <Target className="w-4 h-4 text-[#4ADE80]" />;
+          let sideBorder = 'border-l-2 border-[var(--success)]';
+          let confidenceColor = 'text-[var(--success)]';
+          let confidenceBadge = 'bg-[var(--surface-2)] text-[var(--success)] border border-[var(--success)]/40';
+          let icon = <Target className="w-4 h-4 text-[var(--success)]" />;
 
           if (idx === 2) {
-            sideBorder = 'border-l-2 border-amber-500';
-            badgeBgColor = 'bg-amber-950/40 text-amber-500 border border-amber-900/30';
-            icon = <Milestone className="w-4 h-4 text-amber-500" />;
+            sideBorder = 'border-l-2 border-[var(--warning)]';
+            confidenceColor = 'text-[var(--warning)]';
+            confidenceBadge = 'bg-[var(--surface-2)] text-[var(--warning)] border border-[var(--warning)]/40';
+            icon = <Milestone className="w-4 h-4 text-[var(--warning)]" />;
           } else if (idx === 3) {
-            sideBorder = 'border-l-2 border-rose-500';
-            badgeBgColor = 'bg-rose-950/40 text-[#F87171] border border-[#F87171]/30';
-            icon = <Zap className="w-4 h-4 text-[#F87171]" />;
+            sideBorder = 'border-l-2 border-[var(--danger)]';
+            confidenceColor = 'text-[var(--danger)]';
+            confidenceBadge = 'bg-[var(--surface-2)] text-[var(--danger)] border border-[var(--danger)]/40';
+            icon = <Zap className="w-4 h-4 text-[var(--danger)]" />;
           }
 
           return (
             <div
               key={item.id}
-              className={`bg-black/35 p-4 border border-black flex flex-col justify-between rounded-sm ${sideBorder} hover:border-[#3A3A3D] transition-colors`}
+              className={`bg-[var(--surface-2)] p-4 border border-[var(--border)] flex flex-col justify-between rounded-sm ${sideBorder} hover:border-[var(--border-strong)] transition-colors`}
             >
               <div>
-                <div className="flex items-center justify-between border-b border-black pb-2 mb-3">
-                  <span className="text-[9.5px] text-[#888888] font-bold uppercase tracking-wider">{item.title}</span>
-                  {icon}
-                </div>
-                
-                {/* Option Value */}
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-[10px] text-[#888888] uppercase select-none">Option Value</span>
-                  <span className="text-sm font-black text-[#E5E5E5] font-mono tracking-wide">{item.optionValue}</span>
-                </div>
-
-                {/* Probability */}
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-[10px] text-[#888888] uppercase select-none">Probability</span>
-                  <span className="text-xs font-bold text-[#E5E5E5] font-mono">{item.probability}%</span>
-                </div>
-
-                {/* Confidence Level */}
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-[10px] text-[#888888] uppercase select-none">Confidence</span>
-                  <span className={`text-[9px] font-black px-1.5 py-0.2 rounded-sm tracking-widest ${badgeBgColor}`}>
+                {/* Header: title + elevated confidence badge with color weight */}
+                <div className="flex items-center justify-between border-b border-[var(--border)] pb-2 mb-3">
+                  <div className="flex items-center gap-1.5">
+                    {icon}
+                    <span className="text-[10px] text-[var(--text-secondary)] font-bold uppercase tracking-wider">{item.title}</span>
+                  </div>
+                  <span className={`text-[10px] font-black px-2 py-0.5 rounded-sm tracking-widest ${confidenceBadge}`}>
                     {item.confidenceLevel}
                   </span>
                 </div>
 
+                {/* Option Value */}
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-[10px] text-[var(--text-tertiary)] uppercase select-none">Option Value</span>
+                  <span className="text-sm font-black text-[var(--text-primary)] font-mono tracking-wide tabular-nums">{item.optionValue}</span>
+                </div>
+
+                {/* Probability */}
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-[10px] text-[var(--text-tertiary)] uppercase select-none">Probability</span>
+                  <span className="text-xs font-bold text-[var(--text-primary)] font-mono tabular-nums">{item.probability}%</span>
+                </div>
+
                 {/* Risk Reward */}
                 <div className="flex items-center justify-between mb-2">
-                  <span className="text-[10px] text-[#888888] uppercase select-none">Risk / Reward</span>
-                  <span className="text-xs font-bold text-[#4ADE80] font-mono">{item.riskReward}</span>
+                  <span className="text-[10px] text-[var(--text-tertiary)] uppercase select-none">Risk / Reward</span>
+                  <span className={`text-xs font-bold font-mono tabular-nums ${confidenceColor}`}>{item.riskReward}</span>
                 </div>
               </div>
 
               {/* Footer ETA */}
-              <div className="mt-4 pt-2.5 border-t border-black flex justify-between items-center text-[10px]">
-                <span className="text-[#66666A] uppercase font-bold tracking-tight">target eta</span>
-                <span className="text-[#4ADE80] font-bold font-mono">{item.eta}</span>
+              <div className="mt-4 pt-2.5 border-t border-[var(--border)] flex justify-between items-center text-[10px]">
+                <span className="text-[var(--text-tertiary)] uppercase font-bold tracking-tight">target eta</span>
+                <span className="text-[var(--success)] font-bold font-mono tabular-nums">{item.eta}</span>
               </div>
             </div>
           );
