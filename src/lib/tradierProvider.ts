@@ -286,16 +286,19 @@ export async function fetchTradierOptionChain(asset: AssetInfo, spotPrice: numbe
         const volume = Number(item.volume) || 0;
         
         const rawGreeks = item.greeks || {};
-        const impliedVolatility = typeof rawGreeks.mid_iv === 'number' && rawGreeks.mid_iv > 0 ? rawGreeks.mid_iv :
-                                  (typeof rawGreeks.smv_vol === 'number' && rawGreeks.smv_vol > 0 ? rawGreeks.smv_vol :
-                                  (typeof item.implied_volatility === 'number' && item.implied_volatility > 0 ? item.implied_volatility : 0.15));
+        // Tradier returns greeks/IV as numeric STRINGS (e.g. "0.1834"); a
+        // typeof === 'number' gate silently discarded them, collapsing every
+        // contract to a flat 0.15 IV + default greeks on live data. Coerce.
+        const num = (v: any): number | null => { const n = Number(v); return Number.isFinite(n) ? n : null; };
+        const ivMid = num(rawGreeks.mid_iv), ivSmv = num(rawGreeks.smv_vol), ivImp = num(item.implied_volatility);
+        const impliedVolatility = (ivMid && ivMid > 0) ? ivMid : (ivSmv && ivSmv > 0) ? ivSmv : (ivImp && ivImp > 0) ? ivImp : 0.15;
         const bid = Number(item.bid) || 0;
         const ask = Number(item.ask) || 0;
 
-        let delta = typeof rawGreeks.delta === 'number' ? rawGreeks.delta : (type === 'C' ? 0.5 : -0.5);
-        let gamma = typeof rawGreeks.gamma === 'number' ? rawGreeks.gamma : 0.01;
-        let theta = typeof rawGreeks.theta === 'number' ? rawGreeks.theta : -0.1;
-        let vega = typeof rawGreeks.vega === 'number' ? rawGreeks.vega : 0.05;
+        let delta = num(rawGreeks.delta) ?? (type === 'C' ? 0.5 : -0.5);
+        let gamma = num(rawGreeks.gamma) ?? 0.01;
+        let theta = num(rawGreeks.theta) ?? -0.1;
+        let vega = num(rawGreeks.vega) ?? 0.05;
 
         // Safe fallback to analytic Greeks if the data feed has gaps
         if (Math.abs(delta) < 0.0001 || gamma === 0) {

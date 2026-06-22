@@ -401,7 +401,7 @@ export default function QuantSuiteView() {
   const [alertsRules, setAlertsRules] = useState<AlertRule[]>([
     { id: '1', name: `${activeTicker} Crosses Gamma Flip`, metric: 'gex_flip', operator: 'crosses', isActive: true },
     { id: '2', name: 'Dealers Short Gamma', metric: 'gex_negative', operator: 'is_negative', isActive: true },
-    { id: '3', name: 'IV Richness (VRP 90th)', metric: 'vrp_high', operator: 'above', thresholdValue: 90, isActive: true },
+    { id: '3', name: 'IV Richness (VRP ≥ 5 pts)', metric: 'vrp_high', operator: 'above', thresholdValue: 5, isActive: true },
   ]);
 
   const [alertsLog, setAlertsLog] = useState<AlertDispatch[]>([]);
@@ -446,8 +446,9 @@ export default function QuantSuiteView() {
         prevAlertSpotRef.current,
         netGexVal,
         gammaFlip,
-        volSuite.vrpPercentile,
-        skewMetrics.riskReversalPercentile
+        // Honest underlying values (vol, decimal) — not fabricated percentiles.
+        volSuite.varianceRiskPremium,
+        skewMetrics.riskReversal25D
       );
       prevAlertSpotRef.current = spotPrice;
 
@@ -728,7 +729,7 @@ export default function QuantSuiteView() {
                       <StatTile label="ATM IV" value={`${(defaultIv * 100).toFixed(2)}%`} />
                       <StatTile label="Yang-Zhang RV" value={`${(volSuite.yangZhang * 100).toFixed(2)}%`} tone="text-[var(--warning)]" />
                       <StatTile label="VRP Spread" value={`${(volSuite.varianceRiskPremium * 100).toFixed(2)} pts`} tone={volSuite.varianceRiskPremium >= 0 ? 'text-[var(--success)]' : 'text-[var(--danger)]'} />
-                      <StatTile label="VRP Percentile" value={`${volSuite.vrpPercentile}th`} tone="text-[var(--success)]" />
+                      <StatTile label="RV Percentile" value={`${volSuite.rvPercentile}th`} tone="text-[var(--success)]" />
                     </div>
                   </div>
                 </div>

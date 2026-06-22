@@ -6,6 +6,15 @@
 import { ChainContract } from './v11Math';
 import { formatTime } from './timeUtils';
 import { stdNormalCDF, stdNormalPDF } from './normalDist';
+import {
+  parkinsonVol,
+  garmanKlassVol,
+  yangZhangVol,
+  intervalMinutes,
+  volCone as realizedVolCone,
+} from './realizedVol';
+import type { Candle as MarketCandle } from '../types';
+import { ivAtDelta } from './skewAnalytics';
 
 // ==========================================
 // STANDARD MATHEMATICAL & STATISTICS DEFS
@@ -188,8 +197,13 @@ export function solveImpliedRND(
 
   const d = det3x3(M);
   let a = ivBase;
-  let b = -0.15; // default equity negative skew
-  let c = 0.55;  // default smile curvature
+  // Degenerate-system fallback: a FLAT smile (b = c = 0 ⇒ IV(K) = ivBase). When the
+  // 3×3 normal-equation determinant collapses (sparse / co-linear / flat chain) the
+  // data simply does not support a skew or curvature term, so we must not invent
+  // one. The previous fallback hardcoded an equity skew (b = −0.15, c = 0.55),
+  // fabricating a downside-skewed RND for markets that showed none.
+  let b = 0;
+  let c = 0;
 
   if (Math.abs(d) > 1e-12) {
     const Ma = [
@@ -414,12 +428,38 @@ export interface RealizedVolSuite {
   parkinson: number; // High/Low range
   garmanKlass: number; // Open/High/Low/Close
   yangZhang: number; // Overnight jump + Rodgers-Satchell intraday range
-  varianceRiskPremium: number; // IV - RV spread
-  vrpPercentile: number; // percentile rank over lookbacks
+  varianceRiskPremium: number; // IV - RV spread (vol points, decimal)
+  // Honest percentile of the CURRENT realized vol within its own rolling cone
+  // (computed from real candles). NOT a VRP percentile — we hold no IV history,
+  // so a true VRP distribution does not exist. 50 ⇒ abstain (insufficient history).
+  rvPercentile: number;
 }
 
 /**
- * Computes Yang-Zhang, Garman-Klass, and Parkinson RV from Candles
+ * Maps a Quant-Lab Candle (whose `time` may be an epoch-ms stamp, an ISO string,
+ * or a bare bar index) to the canonical market Candle the realizedVol estimators
+ * consume. Only `timestamp` is read by those estimators for bar-interval inference;
+ * a non-numeric `time` is passed through as 0 so intervalMinutes() falls back to
+ * its 5-minute default (the engine's intraday cadence).
+ */
+function toMarketCandles(candles: Candle[]): MarketCandle[] {
+  return candles.map((c) => ({
+    timestamp: typeof c.time === 'number' ? c.time : Number(c.time) || 0,
+    open: c.open,
+    high: c.high,
+    low: c.low,
+    close: c.close,
+    volume: c.volume,
+  }));
+}
+
+/**
+ * Computes Yang-Zhang, Garman-Klass, and Parkinson RV from Candles.
+ *
+ * Delegates to the bar-interval-aware estimators in realizedVol.ts so the same
+ * candles produce identical RV here and there. The previous local copy hardcoded
+ * `* 252` (a DAILY annualization) while being fed intraday (5-min) bars, which
+ * understated RV by ~√(390/5) ≈ 8.8× and made the VRP (IV − RV) nonsense.
  */
 export function calculateRealizedVolSuite(
   candles: Candle[],
@@ -433,102 +473,35 @@ export function calculateRealizedVolSuite(
       garmanKlass: 0.138,
       yangZhang: 0.142,
       varianceRiskPremium: impliedVol - 0.142,
-      vrpPercentile: 65,
+      rvPercentile: 50,
     };
   }
 
-  const activeCandles = candles.slice(Math.max(0, n - lookback));
-  const N = activeCandles.length;
+  const mkt = toMarketCandles(candles);
 
-  // 1. Parkinson Volatility Estimation
-  let parkinsonSum = 0;
-  activeCandles.forEach(c => {
-    if (c.low > 0) {
-      parkinsonSum += Math.pow(Math.log(c.high / c.low), 2);
-    }
-  });
-  // Parkinson coefficient: 1 / (4 * ln(2))
-  const parkinsonVariance = parkinsonSum / (4 * Math.log(2) * N);
-  const parkinson = Math.sqrt(parkinsonVariance * 252); // Annualized
+  const clampVol = (v: number, fallback: number) =>
+    isFinite(v) && v > 0 ? Math.min(2.5, Math.max(0.01, v)) : fallback;
 
-  // 2. Garman-Klass Volatility Estimation
-  let gkSum = 0;
-  activeCandles.forEach(c => {
-    if (c.low > 0 && c.open > 0) {
-      const logHL = Math.log(c.high / c.low);
-      const logCO = Math.log(c.close / c.open);
-      gkSum += 0.5 * Math.pow(logHL, 2) - (2 * Math.log(2) - 1) * Math.pow(logCO, 2);
-    }
-  });
-  const gkVariance = gkSum / N;
-  const garmanKlass = Math.sqrt(gkVariance * 252); // Annualized
-
-  // 3. Yang-Zhang Volatility Estimation
-  // Yang-Zhang is: V_overnight + k * V_close_to_close + (1 - k) * V_intraday
-  // Find Log of returns: close-to-open, open-to-close, close-to-close
-  const logO_Cprev: number[] = [];
-  const logC_O: number[] = [];
-  const logC_Cprev: number[] = [];
-
-  for (let i = 1; i < N; i++) {
-    const c = activeCandles[i];
-    const prev = activeCandles[i - 1];
-    if (c.open > 0 && prev.close > 0 && c.close > 0) {
-      logO_Cprev.push(Math.log(c.open / prev.close));
-      logC_O.push(Math.log(c.close / c.open));
-      logC_Cprev.push(Math.log(c.close / prev.close));
-    }
-  }
-
-  let yangZhang = garmanKlass; // fallback
-  if (logO_Cprev.length > 2) {
-    const uMean = logO_Cprev.reduce((acc, v) => acc + v, 0) / logO_Cprev.length;
-    const uVar = logO_Cprev.reduce((acc, v) => acc + Math.pow(v - uMean, 2), 0) / (logO_Cprev.length - 1);
-
-    const cMean = logC_Cprev.reduce((acc, v) => acc + v, 0) / logC_Cprev.length;
-    const cVar = logC_Cprev.reduce((acc, v) => acc + Math.pow(v - cMean, 2), 0) / (logC_Cprev.length - 1);
-
-    // Rodgers-Satchell intraday variance
-    let rsIntradaySum = 0;
-    for (let i = 0; i < N; i++) {
-      const c = activeCandles[i];
-      if (c.open > 0 && c.low > 0) {
-        const u = Math.log(c.high / c.open);
-        const d = Math.log(c.low / c.open);
-        const c_ln = Math.log(c.close / c.open);
-        rsIntradaySum += u * (u - c_ln) + d * (d - c_ln);
-      }
-    }
-    const rsVar = rsIntradaySum / N;
-
-    // k parameter
-    const k = 0.34 / (1.34 + (N + 1) / (N - 1));
-    const yzVariance = uVar + k * cVar + (1 - k) * rsVar;
-    yangZhang = Math.sqrt(Math.max(1e-6, yzVariance) * 252);
-  }
-
-  // Sanity check boundings
-  const yzFinal = isNaN(yangZhang) ? 0.142 : Math.min(2.5, Math.max(0.01, yangZhang));
-  const pkFinal = isNaN(parkinson) ? 0.145 : Math.min(2.5, Math.max(0.01, parkinson));
-  const gkFinal = isNaN(garmanKlass) ? 0.138 : Math.min(2.5, Math.max(0.01, garmanKlass));
+  const parkinson = clampVol(parkinsonVol(mkt, lookback), 0.145);
+  const garmanKlass = clampVol(garmanKlassVol(mkt, lookback), 0.138);
+  const yangZhang = clampVol(yangZhangVol(mkt, lookback), 0.142);
 
   // Variance Risk Premium (VRP) Spread: IV - RV
-  const varianceRiskPremium = impliedVol - yzFinal;
+  const varianceRiskPremium = impliedVol - yangZhang;
 
-  // Let's generate a robust percentile rank based on previous candles simulation
-  let simulatedWins = 0;
-  for (let i = 0; i < 40; i++) {
-    const noise = (Math.sin(i * 0.4) * 0.04) + 0.05; // historic mean ~5% VRP spread
-    if (varianceRiskPremium > noise) simulatedWins++;
-  }
-  const vrpPercentile = Math.round((simulatedWins / 40) * 100);
+  // Honest RV percentile: rank the current realized vol against the rolling
+  // volatility cone built from the SAME real candles (closeToClose history at
+  // this lookback). When history is too short to form a distribution, abstain
+  // with a neutral 50 rather than fabricating a waveform percentile.
+  const cone = realizedVolCone(mkt, [lookback]);
+  const rvPercentile = cone.length ? cone[0].percentile : 50;
 
   return {
-    parkinson: pkFinal,
-    garmanKlass: gkFinal,
-    yangZhang: yzFinal,
+    parkinson,
+    garmanKlass,
+    yangZhang,
     varianceRiskPremium,
-    vrpPercentile,
+    rvPercentile,
   };
 }
 
@@ -543,27 +516,26 @@ export interface VolConePoint {
 }
 
 /**
- * Generates volatility cone based on historic candles
+ * Generates a volatility cone from REAL historic candles.
+ *
+ * Delegates to realizedVol.volCone, which builds the rolling close-to-close vol
+ * distribution per window and reads `current` off the latest reading. The prior
+ * implementation fabricated every quantile from a `seed = w/30` and a Math.sin
+ * "current" — a decorative shape unrelated to the data. Windows without enough
+ * history to form a distribution are omitted (the caller renders what remains).
  */
-export function calculateVolatilityCone(candles: Candle[], yzVol: number): VolConePoint[] {
+export function calculateVolatilityCone(candles: Candle[], _yzVol: number): VolConePoint[] {
+  const mkt = toMarketCandles(candles);
   const windows = [5, 10, 20, 30, 45, 60];
-  const cone: VolConePoint[] = [];
-
-  windows.forEach(w => {
-    // Generate simulated distributions
-    const seed = w / 30;
-    cone.push({
-      window: w,
-      min: Math.max(0.06, 0.08 - 0.02 * seed),
-      p25: 0.11 + 0.01 * seed,
-      p50: 0.145 + 0.015 * seed,
-      p75: 0.18 + 0.02 * seed,
-      max: 0.28 + 0.05 * seed,
-      current: yzVol * (1.0 + (Math.sin(w * 0.1) * 0.1)) // adjusted for current curve representation
-    });
-  });
-
-  return cone;
+  return realizedVolCone(mkt, windows).map((b) => ({
+    window: b.window,
+    min: b.min,
+    p25: b.p25,
+    p50: b.median,
+    p75: b.p75,
+    max: b.max,
+    current: b.current,
+  }));
 }
 
 // ==========================================
@@ -574,8 +546,11 @@ export interface SkewMetrics {
   riskReversal25D: number; // Call IV (25D) - Put IV (25D)
   butterfly25D: number; // (Call IV(25D) + Put IV(25D))/2 - Atm IV
   skewSlopeAtm: number; // slope of the smile at spot
-  riskReversalPercentile: number; // extreme protection indicator
-  butterflyPercentile: number; // tail hedge pricing indicator
+  // Neutral 50 placeholder: a genuine percentile needs a rolling history of past
+  // readings, which this stateless call does not hold (use the engine's
+  // percentileRank ring buffer for a real rank). Never a fabricated waveform.
+  riskReversalPercentile: number;
+  butterflyPercentile: number;
 }
 
 export function computeSkewAnalytics(
@@ -583,35 +558,44 @@ export function computeSkewAnalytics(
   spot: number,
   ivBase: number
 ): SkewMetrics {
-  // Extract risk reversals from chain
-  // Find strikes where delta is close to +0.25 (Calls) and -0.25 (Puts)
-  let call25DIV = ivBase + 0.02; // defaults
-  let put25DIV = ivBase + 0.04;
+  // 25Δ wing IVs via the same bracketing/interpolation used by skewAnalytics.ts
+  // (ivAtDelta): find the two contracts straddling |Δ|=0.25 on each side and
+  // linearly interpolate. The previous nearest-delta pick snapped to whatever
+  // single contract happened to be closest, which on a sparse chain could be far
+  // from 25Δ and gave a discontinuous risk reversal.
+  const calls = chain.filter((c) => c.type === 'call');
+  const puts = chain.filter((c) => c.type === 'put');
+
+  // ATM IV: average of contracts at the strike nearest spot (blend call+put).
   let atmIV = ivBase;
+  if (chain.length > 0) {
+    const nearest = chain.reduce(
+      (b, c) => (Math.abs(c.strike - spot) < Math.abs(b.strike - spot) ? c : b),
+      chain[0]
+    );
+    const atmSet = chain.filter((c) => c.strike === nearest.strike && c.iv > 0);
+    atmIV = atmSet.length ? atmSet.reduce((a, c) => a + c.iv, 0) / atmSet.length : nearest.iv;
+  }
 
-  const sortedCalls = chain.filter(c => c.type === 'call').sort((a,b) => Math.abs(a.delta - 0.25) - Math.abs(b.delta - 0.25));
-  if (sortedCalls.length > 0) call25DIV = sortedCalls[0].iv;
-
-  const sortedPuts = chain.filter(c => c.type === 'put').sort((a,b) => Math.abs(Math.abs(a.delta) - 0.25) - Math.abs(Math.abs(b.delta) - 0.25));
-  if (sortedPuts.length > 0) put25DIV = sortedPuts[0].iv;
-
-  const sortAtm = [...chain].sort((a,b) => Math.abs(a.strike - spot) - Math.abs(b.strike - spot));
-  if (sortAtm.length > 0) atmIV = sortAtm[0].iv;
+  const call25DIV = ivAtDelta(calls, 0.25) ?? ivBase + 0.02;
+  const put25DIV = ivAtDelta(puts, 0.25) ?? ivBase + 0.04;
 
   const riskReversal25D = call25DIV - put25DIV;
   const butterfly25D = ((call25DIV + put25DIV) / 2) - atmIV;
   const skewSlopeAtm = (put25DIV - call25DIV) / (spot * 0.1); // estimated derivative dVol/dK
 
-  // Percentiles (deterministic hashing for smoothness)
-  const hashValRR = Math.abs(Math.sin(riskReversal25D * 100)) * 100;
-  const hashValBF = Math.abs(Math.cos(butterfly25D * 100)) * 100;
-
+  // Risk-reversal / butterfly percentiles require a real rolling history of past
+  // readings, which this stateless function does not hold. The previous version
+  // returned Math.abs(sin/cos(...))·100 — a deterministic waveform dressed up as a
+  // percentile. We abstain (50 = neutral / "no history") rather than fabricate.
+  // The engine's percentile ring buffer (skewAnalytics.percentileRank) is the
+  // correct home for a genuine rank when a history series is available.
   return {
     riskReversal25D,
     butterfly25D,
     skewSlopeAtm,
-    riskReversalPercentile: Math.round(hashValRR),
-    butterflyPercentile: Math.round(hashValBF),
+    riskReversalPercentile: 50,
+    butterflyPercentile: 50,
   };
 }
 
@@ -644,6 +628,74 @@ export interface PayoffChartPoint {
   underlyingPrice: number;
   pnl: number;
   probability: number;
+}
+
+/**
+ * Linearly interpolates the risk-neutral probability density at an arbitrary
+ * `targetStrike` between the two nearest density nodes (binary search on the
+ * sorted strikes). Returns 0 outside the density's support.
+ *
+ * Replaces the prior `density.find(|strike - x| < bucket)` lookup, which (a)
+ * returned the FIRST node within a tolerance (not the nearest), (b) missed
+ * entirely when the sampling grid was misaligned with the density nodes (e.g. a
+ * 200-point scan over a 101-node density), and (c) fell back to a uniform
+ * 1/N — biasing the probability-of-profit integral toward 0.5.
+ */
+function interpDensity(
+  density: ProbabilityDensityNode[],
+  targetStrike: number
+): number {
+  const n = density.length;
+  if (n === 0) return 0;
+  if (n === 1) return density[0].strike === targetStrike ? density[0].probability : 0;
+  // Outside support ⇒ no mass (never a uniform fallback).
+  if (targetStrike <= density[0].strike) {
+    return targetStrike === density[0].strike ? density[0].probability : 0;
+  }
+  if (targetStrike >= density[n - 1].strike) {
+    return targetStrike === density[n - 1].strike ? density[n - 1].probability : 0;
+  }
+  // Binary search for the node just below targetStrike (strikes are sorted asc).
+  let lo = 0, hi = n - 1;
+  while (hi - lo > 1) {
+    const mid = (lo + hi) >> 1;
+    if (density[mid].strike <= targetStrike) lo = mid;
+    else hi = mid;
+  }
+  const a = density[lo], b = density[hi];
+  const span = b.strike - a.strike;
+  if (span <= 0) return a.probability;
+  const w = (targetStrike - a.strike) / span;
+  return a.probability + (b.probability - a.probability) * w;
+}
+
+/**
+ * Classifies the terminal payoff topology of a multi-leg position from the NET
+ * option exposure at each tail, rather than from a P&L magnitude threshold.
+ *
+ * As S→∞ the slope of the payoff is 100·Σ(signed call qty); as S→0 it is
+ * −100·Σ(signed put qty). A strictly positive far-side slope ⇒ unbounded profit;
+ * a strictly negative one ⇒ unbounded loss. This is exact and scale-free, unlike
+ * the old `> 1e6` test (meaningless on an SPX-priced underlying).
+ */
+function payoffTailTopology(legs: OptionLeg[]): {
+  profitUnbounded: boolean;
+  lossUnbounded: boolean;
+} {
+  let netCallQty = 0; // slope contribution as S → +∞
+  let netPutQty = 0; // slope contribution as S → 0 (magnitude)
+  for (const l of legs) {
+    const signed = (l.action === 'buy' ? 1 : -1) * l.qty;
+    if (l.type === 'call') netCallQty += signed;
+    else netPutQty += signed;
+  }
+  // Upside: long net calls ⇒ profit unbounded; short net calls ⇒ loss unbounded.
+  // Downside: long net puts profit as S→0 (bounded at S=0); short net puts ⇒
+  // loss grows toward S=0 (bounded at strike·qty, but treated as the large-loss
+  // side). Only the call wing is genuinely unbounded in S; puts are capped at S=0.
+  const profitUnbounded = netCallQty > 0;
+  const lossUnbounded = netCallQty < 0;
+  return { profitUnbounded, lossUnbounded };
 }
 
 /**
@@ -691,16 +743,33 @@ export function buildStrategySuite(
     return profit;
   };
 
-  // Solve max profit & max loss numerically across 100 points
+  // Solve max profit & max loss numerically. The scan offsets are scaled to the
+  // expected move (1σ off the RND, fallback to spot·IV·√t) and to spot, so they
+  // are meaningful on any underlying — a fixed ±$20 is below tick noise on an
+  // SPX-priced (~6000) chain. Strikes are kinks in the payoff, so each strike is
+  // probed directly plus a small neighborhood, and the wide tails are anchored to
+  // the RND support so far-OTM unbounded legs are actually reached.
   let maxLossVal = 0;
   let maxProfitVal = 0;
-  const scanStrikes = legs.flatMap(l => [l.strike, l.strike - 20, l.strike + 20, spot * 0.5, spot * 1.5]).sort((a,b)=>a-b);
-  
+  const avgIv = legs.length ? legs.reduce((a, l) => a + l.iv, 0) / legs.length : 0.2;
+  const sigmaPts = rnd.stdDev > 0 ? rnd.stdDev : spot * avgIv * Math.sqrt(Math.max(t, 1e-4));
+  const em = Math.max(sigmaPts, spot * 0.005);
+  const lowTail = Math.max(0, Math.min(spot - 4 * em, rnd.density[0]?.strike ?? spot * 0.5));
+  const highTail = Math.max(spot + 4 * em, rnd.density[rnd.density.length - 1]?.strike ?? spot * 1.5);
+  const scanStrikes = [
+    lowTail,
+    highTail,
+    ...legs.flatMap((l) => [l.strike, l.strike - 0.25 * em, l.strike + 0.25 * em]),
+  ].sort((a, b) => a - b);
+
   scanStrikes.forEach(s => {
     const pnl = calculatePayoffAtSpot(s);
     if (pnl < maxLossVal) maxLossVal = pnl;
     if (pnl > maxProfitVal) maxProfitVal = pnl;
   });
+
+  // Unbounded topology from net option exposure per side, not a P&L magnitude.
+  const { profitUnbounded, lossUnbounded } = payoffTailTopology(legs);
 
   // Calculate Breakevens and Integration of Probability of Profit
   let profitAreaSum = 0;
@@ -716,10 +785,8 @@ export function buildStrategySuite(
     const testSpot = minDensityStrike + (maxDensityStrike - minDensityStrike) * (i / samplePointsCount);
     const pnl = calculatePayoffAtSpot(testSpot);
 
-    // Find density prob
-    let densityProb = 1 / samplePointsCount;
-    const closestNode = rndDensity.find(n => Math.abs(n.strike - testSpot) < (maxDensityStrike - minDensityStrike) / samplePointsCount);
-    if (closestNode) densityProb = closestNode.probability;
+    // Interpolate the RND at testSpot (never a uniform 1/N fallback).
+    const densityProb = interpDensity(rndDensity, testSpot);
 
     totalAreaSum += densityProb;
     if (pnl > 0) {
@@ -766,8 +833,8 @@ export function buildStrategySuite(
     legs,
     combinedGreeks,
     netPremium,
-    maxProfit: maxProfitVal > 1e6 ? 'unlimited' : maxProfitVal,
-    maxLoss: maxLossVal < -1e6 ? 'unlimited' : maxLossVal,
+    maxProfit: profitUnbounded ? 'unlimited' : maxProfitVal,
+    maxLoss: lossUnbounded ? 'unlimited' : maxLossVal,
     breakevens,
     pop,
     kellySizing,
@@ -806,10 +873,8 @@ export function generatePayoffCoordinates(
     const testSpot = minK + (maxK - minK) * (step / 80);
     const pnl = calculatePayoffAtSpot(testSpot);
 
-    // find probability from density
-    let prob = 1e-4;
-    const matchedNode = density.find(n => Math.abs(n.strike - testSpot) < (maxK - minK) / 80);
-    if (matchedNode) prob = matchedNode.probability;
+    // Interpolate probability from the RND at testSpot (0 outside support).
+    const prob = interpDensity(density, testSpot);
 
     coords.push({
       underlyingPrice: Math.round(testSpot * 100) / 100,
@@ -975,46 +1040,46 @@ export interface CharmVannaClockPoint {
 }
 
 /**
- * Aggregates Spot Dealer GEX per option Expiration date
+ * Aggregates dealer GEX from the option chain, bucketed by REAL expiry.
+ *
+ * `ChainContract` carries no per-contract expiry, so the chain represents a
+ * single (front) expiry: this returns exactly ONE node computed from the real
+ * contracts. The previous implementation looped the SAME chain once per hardcoded
+ * label ('0DTE'…'30DTE') and scaled each by exp(-idx·0.4) — six proportional
+ * fakes of one expiry, an invented term structure. When the chain shape gains a
+ * real per-contract expiry, bucket on it here and emit one node per true expiry.
  */
 export function aggregateExpiryGexCurve(
   chain: ChainContract[],
   spot: number
 ): ExpiryGexNode[] {
-  const expiries = ['0DTE', '1DTE', '3DTE', '7DTE', '14DTE', '30DTE'];
-  const nodes: ExpiryGexNode[] = [];
+  if (!chain || chain.length === 0) return [];
 
-  expiries.forEach((exp, idx) => {
-    // Generate exponential scaling of open interests to represent expirations
-    let sumCallGex = 0;
-    let sumPutGex = 0;
-    let maxStrGex = 0;
-    let maxStr = spot;
+  let sumCallGex = 0;
+  let sumPutGex = 0;
+  let maxStrGex = 0;
+  let maxStr = spot;
 
-    chain.forEach(c => {
-      const isCall = c.type === 'call';
-      const factor = Math.exp(-idx * 0.4); // weight decay
-      const gex = c.gamma * c.openInterest * 100 * (spot * spot) * 0.01 * (isCall ? 1 : -1) * factor;
+  chain.forEach((c) => {
+    const isCall = c.type === 'call';
+    const gex = c.gamma * c.openInterest * 100 * (spot * spot) * 0.01 * (isCall ? 1 : -1);
+    if (isCall) sumCallGex += gex;
+    else sumPutGex += gex;
+    if (Math.abs(gex) > maxStrGex) {
+      maxStrGex = Math.abs(gex);
+      maxStr = c.strike;
+    }
+  });
 
-      if (isCall) sumCallGex += gex;
-      else sumPutGex += gex;
-
-      if (Math.abs(gex) > maxStrGex) {
-        maxStrGex = Math.abs(gex);
-        maxStr = c.strike;
-      }
-    });
-
-    nodes.push({
-      expiry: exp,
+  return [
+    {
+      expiry: 'Front', // single real expiry — not a fabricated decay series
       totalGex: sumCallGex + sumPutGex,
       callGex: sumCallGex,
       putGex: sumPutGex,
-      dominantStrike: maxStr
-    });
-  });
-
-  return nodes;
+      dominantStrike: maxStr,
+    },
+  ];
 }
 
 /**
@@ -1082,8 +1147,11 @@ export function evaluateAlertRules(
   prevSpot: number,
   deltaGex: number, // netGex value
   gammaFlip: number,
-  vrpPercentile: number,
-  riskReversalPercentile: number
+  // Honest underlying values (decimal vol). VRP = IV − RV; RR25 = call25Δ − put25Δ.
+  // These replace the former fabricated percentiles. For 'vrp_high' / 'skew_risk'
+  // the rule's thresholdValue is read as VOL POINTS (e.g. 5 ⇒ 0.05).
+  varianceRiskPremium: number,
+  riskReversal25D: number
 ): AlertDispatch[] {
   const dispatches: AlertDispatch[] = [];
   const time = formatTime(new Date());
@@ -1141,22 +1209,35 @@ export function evaluateAlertRules(
       });
     }
 
-    if (r.metric === 'vrp_high' && vrpPercentile >= 90) {
-      dispatches.push({
-        timestamp: time,
-        ruleName: r.name,
-        message: `QUANT EXTREME SPREAD: Vol Variance Risk Premium (VRP) is in the 90th percentile. Implied vol is significantly rich relative to realized drift! Selling setup optimal.`,
-        type: 'info'
-      });
+    if (r.metric === 'vrp_high') {
+      // Direct, honest threshold on the VRP value in vol points (no fabricated
+      // percentile). thresholdValue is in vol points; default 5 pts (=0.05).
+      const thrPts = r.thresholdValue ?? 5;
+      const vrpPts = varianceRiskPremium * 100;
+      if (vrpPts >= thrPts) {
+        dispatches.push({
+          timestamp: time,
+          ruleName: r.name,
+          message: `IV RICH: Variance Risk Premium (IV − RV) is +${vrpPts.toFixed(1)} vol pts (≥ ${thrPts} pt threshold). Implied vol rich vs realized — premium-selling favoured.`,
+          type: 'info'
+        });
+      }
     }
 
-    if (r.metric === 'skew_risk' && riskReversalPercentile >= 85) {
-      dispatches.push({
-        timestamp: time,
-        ruleName: r.name,
-        message: `ASYMMETRICAL SKEW THREAT: Skew Risk Reversal has triggered the 85th percentile. Tail insurance hedging is highly elevated. Protection buying detected.`,
-        type: 'warning'
-      });
+    if (r.metric === 'skew_risk') {
+      // Direct threshold on |risk reversal| in vol points (no fabricated
+      // percentile). thresholdValue is in vol points; default 3 pts (=0.03).
+      const thrPts = r.thresholdValue ?? 3;
+      const rrPts = Math.abs(riskReversal25D) * 100;
+      if (rrPts >= thrPts) {
+        const side = riskReversal25D < 0 ? 'downside puts bid (put skew)' : 'upside calls bid (call skew)';
+        dispatches.push({
+          timestamp: time,
+          ruleName: r.name,
+          message: `SKEW STRESS: 25Δ risk reversal at ${(riskReversal25D * 100).toFixed(1)} vol pts (|RR| ≥ ${thrPts} pt) — ${side}. Tail hedging elevated.`,
+          type: 'warning'
+        });
+      }
     }
   });
 

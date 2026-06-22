@@ -12,11 +12,12 @@ export interface GexProfile {
   expectedMovePct: number; dealerBias: 'LONG GAMMA' | 'SHORT GAMMA'; aboveFlip: boolean;
 }
 
-function bsGamma(S: number, K: number, tauYears: number, iv: number, r = 0.05): number {
+function bsGamma(S: number, K: number, tauYears: number, iv: number, r = 0.05, q = 0): number {
   const T = Math.max(0.0001, tauYears);
   const sigma = Math.max(0.01, iv);
-  const d1 = (Math.log(S / K) + (r + (sigma * sigma) / 2) * T) / (sigma * Math.sqrt(T));
-  return stdNormalPDF(d1) / (S * sigma * Math.sqrt(T));
+  const d1 = (Math.log(S / K) + (r - q + (sigma * sigma) / 2) * T) / (sigma * Math.sqrt(T));
+  // q threaded for consistency with the full pricer; q=0 ⇒ e^{-qT}=1 (no change).
+  return (Math.exp(-q * T) * stdNormalPDF(d1)) / (S * sigma * Math.sqrt(T));
 }
 
 function totalGexAtSpot(S: number, chain: LiveOptionContract[], tauYears: number): number {
@@ -60,6 +61,9 @@ export function buildGexProfile(
   const magnet = pool.reduce((b, r) => Math.abs(r.netGex) > Math.abs(b.netGex) ? r : b, pool[0]).strike;
 
   // Gamma flip: grid + linear interpolation at the sign change. Never invented.
+  // NOTE: the gexEngine-vs-skyQuantCore gamma-flip reconciliation is intentionally
+  // left unchanged here pending a separately-reviewed pass (regime/leader-flag
+  // sensitive); do not "fix" the two flips to agree without that validation.
   let gammaFlip = spot, found = false;
   const minS = spot * 0.9, maxS = spot * 1.1, steps = 60;
   let prevS = minS, prevG = totalGexAtSpot(minS, chain, tauYears);

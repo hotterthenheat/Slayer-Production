@@ -545,11 +545,13 @@ export interface DealerPosEngineResult {
   vexStrikes: { strike: number; vex: number }[];
   expectedMovePct: number;
 }
-function quickGamma(S: number, K: number, dte: number, iv: number): number {
+function quickGamma(S: number, K: number, dte: number, iv: number, r = 0.05, q = 0): number {
   const T = Math.max(0.0001, dte / 365);
   const sigma = Math.max(0.01, iv);
-  const d1 = (Math.log(S / K) + (0.05 + (sigma * sigma) / 2) * T) / (sigma * Math.sqrt(T));
-  return stdNormalPDF(d1) / (S * sigma * Math.sqrt(T));
+  const d1 = (Math.log(S / K) + (r - q + (sigma * sigma) / 2) * T) / (sigma * Math.sqrt(T));
+  // q=0 ⇒ no dividend discount on the gamma factor (BSM e^{-qT}=1); threaded for
+  // consistency with the rest of the pricer. Negligible numeric change at q=0.
+  return (Math.exp(-q * T) * stdNormalPDF(d1)) / (S * sigma * Math.sqrt(T));
 }
 
 function totalGammaAtSpot(S: number, chain: ChainContract[], dte = 1): number {

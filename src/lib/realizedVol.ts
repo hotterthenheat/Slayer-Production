@@ -11,7 +11,14 @@ import { Candle } from '../types';
 
 const ln = Math.log;
 
-/** Median bar interval in minutes (robust to gaps). */
+/** Median bar interval in minutes (robust to gaps).
+ *
+ * Falls back to a 5-minute default when the `timestamp` field is NOT a real
+ * epoch-ms clock (e.g. sequential bar indices 0,1,2…). Without this guard, an
+ * index series yields a median diff of 1/60000 min, which blows the
+ * annualization factor up by ~1e5×. We treat the inferred interval as valid
+ * only when it lands in a plausible intraday-to-daily band [0.5 min, 1 day].
+ */
 export function intervalMinutes(candles: Candle[]): number {
   if (!candles || candles.length < 2) return 5;
   const diffs: number[] = [];
@@ -21,7 +28,10 @@ export function intervalMinutes(candles: Candle[]): number {
   }
   if (!diffs.length) return 5;
   diffs.sort((a, b) => a - b);
-  return diffs[Math.floor(diffs.length / 2)] || 5;
+  const median = diffs[Math.floor(diffs.length / 2)] || 5;
+  // Reject implausible intervals (non-timestamp inputs) → default 5-min bars.
+  if (median < 0.5 || median > 1440) return 5;
+  return median;
 }
 
 /** Trading periods per year for a given bar interval. */

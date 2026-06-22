@@ -3,6 +3,14 @@ import * as dotenv from "dotenv";
 
 dotenv.config();
 
+// TLS for migrations, mirroring the runtime pool (src/db/index.ts pgSslOption):
+//   SQL_SSL=require/verify -> verify cert; no-verify/prefer -> encrypt only; else off.
+const sslMode = (process.env.SQL_SSL || '').toLowerCase();
+const migrationSsl: false | { rejectUnauthorized: boolean } =
+  sslMode === 'require' || sslMode === 'verify' ? { rejectUnauthorized: true }
+  : sslMode === 'no-verify' || sslMode === 'prefer' ? { rejectUnauthorized: false }
+  : false;
+
 const sqlHost = process.env.SQL_HOST;
 const sqlDbName = process.env.SQL_DB_NAME;
 const user = process.env.SQL_ADMIN_USER;
@@ -32,7 +40,7 @@ export default defineConfig({
     user: user,
     password: password,
     database: sqlDbName,
-    ssl: false,
+    ssl: migrationSsl,
   },
   verbose: true,
 });

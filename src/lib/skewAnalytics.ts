@@ -11,7 +11,7 @@
 import { ChainContract } from './v11Math';
 
 /** Interpolate the IV of one option side at a target |delta| (e.g. 0.25). */
-function ivAtDelta(side: ChainContract[], targetAbsDelta: number): number | null {
+export function ivAtDelta(side: ChainContract[], targetAbsDelta: number): number | null {
   const pts = side
     .filter((c) => isFinite(c.delta) && isFinite(c.iv) && c.iv > 0)
     .map((c) => ({ ad: Math.abs(c.delta), iv: c.iv }))

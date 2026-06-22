@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useMemo } from 'react';
-import { createChart, CandlestickSeries, LineSeries, createSeriesMarkers, ColorType } from 'lightweight-charts';
+import { createChart, CandlestickSeries, LineSeries, createSeriesMarkers, createTextWatermark, ColorType } from 'lightweight-charts';
 import { Candle, TargetLevel } from '../types';
 import { useContractStore } from '../lib/store';
 
@@ -100,15 +100,21 @@ export const InteractiveChart = React.memo(function InteractiveChart({
         timeVisible: true,
         secondsVisible: false,
       },
-      watermark: {
-        visible: !!watermarkText,
-        fontSize: 24,
-        horzAlign: 'center',
-        vertAlign: 'center',
-        color: isLight ? 'rgba(0, 0, 0, 0.05)' : 'rgba(255, 255, 255, 0.04)',
-        text: watermarkText || '',
-      },
     } as any);
+
+    // Watermark: lightweight-charts v5 removed the top-level `watermark` chart
+    // option (it was silently ignored here), so render it via the v5 text-watermark
+    // plugin on the first pane instead.
+    if (watermarkText) {
+      const panes = chart.panes();
+      if (panes && panes.length > 0) {
+        createTextWatermark(panes[0], {
+          horzAlign: 'center',
+          vertAlign: 'center',
+          lines: [{ text: watermarkText, color: isLight ? 'rgba(0, 0, 0, 0.05)' : 'rgba(255, 255, 255, 0.04)', fontSize: 24 }],
+        });
+      }
+    }
 
     // 2. Add Candlestick Series once with high contrast neon branding
     const candlestickSeries = chart.addSeries(CandlestickSeries, {
@@ -182,9 +188,6 @@ export const InteractiveChart = React.memo(function InteractiveChart({
         },
         timeScale: {
           borderColor: isLight ? '#e5e7eb' : '#18181b',
-        },
-        watermark: {
-          color: isLight ? 'rgba(0, 0, 0, 0.05)' : 'rgba(255, 255, 255, 0.04)',
         }
       });
     }
