@@ -1299,7 +1299,7 @@ export function InstitutionalPhysicsDashboard({ profile: externalProfile, ticker
                 className="bg-black hover:mirror-panel hover:border-black text-zinc-400 hover:text-[#E5E5E5] rounded-xs p-1.5 px-3 transition-all text-[8.5px] font-bold flex items-center gap-1 cursor-pointer"
                 title={isExpanded ? "Exit Fullscreen" : "Expand to Fullscreen"}
               >
-                <span>{isExpanded ? "⛶ COLLAPSE [ESC]" : "⛶ EXPAND"}</span>
+                <span>{isExpanded ? " COLLAPSE [ESC]" : " EXPAND"}</span>
               </button>
             </div>
           </div>

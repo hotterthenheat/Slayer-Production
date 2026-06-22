@@ -93,10 +93,10 @@ function biasTone(v?: string): 'up' | 'down' | 'flat' {
 function fmtDollars(n: number): string {
   const abs = Math.abs(n);
   const sign = n < 0 ? '-' : '';
-  if (abs >= 1e9) return `${sign}$${(abs / 1e9).toFixed(1)}B`;
-  if (abs >= 1e6) return `${sign}$${(abs / 1e6).toFixed(1)}M`;
-  if (abs >= 1e3) return `${sign}$${(abs / 1e3).toFixed(0)}K`;
-  return `${sign}$${abs.toFixed(0)}`;
+  if (abs >= 1e9) return `${sign}$${(abs / 1e9).toLocaleString(undefined, { minimumFractionDigits: 1, maximumFractionDigits: 1 })}B`;
+  if (abs >= 1e6) return `${sign}$${(abs / 1e6).toLocaleString(undefined, { minimumFractionDigits: 1, maximumFractionDigits: 1 })}M`;
+  if (abs >= 1e3) return `${sign}$${(abs / 1e3).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}K`;
+  return `${sign}$${abs.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
 }
 
 const fmtNum = (n?: number) => (typeof n === 'number' && isFinite(n) ? n.toLocaleString() : '—');
@@ -117,16 +117,18 @@ const ScoreGauge = ({ score, stateLabel, tone }: { score: number; stateLabel: st
   const clamped = Math.max(0, Math.min(100, score));
   const color = STATUS_COLOR[tone];
   return (
-    <div className="flex flex-col h-full gap-2.5">
-      <div className="flex items-center justify-between bg-[var(--surface-2)] border border-[var(--border)] rounded-[3px] px-2.5 py-1.5">
-        <span className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[var(--text-tertiary)]">State</span>
-        <span className="text-[10px] font-bold uppercase tracking-[0.14em]" style={{ color }}>{stateLabel}</span>
+    <div className="flex flex-col h-full gap-1 text-zinc-300 font-mono">
+      <div className="flex items-center justify-between bg-[#0a0a0a] border border-zinc-800/50 rounded-sm px-3 py-1.5 shadow-sm">
+        <span className="text-[8.5px] font-bold uppercase tracking-[0.2em] text-zinc-500">State</span>
+        <span className="text-[8.5px] font-black uppercase tracking-[0.16em]" style={{ color }}>{stateLabel}</span>
       </div>
-      <div className="flex-1 flex flex-col items-center justify-center gap-1 bg-[var(--surface-2)] border border-[var(--border)] rounded-[3px]">
-        <div className="text-4xl font-bold tabular-nums leading-none text-[var(--text-primary)]">{Math.round(clamped)}</div>
-        <div className="text-[10px] text-[var(--text-tertiary)] uppercase tracking-[0.16em]">System Score</div>
-        <div className="w-3/4 h-1.5 mt-2 bg-[var(--surface-3)] rounded-full overflow-hidden">
-          <div className="h-full rounded-full transition-all" style={{ width: `${clamped}%`, background: color }} />
+      <div className="flex-1 flex flex-col items-center justify-center p-6 bg-[#0a0a0a] border border-zinc-800/50 rounded-sm relative shadow-sm min-h-[100px]">
+        <div className="text-[32px] font-black tracking-tighter text-white leading-none">{Math.round(clamped)}</div>
+        <div className="text-[8.5px] font-bold text-zinc-500 uppercase tracking-[0.25em] mt-2">System Score</div>
+        
+        {/* Progress Bar exactly matching screenshot */}
+        <div className="absolute bottom-0 left-0 right-0 h-[3px] bg-zinc-900/50 rounded-b-sm overflow-hidden">
+          <div className="h-full transition-all duration-500 ease-out" style={{ width: `${clamped}%`, background: color }} />
         </div>
       </div>
     </div>
@@ -396,21 +398,21 @@ const EntryLevelWidget = React.memo(() => {
   const serverState = useContractStore((s) => s.serverState);
   const spot = serverState?.sky_vision?.spot ?? serverState?.gex_profile?.spot;
   if (typeof spot !== 'number') return <MetricTile label="Entry Levels" value="—" sub="Optimal entry" />;
-  return <MetricTile label="Entry Levels" value={spot.toFixed(2)} sub="Reference spot" />;
+  return <MetricTile label="Entry Levels" value={spot.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} sub="Reference spot" />;
 });
 
 const StopLevelWidget = React.memo(() => {
   const serverState = useContractStore((s) => s.serverState);
   const wall = serverState?.sky_vision?.walls?.put ?? serverState?.gex_profile?.putWall;
   if (typeof wall !== 'number' || wall <= 0) return <MetricTile label="Stop Levels" value="—" sub="Hard stop" />;
-  return <MetricTile label="Stop Levels" value={wall.toFixed(2)} sub="Put wall support" tone="down" />;
+  return <MetricTile label="Stop Levels" value={wall.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} sub="Put wall support" tone="down" />;
 });
 
 const TargetLevelWidget = React.memo(() => {
   const serverState = useContractStore((s) => s.serverState);
   const t = serverState?.sky_vision?.targetStack?.[0];
   const wall = serverState?.sky_vision?.walls?.call ?? serverState?.gex_profile?.callWall;
-  const value = typeof t?.underlying === 'number' ? t.underlying.toFixed(2) : typeof wall === 'number' && wall > 0 ? wall.toFixed(2) : null;
+  const value = typeof t?.underlying === 'number' ? t.underlying.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : typeof wall === 'number' && wall > 0 ? wall.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : null;
   if (!value) return <MetricTile label="Target Levels" value="—" sub="Primary target" />;
   return <MetricTile label="Target Levels" value={value} sub={t?.label ? `${t.label}` : 'Call wall'} tone="up" />;
 });

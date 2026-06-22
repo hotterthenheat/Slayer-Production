@@ -248,7 +248,7 @@ export function TwoFactorFlow() {
       {step === 5 && (
         <div className="space-y-4 animate-fadeIn">
           <div className="text-xs text-[#F87171] leading-relaxed font-bold border-b border-[#F87171]/50 pb-2">
-            ⚠️ 2FA ENABLED: DOWNLOAD EMERGENCY BACKUP RECOVERY KEYS
+            ️ 2FA ENABLED: DOWNLOAD EMERGENCY BACKUP RECOVERY KEYS
           </div>
           <p className="text-xs text-zinc-400 leading-relaxed">
             These are your 10 offline recovery codes. Each is a one-time credential to enter account vaults if you lose your phone.
@@ -265,7 +265,7 @@ export function TwoFactorFlow() {
 
           <div className="flex flex-col sm:flex-row justify-between items-center gap-3 pt-3 border-t border-black">
             <span className="text-[10px] text-zinc-500 font-bold uppercase tracking-wider">
-              {hasDownloaded ? 'ℹ️ Keys backup captured!' : '⚠️ Download codes to enable exit.'}
+              {hasDownloaded ? 'ℹ️ Keys backup captured!' : '️ Download codes to enable exit.'}
             </span>
             <div className="flex gap-3 justify-end w-full sm:w-auto">
               <button 
