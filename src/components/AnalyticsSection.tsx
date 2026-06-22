@@ -325,19 +325,19 @@ export function AnalyticsSection({
                 Market Structure Matrix
               </h4>
             </div>
-            <span className="text-[10px] font-mono font-bold uppercase text-zinc-3 py-0.5 px-1.5 bg-black rounded">
+            <span className="text-[10px] font-mono font-bold uppercase text-zinc-300 py-0.5 px-1.5 bg-black rounded">
               {trendName}
             </span>
           </div>
 
-          <div className="space-y-2 font-mono text-[11px] text-zinc-405">
+          <div className="space-y-2 font-mono text-[11px] text-zinc-400">
             <div className="flex justify-between">
               <span>Structure Velocity:</span>
-              <span className="text-zinc-250">{(score.structureQuality * 1.3).toFixed(1)}x / s</span>
+              <span className="text-zinc-300">{(score.structureQuality * 1.3).toFixed(1)}x / s</span>
             </div>
             <div className="flex justify-between">
               <span>Sequence Position:</span>
-              <span className="text-zinc-250">Higher Highs / Lows verified</span>
+              <span className="text-zinc-300">Higher Highs / Lows verified</span>
             </div>
             <div className="flex justify-between">
               <span>Breakout Strength:</span>
@@ -345,7 +345,7 @@ export function AnalyticsSection({
             </div>
             <div className="flex justify-between">
               <span>Trend Persistence Index:</span>
-              <span className="text-zinc-250 font-mono">{(score.structureQuality * 10).toFixed(0)}%</span>
+              <span className="text-zinc-300 font-mono">{(score.structureQuality * 10).toFixed(0)}%</span>
             </div>
           </div>
         </div>
@@ -359,12 +359,12 @@ export function AnalyticsSection({
         <div>
           <div className="flex items-center justify-between border-b border-black/60 pb-2.5 mb-3">
             <div className="flex items-center gap-2">
-              <Clock className="w-4 text-blue-450" />
+              <Clock className="w-4 text-blue-400" />
               <h4 className="font-display font-semibold text-xs tracking-wide text-zinc-100 uppercase">
                 Aggregate Alignments
               </h4>
             </div>
-            <span className="text-[10px] font-mono font-bold uppercase text-blue-450 bg-blue-950/30 px-1.5 py-0.5 rounded">
+            <span className="text-[10px] font-mono font-bold uppercase text-blue-400 bg-blue-950/30 px-1.5 py-0.5 rounded">
               {htfMatched}/6 Agreement
             </span>
           </div>

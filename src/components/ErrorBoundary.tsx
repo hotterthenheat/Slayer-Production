@@ -36,24 +36,24 @@ export class ErrorBoundary extends React.Component<Props, State> {
     const msg = this.state.error?.message || 'An unexpected error occurred in this panel.';
     return (
       <div className="w-full min-h-[240px] flex items-center justify-center p-8">
-        <div className="max-w-md w-full bg-black/80 border border-rose-500/30 rounded-lg p-6 text-center font-mono">
-          <div className="text-[10px] uppercase tracking-[0.25em] text-rose-400/80 mb-3">
-             Subsystem Fault{this.props.label ? ` · ${this.props.label}` : ''}
+        <div className="max-w-md w-full bg-[var(--surface)] border border-[var(--danger)]/30 rounded-xl p-6 text-center">
+          <div className="text-[10px] uppercase tracking-[0.25em] text-[var(--danger)] mb-3 font-mono">
+            Subsystem Fault{this.props.label ? ` · ${this.props.label}` : ''}
           </div>
-          <p className="text-zinc-400 text-xs mb-1">
+          <p className="text-[var(--text-secondary)] text-xs mb-1 leading-relaxed">
             This panel hit an error and was isolated to keep the rest of the terminal running.
           </p>
-          <p className="text-zinc-600 text-[10px] mb-5 break-words">{msg}</p>
+          <p className="text-[var(--text-tertiary)] text-[10px] mb-5 break-words font-mono">{msg}</p>
           <div className="flex items-center justify-center gap-2">
             <button
               onClick={this.reset}
-              className="px-4 py-2 text-[11px] font-bold uppercase tracking-widest rounded-md bg-white text-black hover:opacity-90 transition"
+              className="px-4 py-2 text-[11px] font-bold uppercase tracking-widest rounded-md bg-[var(--text-primary)] text-[var(--surface)] hover:opacity-90 transition focus-visible:ring-1 focus-visible:ring-[var(--border-strong)] focus:outline-none"
             >
               Retry
             </button>
             <button
               onClick={() => window.location.reload()}
-              className="px-4 py-2 text-[11px] font-bold uppercase tracking-widest rounded-md border border-zinc-700 text-zinc-300 hover:border-zinc-500 transition"
+              className="px-4 py-2 text-[11px] font-bold uppercase tracking-widest rounded-md border border-[var(--border)] text-[var(--text-secondary)] hover:border-[var(--border-strong)] transition focus-visible:ring-1 focus-visible:ring-[var(--border-strong)] focus:outline-none"
             >
               Reload Terminal
             </button>

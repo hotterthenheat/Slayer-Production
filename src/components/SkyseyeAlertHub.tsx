@@ -319,7 +319,7 @@ export function SkyseyeAlertHub() {
   return (
     <div 
       id="skyseye-alert-container" 
-      className="fixed bottom-6 right-6 z-[120] flex flex-col gap-3 w-[350px] max-w-[calc(100vw-32px)] pointer-events-auto font-mono selection:bg-[#4ADE80] text-black/30"
+      className="fixed bottom-6 right-6 z-[120] flex flex-col gap-3 w-[350px] max-w-[calc(100vw-32px)] pointer-events-auto font-mono selection:bg-[var(--success)] text-black/30"
     >
       <AnimatePresence mode="popLayout">
         {toasts.map((toast) => {
@@ -332,12 +332,12 @@ export function SkyseyeAlertHub() {
           if (toast.rating === 'GOOD') {
             bgClass = 'bg-[#0A0A0A] border-[#1F1F1F]';
             borderLeftGlow = 'border-l-zinc-300';
-            accentText = 'text-[#4ADE80]';
+            accentText = 'text-[var(--success)]';
             glowIntensity = 'shadow-[0_12px_44px_rgba(34,211,238,0.12),0_8px_24px_rgba(0,0,0,0.8)]';
           } else if (toast.rating === 'WEAK') {
-            bgClass = 'bg-[#0A0A0A] border-[#F87171]/50';
+            bgClass = 'bg-[#0A0A0A] border-[var(--danger)]/50';
             borderLeftGlow = 'border-l-rose-500';
-            accentText = 'text-[#F87171]';
+            accentText = 'text-[var(--danger)]';
             glowIntensity = 'shadow-[0_12px_44px_rgba(239,68,68,0.12),0_8px_24px_rgba(0,0,0,0.8)]';
           }
 
@@ -357,7 +357,7 @@ export function SkyseyeAlertHub() {
                   e.stopPropagation(); // Prevent trigger navigation
                   removeToast(toast.id);
                 }}
-                className="absolute top-2 right-2 p-0.5 text-zinc-500 hover:text-[#E5E5E5] rounded transition-colors opacity-0 group-hover:opacity-100 cursor-pointer"
+                className="absolute top-2 right-2 p-0.5 text-[var(--text-tertiary)] hover:text-[var(--text-primary)] rounded transition-colors opacity-0 group-hover:opacity-100 cursor-pointer focus-visible:ring-1 focus-visible:ring-[var(--border-strong)] focus:outline-none"
               >
                 <X className="w-3 h-3" />
               </button>
@@ -366,11 +366,11 @@ export function SkyseyeAlertHub() {
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <div className={`w-5 h-5 rounded-full flex items-center justify-center shrink-0 ${
-                    toast.rating === 'GOOD' 
-                      ? 'bg-black/40 border border-black text-[#4ADE80]' 
-                      : toast.rating === 'WEAK' 
-                        ? 'bg-rose-500/10 border border-rose-500/35 text-[#F87171]' 
-                        : 'bg-black/10 border border-black text-zinc-400'
+                    toast.rating === 'GOOD'
+                      ? 'bg-[var(--surface)] border border-[var(--border)] text-[var(--success)]'
+                      : toast.rating === 'WEAK'
+                        ? 'bg-rose-500/10 border border-rose-500/35 text-[var(--danger)]'
+                        : 'bg-[var(--surface)] border border-[var(--border)] text-[var(--text-tertiary)]'
                   }`}>
                     {toast.rating === 'GOOD' ? (
                       <Sparkles className="w-2.5 h-2.5" />
@@ -381,36 +381,36 @@ export function SkyseyeAlertHub() {
                     )}
                   </div>
                   <div className="flex flex-col text-left">
-                    <span className="text-[10px] font-black text-[#E5E5E5]/95 uppercase tracking-widest flex items-center gap-1.5">
+                    <span className="text-[10px] font-black text-[var(--text-primary)]/95 uppercase tracking-widest flex items-center gap-1.5">
                       {toast.rating === 'GOOD' ? 'TRADE ALERT' : 'FLOW UPDATE'}
                     </span>
-                    <span className="text-[8px] text-zinc-500 tracking-wider font-mono">
+                    <span className="text-[10px] text-[var(--text-tertiary)] tracking-wider font-mono tabular-nums">
                       {toast.timestamp} • LIVE
                     </span>
                   </div>
                 </div>
 
                 {/* Rating Badge */}
-                <div className={`px-2 py-0.5 border text-[8.5px] font-black tracking-widest rounded-sm uppercase italic shrink-0 ${
-                  toast.rating === 'GOOD' 
-                    ? 'border-black bg-black/40 text-[#4ADE80]' 
+                <div className={`px-2 py-0.5 border text-[10px] font-black tracking-widest rounded-sm uppercase italic shrink-0 ${
+                  toast.rating === 'GOOD'
+                    ? 'border-[var(--border)] bg-[var(--surface)] text-[var(--success)]'
                     : toast.rating === 'WEAK'
-                      ? 'border-rose-500/30 bg-rose-500/10 text-[#F87171]'
-                      : 'border-black/80 bg-black text-zinc-400'
+                      ? 'border-rose-500/30 bg-rose-500/10 text-[var(--danger)]'
+                      : 'border-[var(--border)] bg-[var(--surface)] text-[var(--text-tertiary)]'
                 }`}>
                   {toast.rating === 'GOOD' ? ' ENTER' : toast.rating === 'WEAK' ? ' AVOID' : ' HOLD'}
                 </div>
               </div>
 
               {/* Main Content Info */}
-              <div className="bg-black/40 border border-black/50 rounded-sm p-2.5 space-y-1.5 text-left">
+              <div className="bg-[var(--surface-2)] border border-[var(--border)] rounded-sm p-2.5 space-y-1.5 text-left">
                 <div className="flex items-center justify-between">
                   {toast.type === 'MULTIPLE' ? (
-                    <span className="text-[#E5E5E5] text-xs font-black tracking-widest font-mono animate-pulse">
+                    <span className="text-[var(--text-primary)] text-xs font-black tracking-widest font-mono">
                       MULTIPLE TRADES FOUND
                     </span>
                   ) : (
-                    <span className="text-[#E5E5E5] text-xs font-black tracking-widest font-mono">
+                    <span className="text-[var(--text-primary)] text-xs font-black tracking-widest font-mono tabular-nums">
                       {toast.ticker} {toast.strike}{toast.type}
                     </span>
                   )}
@@ -419,20 +419,20 @@ export function SkyseyeAlertHub() {
                       SCORE: 100%
                     </span>
                   ) : (
-                    <span className={`text-[10px] font-black ${accentText}`}>
+                    <span className={`text-[10px] font-black tabular-nums ${accentText}`}>
                       SCORE: {toast.health} / 100
                     </span>
                   )}
                 </div>
                 
                 {/* Visual score bar */}
-                <div className="w-full bg-black/80 h-1.5 rounded-full overflow-hidden">
-                  <div 
+                <div className="w-full bg-[var(--surface-2)] h-1.5 rounded-full overflow-hidden">
+                  <div
                     className={`h-full rounded-full transition-all duration-500 ${
-                      toast.rating === 'GOOD' 
-                        ? 'bg-black/40' 
-                        : toast.rating === 'WEAK' 
-                          ? 'bg-rose-500' 
+                      toast.rating === 'GOOD'
+                        ? 'bg-[var(--surface)]'
+                        : toast.rating === 'WEAK'
+                          ? 'bg-rose-500'
                           : 'bg-indigo-400'
                     }`}
                     style={{ width: `${toast.type === 'MULTIPLE' ? 100 : toast.health}%` }}
@@ -441,40 +441,40 @@ export function SkyseyeAlertHub() {
 
                 {/* Quantitative statistics / Summary list */}
                 {toast.type === 'MULTIPLE' ? (
-                  <div className="text-[9.5px] font-mono text-[#4ADE80] border-t border-black/60 pt-2 mt-1 leading-normal max-h-[60px] overflow-y-auto">
-                    <span className="text-[#4ADE80] font-bold block mb-1">Multiple setups found:</span>
-                    <span className="text-zinc-400 block">{toast.tradesSummary}</span>
+                  <div className="text-[10px] font-mono text-[var(--success)] border-t border-[var(--border)] pt-2 mt-1 leading-normal max-h-[60px] overflow-y-auto">
+                    <span className="text-[var(--success)] font-bold block mb-1">Multiple setups found:</span>
+                    <span className="text-[var(--text-tertiary)] block">{toast.tradesSummary}</span>
                   </div>
                 ) : (
-                  <div className="grid grid-cols-2 gap-x-2 gap-y-1 text-[8.5px] font-mono border-t border-black/60 pt-2 mt-1">
+                  <div className="grid grid-cols-2 gap-x-2 gap-y-1 text-[10px] font-mono border-t border-[var(--border)] pt-2 mt-1">
                     <div className="flex justify-between">
-                      <span className="text-zinc-500">Premium Estim:</span>
-                      <span className="text-[#4ADE80] font-bold">${toast.price.toFixed(2)}</span>
+                      <span className="text-[var(--text-tertiary)]">Premium Estim:</span>
+                      <span className="text-[var(--success)] font-bold tabular-nums">${toast.price.toFixed(2)}</span>
                     </div>
                     <div className="flex justify-between">
-                      <span className="text-zinc-500">Expected Move:</span>
-                      <span className={`${accentText} font-bold`}>+{toast.move}%</span>
+                      <span className="text-[var(--text-tertiary)]">Expected Move:</span>
+                      <span className={`${accentText} font-bold tabular-nums`}>+{toast.move}%</span>
                     </div>
                   </div>
                 )}
               </div>
 
               {/* Action interpretation message (Micro AI commentary) */}
-              <div className="text-[9px] text-zinc-400 text-left leading-relaxed font-sans px-0.5">
+              <div className="text-[10px] text-[var(--text-tertiary)] text-left leading-relaxed font-sans px-0.5">
                 {toast.type === 'MULTIPLE' ? (
-                  <span className="text-[#4ADE80] font-mono font-medium">
+                  <span className="text-[var(--success)] font-mono font-medium">
                      <strong>Multiple setups flagged.</strong> Click to open SkyVision and review all alerts.
                   </span>
                 ) : toast.rating === 'GOOD' ? (
-                  <span className="text-[#4ADE80] font-mono font-medium">
+                  <span className="text-[var(--success)] font-mono font-medium">
                      <strong>Strong setup detected.</strong> Click to review. Dealers are holding heavy delta support.
                   </span>
                 ) : toast.rating === 'WEAK' ? (
-                  <span className="text-[#F87171]/90 font-mono font-medium">
+                  <span className="text-[var(--danger)]/90 font-mono font-medium">
                      <strong>Weak setup.</strong> Click to view. Dealer hedging is limiting upside.
                   </span>
                 ) : (
-                  <span className="text-[#4ADE80]/90 font-mono font-medium text-left">
+                  <span className="text-[var(--success)]/90 font-mono font-medium text-left">
                      <strong>Consolidating.</strong> Click to review. Balanced call/put ratio.
                   </span>
                 )}

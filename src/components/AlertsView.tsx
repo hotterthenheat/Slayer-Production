@@ -173,7 +173,7 @@ export function AlertsView() {
         <div className="flex gap-2 items-center">
           <Terminal className="w-4 h-4 text-[var(--success)]" />
           <span className="text-[10px] text-[var(--success)] uppercase tracking-widest font-black">
-            SLAYER PRIORITIZED ALERTS COCKPIT // SIGNAL STREAM
+            Alerts
           </span>
         </div>
         <div className="flex items-center gap-1.5 bg-[var(--surface)] p-1 px-1.5 border border-[var(--border)] rounded-lg">

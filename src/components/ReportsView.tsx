@@ -38,7 +38,7 @@ export function ReportsView() {
         <div className="flex gap-2 items-center">
           <FileText className="w-4 h-4 text-[var(--success)]" />
           <span className="text-[10px] text-[var(--success)] uppercase tracking-widest font-black">
-            SLAYER PERFORMANCE REPORT CARD // EXPORT READY
+            Performance Report
           </span>
         </div>
 
@@ -68,7 +68,7 @@ export function ReportsView() {
             <div className="space-y-1">
               <span className="text-[10px] text-[var(--success)] tracking-[0.25em] font-black block uppercase">PRIVATE PERFORMANCE LEDGER</span>
               <h2 className="text-xl md:text-2xl font-black text-[var(--text-primary)] font-sans tracking-tight uppercase leading-none print:text-black">
-                MATHEMATICAL VALIDATION REPORT
+                Performance Report
               </h2>
               {!report.isReal && (
                 <span className="inline-block mt-1.5 text-[10px] text-[var(--warning)] tracking-widest font-black uppercase bg-[var(--surface)] border border-[var(--warning)]/40 px-2 py-0.5 rounded">

@@ -53,7 +53,7 @@ const TIER_LOOKUP: Record<string, {
       "Tiers 1 and 2 included"
     ],
     accentColor: "zinc",
-    badgeBg: "bg-[#4ADE80] text-black/10 text-[#4ADE80] border-black"
+    badgeBg: "bg-[var(--success)] text-black/10 text-[var(--success)] border-[var(--border)]"
   },
   quant: {
     badge: "Tier 4 // Quant Suite",
@@ -106,7 +106,7 @@ export default function TierGuard({
         <div className="absolute inset-x-0 top-0 h-[1px] bg-gradient-to-r from-transparent via-[#5865F2]/30 to-transparent" />
         <div className="absolute inset-x-0 bottom-0 h-[1px] bg-gradient-to-r from-transparent via-[#5865F2]/10 to-transparent" />
 
-        <div className="flex flex-col items-center text-center space-y-4 relative z-10 pb-6 border-b border-black/60">
+        <div className="flex flex-col items-center text-center space-y-4 relative z-10 pb-6 border-b border-[var(--border)]">
           <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full border border-[#5865F2]/30 bg-[#5865F2]/10 text-[#5865F2] text-[9.5px] font-black uppercase tracking-wider font-mono">
             <span className="relative flex h-1.5 w-1.5 shrink-0">
               <span className="animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 bg-[#5865F2]"></span>
@@ -116,10 +116,10 @@ export default function TierGuard({
           </div>
 
           <div className="space-y-2">
-            <h3 className="text-xl md:text-2xl font-black text-[#E5E5E5] uppercase tracking-tight font-sans flex items-center justify-center gap-2.5">
+            <h3 className="text-xl md:text-2xl font-black text-[var(--text-primary)] uppercase tracking-tight font-sans flex items-center justify-center gap-2.5">
               <span>DISCORD COMMUNITY ACCESS</span>
             </h3>
-            <p className="text-xs text-zinc-400 max-w-lg leading-relaxed font-sans mt-1">
+            <p className="text-xs text-[var(--text-tertiary)] max-w-lg leading-relaxed font-sans mt-1">
               Your subscription is active. The <strong>Discord Tier</strong> gives you live options sweep alerts, trade setups, and access to our active trader community server.
             </p>
           </div>
@@ -131,10 +131,10 @@ export default function TierGuard({
             <span className="text-[9px] text-[#5865F2] font-mono font-black uppercase tracking-widest block">
               JOIN THE SERVER
             </span>
-            <h4 className="text-sm font-black text-[#E5E5E5] uppercase tracking-tight">
+            <h4 className="text-sm font-black text-[var(--text-primary)] uppercase tracking-tight">
               SLAYER DISCORD INVITE LINK
             </h4>
-            <p className="text-[11px] text-zinc-400 leading-normal max-w-md">
+            <p className="text-[11px] text-[var(--text-tertiary)] leading-normal max-w-md">
               Click below to join. Make sure your Discord username matches your account so you receive full access to the alerts channels.
             </p>
           </div>
@@ -143,7 +143,7 @@ export default function TierGuard({
             href="https://discord.gg/euvkqFtgFa"
             target="_blank"
             rel="noopener noreferrer"
-            className="px-6 py-4 rounded-xl bg-[#5865F2] hover:bg-[#4752C4] text-[#E5E5E5] font-black text-xs uppercase tracking-widest shadow-[0_4px_20px_rgba(88,101,242,0.4)] flex items-center gap-2.5 transition-all hover:scale-[1.03] active:scale-[0.98] cursor-pointer shrink-0"
+            className="px-6 py-4 rounded-xl bg-[#5865F2] hover:bg-[#4752C4] text-[var(--text-primary)] font-black text-xs uppercase tracking-widest shadow-[0_4px_20px_rgba(88,101,242,0.4)] flex items-center gap-2.5 transition-all hover:scale-[1.03] active:scale-[0.98] cursor-pointer shrink-0"
           >
             <MessageSquare className="w-4 h-4 shrink-0" />
             <span>JOIN DISCORD CHANNEL</span>
@@ -152,19 +152,19 @@ export default function TierGuard({
         </div>
 
         {/* Upgrade block letting them know their account is safe and they can upgrade */}
-        <div className="relative z-10 border-t border-black/80 pt-6 text-center space-y-4">
+        <div className="relative z-10 border-t border-[var(--border)] pt-6 text-center space-y-4">
           <div className="max-w-md mx-auto space-y-1">
-            <span className="text-[9.5px] font-mono font-black text-zinc-500 uppercase tracking-widest block">
+            <span className="text-[9.5px] font-mono font-black text-[var(--text-tertiary)] uppercase tracking-widest block">
               WANT THE FULL DASHBOARD AND GEX CHARTS?
             </span>
-            <p className="text-[10px] text-zinc-500 leading-normal font-sans">
+            <p className="text-[10px] text-[var(--text-tertiary)] leading-normal font-sans">
               You are on the Discord-only plan. Expected move levels, GEX charts, and live order flow require a <strong>Tier 2 (SkyVision)</strong> plan or higher.
             </p>
           </div>
 
           {/* Account status info & easy navigation link */}
           <div className="flex flex-col sm:flex-row items-center justify-center gap-3 max-w-md mx-auto pt-2">
-            <div className="text-[9.5px] font-mono text-zinc-400 bg-black px-3.5 py-2 rounded-lg border border-black/60 w-full sm:w-auto">
+            <div className="text-[9.5px] font-mono text-[var(--text-tertiary)] bg-black px-3.5 py-2 rounded-lg border border-[var(--border)] w-full sm:w-auto">
               Current License: <span className="font-bold text-indigo-400">Discord Tier-1</span>
             </div>
             
@@ -229,10 +229,10 @@ export default function TierGuard({
   const getTierLabel = (tierNum: number) => {
     if (tierNum === 1) return "Tier 1: Discord Plan";
     if (tierNum === 2) return "Tier 2: SkyVision Cockpit";
-    if (tierNum === 3) return "Tier 3: Pinpoint Gexbot";
+    if (tierNum === 3) return "Tier 3: Pinpoint GEX";
     if (tierNum === 4) return "Tier 4: Quant Suite";
     if (tierNum >= 5) return "Tier 5: Lifetime Pass";
-    return "Tier 0: Sandbox Edition";
+    return "Tier 0: Free Plan";
   };
 
   return (
@@ -240,7 +240,7 @@ export default function TierGuard({
       initial={{ opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.4, ease: "easeOut" }}
-      className="w-full max-w-3xl mx-auto my-12 border border-black/80 bg-gradient-to-b from-[#09090b] via-[#070709] to-[#040405] rounded-2xl relative overflow-hidden shadow-[0_25px_60px_-15px_rgba(0,0,0,0.8)] p-6 md:p-10"
+      className="w-full max-w-3xl mx-auto my-12 border border-[var(--border)] bg-gradient-to-b from-[#09090b] via-[#070709] to-[#040405] rounded-2xl relative overflow-hidden shadow-[0_25px_60px_-15px_rgba(0,0,0,0.8)] p-6 md:p-10"
     >
       {/* Decorative mechanical accents */}
       <div className="absolute inset-x-0 top-0 h-[1px] bg-gradient-to-r from-transparent via-zinc-850 to-transparent" />
@@ -256,37 +256,37 @@ export default function TierGuard({
 
         {/* Locked Core Headline */}
         <div className="space-y-2">
-          <h3 className="text-xl md:text-2xl font-black text-[#E5E5E5] uppercase tracking-tight font-sans flex items-center justify-center gap-2.5">
+          <h3 className="text-xl md:text-2xl font-black text-[var(--text-primary)] uppercase tracking-tight font-sans flex items-center justify-center gap-2.5">
             <Lock className="w-5 h-5 text-indigo-400" />
             <span>{tabKey.toUpperCase()} LEVEL ACCESS REQUIRED</span>
           </h3>
-          <p className="text-xs text-zinc-400 max-w-lg leading-relaxed font-sans mt-1">
+          <p className="text-xs text-[var(--text-tertiary)] max-w-lg leading-relaxed font-sans mt-1">
             {details.desc} Upgrade your plan below to unlock this tab.
           </p>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-stretch relative z-10 py-6 my-2 border-y border-black/85">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-stretch relative z-10 py-6 my-2 border-y border-[var(--border)]">
         {/* Left Grid Section: Interactive features checklist of what they will unlock */}
-        <div className="bg-black/40 border border-black rounded-2xl p-5 flex flex-col justify-between space-y-4">
+        <div className="bg-black/40 border border-[var(--border)] rounded-2xl p-5 flex flex-col justify-between space-y-4">
           <div>
-            <span className="text-[10px] text-zinc-500 font-bold uppercase tracking-widest font-mono block mb-3">
+            <span className="text-[10px] text-[var(--text-tertiary)] font-bold uppercase tracking-widest font-mono block mb-3">
               WHAT YOU GET
             </span>
             <div className="space-y-3">
               {details.features.map((feature, i) => (
-                <div key={i} className="flex items-start gap-2.5 text-xs text-[#4ADE80]">
-                  <span className="w-5 h-5 rounded-full bg-black/40 border border-black flex items-center justify-center shrink-0 mt-0.5">
-                    <Check className="w-3 h-3 text-[#4ADE80]" />
+                <div key={i} className="flex items-start gap-2.5 text-xs text-[var(--success)]">
+                  <span className="w-5 h-5 rounded-full bg-black/40 border border-[var(--border)] flex items-center justify-center shrink-0 mt-0.5">
+                    <Check className="w-3 h-3 text-[var(--success)]" />
                   </span>
-                  <span className="font-mono text-[#4ADE80] leading-snug">{feature}</span>
+                  <span className="font-mono text-[var(--success)] leading-snug">{feature}</span>
                 </div>
               ))}
             </div>
           </div>
 
-          <div className="text-[10px] text-zinc-500 border-t border-black pt-3 flex items-center gap-1.5 uppercase font-mono">
-            <ShieldCheck className="w-4 h-4 text-[#4ADE80]" />
+          <div className="text-[10px] text-[var(--text-tertiary)] border-t border-[var(--border)] pt-3 flex items-center gap-1.5 uppercase font-mono">
+            <ShieldCheck className="w-4 h-4 text-[var(--success)]" />
             <span>Includes all lower tiers</span>
           </div>
         </div>
@@ -294,14 +294,14 @@ export default function TierGuard({
         {/* Right Grid Section: Authorization parameters comparing levels */}
         <div className="mirror-panel rounded-2xl p-5 flex flex-col justify-between space-y-5">
           <div className="space-y-4">
-            <span className="text-[10px] text-zinc-500 font-bold uppercase tracking-widest font-mono block">
+            <span className="text-[10px] text-[var(--text-tertiary)] font-bold uppercase tracking-widest font-mono block">
               PLAN LEVEL
             </span>
             
             <div className="space-y-3">
-              <div className="flex justify-between items-center bg-black border border-black p-3 rounded-xl">
-                <span className="text-[10px] font-mono text-zinc-500 uppercase">CURRENT LEVEL:</span>
-                <span className="text-xs font-mono font-bold text-zinc-400">{getTierLabel(purchasedTier)}</span>
+              <div className="flex justify-between items-center bg-black border border-[var(--border)] p-3 rounded-xl">
+                <span className="text-[10px] font-mono text-[var(--text-tertiary)] uppercase">CURRENT LEVEL:</span>
+                <span className="text-xs font-mono font-bold text-[var(--text-tertiary)]">{getTierLabel(purchasedTier)}</span>
               </div>
 
               <div className="flex justify-between items-center bg-black border border-indigo-950/40 p-3 rounded-xl">
@@ -312,9 +312,9 @@ export default function TierGuard({
           </div>
 
           <div className="text-center pt-2">
-            <div className="text-[11px] font-mono text-zinc-500">MONTHLY PRICE:</div>
-            <div className="text-2xl font-black text-[#E5E5E5] font-sans mt-0.5">
-              {planPrice} <span className="text-xs text-zinc-500 font-normal">/mo</span>
+            <div className="text-[11px] font-mono text-[var(--text-tertiary)]">MONTHLY PRICE:</div>
+            <div className="text-2xl font-black text-[var(--text-primary)] font-sans mt-0.5">
+              {planPrice} <span className="text-xs text-[var(--text-tertiary)] font-normal">/mo</span>
             </div>
           </div>
         </div>

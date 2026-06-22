@@ -55,6 +55,20 @@ export function QuantAuditView({
 }: QuantAuditViewProps) {
   void selectedAsset; void isCall; void systemScore; void optionPremium;
 
+  // Resolve design tokens once for inline-style / chart color values.
+  const css = getComputedStyle(document.documentElement);
+  const tok = (n: string, f: string) => {
+    const v = css.getPropertyValue(n).trim();
+    return v || f;
+  };
+  const C = {
+    success: tok('--success', '#4ADE80'),
+    danger: tok('--danger', '#F87171'),
+    warning: tok('--warning', '#FBBF24'),
+    info: tok('--info', '#60A5FA'),
+    textPrimary: tok('--text-primary', '#E5E5E5'),
+  };
+
   const expandedId = useContractStore(s => s.expandedAuditId);
   const setExpandedId = useContractStore(s => s.setExpandedAuditId);
   const searchQuery = useContractStore(s => s.auditSearchQuery);
@@ -162,10 +176,10 @@ export function QuantAuditView({
 
   const getAssetBadgeClass = (ticker: string) => {
     const clean = ticker.replace(/[^a-zA-Z]/g, '').toUpperCase();
-    if (clean === 'NDX') return 'bg-[var(--surface-3)] text-[#FBBF24] border border-[var(--border)]';
-    if (clean === 'SPX') return 'bg-[var(--surface-3)] text-[#F87171] border border-[var(--border)]';
+    if (clean === 'NDX') return 'bg-[var(--surface-3)] text-[var(--warning)] border border-[var(--border)]';
+    if (clean === 'SPX') return 'bg-[var(--surface-3)] text-[var(--danger)] border border-[var(--border)]';
     if (clean === 'SPY') return 'bg-[var(--surface-3)] text-[#818CF8] border border-[var(--border)]';
-    if (clean === 'QQQ') return 'bg-[var(--surface-3)] text-[#38BDF8] border border-[var(--border)]';
+    if (clean === 'QQQ') return 'bg-[var(--surface-3)] text-[var(--info)] border border-[var(--border)]';
     return 'bg-[var(--surface-3)] text-[var(--text-tertiary)] border border-[var(--border)]';
   };
 
@@ -176,7 +190,7 @@ export function QuantAuditView({
       return {
         text: 'OPEN',
         classes:
-          'border border-[#FBBF24]/40 text-[#FBBF24] bg-[#FBBF24]/10 text-[10px] font-black px-2.5 py-1 rounded-full tracking-wide',
+          'border border-[var(--warning)]/40 text-[var(--warning)] bg-[var(--warning)]/10 text-[10px] font-black px-2.5 py-1 rounded-full tracking-wide tabular-nums',
       };
     }
     if (state === 'win') {
@@ -186,14 +200,14 @@ export function QuantAuditView({
       return {
         text: `${isPartial ? 'PARTIAL' : 'WIN'} +${gain.toFixed(0)}%`,
         classes:
-          'border border-[#4ADE80]/40 text-[#4ADE80] bg-[#4ADE80]/10 text-[10px] font-black px-2.5 py-1 rounded-full tracking-wide',
+          'border border-[var(--success)]/40 text-[var(--success)] bg-[var(--success)]/10 text-[10px] font-black px-2.5 py-1 rounded-full tracking-wide tabular-nums',
       };
     }
     const loss = Math.abs(realizedReturnPct(t, state) ?? 0);
     return {
       text: `LOSS -${loss.toFixed(0)}%`,
       classes:
-        'border border-[#F87171]/40 text-[#F87171] bg-[#F87171]/10 text-[10px] font-black px-2.5 py-1 rounded-full tracking-wide',
+        'border border-[var(--danger)]/40 text-[var(--danger)] bg-[var(--danger)]/10 text-[10px] font-black px-2.5 py-1 rounded-full tracking-wide tabular-nums',
     };
   };
 
@@ -222,18 +236,18 @@ export function QuantAuditView({
         <div className="grid grid-cols-3 gap-2 text-center">
           <div className="bg-[var(--surface)] p-2.5 border border-[var(--border)] rounded-lg">
             <span className={`${sectionLabel} block`}>ENTRY</span>
-            <span className="text-[var(--text-primary)] font-bold text-[12px] block mt-1">
+            <span className="text-[var(--text-primary)] font-bold text-[12px] block mt-1 tabular-nums">
               ${t.entryPrice.toFixed(2)}
             </span>
           </div>
           <div className="bg-[var(--surface)] p-2.5 border border-[var(--border)] rounded-lg">
             <span className={`${sectionLabel} block`}>{isActive ? 'STATUS' : 'REALIZED'}</span>
             {isActive ? (
-              <span className="text-[#FBBF24] font-bold text-[12px] block mt-1">OPEN</span>
+              <span className="text-[var(--warning)] font-bold text-[12px] block mt-1">OPEN</span>
             ) : (
               <span
-                className={`font-bold text-[12px] block mt-1 ${
-                  (ret ?? 0) >= 0 ? 'text-[#4ADE80]' : 'text-[#F87171]'
+                className={`font-bold text-[12px] block mt-1 tabular-nums ${
+                  (ret ?? 0) >= 0 ? 'text-[var(--success)]' : 'text-[var(--danger)]'
                 }`}
               >
                 {(ret ?? 0) >= 0 ? '+' : ''}
@@ -246,10 +260,10 @@ export function QuantAuditView({
             <span
               className={`font-black text-[12px] block mt-1 uppercase ${
                 isActive
-                  ? 'text-[#FBBF24]'
+                  ? 'text-[var(--warning)]'
                   : state === 'win'
-                  ? 'text-[#4ADE80]'
-                  : 'text-[#F87171]'
+                  ? 'text-[var(--success)]'
+                  : 'text-[var(--danger)]'
               }`}
             >
               {isActive ? 'PENDING' : state === 'win' ? 'WIN' : 'LOSS'}
@@ -261,25 +275,25 @@ export function QuantAuditView({
         <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
           <div className="bg-[var(--surface)] p-2.5 border border-[var(--border)] rounded-lg">
             <span className={`${sectionLabel} block`}>WIN PROB</span>
-            <span className="text-[var(--text-primary)] font-bold text-[11px] block mt-1">
+            <span className="text-[var(--text-primary)] font-bold text-[11px] block mt-1 tabular-nums">
               {t.probabilityPositive}%
             </span>
           </div>
           <div className="bg-[var(--surface)] p-2.5 border border-[var(--border)] rounded-lg">
             <span className={`${sectionLabel} block`}>CONFIDENCE</span>
-            <span className="text-[var(--text-primary)] font-bold text-[11px] block mt-1">
+            <span className="text-[var(--text-primary)] font-bold text-[11px] block mt-1 tabular-nums">
               {t.thesisStability}%
             </span>
           </div>
           <div className="bg-[var(--surface)] p-2.5 border border-[var(--border)] rounded-lg">
             <span className={`${sectionLabel} block`}>EXP RETURN</span>
-            <span className="text-[#4ADE80] font-bold text-[11px] block mt-1">
+            <span className="text-[var(--success)] font-bold text-[11px] block mt-1 tabular-nums">
               +{t.expectedReturn}%
             </span>
           </div>
           <div className="bg-[var(--surface)] p-2.5 border border-[var(--border)] rounded-lg">
             <span className={`${sectionLabel} block`}>EXP DRAWDOWN</span>
-            <span className="text-[#F87171] font-bold text-[11px] block mt-1">
+            <span className="text-[var(--danger)] font-bold text-[11px] block mt-1 tabular-nums">
               -{t.expectedDrawdown}%
             </span>
           </div>
@@ -292,12 +306,12 @@ export function QuantAuditView({
             {([
               ['DELTA', t.greeks.delta, 'text-[var(--text-primary)]'],
               ['GAMMA', t.greeks.gamma, 'text-[var(--text-primary)]'],
-              ['THETA', t.greeks.theta, 'text-[#F87171]'],
+              ['THETA', t.greeks.theta, 'text-[var(--danger)]'],
               ['VEGA', t.greeks.vega, 'text-[var(--text-primary)]'],
             ] as const).map(([label, val, color]) => (
               <div key={label} className="bg-[var(--surface-2)] p-2 border border-[var(--border)] rounded-lg">
                 <span className={`${sectionLabel} block`}>{label}</span>
-                <span className={`${color} font-bold text-[11px] block mt-1`}>{val.toFixed(2)}</span>
+                <span className={`${color} font-bold text-[11px] block mt-1 tabular-nums`}>{val.toFixed(2)}</span>
               </div>
             ))}
           </div>
@@ -340,14 +354,14 @@ export function QuantAuditView({
                     {label}
                   </span>
                   {hit ? (
-                    <span className="text-[10px] text-[#4ADE80] bg-[#4ADE80]/10 font-bold px-1.5 py-0.5 rounded border border-[#4ADE80]/30">
+                    <span className="text-[10px] text-[var(--success)] bg-[var(--success)]/10 font-bold px-1.5 py-0.5 rounded border border-[var(--success)]/30">
                       HIT
                     </span>
                   ) : (
                     <span className="text-[10px] text-[var(--text-tertiary)] font-bold">—</span>
                   )}
                 </div>
-                <span className="text-[var(--text-primary)] font-bold text-[11px] block mt-1.5">
+                <span className="text-[var(--text-primary)] font-bold text-[11px] block mt-1.5 tabular-nums">
                   ${price.toFixed(2)}
                 </span>
                 <span className="text-[10px] text-[var(--text-tertiary)] uppercase font-semibold block mt-0.5">
@@ -361,14 +375,14 @@ export function QuantAuditView({
                   STOP LOSS
                 </span>
                 {state === 'loss' ? (
-                  <span className="text-[10px] text-[#F87171] bg-[#F87171]/10 font-bold px-1.5 py-0.5 rounded border border-[#F87171]/30">
+                  <span className="text-[10px] text-[var(--danger)] bg-[var(--danger)]/10 font-bold px-1.5 py-0.5 rounded border border-[var(--danger)]/30">
                     BREACHED
                   </span>
                 ) : (
                   <span className="text-[10px] text-[var(--text-tertiary)] font-bold">INTACT</span>
                 )}
               </div>
-              <span className="text-[var(--text-primary)] font-bold text-[11px] block mt-1.5">
+              <span className="text-[var(--text-primary)] font-bold text-[11px] block mt-1.5 tabular-nums">
                 ${t.stopLoss.toFixed(2)}
               </span>
               <span className="text-[10px] text-[var(--text-tertiary)] uppercase font-semibold block mt-0.5">
@@ -397,7 +411,7 @@ export function QuantAuditView({
             e.stopPropagation();
             handleContractClick(t.contract);
           }}
-          className="w-full text-center py-2.5 border border-[var(--border)] bg-[var(--surface-3)] hover:border-[var(--border-strong)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] text-[10px] font-black uppercase rounded-lg cursor-pointer tracking-[0.14em] transition-all"
+          className="w-full text-center py-2.5 border border-[var(--border)] bg-[var(--surface-3)] hover:border-[var(--border-strong)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] text-[10px] font-black uppercase rounded-lg cursor-pointer tracking-[0.14em] transition-all focus-visible:ring-1 focus-visible:ring-[var(--border-strong)] focus:outline-none"
         >
           LOAD CONTRACT IN ANALYZER
         </button>
@@ -427,8 +441,8 @@ export function QuantAuditView({
             <span
               className={`shrink-0 w-7 h-7 rounded-lg flex items-center justify-center border ${
                 isBull
-                  ? 'bg-[#4ADE80]/10 text-[#4ADE80] border-[#4ADE80]/30'
-                  : 'bg-[#F87171]/10 text-[#F87171] border-[#F87171]/30'
+                  ? 'bg-[var(--success)]/10 text-[var(--success)] border-[var(--success)]/30'
+                  : 'bg-[var(--danger)]/10 text-[var(--danger)] border-[var(--danger)]/30'
               }`}
             >
               {isBull ? <TrendingUp className="w-3.5 h-3.5" /> : <TrendingDown className="w-3.5 h-3.5" />}
@@ -453,11 +467,11 @@ export function QuantAuditView({
           <div className="flex items-center gap-3 shrink-0">
             <div className="text-right hidden sm:block min-w-[48px]">
               {state === 'active' ? (
-                <span className="text-[#FBBF24] text-[13px] font-black block leading-none">OPEN</span>
+                <span className="text-[var(--warning)] text-[13px] font-black block leading-none">OPEN</span>
               ) : (
                 <span
-                  className={`text-[15px] font-black block leading-none ${
-                    (ret ?? 0) >= 0 ? 'text-[#4ADE80]' : 'text-[#F87171]'
+                  className={`text-[15px] font-black block leading-none tabular-nums ${
+                    (ret ?? 0) >= 0 ? 'text-[var(--success)]' : 'text-[var(--danger)]'
                   }`}
                 >
                   {(ret ?? 0) >= 0 ? '+' : ''}
@@ -533,12 +547,12 @@ export function QuantAuditView({
 
         <div className="flex flex-wrap items-center gap-2.5">
           <div className="flex items-center gap-1.5 px-3 py-2 border border-[var(--border)] bg-[var(--surface)] text-[var(--text-secondary)] text-[10px] font-bold rounded-lg uppercase tracking-wide">
-            <span className="w-1.5 h-1.5 bg-[#4ADE80] rounded-full" />
+            <span className="w-1.5 h-1.5 bg-[var(--success)] rounded-full" />
             Synced
           </div>
           <button
             onClick={onClearTrades}
-            className="flex items-center gap-1.5 px-3 py-2 border border-[var(--border)] text-[#F87171] hover:border-[#F87171]/50 hover:bg-[#F87171]/5 text-[10px] font-bold rounded-lg cursor-pointer transition-all uppercase tracking-wide"
+            className="flex items-center gap-1.5 px-3 py-2 border border-[var(--border)] text-[var(--danger)] hover:border-[var(--danger)]/50 hover:bg-[var(--danger)]/5 text-[10px] font-bold rounded-lg cursor-pointer transition-all uppercase tracking-wide focus-visible:ring-1 focus-visible:ring-[var(--border-strong)] focus:outline-none"
           >
             <RotateCcw className="w-3 h-3" />
             Reset Session
@@ -553,7 +567,7 @@ export function QuantAuditView({
             <span className={sectionLabel}>WIN RATE</span>
             <ShieldCheck className="w-3.5 h-3.5 text-[var(--text-tertiary)]" />
           </div>
-          <h3 className="text-2xl font-black text-[var(--text-primary)] mt-2">{stats.winRate}%</h3>
+          <h3 className="text-2xl font-black text-[var(--text-primary)] mt-2 tabular-nums">{stats.winRate}%</h3>
           <p className="text-[10px] text-[var(--text-tertiary)] uppercase font-semibold tracking-wide mt-1">
             {stats.resolved} closed
           </p>
@@ -564,7 +578,7 @@ export function QuantAuditView({
             <span className={sectionLabel}>AVG HOLD</span>
             <Clock className="w-3.5 h-3.5 text-[var(--text-tertiary)]" />
           </div>
-          <h3 className="text-2xl font-black text-[var(--text-primary)] mt-2">
+          <h3 className="text-2xl font-black text-[var(--text-primary)] mt-2 tabular-nums">
             {stats.avgHold}
             <span className="text-sm font-bold text-[var(--text-tertiary)]"> min</span>
           </h3>
@@ -576,9 +590,9 @@ export function QuantAuditView({
         <div className="bg-[var(--surface)] border border-[var(--border)] p-4 rounded-xl">
           <div className="flex justify-between items-center">
             <span className={sectionLabel}>AVG WINNER</span>
-            <TrendingUp className="w-3.5 h-3.5 text-[#4ADE80]" />
+            <TrendingUp className="w-3.5 h-3.5 text-[var(--success)]" />
           </div>
-          <h3 className="text-2xl font-black text-[#4ADE80] mt-2">
+          <h3 className="text-2xl font-black text-[var(--success)] mt-2 tabular-nums">
             {stats.wins > 0 ? `+${stats.avgWinner.toFixed(1)}%` : '—'}
           </h3>
           <p className="text-[10px] text-[var(--text-tertiary)] uppercase font-semibold tracking-wide mt-1">
@@ -589,9 +603,9 @@ export function QuantAuditView({
         <div className="bg-[var(--surface)] border border-[var(--border)] p-4 rounded-xl">
           <div className="flex justify-between items-center">
             <span className={sectionLabel}>AVG LOSER</span>
-            <TrendingDown className="w-3.5 h-3.5 text-[#F87171]" />
+            <TrendingDown className="w-3.5 h-3.5 text-[var(--danger)]" />
           </div>
-          <h3 className="text-2xl font-black text-[#F87171] mt-2">
+          <h3 className="text-2xl font-black text-[var(--danger)] mt-2 tabular-nums">
             {stats.losses > 0 ? `${stats.avgLoser.toFixed(1)}%` : '—'}
           </h3>
           <p className="text-[10px] text-[var(--text-tertiary)] uppercase font-semibold tracking-wide mt-1">
@@ -602,9 +616,9 @@ export function QuantAuditView({
         <div className="bg-[var(--surface)] border border-[var(--border)] p-4 rounded-xl col-span-2 md:col-span-1">
           <div className="flex justify-between items-center">
             <span className={sectionLabel}>OPEN NOW</span>
-            <Activity className="w-3.5 h-3.5 text-[#FBBF24]" />
+            <Activity className="w-3.5 h-3.5 text-[var(--warning)]" />
           </div>
-          <h3 className="text-2xl font-black text-[var(--text-primary)] mt-2">{stats.active}</h3>
+          <h3 className="text-2xl font-black text-[var(--text-primary)] mt-2 tabular-nums">{stats.active}</h3>
           <p className="text-[10px] text-[var(--text-tertiary)] uppercase font-semibold tracking-wide mt-1">
             live positions
           </p>
@@ -615,7 +629,7 @@ export function QuantAuditView({
       <div className="flex flex-col lg:flex-row gap-3">
         <button
           onClick={() => useContractStore.getState().setIsGlobalSearchOpen(true)}
-          className="global-prism-trigger flex-1 bg-[var(--surface)] border border-[var(--border)] p-3 rounded-lg flex items-center justify-between gap-2 text-left cursor-pointer hover:border-[var(--border-strong)] transition-all"
+          className="global-prism-trigger flex-1 bg-[var(--surface)] border border-[var(--border)] p-3 rounded-lg flex items-center justify-between gap-2 text-left cursor-pointer hover:border-[var(--border-strong)] transition-all focus-visible:ring-1 focus-visible:ring-[var(--border-strong)] focus:outline-none"
         >
           <div className="flex items-center gap-2.5">
             <Search className="w-3.5 h-3.5 text-[var(--text-tertiary)]" />
@@ -630,7 +644,7 @@ export function QuantAuditView({
                   e.stopPropagation();
                   setSearchQuery('');
                 }}
-                className="text-[10px] bg-[#F87171]/10 text-[#F87171] border border-[#F87171]/30 px-2 py-1 rounded font-bold hover:bg-[#F87171]/20 transition-all cursor-pointer uppercase"
+                className="text-[10px] bg-[var(--danger)]/10 text-[var(--danger)] border border-[var(--danger)]/30 px-2 py-1 rounded font-bold hover:bg-[var(--danger)]/20 transition-all cursor-pointer uppercase"
               >
                 Clear
               </span>
@@ -649,7 +663,7 @@ export function QuantAuditView({
               <button
                 key={ticker}
                 onClick={() => setAssetFilter(ticker)}
-                className={`px-3 py-1.5 text-[10px] font-bold uppercase rounded transition-all cursor-pointer ${
+                className={`px-3 py-1.5 text-[10px] font-bold uppercase rounded transition-all cursor-pointer focus-visible:ring-1 focus-visible:ring-[var(--border-strong)] focus:outline-none ${
                   assetFilter === ticker
                     ? 'bg-[var(--surface-3)] text-[var(--text-primary)]'
                     : 'text-[var(--text-tertiary)] hover:text-[var(--text-secondary)]'
@@ -664,7 +678,7 @@ export function QuantAuditView({
               <button
                 key={key}
                 onClick={() => setOutcomeFilter(key)}
-                className={`px-3 py-1.5 text-[10px] font-bold uppercase rounded transition-all cursor-pointer ${
+                className={`px-3 py-1.5 text-[10px] font-bold uppercase rounded transition-all cursor-pointer focus-visible:ring-1 focus-visible:ring-[var(--border-strong)] focus:outline-none ${
                   outcomeFilter === key
                     ? 'bg-[var(--surface-3)] text-[var(--text-primary)]'
                     : 'text-[var(--text-tertiary)] hover:text-[var(--text-secondary)]'
@@ -690,8 +704,8 @@ export function QuantAuditView({
         </div>
       ) : (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {renderColumn(bullishTrades, 'Bullish · Calls', '#4ADE80', TrendingUp)}
-          {renderColumn(bearishTrades, 'Bearish · Puts', '#F87171', TrendingDown)}
+          {renderColumn(bullishTrades, 'Bullish · Calls', C.success, TrendingUp)}
+          {renderColumn(bearishTrades, 'Bearish · Puts', C.danger, TrendingDown)}
         </div>
       )}
 

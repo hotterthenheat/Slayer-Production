@@ -42,10 +42,10 @@ export function AdminOverseerPanel({ session, onSimulateTier }: AdminPanelProps)
 
   if (!session?.is_super_admin && !['super_admin', 'owner', 'admin'].includes(session?.admin_role || '')) {
     return (
-      <div className={`p-8 text-center ${CARD} border-[#F87171]/30 max-w-xl mx-auto mt-10`}>
-        <ShieldAlert className="w-10 h-10 text-[#F87171] mx-auto mb-4" />
+      <div className={`p-8 text-center ${CARD} border-[var(--danger)]/30 max-w-xl mx-auto mt-10`}>
+        <ShieldAlert className="w-10 h-10 text-[var(--danger)] mx-auto mb-4" />
         <h2 className="text-lg font-bold text-[var(--text-primary)] uppercase tracking-widest">Unauthorized Access</h2>
-        <p className="text-[10px] text-[var(--text-tertiary)] mt-2 uppercase tracking-widest">This incident has been recorded to the audit trail.</p>
+        <p className="text-[10px] text-[var(--text-tertiary)] mt-2 uppercase tracking-widest">You don't have permission to view this page.</p>
       </div>
     );
   }
@@ -65,11 +65,11 @@ export function AdminOverseerPanel({ session, onSimulateTier }: AdminPanelProps)
       <div className="w-full md:w-60 shrink-0 flex flex-col border-r border-[var(--border)] pr-4 gap-2 overflow-y-auto">
         <div className="pb-4 mb-1 border-b border-[var(--border)]">
           <h2 className="text-sm font-bold tracking-widest text-[var(--text-primary)] uppercase flex items-center gap-2 mb-3">
-            <Key className="w-4 h-4 text-[#F87171]" /> Overseer
+            <Key className="w-4 h-4 text-[var(--danger)]" /> Overseer
           </h2>
           <div className="text-[10px] uppercase tracking-widest text-[var(--text-tertiary)] flex items-center justify-between">
             <span>Role</span>
-            <span className="text-[#FBBF24] font-bold">{adminRole}</span>
+            <span className="text-[var(--warning)] font-bold">{adminRole}</span>
           </div>
         </div>
 
@@ -81,7 +81,7 @@ export function AdminOverseerPanel({ session, onSimulateTier }: AdminPanelProps)
               <button key={t.id} onClick={() => setTab(t.id)}
                 className={`px-3 py-2.5 text-[10px] font-bold uppercase tracking-widest rounded-md flex items-center gap-2.5 transition-colors text-left ${
                   active
-                    ? 'bg-[var(--surface-2)] border border-[var(--border)] text-[#4ADE80]'
+                    ? 'bg-[var(--surface-2)] border border-[var(--border)] text-[var(--success)]'
                     : 'border border-transparent text-[var(--text-tertiary)] hover:text-[var(--text-primary)] hover:bg-[var(--surface)]'
                 }`}>
                 <Icon className="w-4 h-4 shrink-0" /> {t.label}
@@ -92,7 +92,7 @@ export function AdminOverseerPanel({ session, onSimulateTier }: AdminPanelProps)
 
         <div className="mt-auto pt-4 border-t border-[var(--border)]">
           <div className={`flex items-center gap-2.5 ${CARD} px-3 py-2.5`}>
-            <Radio className="w-3.5 h-3.5 text-[#4ADE80] shrink-0" />
+            <Radio className="w-3.5 h-3.5 text-[var(--success)] shrink-0" />
             <div className="min-w-0">
               <div className="text-[9px] text-[var(--text-tertiary)] uppercase tracking-widest font-bold">Live Connections</div>
               <div className="text-sm font-bold text-[var(--text-primary)] leading-tight">{live}</div>
@@ -145,21 +145,21 @@ function OverviewTab({ overview, reload, onSimulateTier }: { overview: any; relo
     <div className="space-y-5 animate-fadeIn">
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         <StatCard label="Total Users" value={overview?.total_users ?? '—'} />
-        <StatCard label="Live Connections" value={overview?.live_connections ?? '—'} color="text-[#4ADE80]" />
-        <StatCard label="Suspended" value={overview?.suspended ?? '—'} color="text-[#FBBF24]" />
-        <StatCard label="Banned" value={overview?.banned ?? '—'} color="text-[#F87171]" />
+        <StatCard label="Live Connections" value={overview?.live_connections ?? '—'} color="text-[var(--success)]" />
+        <StatCard label="Suspended" value={overview?.suspended ?? '—'} color="text-[var(--warning)]" />
+        <StatCard label="Banned" value={overview?.banned ?? '—'} color="text-[var(--danger)]" />
       </div>
 
       {/* Maintenance */}
       <div className={`${CARD} p-5`}>
         <div className="flex items-center justify-between gap-4">
           <div className="flex items-center gap-2">
-            <Power className={`w-4 h-4 ${overview?.maintenance_mode ? 'text-[#F87171]' : 'text-[var(--text-tertiary)]'}`} />
+            <Power className={`w-4 h-4 ${overview?.maintenance_mode ? 'text-[var(--danger)]' : 'text-[var(--text-tertiary)]'}`} />
             <span className="text-[13px] font-bold text-[var(--text-primary)]">Maintenance Mode</span>
-            {overview?.maintenance_mode && <span className="text-[9px] bg-[#F87171]/15 text-[#F87171] border border-[#F87171]/30 px-2 py-0.5 rounded uppercase font-bold tracking-widest">503 Active</span>}
+            {overview?.maintenance_mode && <span className="text-[9px] bg-[var(--danger)]/15 text-[var(--danger)] border border-[var(--danger)]/30 px-2 py-0.5 rounded uppercase font-bold tracking-widest">503 Active</span>}
           </div>
           <button onClick={toggleMaintenance} disabled={busy} className="disabled:opacity-50" aria-label="Toggle maintenance mode">
-            {overview?.maintenance_mode ? <ToggleRight className="w-9 h-9 text-[#F87171]" /> : <ToggleLeft className="w-9 h-9 text-[var(--text-tertiary)]" />}
+            {overview?.maintenance_mode ? <ToggleRight className="w-9 h-9 text-[var(--danger)]" /> : <ToggleLeft className="w-9 h-9 text-[var(--text-tertiary)]" />}
           </button>
         </div>
         <p className="text-[10px] text-[var(--text-tertiary)] mt-2 uppercase tracking-widest">Returns 503 to all non-admin traffic while active.</p>
@@ -176,7 +176,7 @@ function OverviewTab({ overview, reload, onSimulateTier }: { overview: any; relo
               <button key={k} onClick={() => toggleFlag(k, !flags[k])}
                 className="flex items-center justify-between bg-[var(--surface-2)] border border-[var(--border)] rounded-md px-3 py-2 hover:border-[var(--border-strong)] transition-colors">
                 <span className="text-[11px] text-[var(--text-secondary)] capitalize">{k.replace(/_/g, ' ')}</span>
-                {flags[k] ? <ToggleRight className="w-6 h-6 text-[#4ADE80]" /> : <ToggleLeft className="w-6 h-6 text-[var(--text-tertiary)]" />}
+                {flags[k] ? <ToggleRight className="w-6 h-6 text-[var(--success)]" /> : <ToggleLeft className="w-6 h-6 text-[var(--text-tertiary)]" />}
               </button>
             ))}
           </div>
@@ -259,23 +259,23 @@ function UsersTab() {
                     <select value={u.access_tier} onChange={(e) => changeTier(u.email, e.target.value)} className="bg-[var(--surface-2)] border border-[var(--border)] text-[var(--text-secondary)] uppercase px-2 py-1 rounded outline-none focus:border-[var(--border-strong)]">
                       {['guest', 'discord', 'intraday', 'quant', 'enterprise', 'lifetime'].map(t => <option key={t} value={t}>{t}</option>)}
                     </select>
-                    {u.role !== 'user' && <span className="text-[#FBBF24]" title={u.role}></span>}
+                    {u.role !== 'user' && <span className="text-[var(--warning)]" title={u.role}></span>}
                   </div>
                 </td>
-                <td className="p-3 text-[#4ADE80] tabular-nums">{u.referral_tokens_pool}</td>
+                <td className="p-3 text-[var(--success)] tabular-nums">{u.referral_tokens_pool}</td>
                 <td className="p-3">
                   <div className="flex items-center gap-1.5">
-                    <span className={`w-1.5 h-1.5 rounded-full ${u.online ? 'bg-[#4ADE80]' : 'bg-[var(--text-tertiary)]'}`}></span>
-                    <span className={`font-bold ${u.online ? 'text-[#4ADE80]' : 'text-[var(--text-tertiary)]'}`}>{u.online ? 'ONLINE' : 'OFFLINE'}</span>
+                    <span className={`w-1.5 h-1.5 rounded-full ${u.online ? 'bg-[var(--success)]' : 'bg-[var(--text-tertiary)]'}`}></span>
+                    <span className={`font-bold ${u.online ? 'text-[var(--success)]' : 'text-[var(--text-tertiary)]'}`}>{u.online ? 'ONLINE' : 'OFFLINE'}</span>
                   </div>
-                  {u.banned ? <span className="text-[#F87171] font-bold block mt-1 text-[9px]">BANNED</span> : u.suspended ? <span className="text-[#FBBF24] font-bold block mt-1 text-[9px]">SUSPENDED</span> : null}
+                  {u.banned ? <span className="text-[var(--danger)] font-bold block mt-1 text-[9px]">BANNED</span> : u.suspended ? <span className="text-[var(--warning)] font-bold block mt-1 text-[9px]">SUSPENDED</span> : null}
                 </td>
                 <td className="p-3">
                   <div className="flex items-center justify-end gap-1">
                     <button title="Impersonate" onClick={() => impersonate(u.email)} className="p-1.5 rounded text-[var(--text-tertiary)] hover:text-[var(--text-primary)] hover:bg-[var(--surface-3)] transition-colors"><Eye className="w-3.5 h-3.5" /></button>
-                    <button title={u.suspended ? 'Unsuspend' : 'Suspend'} onClick={() => act(u.email, u.suspended ? 'unsuspend' : 'suspend')} className="p-1.5 rounded text-[#FBBF24] hover:bg-[#FBBF24]/15 transition-colors"><UserX className="w-3.5 h-3.5" /></button>
+                    <button title={u.suspended ? 'Unsuspend' : 'Suspend'} onClick={() => act(u.email, u.suspended ? 'unsuspend' : 'suspend')} className="p-1.5 rounded text-[var(--warning)] hover:bg-[var(--warning)]/15 transition-colors"><UserX className="w-3.5 h-3.5" /></button>
                     <button title="Force Logout" onClick={() => act(u.email, 'force-logout')} className="p-1.5 rounded text-[var(--text-tertiary)] hover:text-[var(--text-primary)] hover:bg-[var(--surface-3)] transition-colors"><LogOut className="w-3.5 h-3.5" /></button>
-                    <button title={u.banned ? 'Unban' : 'Ban'} onClick={() => act(u.email, u.banned ? 'unban' : 'ban')} className="p-1.5 rounded text-[#F87171] hover:bg-[#F87171]/15 transition-colors"><Ban className="w-3.5 h-3.5" /></button>
+                    <button title={u.banned ? 'Unban' : 'Ban'} onClick={() => act(u.email, u.banned ? 'unban' : 'ban')} className="p-1.5 rounded text-[var(--danger)] hover:bg-[var(--danger)]/15 transition-colors"><Ban className="w-3.5 h-3.5" /></button>
                   </div>
                 </td>
               </tr>
@@ -313,8 +313,8 @@ function AuditTab() {
           {entries.map((e) => (
             <tr key={e.id} className="border-b border-[var(--border)] hover:bg-[var(--surface-2)] transition-colors">
               <td className="p-3 text-[var(--text-tertiary)] whitespace-nowrap">{formatDateTime(e.timestamp)}</td>
-              <td className="p-3 text-[#4ADE80]">{e.admin_email}</td>
-              <td className="p-3 text-[#FBBF24] font-bold">{e.action_taken}</td>
+              <td className="p-3 text-[var(--success)]">{e.admin_email}</td>
+              <td className="p-3 text-[var(--warning)] font-bold">{e.action_taken}</td>
               <td className="p-3 text-[var(--text-secondary)]">{e.target_id}</td>
               <td className="p-3 text-[var(--text-tertiary)]">{e.method}</td>
               <td className="p-3 text-[var(--text-tertiary)] tabular-nums">{e.ip_address}</td>
@@ -359,7 +359,7 @@ function CouponsTab() {
             className={FIELD} />
         </div>
         <div className="flex items-center gap-3">
-          <button onClick={create} className="px-4 py-2 bg-[#4ADE80]/10 border border-[#4ADE80]/30 text-[#4ADE80] rounded-md text-[11px] font-bold uppercase tracking-widest hover:bg-[#4ADE80]/20 transition-colors">Generate</button>
+          <button onClick={create} className="px-4 py-2 bg-[var(--success)]/10 border border-[var(--success)]/30 text-[var(--success)] rounded-md text-[11px] font-bold uppercase tracking-widest hover:bg-[var(--success)]/20 transition-colors">Generate</button>
           {msg && <span className="text-[10px] text-[var(--text-secondary)]">{msg}</span>}
         </div>
       </div>
@@ -373,7 +373,7 @@ function CouponsTab() {
             {coupons.map((c) => (
               <tr key={c.code} className="border-b border-[var(--border)] hover:bg-[var(--surface-2)] transition-colors">
                 <td className="p-3 text-[var(--text-primary)] font-bold">{c.code}</td>
-                <td className="p-3 text-[#4ADE80]">{c.discount_type === 'PERCENT' ? `${c.discount_value}%` : `$${c.discount_value}`}</td>
+                <td className="p-3 text-[var(--success)]">{c.discount_type === 'PERCENT' ? `${c.discount_value}%` : `$${c.discount_value}`}</td>
                 <td className="p-3 text-[var(--text-secondary)] tabular-nums">{c.redemptions}/{c.redemption_limit || '∞'}</td>
                 <td className="p-3 text-[var(--text-tertiary)]">{c.user_restriction || 'any'}</td>
                 <td className="p-3 text-[var(--text-tertiary)]">{c.expires_at || 'never'}</td>

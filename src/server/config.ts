@@ -26,7 +26,7 @@ export const TIER_PRICING: Record<string, {
 }> = {
   discord:   { tier: 1, name: 'Discord Plan',      monthly: 6500,   annual: 66000,   accessTier: 'discord' },
   skyvision: { tier: 2, name: 'SkyVision Cockpit', monthly: 35000,  annual: 348000,  accessTier: 'intraday' },
-  pinpoint:  { tier: 3, name: 'Pinpoint Gexbot',   monthly: 50000,  annual: 504000,  accessTier: 'quant' },
+  pinpoint:  { tier: 3, name: 'Pinpoint GEX',      monthly: 50000,  annual: 504000,  accessTier: 'quant' },
   quant:     { tier: 4, name: 'Quant Suite',       monthly: 150000, annual: 1500000, accessTier: 'enterprise' },
   lifetime:  { tier: 5, name: 'Lifetime Pass',     monthly: 0,      annual: 0,       oneTime: 500000, accessTier: 'lifetime' },
 };

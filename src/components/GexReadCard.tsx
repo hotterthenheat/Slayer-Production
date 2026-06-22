@@ -32,11 +32,11 @@ export function GexReadCard() {
   return (
     <div
       className="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-5 flex flex-col gap-3"
-      style={{ borderLeftColor: '#60A5FA', borderLeftWidth: '3px' }}
+      style={{ borderLeftColor: 'var(--info)', borderLeftWidth: '3px' }}
     >
       <div className="flex items-center justify-between gap-2 pb-3 border-b border-[var(--border)]">
         <div className="flex items-center gap-2">
-          <Brain className="w-4 h-4 text-[#60A5FA]" />
+          <Brain className="w-4 h-4 text-[var(--info)]" />
           <h2 className="text-xs font-black tracking-widest uppercase text-[var(--text-primary)]">
             Plain-English Read — {selectedAsset?.ticker}
           </h2>

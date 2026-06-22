@@ -773,45 +773,45 @@ export function DiscoveryView({
   const SHELF_EXPLANATIONS = {
     conviction: {
       title: "Core Conviction Setups (High Probability Positions)",
-      whyItsBest: "These are our absolute highest-quality trades backed by massive institutional dealer buy walls. They are 'the best' because market makers are heavily committed at these levels and are forced to buy stock to defend their positions, creating an exceptionally strong and reliable price floor with almost zero downside risk.",
+      whyItsBest: "Setups supported by concentrated dealer buy walls where market makers are positioned to defend price — strong support, but not a guarantee; all options carry risk.",
       horizon: "1 TO 3 DAYS (SWING)",
       mathTracking: "Strong dealer buy-walls sitting under price",
-      confidenceTier: "VERY HIGH (94–98%)"
+      confidenceTier: "Model confidence: Very High"
     },
     improved: {
       title: "High Velocity Breakouts (Quick Scalp Trades)",
-      whyItsBest: "These are fast-moving momentum trades with explosive volume speed. They are 'the best' for quick day trading (scalping) because derivative volumes are speeding up rapidly in the last 15 minutes, showing that buyers are sweeping options at the ask, which forces dealers to cover their shorts, driving price up fast.",
+      whyItsBest: "Momentum setups with rapidly accelerating volume. Useful for quick day trading (scalping): derivative volumes are speeding up in the last 15 minutes as buyers sweep options at the ask, which can force dealers to cover their shorts and drive price up.",
       horizon: "15 MIN TO 3 HOURS (SCALP)",
       mathTracking: "Fast volume and momentum building",
-      confidenceTier: "HIGH (86–92%)"
+      confidenceTier: "Model confidence: High"
     },
     mispriced: {
       title: "Mathematical Arbitrage (Option Premium Discounts)",
       whyItsBest: "These are deep value opportunities where options are priced exceptionally cheap. They are 'the best' because temporary implied volatility drops have created a price mismatch: active brokers are selling these contracts at a -15% discount compared to their true mathematical value. Enter cheap, exit under normal curves.",
       horizon: "2 HOURS TO 1 DAY (VALUE)",
       mathTracking: "Option priced below fair value",
-      confidenceTier: "SOLID (80–85%)"
+      confidenceTier: "Model confidence: Solid"
     },
     invalidation: {
       title: "Support Rebounds & Boundaries (Trades Coming Back)",
       whyItsBest: "These are options hovering right at critical line-in-the-sand support thresholds. They are 'the best' for reversals because they are 'coming back' to key support lines (put walls), offering a highly defined bounce-back entry with tight, predefined stop-losses.",
       horizon: "30 MIN TO 2 HOURS (BOUNCE)",
       mathTracking: "Bouncing off dealer put-wall support",
-      confidenceTier: "SPECULATIVE (40–55%)"
+      confidenceTier: "Model confidence: Speculative"
     },
     whale: {
-      title: "Smart Money Whale Sweeps (Institutional Tape Follower)",
-      whyItsBest: "These represent trades where ultra-wealthy institutional players are sweeping multi-million dollar cash blocks directly at the ask price. They are 'the best' because you are alignment-trading with the largest forces in the market, riding their powerful directional tailwinds.",
+      title: "Institutional Block Sweeps",
+      whyItsBest: "Large institutional block orders executing at the ask, following concentrated directional flow from major market participants.",
       horizon: "1 HOUR TO 2 DAYS (SWING)",
       mathTracking: "$5M+ block trades hitting the tape",
-      confidenceTier: "HIGH (85%+)"
+      confidenceTier: "Model confidence: High"
     },
     all: {
       title: "All Discovered Signals (Unified Market Catalog)",
       whyItsBest: "A unified look across the entire option spectrum under scanning supervision. Use this tab to compare all categories side-by-side, sorted from the absolute strongest active model ratings to the weakest.",
       horizon: "Dependent on Selection",
       mathTracking: "All signals combined",
-      confidenceTier: "ALL SETUPS"
+      confidenceTier: "All setups"
     }
   };
 
@@ -1084,11 +1084,11 @@ export function DiscoveryView({
       <div className={`flex flex-col md:flex-row justify-between items-stretch md:items-center p-4 rounded-xl gap-4 md:gap-2 border ${c_cardBg}`}>
 
         <div className="flex items-center gap-2.5">
-          <Target className="w-4 h-4 text-[#4ADE80] shrink-0" />
+          <Target className="w-4 h-4 text-[var(--success)] shrink-0" />
           <div>
             <h1 className={`text-xs font-black tracking-widest uppercase ${c_textWhite}`}>
               Trade Finder <span className="text-[var(--text-tertiary)]">/ Options Scanner</span>
-              <span className="ml-2 align-middle text-[8px] font-bold px-1.5 py-0.5 rounded bg-[#FBBF24]/15 text-[#FBBF24] border border-[#FBBF24]/30 tracking-wider">
+              <span className="ml-2 align-middle text-[8px] font-bold px-1.5 py-0.5 rounded bg-[var(--warning)]/15 text-[var(--warning)] border border-[var(--warning)]/30 tracking-wider">
                 SAMPLE DATA
               </span>
             </h1>
@@ -1102,7 +1102,7 @@ export function DiscoveryView({
         <div className="flex items-center gap-5 flex-wrap text-left text-[10px] md:border-l md:pl-5 border-[var(--border)]">
           <div className="space-y-0.5">
             <span className="text-[9.5px] text-[var(--text-tertiary)] uppercase block tracking-wider font-extrabold">Dealer Support</span>
-            <span className="text-[#4ADE80] font-bold block font-mono">
+            <span className="text-[var(--success)] font-bold block font-mono">
               +{globalGex.toFixed(1)}M
             </span>
           </div>
@@ -1114,7 +1114,7 @@ export function DiscoveryView({
           </div>
           <div className="space-y-0.5">
             <span className="text-[9.5px] text-[var(--text-tertiary)] uppercase block tracking-wider font-extrabold">Scan Rate</span>
-            <span className="text-[#60A5FA] font-bold block font-mono">
+            <span className="text-[var(--info)] font-bold block font-mono">
               {scanRate.toFixed(1)}/s
             </span>
           </div>
@@ -1129,7 +1129,7 @@ export function DiscoveryView({
         <div className="md:col-span-8 flex items-center p-0.5 border rounded-md overflow-x-auto scrollbar-none gap-0.5 bg-[var(--surface-2)] border-[var(--border)]">
           {[
             { id: 'conviction', label: 'TOP OPPORTUNITIES', count: contracts.filter(c => c.shelf === 'conviction').length },
-            { id: 'improved', label: 'QUICKSCALP', count: contracts.filter(c => c.shelf === 'improved').length },
+            { id: 'improved', label: 'Quick Scalp', count: contracts.filter(c => c.shelf === 'improved').length },
             { id: 'mispriced', label: 'DISCOUNTED', count: contracts.filter(c => c.shelf === 'mispriced').length },
             { id: 'invalidation', label: 'REBOUNDS', count: contracts.filter(c => c.shelf === 'invalidation').length },
             { id: 'whale', label: 'WHALE SWEEPS', count: contracts.filter(c => c.shelf === 'whale').length },
@@ -1164,7 +1164,7 @@ export function DiscoveryView({
               onClick={() => setOptionTypeFilter(opt.id as any)}
               className={`px-3.5 py-1.5 text-[8.5px] uppercase font-extrabold rounded flex-1 transition-colors cursor-pointer ${
                 optionTypeFilter === opt.id
-                  ? 'bg-[#60A5FA]/15 text-[#60A5FA] border border-[#60A5FA]/30'
+                  ? 'bg-[var(--info)]/15 text-[var(--info)] border border-[var(--info)]/30'
                   : 'text-[var(--text-tertiary)] border border-transparent hover:text-[var(--text-primary)]'
               }`}
             >
@@ -1175,7 +1175,7 @@ export function DiscoveryView({
 
         {/* Ticker / strike search box */}
         <div
-          className="md:col-span-2 relative flex items-center rounded-lg px-3 py-1.5 border transition-colors bg-[var(--surface-2)] border-[var(--border)] focus-within:border-[#60A5FA]/50"
+          className="md:col-span-2 relative flex items-center rounded-lg px-3 py-1.5 border transition-colors bg-[var(--surface-2)] border-[var(--border)] focus-within:border-[var(--info)]/50"
           ref={searchContainerRef}
         >
           <Search className="w-3.5 h-3.5 text-[var(--text-tertiary)] mr-2 shrink-0" />
@@ -1186,7 +1186,7 @@ export function DiscoveryView({
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="FILTER BY TICKER OR STRIKE..." 
             className={`w-full bg-transparent border-none text-[9.5px] font-black uppercase focus:outline-none placeholder-zinc-500 font-mono tracking-wider transition-all duration-200 ${
-              isLight ? 'text-zinc-900' : 'text-[#E5E5E5]'
+              isLight ? 'text-zinc-900' : 'text-[var(--text-primary)]'
             }`}
           />
           {searchQuery.length > 0 ? (
@@ -1196,7 +1196,7 @@ export function DiscoveryView({
                 setSearchQuery('');
                 setIsSearchFocused(false);
               }} 
-              className="text-zinc-500 hover:text-[#E5E5E5] text-[8px] uppercase font-bold pl-1 font-mono hover:underline shrink-0"
+              className="text-[var(--text-tertiary)] hover:text-[var(--text-primary)] text-[8px] uppercase font-bold pl-1 font-mono hover:underline shrink-0"
             >
               CLEAR
             </button>
@@ -1214,17 +1214,17 @@ export function DiscoveryView({
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: 3 }}
                 className={`absolute right-0 top-full mt-2 w-[300px] max-w-[calc(100vw-24px)] border shadow-2xl rounded-lg overflow-hidden z-50 text-left font-mono ${
-                  isLight ? 'bg-white border-black text-zinc-800' : 'bg-black border-black text-zinc-350'
+                  isLight ? 'bg-white border-black text-zinc-800' : 'bg-black border-black text-zinc-400'
                 }`}
               >
                 {/* 1. SECTION: MAIN INDEXES */}
                 <div className={`px-2.5 py-1 text-[7.5px] font-extrabold uppercase tracking-widest border-b ${
-                  isLight ? 'bg-black text-zinc-500 border-black' : 'bg-black/40 text-zinc-600 border-black'
+                  isLight ? 'bg-black text-[var(--text-tertiary)] border-black' : 'bg-black/40 text-zinc-600 border-black'
                 }`}>
                   Switch Active Index Ticker
                 </div>
                 {filteredSearchAssets.length === 0 ? (
-                  <div className="px-3.5 py-2 text-[8px] text-zinc-500 uppercase">No active assets found</div>
+                  <div className="px-3.5 py-2 text-[8px] text-[var(--text-tertiary)] uppercase">No active assets found</div>
                 ) : (
                   filteredSearchAssets.map(a => (
                     <button
@@ -1240,11 +1240,11 @@ export function DiscoveryView({
                     >
                       <div className="flex flex-col">
                         <span className={`text-[9.5px] font-black ${isLight ? 'text-zinc-900' : 'text-zinc-150'}`}>{a.ticker}</span>
-                        <span className="text-[7.5px] text-zinc-500 font-sans uppercase font-bold">{a.name}</span>
+                        <span className="text-[7.5px] text-[var(--text-tertiary)] font-sans uppercase font-bold">{a.name}</span>
                       </div>
                       <div className="text-right">
                         <span className="text-[9px] font-bold block">${a.defaultPrice.toFixed(2)}</span>
-                        <span className="text-[7.5px] font-bold text-[#4ADE80]">+{a.volatility.toFixed(1)}% VOL</span>
+                        <span className="text-[7.5px] font-bold text-[var(--success)]">+{a.volatility.toFixed(1)}% VOL</span>
                       </div>
                     </button>
                   ))
@@ -1252,13 +1252,13 @@ export function DiscoveryView({
 
                 {/* 2. SECTION: OPTIONS & TRANSITIONS */}
                 <div className={`px-2.5 py-1 text-[7.5px] font-extrabold uppercase tracking-widest border-b ${
-                  isLight ? 'bg-black text-zinc-500 border-black' : 'bg-black/40 text-zinc-600 border-black'
+                  isLight ? 'bg-black text-[var(--text-tertiary)] border-black' : 'bg-black/40 text-zinc-600 border-black'
                 }`}>
                   Launch Option chain / Assessments
                 </div>
                 <div className="max-h-[160px] overflow-y-auto">
                   {filteredSearchContracts.length === 0 ? (
-                    <div className="px-3.5 py-2 text-[8px] text-zinc-500 uppercase">No options matched</div>
+                    <div className="px-3.5 py-2 text-[8px] text-[var(--text-tertiary)] uppercase">No options matched</div>
                   ) : (
                     filteredSearchContracts.map(c => (
                       <button
@@ -1277,13 +1277,13 @@ export function DiscoveryView({
                         }`}
                       >
                         <div className="flex justify-between items-center">
-                          <span className={`text-[9.5px] font-black ${c.isCall ? 'text-[#4ADE80]' : 'text-[#F87171]'}`}>
+                          <span className={`text-[9.5px] font-black ${c.isCall ? 'text-[var(--success)]' : 'text-[var(--danger)]'}`}>
                             {c.ticker} {c.strike}{c.isCall ? 'C' : 'P'}
                           </span>
                           <span className={`text-[7.5px] font-bold px-1 py-0.5 rounded border ${
                             c.isCall
-                              ? 'bg-[#4ADE80]/10 text-[#4ADE80] border-[#4ADE80]/20'
-                              : 'bg-[#F87171]/10 text-[#F87171] border-[#F87171]/20'
+                              ? 'bg-[var(--success)]/10 text-[var(--success)] border-[var(--success)]/20'
+                              : 'bg-[var(--danger)]/10 text-[var(--danger)] border-[var(--danger)]/20'
                           }`}>
                             {c.shelf.toUpperCase()}
                           </span>
@@ -1305,7 +1305,7 @@ export function DiscoveryView({
 
         <div className="flex justify-between items-center cursor-pointer select-none pb-2.5 border-b border-[var(--border)]" onClick={() => setIsStrategyExpanded(!isStrategyExpanded)}>
           <div className="flex items-center gap-2">
-            <Info className="w-4 h-4 text-[#60A5FA]" />
+            <Info className="w-4 h-4 text-[var(--info)]" />
             <span className="text-[11px] font-extrabold uppercase tracking-widest text-[var(--text-primary)]">
               How This Category Works
             </span>
@@ -1351,11 +1351,11 @@ export function DiscoveryView({
                     </div>
                     <div className="flex justify-between items-baseline font-mono border-t pt-1.5 border-[var(--border)] gap-2">
                       <span className="text-[var(--text-tertiary)] shrink-0">Signal</span>
-                      <span className="text-[#60A5FA] font-bold text-[9px] uppercase text-right">{currentManualText.mathTracking}</span>
+                      <span className="text-[var(--info)] font-bold text-[9px] uppercase text-right">{currentManualText.mathTracking}</span>
                     </div>
                     <div className="flex justify-between items-baseline font-mono border-t pt-1.5 border-[var(--border)]">
                       <span className="text-[var(--text-tertiary)]">Confidence</span>
-                      <span className="text-[#4ADE80] font-bold text-[9px] uppercase">{currentManualText.confidenceTier}</span>
+                      <span className="text-[var(--success)] font-bold text-[9px]">{currentManualText.confidenceTier}</span>
                     </div>
                   </div>
                   <div className="text-[8px] text-[var(--text-tertiary)] border-t pt-1.5 tracking-wide border-[var(--border)]">
@@ -1372,10 +1372,10 @@ export function DiscoveryView({
       {/* 2C. SCANNER CONTROL */}
       <div className={`w-full p-3.5 rounded-xl flex flex-col sm:flex-row justify-between items-center gap-4 text-xs border ${c_glassBg}`}>
         <div className="flex items-center gap-3">
-          <span className={`w-2.5 h-2.5 rounded-full shrink-0 ${isMockScanning ? 'bg-[#FBBF24]' : 'bg-[#4ADE80]'}`} />
+          <span className={`w-2.5 h-2.5 rounded-full shrink-0 ${isMockScanning ? 'bg-[var(--warning)]' : 'bg-[var(--success)]'}`} />
           <div className="text-left">
             <span className="text-[10px] text-[var(--text-tertiary)] block font-bold uppercase tracking-wider">Scanner</span>
-            <span className={`text-[10.5px] font-black ${isMockScanning ? 'text-[#FBBF24]' : 'text-[var(--text-secondary)]'}`}>
+            <span className={`text-[10.5px] font-black ${isMockScanning ? 'text-[var(--warning)]' : 'text-[var(--text-secondary)]'}`}>
               {lastScanMessage}
             </span>
           </div>
@@ -1392,7 +1392,7 @@ export function DiscoveryView({
         >
           {isMockScanning ? (
             <>
-              <RefreshCw className="w-3.5 h-3.5 animate-spin text-[#4ADE80]" />
+              <RefreshCw className="w-3.5 h-3.5 animate-spin text-[var(--success)]" />
               <span>Scanning…</span>
             </>
           ) : (
@@ -1428,7 +1428,7 @@ export function DiscoveryView({
                       <div className="flex items-center gap-4">
                         <div className="flex items-center gap-2">
                           <span className={`text-xs font-black tracking-widest uppercase font-mono ${c_textWhite}`}>{ticker}</span>
-                          <span className="bg-[#60A5FA]/10 border border-[#60A5FA]/20 text-[#60A5FA] text-[8px] font-bold px-1.5 py-0.5 rounded uppercase tracking-wider">
+                          <span className="bg-[var(--info)]/10 border border-[var(--info)]/20 text-[var(--info)] text-[8px] font-bold px-1.5 py-0.5 rounded uppercase tracking-wider">
                             {tickerContracts.length} found
                           </span>
                         </div>
@@ -1447,28 +1447,28 @@ export function DiscoveryView({
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-start">
                       {tickerContracts.map((c, idx) => {
                         const actionColor = c.action === 'ENTER'
-                          ? 'text-[#4ADE80] border-[#4ADE80]/20 bg-[#4ADE80]/5'
+                          ? 'text-[var(--success)] border-[var(--success)]/20 bg-[var(--success)]/5'
                           : c.action === 'SELL'
-                            ? 'text-[#F87171] border-[#F87171]/20 bg-[#F87171]/5'
-                            : 'text-[#FBBF24] border-[#FBBF24]/20 bg-[#FBBF24]/5';
+                            ? 'text-[var(--danger)] border-[var(--danger)]/20 bg-[var(--danger)]/5'
+                            : 'text-[var(--warning)] border-[var(--warning)]/20 bg-[var(--warning)]/5';
 
                         const isFlashing = lastFlashingId === c.id;
 
                         // Classification tags: Core vs Fast Scalps vs Rebound Recoveries
                         let classBadgeLabel = "TOP OPPORTUNITY";
-                        let classBadgeStyle = "bg-[#60A5FA]/10 text-[#60A5FA] border-[#60A5FA]/20";
+                        let classBadgeStyle = "bg-[var(--info)]/10 text-[var(--info)] border-[var(--info)]/20";
                         if (c.shelf === 'improved') {
                           classBadgeLabel = "QUICKSCALP";
-                          classBadgeStyle = "bg-[#FBBF24]/10 text-[#FBBF24] border-[#FBBF24]/20";
+                          classBadgeStyle = "bg-[var(--warning)]/10 text-[var(--warning)] border-[var(--warning)]/20";
                         } else if (c.shelf === 'invalidation') {
                           classBadgeLabel = "REBOUND";
-                          classBadgeStyle = "bg-[#F87171]/10 text-[#F87171] border-[#F87171]/20";
+                          classBadgeStyle = "bg-[var(--danger)]/10 text-[var(--danger)] border-[var(--danger)]/20";
                         } else if (c.shelf === 'mispriced') {
                           classBadgeLabel = "DISCOUNTED";
                           classBadgeStyle = "bg-[var(--surface-3)] text-[var(--text-secondary)] border-[var(--border)]";
                         } else if (c.shelf === 'whale') {
                           classBadgeLabel = "WHALE";
-                          classBadgeStyle = "bg-[#4ADE80]/10 text-[#4ADE80] border-[#4ADE80]/20";
+                          classBadgeStyle = "bg-[var(--success)]/10 text-[var(--success)] border-[var(--success)]/20";
                         }
 
                         // Strongest indicator of this group (top sorted card is ALWAYS idx === 0 within its ticker)
@@ -1492,7 +1492,7 @@ export function DiscoveryView({
                             transition={{ duration: 0.25 }}
                             className={`p-4 border rounded-xl flex flex-col gap-2.5 text-left transition-colors cursor-pointer ${
                               isFlashing
-                                ? (flashDirection === 'up' ? 'bg-[#4ADE80]/5 border-[#4ADE80]/30' : 'bg-[#F87171]/5 border-[#F87171]/30')
+                                ? (flashDirection === 'up' ? 'bg-[var(--success)]/5 border-[var(--success)]/30' : 'bg-[var(--danger)]/5 border-[var(--danger)]/30')
                                 : isCardExpanded
                                   ? 'bg-[var(--surface-2)] border-[var(--border-strong)]'
                                   : 'bg-[var(--surface-2)] hover:bg-[var(--surface-3)] border-[var(--border)]'
@@ -1511,8 +1511,8 @@ export function DiscoveryView({
                                 <div className="flex items-center gap-1.5 flex-wrap">
                                   <span className={`text-xs font-black font-sans px-2.5 py-0.5 rounded-md border uppercase inline-block ${
                                     c.isCall
-                                      ? 'bg-[#4ADE80]/10 text-[#4ADE80] border-[#4ADE80]/25'
-                                      : 'bg-[#F87171]/10 text-[#F87171] border-[#F87171]/25'
+                                      ? 'bg-[var(--success)]/10 text-[var(--success)] border-[var(--success)]/25'
+                                      : 'bg-[var(--danger)]/10 text-[var(--danger)] border-[var(--danger)]/25'
                                   }`}>
                                     {c.ticker} {c.strike}{c.isCall ? 'C' : 'P'}
                                   </span>
@@ -1531,7 +1531,7 @@ export function DiscoveryView({
                                   {isPrimaryPeak && (
                                     <>
                                       <span className="text-[var(--text-tertiary)]">•</span>
-                                      <span className="text-[7px] text-[#4ADE80] font-bold bg-[#4ADE80]/10 border border-[#4ADE80]/20 px-1 rounded uppercase tracking-wider">
+                                      <span className="text-[7px] text-[var(--success)] font-bold bg-[var(--success)]/10 border border-[var(--success)]/20 px-1 rounded uppercase tracking-wider">
                                         Top Rated
                                       </span>
                                     </>
@@ -1543,7 +1543,7 @@ export function DiscoveryView({
                               <div className="text-right flex items-start gap-3">
                                 <div className="space-y-0.5">
                                   <span className="text-[7.5px] text-[var(--text-tertiary)] tracking-wider block font-bold uppercase">Expected Move</span>
-                                  <span className={`text-sm font-black tracking-tight font-mono ${c.health >= 55 ? 'text-[#4ADE80]' : 'text-[#F87171]'}`}>
+                                  <span className={`text-sm font-black tracking-tight font-mono ${c.health >= 55 ? 'text-[var(--success)]' : 'text-[var(--danger)]'}`}>
                                     {c.expectedMove}
                                   </span>
                                 </div>
@@ -1567,16 +1567,16 @@ export function DiscoveryView({
                                     <span className={`font-extrabold font-mono block text-xs ${c_textWhite}`}>
                                       ${coreSwingTarget.toFixed(2)}
                                     </span>
-                                    <span className="text-[7.5px] text-[#4ADE80] font-bold font-mono">
+                                    <span className="text-[7.5px] text-[var(--success)] font-bold font-mono">
                                       +{coreSwingGain}%
                                     </span>
                                   </div>
                                   <div className="text-left pl-2">
                                     <div className="text-[7.5px] text-[var(--text-tertiary)] uppercase tracking-widest font-black block">Scalp Exit</div>
-                                    <span className="text-[#FBBF24] font-extrabold font-mono block text-xs">
+                                    <span className="text-[var(--warning)] font-extrabold font-mono block text-xs">
                                       ${quickScalpTarget.toFixed(2)}
                                     </span>
-                                    <span className="text-[7.5px] text-[#FBBF24] font-bold font-mono">
+                                    <span className="text-[7.5px] text-[var(--warning)] font-bold font-mono">
                                       +{quickScalpGain}%
                                     </span>
                                   </div>
@@ -1584,9 +1584,9 @@ export function DiscoveryView({
 
                                 {/* Plain-English reasoning */}
                                 <div className="p-2.5 rounded-lg text-[9.5px]/[14.5px] tracking-wide text-left flex gap-1.5 items-start font-sans border bg-[var(--surface)] border-[var(--border)] text-[var(--text-secondary)]">
-                                  <Info className="w-3.5 h-3.5 text-[#60A5FA] shrink-0 mt-0.5" />
+                                  <Info className="w-3.5 h-3.5 text-[var(--info)] shrink-0 mt-0.5" />
                                   <div className="font-medium tracking-wide">
-                                    <span className="text-[#60A5FA] font-extrabold mr-1 uppercase">Why:</span>
+                                    <span className="text-[var(--info)] font-extrabold mr-1 uppercase">Why:</span>
                                     {getSimpleWordReason(c)}
                                   </div>
                                 </div>
@@ -1600,7 +1600,7 @@ export function DiscoveryView({
                                 <div className="border rounded-lg p-2.5 grid grid-cols-4 gap-2 text-center text-[10px] font-mono bg-[var(--surface)] border-[var(--border)] text-[var(--text-secondary)]">
                                   <div>
                                     <span className="block text-[7.5px] text-[var(--text-tertiary)] mb-0.5 tracking-wider uppercase">Delta</span>
-                                    <span className={`font-bold block ${c.isCall ? 'text-[#4ADE80]' : 'text-[#F87171]'}`}>{c.delta}</span>
+                                    <span className={`font-bold block ${c.isCall ? 'text-[var(--success)]' : 'text-[var(--danger)]'}`}>{c.delta}</span>
                                   </div>
                                   <div>
                                     <span className="block text-[7.5px] text-[var(--text-tertiary)] mb-0.5 tracking-wider uppercase">Gamma</span>
@@ -1608,7 +1608,7 @@ export function DiscoveryView({
                                   </div>
                                   <div>
                                     <span className="block text-[7.5px] text-[var(--text-tertiary)] mb-0.5 tracking-wider uppercase">Theta</span>
-                                    <span className="text-[#FBBF24] font-bold block">{c.theta}</span>
+                                    <span className="text-[var(--warning)] font-bold block">{c.theta}</span>
                                   </div>
                                   <div>
                                     <span className="block text-[7.5px] text-[var(--text-tertiary)] mb-0.5 tracking-wider uppercase">IV</span>
@@ -1630,7 +1630,7 @@ export function DiscoveryView({
                                       animate={isFlashing ? { scale: [1, 1.1, 1] } : {}}
                                       className={`text-xs font-black block font-mono ${
                                         isFlashing
-                                          ? (flashDirection === 'up' ? 'text-[#4ADE80]' : 'text-[#F87171]')
+                                          ? (flashDirection === 'up' ? 'text-[var(--success)]' : 'text-[var(--danger)]')
                                           : 'text-[var(--text-primary)]'
                                       }`}
                                     >
@@ -1646,7 +1646,7 @@ export function DiscoveryView({
                                     e.stopPropagation();
                                     handleSelectWithMatch(c.ticker, c.strike, c.isCall);
                                   }}
-                                  className="w-full py-2.5 bg-[#4ADE80] hover:bg-[#3fce72] border border-[#4ADE80] text-[8.5px] text-[#04140A] font-extrabold uppercase tracking-widest rounded-md mt-1 transition-colors cursor-pointer flex items-center justify-center gap-1.5"
+                                  className="w-full py-2.5 bg-[var(--success)] hover:bg-[#3fce72] border border-[var(--success)] text-[8.5px] text-[#04140A] font-extrabold uppercase tracking-widest rounded-md mt-1 transition-colors cursor-pointer flex items-center justify-center gap-1.5"
                                 >
                                   <span>Open Full Analysis</span>
                                   <ArrowRight className="w-2.5 h-2.5" />
@@ -1685,7 +1685,7 @@ export function DiscoveryView({
                     setOptionTypeFilter('all');
                     setSearchQuery('');
                   }}
-                  className="mt-3 inline-flex items-center gap-1.5 px-4 py-2 rounded-lg border font-mono text-[9px] font-black uppercase tracking-wider transition-colors cursor-pointer bg-transparent border-[var(--border-strong)] text-[var(--text-secondary)] hover:border-[#4ADE80] hover:text-[#4ADE80]"
+                  className="mt-3 inline-flex items-center gap-1.5 px-4 py-2 rounded-lg border font-mono text-[9px] font-black uppercase tracking-wider transition-colors cursor-pointer bg-transparent border-[var(--border-strong)] text-[var(--text-secondary)] hover:border-[var(--success)] hover:text-[var(--success)]"
                 >
                   <RefreshCw className="w-3 h-3" />
                   Clear filters
@@ -1698,7 +1698,7 @@ export function DiscoveryView({
           {/* GRID SUMMARY */}
           <div className={`w-full rounded-xl p-5 text-left flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border ${c_cardBg}`}>
             <div className="space-y-1">
-              <span className="text-[8.5px] text-[#60A5FA] tracking-widest uppercase font-black block">How This Works</span>
+              <span className="text-[8.5px] text-[var(--info)] tracking-widest uppercase font-black block">How This Works</span>
               <p className="text-[10px] tracking-wide leading-relaxed font-sans font-medium text-[var(--text-secondary)]">
                 This is a sample layout illustrating how dealer positioning, expected moves, and option pricing would be ranked. It is demo data, not a live scan. Tap any contract above to see its illustrative price targets.
               </p>
@@ -1710,7 +1710,7 @@ export function DiscoveryView({
               </div>
               <div>
                 <span className="text-[7.5px] text-[var(--text-tertiary)] uppercase font-black tracking-widest block">High Conviction</span>
-                <span className="text-sm font-black text-[#4ADE80] font-mono">{metricsOverview.extremeEV}</span>
+                <span className="text-sm font-black text-[var(--success)] font-mono">{metricsOverview.extremeEV}</span>
               </div>
             </div>
           </div>
@@ -1724,7 +1724,7 @@ export function DiscoveryView({
           <div className={`border rounded-xl p-4.5 text-left flex flex-col gap-3.5 ${c_cardBg}`}>
 
             <div className="flex items-center gap-2 border-b pb-2.5 border-[var(--border)]">
-              <Flame className="w-4 h-4 text-[#F87171]" />
+              <Flame className="w-4 h-4 text-[var(--danger)]" />
               <h2 className={`text-[10.5px] font-black uppercase tracking-widest ${c_textWhite}`}>
                 Largest Trades
               </h2>
@@ -1738,7 +1738,7 @@ export function DiscoveryView({
                   <>
                     <div className="space-y-0.5">
                       <span className="text-[7.5px] uppercase block font-black text-[var(--text-tertiary)]">Largest Bullish</span>
-                      <span className="text-[#4ADE80] font-bold block">{topFlows.bullish.ticker} {topFlows.bullish.strike}{topFlows.bullish.type}</span>
+                      <span className="text-[var(--success)] font-bold block">{topFlows.bullish.ticker} {topFlows.bullish.strike}{topFlows.bullish.type}</span>
                       <span className="text-[8px] font-sans uppercase text-[var(--text-secondary)]">{topFlows.bullish.size}</span>
                     </div>
                     <div className="text-right space-y-0.5">
@@ -1757,7 +1757,7 @@ export function DiscoveryView({
                   <>
                     <div className="space-y-0.5">
                       <span className="text-[7.5px] uppercase block font-black text-[var(--text-tertiary)]">Largest Hedge</span>
-                      <span className="text-[#F87171] font-bold block">{topFlows.hedge.ticker} {topFlows.hedge.strike}{topFlows.hedge.type}</span>
+                      <span className="text-[var(--danger)] font-bold block">{topFlows.hedge.ticker} {topFlows.hedge.strike}{topFlows.hedge.type}</span>
                       <span className="text-[8px] font-sans uppercase text-[var(--text-secondary)]">{topFlows.hedge.size}</span>
                     </div>
                     <div className="text-right space-y-0.5">
@@ -1776,7 +1776,7 @@ export function DiscoveryView({
                   <>
                     <div className="space-y-0.5">
                       <span className="text-[7.5px] uppercase block font-black text-[var(--text-tertiary)]">Largest Overall</span>
-                      <span className="text-[#60A5FA] font-bold block">{topFlows.largestOverall.ticker} {topFlows.largestOverall.strike}{topFlows.largestOverall.type}</span>
+                      <span className="text-[var(--info)] font-bold block">{topFlows.largestOverall.ticker} {topFlows.largestOverall.strike}{topFlows.largestOverall.type}</span>
                       <span className="text-[8px] font-sans uppercase text-[var(--text-secondary)]">{topFlows.largestOverall.side}</span>
                     </div>
                     <div className="text-right space-y-0.5">
@@ -1798,7 +1798,7 @@ export function DiscoveryView({
 
             <div className="flex items-center justify-between border-b pb-2.5 border-[var(--border)]">
               <div className="flex items-center gap-2">
-                <Database className="w-4 h-4 text-[#60A5FA]" />
+                <Database className="w-4 h-4 text-[var(--info)]" />
                 <h2 className={`text-[10.5px] font-black uppercase tracking-widest ${c_textWhite}`}>
                   Sample Option Flow
                 </h2>
@@ -1825,12 +1825,12 @@ export function DiscoveryView({
                         <div className="flex items-center gap-1.5">
                           <span className="font-mono font-bold text-[var(--text-tertiary)]">{log.timestamp}</span>
                           <span className={`px-1 py-0.5 rounded font-black text-[7.5px] ${
-                            isSweep ? 'bg-[#FBBF24]/10 border border-[#FBBF24]/25 text-[#FBBF24]' : 'bg-[#60A5FA]/10 border border-[#60A5FA]/25 text-[#60A5FA]'
+                            isSweep ? 'bg-[var(--warning)]/10 border border-[var(--warning)]/25 text-[var(--warning)]' : 'bg-[var(--info)]/10 border border-[var(--info)]/25 text-[var(--info)]'
                           }`}>
                             {log.side.toUpperCase()}
                           </span>
                         </div>
-                        <span className={`font-mono font-extrabold ${isBullish ? 'text-[#4ADE80]' : 'text-[#FBBF24]'}`}>
+                        <span className={`font-mono font-extrabold ${isBullish ? 'text-[var(--success)]' : 'text-[var(--warning)]'}`}>
                           {log.action}
                         </span>
                       </div>
@@ -1839,14 +1839,14 @@ export function DiscoveryView({
                         <span className={`text-[10.5px] ${c_textWhite}`}>
                           {log.ticker} {log.strike}{log.type}
                         </span>
-                        <span className={isBullish ? 'text-[#4ADE80]' : 'text-[#FBBF24]'}>
+                        <span className={isBullish ? 'text-[var(--success)]' : 'text-[var(--warning)]'}>
                           {log.premium}
                         </span>
                       </div>
 
                       <div className="flex justify-between items-center text-[8.5px] text-[var(--text-tertiary)] pt-1 border-t border-[var(--border)]">
                         <span>Size {log.size}</span>
-                        <span>Bias <span className={isBullish ? 'text-[#4ADE80] font-bold' : 'text-[var(--text-secondary)] font-bold'}>{log.tag}</span></span>
+                        <span>Bias <span className={isBullish ? 'text-[var(--success)] font-bold' : 'text-[var(--text-secondary)] font-bold'}>{log.tag}</span></span>
                       </div>
                     </motion.div>
                   );

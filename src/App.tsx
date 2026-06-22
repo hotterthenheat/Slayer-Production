@@ -85,10 +85,10 @@ const TickerTape = memo(() => {
                 key={`${loopIdx}-${idx}`} 
                 className="flex items-center gap-2.5 font-mono text-[9.5px] px-2 py-1 rounded transition-all"
               >
-                <span className="font-black text-[#E5E5E5] tracking-widest">{t.ticker}</span>
-                <span className="text-zinc-500 text-[8.5px] uppercase">{t.name}</span>
-                <span className={`font-extrabold tabular-nums ${t.isUp ? 'text-[#4ADE80]' : 'text-[#F87171]'}`}>${t.price.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
-                <span className={`text-[8px] font-black ${t.isUp ? 'text-[#4ADE80]' : 'text-[#F87171]'}`}>
+                <span className="font-black text-[var(--text-primary)] tracking-widest">{t.ticker}</span>
+                <span className="text-[var(--text-tertiary)] text-[8.5px] uppercase">{t.name}</span>
+                <span className={`font-extrabold tabular-nums ${t.isUp ? 'text-[var(--success)]' : 'text-[var(--danger)]'}`}>${t.price.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                <span className={`text-[8px] font-black ${t.isUp ? 'text-[var(--success)]' : 'text-[var(--danger)]'}`}>
                   {t.isUp ? '▲' : '▼'}
                 </span>
               </div>
@@ -113,7 +113,7 @@ const FooterClock: React.FC = () => {
   }, []);
 
   return (
-    <span className="text-[#fbbf24] font-black tabular-nums">{time}</span>
+    <span className="text-[var(--warning)] font-black tabular-nums">{time}</span>
   );
 };
 
@@ -269,40 +269,40 @@ export default function App() {
     switch (purchasedTier) {
       case 0:
         return {
-          label: "TIER 0 // PUBLIC ACCESS",
-          desc: "NOT SECURED // LOGIN REQUIRED",
+          label: "Guest",
+          desc: "Sign in to unlock",
           style: "bg-zinc-500/10 border-zinc-500/25 text-zinc-400 shadow-[0_0_15px_rgba(113,113,122,0.05)]",
           dotColor: "bg-zinc-500",
           iconColor: "text-zinc-400"
         };
       case 1:
         return {
-          label: "TIER 1 // SQUIRE ALERTS",
-          desc: "LIVE TRADING FEED ACTIVE",
+          label: "Squire",
+          desc: "Live alerts active",
           style: "bg-indigo-500/10 border-indigo-500/25 text-indigo-400 shadow-[0_0_15px_rgba(99,102,241,0.05)]",
           dotColor: "bg-indigo-500",
           iconColor: "text-indigo-400"
         };
       case 2:
         return {
-          label: "TIER 2 // ASSASSIN COCKPIT",
-          desc: "DECISION ARMORY UNLOCKED",
+          label: "Assassin",
+          desc: "SkyVision unlocked",
           style: "bg-sky-500/10 border-sky-500/25 text-sky-400 shadow-[0_0_15px_rgba(14,165,233,0.05)]",
-          dotColor: "bg-sky-450",
+          dotColor: "bg-sky-400",
           iconColor: "text-sky-400"
         };
       case 3:
         return {
-          label: "TIER 3 // DRAGONSLAYER DEALER FLOW",
-          desc: "REAL-TIME GAMMA DEALER FLOW",
+          label: "Dragonslayer",
+          desc: "Live dealer flow",
           style: "bg-[#4ADE80] text-black/10 border-black text-[#4ADE80] shadow-[0_0_15px_rgba(34,211,238,0.05)] border-2 border-black",
           dotColor: "bg-black/40",
           iconColor: "text-[#4ADE80] animate-pulse"
         };
       case 4:
         return {
-          label: "TIER 4 // REAPER QUANT SUITE",
-          desc: "INSTITUTIONAL QUANT SUITE",
+          label: "Reaper",
+          desc: "Full quant suite",
           style: "bg-amber-500/10 border-amber-500/25 text-amber-400 shadow-[0_0_15px_rgba(245,158,11,0.05)]",
           dotColor: "bg-amber-400",
           iconColor: "text-amber-400"
@@ -310,8 +310,8 @@ export default function App() {
       case 5:
       default:
         return {
-          label: "TIER 5 // IMMORTAL LIFETIME UNLIMITED",
-          desc: "WORKSPACE CLEARANCE GRANTED",
+          label: "Immortal",
+          desc: "Lifetime access",
           style: "bg-gradient-to-r from-red-500/5 via-amber-500/5 to-indigo-500/5 border-amber-500/40 text-amber-300 shadow-[0_0_20px_rgba(245,158,11,0.12)]",
           dotColor: "bg-gradient-to-r from-red-400 via-amber-400 to-indigo-400",
           iconColor: "text-amber-300 animate-pulse"
@@ -381,8 +381,8 @@ export default function App() {
     const navItems = [
       { id: 'nav-home', name: 'Home Workspace', ticker: 'HOME', pnl: 'Workspace', isNav: true, targetTab: 'home' },
       { id: 'nav-skyvision', name: 'SkyVision Cockpit', ticker: 'SKYV', pnl: 'Workspace', isNav: true, targetTab: 'skyvision' },
-      { id: 'nav-pinpoint', name: 'Pinpoint AI', ticker: 'PINP', pnl: 'Workspace', isNav: true, targetTab: 'pinpoint' },
-      { id: 'nav-auditor', name: 'Trust Archive & Registry', ticker: 'AUDIT', pnl: 'Workspace', isNav: true, targetTab: 'auditor' },
+      { id: 'nav-pinpoint', name: 'Pinpoint GEX', ticker: 'PINP', pnl: 'Workspace', isNav: true, targetTab: 'pinpoint' },
+      { id: 'nav-auditor', name: 'Trade History', ticker: 'AUDIT', pnl: 'Workspace', isNav: true, targetTab: 'auditor' },
       { id: 'nav-dealerflow', name: 'Dealer Flow', ticker: 'FLOW', pnl: 'Workspace', isNav: true, targetTab: 'dealerflow' },
       { id: 'nav-community', name: 'Research & Community', ticker: 'SLAYER', pnl: 'Workspace', isNav: true, targetTab: 'community' },
       { id: 'nav-settings', name: 'Settings & Preferences', ticker: 'SETT', pnl: 'System', isNav: true, targetTab: 'settings' }
@@ -826,18 +826,18 @@ export default function App() {
         <div className="w-16 h-16 border-2 border-red-500 rounded-full flex items-center justify-center mb-6 animate-pulse">
           <span className="text-3xl font-black">!</span>
         </div>
-        <h1 className="text-xl font-black tracking-widest text-[#E5E5E5] uppercase mb-2">SLAYER TERMINAL SECURITY KICKOUT</h1>
-        <p className="text-xs text-red-500 max-w-md uppercase tracking-wider leading-relaxed mb-4">
-          CONCURRENT ACCESS PROTECTOR DISPATCHED: Connection established from a different IP address of this verified user credential. Active real-time workstation constraints limited to 1 concurrent IP.
+        <h1 className="text-xl font-black tracking-widest text-[var(--text-primary)] uppercase mb-2">Session ended</h1>
+        <p className="text-xs text-red-500 max-w-md tracking-wider leading-relaxed mb-4">
+          This account is active on another device. Only one live session is allowed at a time.
         </p>
-        <div className="text-[10px] text-zinc-500 uppercase">
+        <div className="text-[10px] text-[var(--text-tertiary)] uppercase">
           If this was you, please wait 30 seconds and refresh to initiate a new primary handshake.
         </div>
         <button
           onClick={() => {
             window.location.reload();
           }}
-          className="mt-6 px-4 py-2 bg-red-600 hover:bg-red-500 text-[#E5E5E5] font-bold text-xs uppercase tracking-widest rounded transition-colors cursor-pointer"
+          className="mt-6 px-4 py-2 bg-red-600 hover:bg-red-500 text-[var(--text-primary)] font-bold text-xs uppercase tracking-widest rounded transition-colors cursor-pointer"
         >
           Re-establish Session Hook
         </button>
@@ -847,9 +847,9 @@ export default function App() {
 
   if (session === null) {
     return (
-      <div className="min-h-screen bg-black text-zinc-400 flex flex-col justify-center items-center font-mono select-none antialiased">
+      <div className="min-h-screen bg-black text-[var(--text-tertiary)] flex flex-col justify-center items-center font-mono select-none antialiased">
         <div className="w-8 h-8 border-t-2 border-white rounded-full animate-spin mb-4"></div>
-        <div className="tracking-widest uppercase text-xs text-[#E5E5E5]">SECURE WORKSTATION COCKPIT CONNECTING...</div>
+        <div className="tracking-widest uppercase text-xs text-[var(--text-primary)]">SECURE WORKSTATION COCKPIT CONNECTING...</div>
         <div className="text-[10px] text-zinc-650 mt-2 uppercase font-mono font-bold animate-pulse">Verifying verified Clerk credentials and security cookies</div>
       </div>
     );
@@ -861,9 +861,9 @@ export default function App() {
   // Safe fallback loading state and skeletal setup
   if (!serverState) {
     return (
-      <div className="min-h-screen bg-black text-zinc-400 flex flex-col justify-center items-center font-mono select-none antialiased">
+      <div className="min-h-screen bg-black text-[var(--text-tertiary)] flex flex-col justify-center items-center font-mono select-none antialiased">
         <div className="w-8 h-8 border-t-2 border-white rounded-full animate-spin mb-4"></div>
-        <div className="tracking-widest uppercase text-xs text-[#E5E5E5]">SLAYER CLIENT HYDRATION ENGINE ONLINE...</div>
+        <div className="tracking-widest uppercase text-xs text-[var(--text-primary)]">SLAYER CLIENT HYDRATION ENGINE ONLINE...</div>
         <div className="text-[10px] text-zinc-650 mt-2 uppercase font-mono">Resolving dynamic system variables</div>
       </div>
     );
@@ -928,8 +928,8 @@ export default function App() {
                 activeTab === 'home' ? 'Home' :
                 activeTab === 'subscription' ? 'Subscriptions' :
                 activeTab === 'skyvision' ? 'SkyVision Cockpit' :
-                activeTab === 'pinpoint' ? 'Pinpoint AI Tracker' :
-                activeTab === 'quant' ? 'Institutional Quant Lab' :
+                activeTab === 'pinpoint' ? 'Pinpoint GEX' :
+                activeTab === 'quant' ? 'Quant Lab' :
                 activeTab === 'auditor' ? 'Trust Registry' :
                 activeTab === 'community' ? 'Arbor Capital' :
                 activeTab === 'settings' ? 'System Personalization' :
@@ -996,8 +996,8 @@ export default function App() {
 
             {/* TAB 3: PINPOINT AI (MARKET INTELLIGENCE) */}
             {activeTab === 'pinpoint' && (
-              <div className="view-enter border border-black bg-black/80 rounded-md p-1 drop-shadow-2xl">
-                <TierGuard requiredTier={3} tabKey="pinpoint" planKey="pinpoint" planName="Pinpoint AI Tracker" planPrice="$500">
+              <div className="view-enter border border-[var(--border)] bg-black/80 rounded-md p-1 drop-shadow-2xl">
+                <TierGuard requiredTier={3} tabKey="pinpoint" planKey="pinpoint" planName="Pinpoint GEX" planPrice="$500">
                   <DealerFlowView />
                 </TierGuard>
               </div>
@@ -1005,8 +1005,8 @@ export default function App() {
 
             {/* TAB: INSTITUTIONAL QUANT LAB */}
             {activeTab === 'quant' && (
-              <div className="view-enter border border-black bg-black/80 rounded-md p-1 drop-shadow-2xl">
-                <TierGuard requiredTier={3} tabKey="quant" planKey="quant" planName="Institutional Quant Lab" planPrice="$800">
+              <div className="view-enter border border-[var(--border)] bg-black/80 rounded-md p-1 drop-shadow-2xl">
+                <TierGuard requiredTier={3} tabKey="quant" planKey="quant" planName="Quant Lab" planPrice="$800">
                   <QuantSuiteView />
                 </TierGuard>
               </div>
@@ -1015,7 +1015,7 @@ export default function App() {
             {/* TAB 5: AUDIT (TRUST ENGINE) */}
             {activeTab === 'auditor' && (
               <div className="view-enter">
-                <TierGuard requiredTier={4} tabKey="trust archive & registry" planKey="quant" planName="Institutional Quant Engine" planPrice="$1500">
+                <TierGuard requiredTier={4} tabKey="trust archive & registry" planKey="quant" planName="Quant Lab" planPrice="$1500">
                   <QuantAuditView
                     selectedAsset={selectedAsset}
                     isCall={selectedOptionType === 'C'}
@@ -1078,16 +1078,16 @@ export default function App() {
 
       {/* VIEWPORT SIMULATION ACTIVE BANNER */}
       {isSimulating && (
-        <div className="fixed top-0 left-0 right-0 z-[9999] bg-rose-600 text-[#E5E5E5] px-4 py-1.5 flex justify-between items-center font-mono text-[10px] uppercase tracking-widest font-black shadow-[0_0_20px_rgba(225,29,72,0.4)]">
+        <div className="fixed top-0 left-0 right-0 z-[9999] bg-rose-600 text-[var(--text-primary)] px-4 py-1.5 flex justify-between items-center font-mono text-[10px] tracking-widest font-black shadow-[0_0_20px_rgba(225,29,72,0.4)]">
           <div className="flex items-center gap-3">
             <span className="w-2 h-2 bg-white rounded-full animate-ping" />
-            <span>SPOOFING ACTIVE: VIEWING PLATFORM AS [{session?.access_tier}]</span>
+            <span><span className="font-black">Preview mode</span> · Viewing as {session?.access_tier}</span>
           </div>
-          <button 
+          <button
             onClick={handleExitSimulation}
-            className="bg-black hover:bg-black text-[#E5E5E5] px-4 py-1 transition-colors border border-rose-800"
+            className="bg-black hover:bg-black text-[var(--text-primary)] px-4 py-1 transition-colors border border-rose-800"
           >
-            TERMINATE SIMULATION & RESTORE MASTER CLEARANCE
+            Exit preview
           </button>
         </div>
       )}
@@ -1109,14 +1109,15 @@ export default function App() {
 
       {/* Terminal Footer Status Bar */}
       {activeTab !== 'workspace' && (
-        <footer className="mt-auto border-t border-white/5 bg-black px-6 py-3.5 flex flex-col sm:flex-row items-center justify-between text-[9px] text-zinc-500 font-mono tracking-widest uppercase gap-2">
+        <footer className="mt-auto border-t border-white/5 bg-black px-6 py-3.5 flex flex-col sm:flex-row items-center justify-between text-[9px] text-[var(--text-tertiary)] font-mono tracking-widest uppercase gap-2">
         <div className="flex items-center gap-2">
-          <span className="text-zinc-500">NY</span>
+          <span className="text-[var(--text-tertiary)]">NY</span>
           <FooterClock />
         </div>
+        <span className="normal-case tracking-normal text-[var(--text-tertiary)] order-last sm:order-none">Not investment advice.</span>
         <div className="flex items-center gap-2 mt-2 sm:mt-0">
-          <div className="w-1.5 h-1.5 bg-[#4ADE80] rounded-full animate-pulse"></div>
-          <span className="text-zinc-400 font-bold">{serverState?.data_source === 'SANDBOX_SYNTHETIC' ? 'Sandbox Feed' : 'Live Feed'}</span>
+          <div className="w-1.5 h-1.5 bg-[var(--success)] rounded-full animate-pulse"></div>
+          <span className="text-[var(--text-tertiary)] font-bold">{serverState?.data_source === 'SANDBOX_SYNTHETIC' ? 'Sandbox Feed' : 'Live Feed'}</span>
         </div>
       </footer>
       )}
@@ -1148,7 +1149,7 @@ export default function App() {
             >
               <div className="p-4 border-b border-black/60 flex flex-col gap-3">
                 <div className="flex items-center gap-3">
-                  <Search className="w-4 h-4 text-zinc-500 animate-pulse" />
+                  <Search className="w-4 h-4 text-[var(--text-tertiary)] animate-pulse" />
                   <input 
                     type="text"
                     ref={globalSearchInputRef}
@@ -1159,12 +1160,12 @@ export default function App() {
                     }}
                     onKeyDown={handleGlobalSearchKeyDown}
                     placeholder="Type search keyword or select computing token..."
-                    className="w-full bg-black border border-black px-3.5 py-1.5 text-[#E5E5E5] text-xs placeholder-zinc-650 font-mono rounded-md focus:ring-1 focus:ring-zinc-300/80 focus:border-black focus:outline-none text-[11px]"
+                    className="w-full bg-black border border-black px-3.5 py-1.5 text-[var(--text-primary)] text-xs placeholder-zinc-650 font-mono rounded-md focus:ring-1 focus:ring-zinc-300/80 focus:border-black focus:outline-none text-[11px]"
                   />
                   <button 
                     type="button"
                     onClick={() => setIsGlobalSearchOpen(false)}
-                    className="text-zinc-500 hover:text-[#E5E5E5] text-[9px] uppercase font-black transition-colors focus:outline-none"
+                    className="text-[var(--text-tertiary)] hover:text-[var(--text-primary)] text-[9px] uppercase font-black transition-colors focus:outline-none"
                   >
                     ESC
                   </button>
@@ -1178,7 +1179,7 @@ export default function App() {
                         setGlobalSearchIndex(0);
                       }}
                       className={`px-3 py-1 rounded-sm text-[9px] uppercase font-bold transition-colors cursor-pointer ${
-                        prismFilter === filter ? 'bg-black text-[#E5E5E5]' : 'text-zinc-500 hover:text-[#4ADE80]'
+                        prismFilter === filter ? 'bg-black text-[var(--text-primary)]' : 'text-[var(--text-tertiary)] hover:text-[var(--success)]'
                       }`}
                     >
                       {filter}
@@ -1188,7 +1189,7 @@ export default function App() {
               </div>
 
               <div className="p-3 max-h-[320px] overflow-y-auto hide-scrollbar">
-                <div className="text-[7.5px] text-zinc-500 font-extrabold uppercase px-3 py-1 tracking-wider mb-1">
+                <div className="text-[7.5px] text-[var(--text-tertiary)] font-extrabold uppercase px-3 py-1 tracking-wider mb-1">
                   {prismFilter === 'All' ? 'GLOBAL REGISTRY' : prismFilter.toUpperCase()}
                 </div>
 
@@ -1255,18 +1256,18 @@ export default function App() {
                         onMouseEnter={() => setGlobalSearchIndex(idx)}
                       >
                         <div className="flex items-center gap-3.5 flex-1 min-w-0 pr-2">
-                          <span className={`text-[12px] font-black tracking-wider shrink-0 ${isActive ? 'text-[#38bdf8]' : isTkActive ? 'text-[#4ADE80]' : 'text-[#4ADE80]'}`}>
+                          <span className={`text-[12px] font-black tracking-wider shrink-0 ${isActive ? 'text-[#38bdf8]' : isTkActive ? 'text-[var(--success)]' : 'text-[var(--success)]'}`}>
                             {tickerItem.isContract ? tickerItem.contract : tickerItem.ticker}
                           </span>
-                          <span className="text-[10px] text-zinc-500 uppercase font-medium truncate">
+                          <span className="text-[10px] text-[var(--text-tertiary)] uppercase font-medium truncate">
                             {tickerItem.name}
                           </span>
                         </div>
                         <div className="flex items-center gap-2.5 shrink-0">
-                          <span className="text-[10px] font-bold text-zinc-400 font-mono">
+                          <span className="text-[10px] font-bold text-[var(--text-tertiary)] font-mono">
                             {tickerItem.isContract || tickerItem.isTool || tickerItem.isNav ? tickerItem.pnl : `$${tickerItem.price?.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
                           </span>
-                          <ChevronRight className={`w-3.5 h-3.5 transition-colors ${isActive ? 'text-[#E5E5E5]' : 'text-zinc-700'}`} />
+                          <ChevronRight className={`w-3.5 h-3.5 transition-colors ${isActive ? 'text-[var(--text-primary)]' : 'text-zinc-700'}`} />
                         </div>
                       </button>
                     );

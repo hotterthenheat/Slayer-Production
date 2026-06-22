@@ -46,20 +46,20 @@ export function ClerkGate({ onSuccess, referralCodeFromUrl, onClose }: ClerkGate
         setErrorMessage(errorData.error || 'Authentication error. Please try again.');
       }
     } catch (err) {
-      setErrorMessage('Network timeout. Slayer auth server is offline.');
+      setErrorMessage('Connection error. Please try again.');
     } finally {
       setIsLoading(false);
     }
   };
 
   return (
-    <div id="clerk-authentication-gate" className="min-h-screen bg-black text-zinc-400 flex flex-col justify-center items-center font-mono selection:bg-[#4ADE80] text-black/20 selection:text-[#E5E5E5] p-4">
+    <div id="clerk-authentication-gate" className="min-h-screen bg-black text-[var(--text-secondary)] flex flex-col justify-center items-center font-mono selection:bg-[var(--success)] selection:text-[var(--text-primary)] p-4">
       
       {/* Visual background atmospheric elements */}
       <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[60rem] h-[60rem] rounded-full bg-white/[0.02] blur-[100px] pointer-events-none" />
       <div className="absolute top-8 left-8 flex items-center gap-3 select-none">
         <div className="w-2 h-2 rounded-full bg-[#E5E5E5] animate-pulse shadow-[0_0_10px_rgba(255,255,255,0.5)]" />
-        <span className="text-xs text-zinc-400 font-sans tracking-widest uppercase font-bold relative z-10">SLAYER PLATFORM</span>
+        <span className="text-xs text-[var(--text-secondary)] font-sans tracking-widest font-bold relative z-10">Slayer Terminal</span>
       </div>
 
       <motion.div 
@@ -83,11 +83,11 @@ export function ClerkGate({ onSuccess, referralCodeFromUrl, onClose }: ClerkGate
               <ShieldCheck className="w-8 h-8 text-[#E5E5E5]" />
             </div>
           </div>
-          <h1 className="text-2xl font-sans font-black tracking-tighter text-[#E5E5E5] uppercase select-none">
-            Welcome to Slayer
+          <h1 className="text-2xl font-sans font-black tracking-tight text-[var(--text-primary)] select-none">
+            Welcome to Slayer Terminal
           </h1>
-          <p className="text-[#a1a1aa] text-xs font-sans max-w-sm mx-auto leading-relaxed">
-            Enter your secure credentials to access institutional-grade decision intelligence.
+          <p className="text-[var(--text-tertiary)] text-xs font-sans max-w-sm mx-auto leading-relaxed">
+            Sign in with your secure credentials to access institutional-grade decision intelligence.
           </p>
         </div>
 
@@ -108,22 +108,22 @@ export function ClerkGate({ onSuccess, referralCodeFromUrl, onClose }: ClerkGate
         </div>
 
         {errorMessage && (
-          <div className="p-3.5 bg-rose-950/20 border border-[#F87171]/30 rounded-lg text-[10px] text-[#F87171] leading-relaxed font-mono uppercase">
+          <div className="p-3.5 bg-[var(--danger)]/10 border border-[var(--danger)]/30 rounded-lg text-[10px] text-[var(--danger)] leading-relaxed font-mono uppercase" role="alert">
             <span className="font-black">Error:</span> {errorMessage}
           </div>
         )}
 
         {referralCode && activeMode === 'signup' && (
-          <div className="p-3 bg-black/40 border border-black rounded-lg text-[9.5px] text-[#4ADE80] leading-tight font-mono uppercase flex items-center gap-2">
+          <div className="p-3 bg-[var(--success)]/10 border border-[var(--success)]/30 rounded-lg text-[10px] text-[var(--success)] leading-tight font-mono uppercase flex items-center gap-2">
             <Check className="w-3.5 h-3.5 shrink-0" />
-            <span>Referral code active! 5% discount applied automatically on subscription clearance.</span>
+            <span>Referral applied — 5% discount taken at checkout.</span>
           </div>
         )}
 
         <form onSubmit={handleSubmit} className="space-y-4 text-left">
           {activeMode === 'signup' && (
             <div>
-              <label className="text-[8.5px] text-zinc-500 uppercase tracking-widest font-extrabold block mb-1">
+              <label className="text-[10px] text-[var(--text-tertiary)] uppercase tracking-widest font-extrabold block mb-1">
                 Your Full Name
               </label>
               <div className="relative">
@@ -132,7 +132,7 @@ export function ClerkGate({ onSuccess, referralCodeFromUrl, onClose }: ClerkGate
                   required
                   value={name}
                   onChange={(e) => setName(e.target.value)}
-                  placeholder="Zak Ali"
+                  placeholder="Alex Morgan"
                   className="w-full bg-[#0a0a0a] border border-[#1f1f1f] focus:border-[#4f4f4f] focus:ring-1 focus:ring-[#4f4f4f] text-[#E5E5E5] font-sans rounded-xl p-3.5 pl-11 text-sm focus:outline-none transition-all"
                 />
                 <User className="w-4 h-4 text-zinc-500 absolute left-4 top-1/2 -translate-y-1/2" />
@@ -142,7 +142,7 @@ export function ClerkGate({ onSuccess, referralCodeFromUrl, onClose }: ClerkGate
 
           {activeMode === 'signup' && (
             <div>
-              <label className="text-[8.5px] text-zinc-500 uppercase tracking-widest font-extrabold block mb-1">
+              <label className="text-[10px] text-[var(--text-tertiary)] uppercase tracking-widest font-extrabold block mb-1">
                 Profile Photo URL (Optional)
               </label>
               <div className="relative">
@@ -159,7 +159,7 @@ export function ClerkGate({ onSuccess, referralCodeFromUrl, onClose }: ClerkGate
           )}
 
           <div>
-            <label className="text-[8.5px] text-zinc-500 uppercase tracking-widest font-extrabold block mb-1">
+            <label className="text-[10px] text-[var(--text-tertiary)] uppercase tracking-widest font-extrabold block mb-1">
               Email Address
             </label>
             <div className="relative">
@@ -168,7 +168,7 @@ export function ClerkGate({ onSuccess, referralCodeFromUrl, onClose }: ClerkGate
                 required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder="slayer@trade.com"
+                placeholder="you@firm.com"
                 className="w-full bg-[#0a0a0a] border border-[#1f1f1f] focus:border-[#4f4f4f] focus:ring-1 focus:ring-[#4f4f4f] text-[#E5E5E5] font-sans rounded-xl p-3.5 pl-11 text-sm focus:outline-none transition-all"
               />
               <Mail className="w-4 h-4 text-zinc-500 absolute left-4 top-1/2 -translate-y-1/2" />
@@ -176,7 +176,7 @@ export function ClerkGate({ onSuccess, referralCodeFromUrl, onClose }: ClerkGate
           </div>
 
           <div>
-            <label className="text-[8.5px] text-zinc-500 uppercase tracking-widest font-extrabold block mb-1">
+            <label className="text-[10px] text-[var(--text-tertiary)] uppercase tracking-widest font-extrabold block mb-1">
               Security Key Password
             </label>
             <div className="relative">
@@ -194,7 +194,7 @@ export function ClerkGate({ onSuccess, referralCodeFromUrl, onClose }: ClerkGate
 
           {activeMode === 'signup' && (
             <div>
-              <label className="text-[8.5px] text-zinc-500 uppercase tracking-widest font-extrabold block mb-1">
+              <label className="text-[10px] text-[var(--text-tertiary)] uppercase tracking-widest font-extrabold block mb-1">
                 Referral Code (Optional)
               </label>
               <input
@@ -210,17 +210,17 @@ export function ClerkGate({ onSuccess, referralCodeFromUrl, onClose }: ClerkGate
           <button
             type="submit"
             disabled={isLoading}
-            className="w-full py-4 mt-4 bg-white hover:bg-zinc-200 text-black border-none font-bold text-sm rounded-xl shadow-lg flex items-center justify-center gap-2 transition-transform hover:scale-[1.02] cursor-pointer"
+            className="w-full py-4 mt-4 bg-[var(--text-primary)] hover:opacity-90 text-[var(--surface)] border-none font-bold text-sm rounded-xl shadow-lg flex items-center justify-center gap-2 transition-transform hover:scale-[1.02] cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[var(--border-strong)]"
           >
             {isLoading ? (
               <>
-                <div className="w-4 h-4 rounded-full border-t-2 border-r-2 border-black animate-spin" />
+                <div className="w-4 h-4 rounded-full border-t-2 border-r-2 border-[var(--surface)] animate-spin" />
                 <span>Authenticating...</span>
               </>
             ) : (
               <>
                 <Lock className="w-4 h-4" />
-                <span>{activeMode === 'signin' ? 'Access Terminal' : 'Create Account'}</span>
+                <span>{activeMode === 'signin' ? 'Sign in' : 'Create Account'}</span>
               </>
             )}
           </button>
@@ -228,7 +228,7 @@ export function ClerkGate({ onSuccess, referralCodeFromUrl, onClose }: ClerkGate
 
         <div className="border-t border-[#1f1f1f] pt-5 mt-6 text-center">
           <p className="text-xs text-zinc-500 font-sans">
-            By continuing, you agree to Slayer Trade's Terms of Service and Privacy Policy. Secure SSL connection.
+            By continuing, you agree to Slayer Terminal's Terms of Service and Privacy Policy. Secure SSL connection.
           </p>
         </div>
       </motion.div>

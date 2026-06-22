@@ -54,6 +54,7 @@ export function SubscriptionPricing({ onUpgradeComplete, onEnterApp, session, on
 
   const [lifetimeContactType, setLifetimeContactType] = useState<'individual' | 'corporate'>('individual');
   const [contactSubmitted, setContactSubmitted] = useState(false);
+  const [lifetimeFormError, setLifetimeFormError] = useState('');
 
   const [lifetimeIndName, setLifetimeIndName] = useState('');
   const [lifetimeIndEmail, setLifetimeIndEmail] = useState('');
@@ -200,7 +201,7 @@ export function SubscriptionPricing({ onUpgradeComplete, onEnterApp, session, on
                 billingCycle === 'annual' ? 'bg-[var(--surface-3)] text-[var(--text-primary)]' : 'text-[var(--text-tertiary)] hover:text-[var(--text-primary)]'
               }`}
             >
-              Annual <span className="text-[10px] bg-[#4ADE80]/15 text-[#4ADE80] px-2 py-0.5 rounded-full font-bold">Save 20%</span>
+              Annual <span className="text-[10px] bg-[var(--success)]/15 text-[var(--success)] px-2 py-0.5 rounded-full font-bold">Save 20%</span>
             </button>
           </div>
         </div>
@@ -231,15 +232,15 @@ export function SubscriptionPricing({ onUpgradeComplete, onEnterApp, session, on
 
               <ul className="space-y-3 mt-5 mb-6 flex-grow">
                 <li className="flex gap-2.5 items-start text-[13px] text-[var(--text-secondary)] leading-snug">
-                  <Check className="w-4 h-4 text-[#4ADE80] shrink-0 mt-0.5" />
+                  <Check className="w-4 h-4 text-[var(--success)] shrink-0 mt-0.5" />
                   <span>Real-time Discord chat &amp; alerts</span>
                 </li>
                 <li className="flex gap-2.5 items-start text-[13px] text-[var(--text-secondary)] leading-snug">
-                  <Check className="w-4 h-4 text-[#4ADE80] shrink-0 mt-0.5" />
+                  <Check className="w-4 h-4 text-[var(--success)] shrink-0 mt-0.5" />
                   <span>Daily option discovery reports</span>
                 </li>
                 <li className="flex gap-2.5 items-start text-[13px] text-[var(--text-secondary)] leading-snug">
-                  <Check className="w-4 h-4 text-[#4ADE80] shrink-0 mt-0.5" />
+                  <Check className="w-4 h-4 text-[var(--success)] shrink-0 mt-0.5" />
                   <span>Verified historic trade archive</span>
                 </li>
               </ul>
@@ -277,19 +278,19 @@ export function SubscriptionPricing({ onUpgradeComplete, onEnterApp, session, on
 
               <ul className="space-y-3 mt-5 mb-6 flex-grow">
                 <li className="flex gap-2.5 items-start text-[13px] text-[var(--text-secondary)] leading-snug">
-                  <Check className="w-4 h-4 text-[#4ADE80] shrink-0 mt-0.5" />
+                  <Check className="w-4 h-4 text-[var(--success)] shrink-0 mt-0.5" />
                   <span className="text-[var(--text-primary)] font-medium">Everything in Squire</span>
                 </li>
                 <li className="flex gap-2.5 items-start text-[13px] text-[var(--text-secondary)] leading-snug">
-                  <Check className="w-4 h-4 text-[#4ADE80] shrink-0 mt-0.5" />
+                  <Check className="w-4 h-4 text-[var(--success)] shrink-0 mt-0.5" />
                   <span>SkyVision decision dashboard</span>
                 </li>
                 <li className="flex gap-2.5 items-start text-[13px] text-[var(--text-secondary)] leading-snug">
-                  <Check className="w-4 h-4 text-[#4ADE80] shrink-0 mt-0.5" />
+                  <Check className="w-4 h-4 text-[var(--success)] shrink-0 mt-0.5" />
                   <span>Live trade health scores</span>
                 </li>
                 <li className="flex gap-2.5 items-start text-[13px] text-[var(--text-secondary)] leading-snug">
-                  <Check className="w-4 h-4 text-[#4ADE80] shrink-0 mt-0.5" />
+                  <Check className="w-4 h-4 text-[var(--success)] shrink-0 mt-0.5" />
                   <span>Live volatility surface</span>
                 </li>
               </ul>
@@ -309,9 +310,9 @@ export function SubscriptionPricing({ onUpgradeComplete, onEnterApp, session, on
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
             transition={{ duration: 0.5, delay: 0.15, ease: [0.16, 1, 0.3, 1] }}
-            className="group rounded-2xl p-6 pt-9 flex flex-col relative bg-[var(--surface-2)] border border-[#4ADE80]/40 shadow-[0_0_0_1px_rgba(74,222,128,0.15),0_20px_50px_-20px_rgba(74,222,128,0.25)] transition-colors duration-200"
+            className="group rounded-2xl p-6 pt-9 flex flex-col relative bg-[var(--surface-2)] border border-[var(--success)]/40 shadow-[0_0_0_1px_rgba(74,222,128,0.15),0_20px_50px_-20px_rgba(74,222,128,0.25)] transition-colors duration-200"
           >
-            <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-[#4ADE80] text-black text-[10px] font-bold uppercase tracking-wider px-3 py-1 rounded-full whitespace-nowrap z-10">
+            <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-[var(--success)] text-black text-[10px] font-bold uppercase tracking-wider px-3 py-1 rounded-full whitespace-nowrap z-10">
               Best Value
             </div>
 
@@ -321,7 +322,7 @@ export function SubscriptionPricing({ onUpgradeComplete, onEnterApp, session, on
                   <span className="text-[var(--text-primary)] text-sm font-semibold inline-flex items-center gap-1.5">
                     Dragonslayer <ValyrianSword />
                   </span>
-                  <span className="text-[10px] uppercase tracking-wider text-[#4ADE80] font-medium">GEX</span>
+                  <span className="text-[10px] uppercase tracking-wider text-[var(--success)] font-medium">GEX</span>
                 </div>
                 <div className="flex items-baseline gap-1">
                   <span className="text-4xl font-bold text-[var(--text-primary)] tracking-tight">{billingCycle === 'monthly' ? '$500' : '$420'}</span>
@@ -331,19 +332,19 @@ export function SubscriptionPricing({ onUpgradeComplete, onEnterApp, session, on
 
               <ul className="space-y-3 mt-5 mb-6 flex-grow">
                 <li className="flex gap-2.5 items-start text-[13px] text-[var(--text-secondary)] leading-snug">
-                  <Check className="w-4 h-4 text-[#4ADE80] shrink-0 mt-0.5" />
+                  <Check className="w-4 h-4 text-[var(--success)] shrink-0 mt-0.5" />
                   <span className="text-[var(--text-primary)] font-medium">Everything in Assassin</span>
                 </li>
                 <li className="flex gap-2.5 items-start text-[13px] text-[var(--text-secondary)] leading-snug">
-                  <Check className="w-4 h-4 text-[#4ADE80] shrink-0 mt-0.5" />
+                  <Check className="w-4 h-4 text-[var(--success)] shrink-0 mt-0.5" />
                   <span>Live dealer positioning (GEX)</span>
                 </li>
                 <li className="flex gap-2.5 items-start text-[13px] text-[var(--text-secondary)] leading-snug">
-                  <Check className="w-4 h-4 text-[#4ADE80] shrink-0 mt-0.5" />
+                  <Check className="w-4 h-4 text-[var(--success)] shrink-0 mt-0.5" />
                   <span>Institutional order flow tape</span>
                 </li>
                 <li className="flex gap-2.5 items-start text-[13px] text-[var(--text-secondary)] leading-snug">
-                  <Check className="w-4 h-4 text-[#4ADE80] shrink-0 mt-0.5" />
+                  <Check className="w-4 h-4 text-[var(--success)] shrink-0 mt-0.5" />
                   <span>GEX chart by strike</span>
                 </li>
               </ul>
@@ -351,7 +352,7 @@ export function SubscriptionPricing({ onUpgradeComplete, onEnterApp, session, on
 
             <button
               onClick={() => handleStripeCheckout('pinpoint')}
-              className="w-full py-3 bg-[#4ADE80] text-black hover:bg-[#4ADE80]/90 font-semibold text-[13px] rounded-xl transition-colors duration-200 cursor-pointer"
+              className="w-full py-3 bg-[var(--success)] text-black hover:bg-[var(--success)]/90 font-semibold text-[13px] rounded-xl transition-colors duration-200 cursor-pointer"
             >
               Select plan
             </button>
@@ -371,7 +372,7 @@ export function SubscriptionPricing({ onUpgradeComplete, onEnterApp, session, on
                   <span className="text-[var(--text-primary)] text-sm font-semibold inline-flex items-center gap-1.5">
                     The Reaper <CuteScythe />
                   </span>
-                  <span className="text-[10px] uppercase tracking-wider text-[#FBBF24] font-medium">Full suite</span>
+                  <span className="text-[10px] uppercase tracking-wider text-[var(--warning)] font-medium">Full suite</span>
                 </div>
                 <div className="flex items-baseline gap-1">
                   <span className="text-4xl font-bold text-[var(--text-primary)] tracking-tight">{billingCycle === 'monthly' ? '$1500' : '$1250'}</span>
@@ -381,19 +382,19 @@ export function SubscriptionPricing({ onUpgradeComplete, onEnterApp, session, on
 
               <ul className="space-y-3 mt-5 mb-6 flex-grow">
                 <li className="flex gap-2.5 items-start text-[13px] text-[var(--text-secondary)] leading-snug">
-                  <Check className="w-4 h-4 text-[#FBBF24] shrink-0 mt-0.5" />
+                  <Check className="w-4 h-4 text-[var(--warning)] shrink-0 mt-0.5" />
                   <span className="text-[var(--text-primary)] font-medium">Everything in Dragonslayer</span>
                 </li>
                 <li className="flex gap-2.5 items-start text-[13px] text-[var(--text-secondary)] leading-snug">
-                  <Check className="w-4 h-4 text-[#FBBF24] shrink-0 mt-0.5" />
+                  <Check className="w-4 h-4 text-[var(--warning)] shrink-0 mt-0.5" />
                   <span className="text-[var(--text-primary)] font-medium">Full quant suite</span>
                 </li>
                 <li className="flex gap-2.5 items-start text-[13px] text-[var(--text-secondary)] leading-snug">
-                  <Check className="w-4 h-4 text-[#4ADE80] shrink-0 mt-0.5" />
+                  <Check className="w-4 h-4 text-[var(--success)] shrink-0 mt-0.5" />
                   <span>Live order-flow monitor</span>
                 </li>
                 <li className="flex gap-2.5 items-start text-[13px] text-[var(--text-secondary)] leading-snug">
-                  <Check className="w-4 h-4 text-[#4ADE80] shrink-0 mt-0.5" />
+                  <Check className="w-4 h-4 text-[var(--success)] shrink-0 mt-0.5" />
                   <span>Trade history archive</span>
                 </li>
               </ul>
@@ -431,19 +432,19 @@ export function SubscriptionPricing({ onUpgradeComplete, onEnterApp, session, on
 
               <ul className="space-y-3 mt-5 mb-6 flex-grow">
                 <li className="flex gap-2.5 items-start text-[13px] text-[var(--text-secondary)] leading-snug">
-                  <Check className="w-4 h-4 text-[#4ADE80] shrink-0 mt-0.5" />
+                  <Check className="w-4 h-4 text-[var(--success)] shrink-0 mt-0.5" />
                   <span className="text-[var(--text-primary)] font-medium">All features unlocked</span>
                 </li>
                 <li className="flex gap-2.5 items-start text-[13px] text-[var(--text-secondary)] leading-snug">
-                  <Check className="w-4 h-4 text-[#4ADE80] shrink-0 mt-0.5" />
+                  <Check className="w-4 h-4 text-[var(--success)] shrink-0 mt-0.5" />
                   <span>Permanent platform access</span>
                 </li>
                 <li className="flex gap-2.5 items-start text-[13px] text-[var(--text-secondary)] leading-snug">
-                  <Check className="w-4 h-4 text-[#4ADE80] shrink-0 mt-0.5" />
+                  <Check className="w-4 h-4 text-[var(--success)] shrink-0 mt-0.5" />
                   <span>Private 1-on-1 onboarding</span>
                 </li>
                 <li className="flex gap-2.5 items-start text-[13px] text-[var(--text-secondary)] leading-snug">
-                  <Check className="w-4 h-4 text-[#4ADE80] shrink-0 mt-0.5" />
+                  <Check className="w-4 h-4 text-[var(--success)] shrink-0 mt-0.5" />
                   <span>Early beta access to tools</span>
                 </li>
               </ul>
@@ -468,9 +469,11 @@ export function SubscriptionPricing({ onUpgradeComplete, onEnterApp, session, on
         transition={{ duration: 0.5 }}
         className="border-t border-[var(--border)] py-10 px-6 text-center mt-auto relative z-10 w-full"
       >
-        <p className="text-[12px] text-[var(--text-tertiary)]">&copy; 2026 Slayer Trade. All rights reserved.</p>
-        <p className="mt-1.5 text-[11px] text-[var(--text-tertiary)]/70">
-          Slayer provides real-time data and analysis tools. Not investment advice.
+        <p className="text-[12px] text-[var(--text-tertiary)]">&copy; 2026 Slayer Terminal. All rights reserved.</p>
+        <p className="mt-2 mx-auto max-w-2xl text-[11px] leading-relaxed text-[var(--text-tertiary)]">
+          Slayer Terminal provides analytics and informational tools only — not investment advice, a recommendation, or a
+          solicitation to buy or sell any security. Options carry substantial risk and are not suitable for every investor.
+          Modeled results and past performance do not guarantee future outcomes. All trading decisions are your own.
         </p>
       </motion.footer>
 
@@ -494,7 +497,7 @@ export function SubscriptionPricing({ onUpgradeComplete, onEnterApp, session, on
               {/* Modal Top Ribbon Header */}
               <div className="border-b border-[var(--border)] px-6 py-4 flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <Mail className="w-4 h-4 text-[#4ADE80]" />
+                  <Mail className="w-4 h-4 text-[var(--success)]" />
                   <span className="text-[11px] uppercase font-semibold tracking-wider text-[var(--text-secondary)]">
                     {selectedPlanForCheckout === 'lifetime' ? 'Contact sales' : 'Checkout'}
                   </span>
@@ -533,7 +536,7 @@ export function SubscriptionPricing({ onUpgradeComplete, onEnterApp, session, on
                     </div>
                     <div className="text-right shrink-0">
                       <span className="text-[10px] text-[var(--text-tertiary)] block tracking-wider font-medium uppercase">Price</span>
-                      <span className={`${selectedPlanForCheckout === 'lifetime' ? 'text-[12px] font-semibold tracking-wide text-[#4ADE80] inline-block mt-1' : 'text-2xl font-bold text-[var(--text-primary)]'}`}>
+                      <span className={`${selectedPlanForCheckout === 'lifetime' ? 'text-[12px] font-semibold tracking-wide text-[var(--success)] inline-block mt-1' : 'text-2xl font-bold text-[var(--text-primary)]'}`}>
                         {selectedPlanForCheckout === 'lifetime'
                           ? 'Custom quote'
                           : billingCycle === 'monthly'
@@ -558,7 +561,7 @@ export function SubscriptionPricing({ onUpgradeComplete, onEnterApp, session, on
                 </div>
 
                 {checkoutError && (
-                  <div className="rounded-lg border border-[#F87171]/40 bg-[#F87171]/10 text-[#F87171] px-4 py-3 text-[12px] flex items-start gap-2">
+                  <div className="rounded-lg border border-[var(--danger)]/40 bg-[var(--danger)]/10 text-[var(--danger)] px-4 py-3 text-[12px] flex items-start gap-2">
                     <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
                     <span>{checkoutError}</span>
                     <button onClick={() => setCheckoutError('')} className="ml-auto shrink-0 hover:opacity-70 transition-opacity"><X className="w-3.5 h-3.5" /></button>
@@ -570,7 +573,7 @@ export function SubscriptionPricing({ onUpgradeComplete, onEnterApp, session, on
                         <div className="space-y-4 flex flex-col justify-between h-full">
                           <div className="space-y-3.5">
                             <div className="flex items-center gap-1.5 text-[11px] uppercase tracking-wider text-[var(--text-secondary)] font-semibold border-b border-[var(--border)] pb-2">
-                              <Mail className="w-3.5 h-3.5 text-[#4ADE80] shrink-0" />
+                              <Mail className="w-3.5 h-3.5 text-[var(--success)] shrink-0" />
                               Contact form
                             </div>
                             <p className="text-[11px] text-[var(--text-tertiary)] leading-relaxed">
@@ -765,7 +768,7 @@ export function SubscriptionPricing({ onUpgradeComplete, onEnterApp, session, on
                                     className="w-full bg-[var(--surface)] border border-[var(--border)] text-[var(--text-primary)] rounded-lg p-2.5 text-[13px] focus:outline-none focus:border-[var(--border-strong)] transition-colors resize-none font-sans"
                                   />
                                   {lifetimeBusMessage.length >= 500 && (
-                                    <div className="text-[11px] text-[#F87171] font-medium mt-1">
+                                    <div className="text-[11px] text-[var(--danger)] font-medium mt-1">
                                       For longer requirements, email <a href="mailto:slayer@trade.com" className="underline hover:opacity-80">slayer@trade.com</a>
                                     </div>
                                   )}
@@ -774,6 +777,12 @@ export function SubscriptionPricing({ onUpgradeComplete, onEnterApp, session, on
                             )}
                           </div>
 
+                          {lifetimeFormError && (
+                            <div className="mt-3 text-[12px] text-[var(--danger)] font-medium" role="alert">
+                              {lifetimeFormError}
+                            </div>
+                          )}
+
                           <button
                             type="button"
                             onClick={() => {
@@ -781,16 +790,17 @@ export function SubscriptionPricing({ onUpgradeComplete, onEnterApp, session, on
                                 ? (lifetimeIndName && lifetimeIndEmail && lifetimeIndPhone)
                                 : (lifetimeBusName && lifetimeBusEmail && lifetimeBusPhone && lifetimeBusCompanyName);
                               if (isValid) {
+                                setLifetimeFormError('');
                                 submitLifetimeContact();
                               } else {
-                                if (lifetimeContactType === 'individual') {
-                                  alert('Please enter Name, Email, and Phone Number before submitting.');
-                                } else {
-                                  alert('Please enter Name, Email, Phone Number, and Company Name before submitting.');
-                                }
+                                setLifetimeFormError(
+                                  lifetimeContactType === 'individual'
+                                    ? 'Please enter your name, email, and phone number.'
+                                    : 'Please enter your name, email, phone number, and company name.'
+                                );
                               }
                             }}
-                            className="w-full mt-4 py-3 rounded-xl bg-[#4ADE80] hover:bg-[#4ADE80]/90 text-black font-semibold text-[12px] flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
+                            className="w-full mt-4 py-3 rounded-xl bg-[var(--success)] hover:bg-[var(--success)]/90 text-black font-semibold text-[12px] flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
                           >
                             <span>Send message</span>
                           </button>
@@ -800,8 +810,8 @@ export function SubscriptionPricing({ onUpgradeComplete, onEnterApp, session, on
 
                 {selectedPlanForCheckout === 'lifetime' && contactSubmitted && (
                   <div className="border border-[var(--border)] bg-[var(--surface-2)] rounded-xl p-6 text-center space-y-3">
-                    <div className="mx-auto w-14 h-14 rounded-full flex items-center justify-center bg-[#4ADE80]/10 border border-[#4ADE80]/40">
-                      <CheckCircle2 className="w-7 h-7 text-[#4ADE80]" />
+                    <div className="mx-auto w-14 h-14 rounded-full flex items-center justify-center bg-[var(--success)]/10 border border-[var(--success)]/40">
+                      <CheckCircle2 className="w-7 h-7 text-[var(--success)]" />
                     </div>
                     <h4 className="text-base font-bold text-[var(--text-primary)] tracking-tight font-sans">
                       Thanks &mdash; your request is on its way

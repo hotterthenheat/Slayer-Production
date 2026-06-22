@@ -115,7 +115,7 @@ export default function SlayerIntro({
           {/* Left — message */}
           <div className="flex flex-col items-start text-left">
             <span className="inline-flex items-center gap-2 text-[10px] font-semibold tracking-[0.18em] uppercase text-[var(--text-tertiary)] mb-6">
-              <span className={`w-1.5 h-1.5 rounded-full ${isLive ? 'bg-[#4ADE80]' : 'bg-[var(--text-tertiary)]'}`} />
+              <span className={`w-1.5 h-1.5 rounded-full ${isLive ? 'bg-[var(--success)]' : 'bg-[var(--text-tertiary)]'}`} />
               {isLive ? 'Live dealer positioning' : 'Connecting to market data'}
             </span>
 
@@ -133,13 +133,13 @@ export default function SlayerIntro({
             <div className="flex flex-wrap gap-3 mt-8">
               <button
                 onClick={() => onEnterApp('workspace')}
-                className="bg-[var(--text-primary)] text-black px-7 py-3 font-semibold text-xs tracking-wide rounded-lg hover:bg-white transition-colors duration-200"
+                className="bg-[var(--text-primary)] text-black px-7 py-3 font-semibold text-xs tracking-wide rounded-lg hover:bg-white transition-colors duration-200 focus-visible:ring-1 focus-visible:ring-[var(--border-strong)] focus:outline-none"
               >
                 Open terminal
               </button>
               <button
                 onClick={() => document.getElementById('feature-matrix')?.scrollIntoView({ behavior: 'smooth' })}
-                className="bg-[var(--surface)] text-[var(--text-primary)] border border-[var(--border)] px-7 py-3 font-medium text-xs tracking-wide rounded-lg hover:bg-[var(--surface-2)] transition-colors duration-200"
+                className="bg-[var(--surface)] text-[var(--text-primary)] border border-[var(--border)] px-7 py-3 font-medium text-xs tracking-wide rounded-lg hover:bg-[var(--surface-2)] transition-colors duration-200 focus-visible:ring-1 focus-visible:ring-[var(--border-strong)] focus:outline-none"
               >
                 See how it works
               </button>
@@ -152,7 +152,7 @@ export default function SlayerIntro({
                 <span className="block text-[10px] uppercase tracking-wider text-[var(--text-tertiary)] mt-1">Contracts ranked</span>
               </div>
               <div>
-                <span className="block text-xl font-bold text-[#4ADE80] tabular-nums">{compositeScore}</span>
+                <span className="block text-xl font-bold text-[var(--success)] tabular-nums">{compositeScore}</span>
                 <span className="block text-[10px] uppercase tracking-wider text-[var(--text-tertiary)] mt-1">System score</span>
               </div>
               <div>
@@ -174,7 +174,7 @@ export default function SlayerIntro({
                     const targetAsset = ASSET_LIST.find(a => a.ticker === ticker);
                     if (targetAsset) setSelectedAsset(targetAsset);
                   }}
-                  className={`flex-1 px-3 py-2 text-[11px] font-semibold uppercase tracking-wide rounded-md transition-colors duration-150 ${
+                  className={`flex-1 px-3 py-2 text-[11px] font-semibold uppercase tracking-wide rounded-md transition-colors duration-150 focus-visible:ring-1 focus-visible:ring-[var(--border-strong)] focus:outline-none ${
                     activeHeroIdx === ticker
                       ? 'bg-[var(--text-primary)] text-black'
                       : 'text-[var(--text-tertiary)] hover:text-[var(--text-primary)] hover:bg-[var(--surface-2)]'
@@ -189,10 +189,10 @@ export default function SlayerIntro({
             <button
               type="button"
               onClick={() => useContractStore.getState().setIsGlobalSearchOpen(true)}
-              className="w-full flex items-center justify-between px-4 py-3 rounded-lg bg-[var(--surface)] border border-[var(--border)] hover:bg-[var(--surface-2)] transition-colors duration-150 group"
+              className="w-full flex items-center justify-between px-4 py-3 rounded-lg bg-[var(--surface)] border border-[var(--border)] hover:bg-[var(--surface-2)] transition-colors duration-150 group focus-visible:ring-1 focus-visible:ring-[var(--border-strong)] focus:outline-none"
             >
               <span className="flex items-center gap-2.5 text-[11px] tracking-wide text-[var(--text-tertiary)]">
-                <Search className="w-3.5 h-3.5 text-[#4ADE80]" />
+                <Search className="w-3.5 h-3.5 text-[var(--success)]" />
                 Search all securities &amp; index greeks
               </span>
               {prismKeybind && (
@@ -216,8 +216,8 @@ export default function SlayerIntro({
                   Best opportunity
                 </span>
                 <span className="flex items-center gap-1.5">
-                  <span className={`w-1.5 h-1.5 rounded-full ${isLive ? 'bg-[#4ADE80]' : 'bg-[#FBBF24]'}`} />
-                  <span className={`text-[10px] font-semibold uppercase tracking-wide ${isLive ? 'text-[#4ADE80]' : 'text-[#FBBF24]'}`}>
+                  <span className={`w-1.5 h-1.5 rounded-full ${isLive ? 'bg-[var(--success)]' : 'bg-[var(--warning)]'}`} />
+                  <span className={`text-[10px] font-semibold uppercase tracking-wide ${isLive ? 'text-[var(--success)]' : 'text-[var(--warning)]'}`}>
                     {isLive ? 'Live' : 'Syncing'}
                   </span>
                 </span>
@@ -234,7 +234,7 @@ export default function SlayerIntro({
                   </span>
                 </div>
                 <span className={`text-[11px] font-semibold uppercase tracking-wide px-3 py-1.5 rounded-md ${
-                  bestOpportunity.isCall ? 'bg-[#4ADE80]/15 text-[#4ADE80]' : 'bg-[#F87171]/15 text-[#F87171]'
+                  bestOpportunity.isCall ? 'bg-[var(--success)]/15 text-[var(--success)]' : 'bg-[var(--danger)]/15 text-[var(--danger)]'
                 }`}>
                   {bestOpportunity.isCall ? 'Bullish' : 'Bearish'}
                 </span>
@@ -244,7 +244,7 @@ export default function SlayerIntro({
               <div className="grid grid-cols-3 gap-3 p-3 rounded-xl bg-[var(--surface-2)] border border-[var(--border)]">
                 <div>
                   <span className="block text-[10px] uppercase tracking-wide text-[var(--text-tertiary)]">Trade score</span>
-                  <span className="block text-base font-bold text-[#4ADE80] mt-1 tabular-nums">{Math.round(bestOpportunity.confidence)}</span>
+                  <span className="block text-base font-bold text-[var(--success)] mt-1 tabular-nums">{Math.round(bestOpportunity.confidence)}</span>
                 </div>
                 <div>
                   <span className="block text-[10px] uppercase tracking-wide text-[var(--text-tertiary)]">Market</span>
@@ -266,13 +266,13 @@ export default function SlayerIntro({
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-2 p-3 rounded-xl bg-[var(--surface-2)] border border-[var(--border)]">
                   <div>
                     <span className="block text-[10px] uppercase tracking-wide text-[var(--text-tertiary)]">Dealer bias</span>
-                    <span className={`block text-xs font-semibold mt-0.5 ${dealerMetrics.bias === 'LONG GAMMA' ? 'text-[#4ADE80]' : 'text-[#F87171]'}`}>
+                    <span className={`block text-xs font-semibold mt-0.5 ${dealerMetrics.bias === 'LONG GAMMA' ? 'text-[var(--success)]' : 'text-[var(--danger)]'}`}>
                       {dealerMetrics.bias}
                     </span>
                   </div>
                   <div>
                     <span className="block text-[10px] uppercase tracking-wide text-[var(--text-tertiary)]">Vol state</span>
-                    <span className="block text-xs font-semibold text-[#4ADE80] mt-0.5">{dealerMetrics.volState}</span>
+                    <span className="block text-xs font-semibold text-[var(--success)] mt-0.5">{dealerMetrics.volState}</span>
                   </div>
                   <div>
                     <span className="block text-[10px] uppercase tracking-wide text-[var(--text-tertiary)]">Call wall</span>
@@ -288,7 +288,7 @@ export default function SlayerIntro({
                       <span className="text-[11px] font-semibold text-[var(--text-primary)] tabular-nums">{dealerMetrics.dealerScore}/100</span>
                     </div>
                     <div className="w-full bg-[var(--surface-3)] h-1.5 rounded-full overflow-hidden">
-                      <div className="bg-[#4ADE80] h-full rounded-full transition-all duration-300" style={{ width: `${Math.max(0, Math.min(100, Number(dealerMetrics.dealerScore ?? 0)))}%` }} />
+                      <div className="bg-[var(--success)] h-full rounded-full transition-all duration-300" style={{ width: `${Math.max(0, Math.min(100, Number(dealerMetrics.dealerScore ?? 0)))}%` }} />
                     </div>
                   </div>
                 </div>
@@ -305,7 +305,7 @@ export default function SlayerIntro({
                   e.stopPropagation();
                   handleLaunchToActiveOpportunity();
                 }}
-                className="w-full py-3 mt-1 bg-[var(--text-primary)] hover:bg-white text-black font-semibold text-xs tracking-wide rounded-lg transition-colors duration-200 flex items-center justify-center gap-2"
+                className="w-full py-3 mt-1 bg-[var(--text-primary)] hover:bg-white text-black font-semibold text-xs tracking-wide rounded-lg transition-colors duration-200 flex items-center justify-center gap-2 focus-visible:ring-1 focus-visible:ring-[var(--border-strong)] focus:outline-none"
               >
                 Launch live workspace
                 <ArrowRight className="w-3.5 h-3.5" />
