@@ -103,6 +103,18 @@ export interface ActiveSession {
 export const activeSessionsDb = new Map<string, ActiveSession>();
 export const REDIS_PRESENCE = new Map<string, NodeJS.Timeout>();
 
+// Durable session-revocation watermark: email -> epoch ms. Any session cookie
+// issued (iat) BEFORE this time is rejected. Set on revoke-sessions / force-logout
+// / ban and persisted to the `moderation` table, so revocation survives restarts
+// (the in-memory map is hydrated from the DB on boot). Sync read on the hot path.
+export const sessionsValidAfter = new Map<string, number>();
+export function getSessionsValidAfter(email: string): number {
+  return sessionsValidAfter.get(email.toLowerCase().trim()) || 0;
+}
+export function setSessionsValidAfterLocal(email: string, ts: number): void {
+  sessionsValidAfter.set(email.toLowerCase().trim(), ts);
+}
+
 export function updateRedisPresence(email: string) {
   const existing = REDIS_PRESENCE.get(email);
   if (existing) clearTimeout(existing);
@@ -407,6 +419,15 @@ export const getSessionFromCookies = async (cookieHeader?: string) => {
         return null;
       }
 
+      // Durable session revocation: reject any cookie issued before the user's
+      // sessions_valid_after watermark (set on revoke/force-logout/ban). A cookie
+      // with no iat is treated as issued at 0, so it is also revoked when a
+      // watermark exists. Users with no watermark (sva===0) are unaffected.
+      const sva = sessionsValidAfter.get(emailLower) || 0;
+      if (sva > 0 && (Number(parsed.iat) || 0) < sva) {
+        return null;
+      }
+
       if (!parsed.session_id) {
         // Legacy/transient cookie with no tracked session id. Assign an
         // ephemeral id for this request only — do NOT persist it (it is never
@@ -470,6 +491,9 @@ export async function setSessionCookie(res: any, userSession: any, req: any) {
       terminated: false,
     });
   }
+  // Stamp issued-at so the durable session-revocation watermark can invalidate
+  // cookies minted before a revoke/force-logout/ban.
+  userSession.iat = Date.now();
   const serializedSession = JSON.stringify(userSession);
   const signedSession = signCookieValue(serializedSession);
 
