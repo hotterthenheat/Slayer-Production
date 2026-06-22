@@ -38,38 +38,44 @@ export function ZeroDtePanel() {
   const potCall = callWall > 0 ? probabilityOfTouch(spot, callWall, z.T, z.atmIv) : 0;
   const potPut = putWall > 0 ? probabilityOfTouch(spot, putWall, z.T, z.atmIv) : 0;
   const atmCallITM = probExpireITM(spot, Math.round(spot), z.T, z.atmIv, true);
+
+  // Resolve theme tokens once so inline-styled colors track the design system.
+  const css = getComputedStyle(document.documentElement);
+  const tok = (n: string, f: string) => { const v = css.getPropertyValue(n).trim(); return v || f; };
+  const C = { success: tok('--success', '#4ADE80'), danger: tok('--danger', '#F87171'), warning: tok('--warning', '#FBBF24'), info: tok('--info', '#60A5FA'), textPrimary: tok('--text-primary', '#E5E5E5') };
+
   const walls = [
-    { label: 'Call Wall', strike: callWall, p: potCall, tone: '#F87171' },
-    { label: 'Put Wall', strike: putWall, p: potPut, tone: '#4ADE80' },
+    { label: 'Call Wall', strike: callWall, p: potCall, tone: C.danger },
+    { label: 'Put Wall', strike: putWall, p: potPut, tone: C.success },
   ].filter((w) => w.strike > 0);
 
-  const Cell = ({ label, value, sub, tone = '#E5E5E5' }: { label: string; value: string; sub?: string; tone?: string }) => (
+  const Cell = ({ label, value, sub, tone = C.textPrimary }: { label: string; value: string; sub?: string; tone?: string }) => (
     <div className="rounded-md border border-[var(--border)] bg-[var(--surface-2)] p-2.5 flex flex-col gap-0.5">
-      <span className="text-[9px] font-black uppercase tracking-widest text-[var(--text-tertiary)] leading-tight">{label}</span>
+      <span className="text-[10px] font-black uppercase tracking-widest text-[var(--text-tertiary)] leading-tight">{label}</span>
       <span className="text-[13px] font-bold tabular-nums leading-none" style={{ color: tone }}>{value}</span>
-      {sub && <span className="text-[9px] text-[var(--text-tertiary)] tabular-nums">{sub}</span>}
+      {sub && <span className="text-[10px] text-[var(--text-tertiary)] tabular-nums">{sub}</span>}
     </div>
   );
 
   return (
-    <div className="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-5 flex flex-col gap-4" style={{ borderLeftColor: '#FBBF24', borderLeftWidth: '3px' }}>
+    <div className="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-5 flex flex-col gap-4" style={{ borderLeftColor: 'var(--warning)', borderLeftWidth: '3px' }}>
       <div className="flex items-center gap-2 pb-3 border-b border-[var(--border)]">
-        <Timer className="w-4 h-4 text-[#FBBF24]" />
+        <Timer className="w-4 h-4 text-[var(--warning)]" />
         <h2 className="text-xs font-black tracking-widest uppercase text-[var(--text-primary)]">{expiryLabel} Probabilities — {selectedAsset?.ticker}</h2>
-        <span className="text-[9px] text-[var(--text-tertiary)] uppercase tracking-widest ml-auto">{z.hoursToClose.toFixed(1)}h to close · ATM IV {(z.atmIv * 100).toFixed(1)}%</span>
+        <span className="text-[10px] text-[var(--text-tertiary)] uppercase tracking-widest ml-auto">{z.hoursToClose.toFixed(1)}h to close · ATM IV {(z.atmIv * 100).toFixed(1)}%</span>
       </div>
 
       {/* Expected move bands */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-        <Cell label="1H Expected Move" value={oneH ? `±${fmt(oneH.movePts)}` : '—'} sub={oneH ? `${(oneH.movePct * 100).toFixed(2)}%` : ''} tone="#60A5FA" />
-        <Cell label="EOD Expected Move" value={eod ? `±${fmt(eod.movePts)}` : '—'} sub={eod ? `${(eod.movePct * 100).toFixed(2)}%` : ''} tone="#60A5FA" />
+        <Cell label="1H Expected Move" value={oneH ? `±${fmt(oneH.movePts)}` : '—'} sub={oneH ? `${(oneH.movePct * 100).toFixed(2)}%` : ''} tone={C.info} />
+        <Cell label="EOD Expected Move" value={eod ? `±${fmt(eod.movePts)}` : '—'} sub={eod ? `${(eod.movePct * 100).toFixed(2)}%` : ''} tone={C.info} />
         <Cell label="EOD ±1σ Band" value={eod ? `${fmt(eod.lower1)}–${fmt(eod.upper1)}` : '—'} />
         <Cell label="EOD ±2σ Band" value={eod ? `${fmt(eod.lower2)}–${fmt(eod.upper2)}` : '—'} />
       </div>
 
       {/* Pin / magnet / settlement */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-        <Cell label="Strike Pin Probability" value={pct(z.pin.pinProbability)} sub={`magnet ${fmt(z.pin.magnet)}`} tone={z.pin.pinProbability >= 0.5 ? '#4ADE80' : '#FBBF24'} />
+        <Cell label="Strike Pin Probability" value={pct(z.pin.pinProbability)} sub={`magnet ${fmt(z.pin.magnet)}`} tone={z.pin.pinProbability >= 0.5 ? C.success : C.warning} />
         <Cell label="EOD Pin Target" value={fmt(z.eodMagnet)} sub="positive-gamma gravity zone" tone="#D9A15C" />
         <Cell label="ATM chance of expiring ITM" value={pct(atmCallITM)} sub="risk-neutral probability" />
         <Cell label="Settlement Risk" value={pct(z.settlementRiskPct)} sub="P(|move| > 1 EM)" tone="#FB923C" />
@@ -91,7 +97,7 @@ export function ZeroDtePanel() {
       </div>
 
       {z.pin.pinProbability >= 0.55 && (
-        <div className="flex items-center gap-2 text-[10px] font-bold text-[#4ADE80] bg-[#4ADE80]/10 border border-[#4ADE80]/40 rounded px-3 py-2">
+        <div className="flex items-center gap-2 text-[10px] font-bold text-[var(--success)] bg-[var(--success)]/10 border border-[var(--success)]/40 rounded px-3 py-2">
           <Magnet className="w-3.5 h-3.5" /> High pin risk into the close — price likely to gravitate toward {fmt(z.pin.magnet)}.
         </div>
       )}

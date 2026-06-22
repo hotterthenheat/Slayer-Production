@@ -45,7 +45,7 @@ export function TradePlanCard() {
       {/* Header */}
       <div className="flex items-center gap-2 flex-wrap">
         <Crosshair className="w-4 h-4" style={{ color: dirTone }} />
-        <h2 className="text-xs font-black tracking-widest uppercase text-[#E5E5E5]">Sky's Vision Plan — {plan.ticker} {optionExpiryLabel(selectedAsset)}</h2>
+        <h2 className="text-xs font-black tracking-widest uppercase text-[var(--text-primary)]">Sky's Vision Plan — {plan.ticker} {optionExpiryLabel(selectedAsset)}</h2>
         <span className="flex items-center gap-1 text-[10px] font-black uppercase tracking-widest px-2 py-0.5 rounded-sm border ml-auto" style={{ color: dirTone, borderColor: `${dirTone}66`, background: `${dirTone}14` }}>
           <DirIcon className="w-3 h-3" /> {plan.direction} · {plan.confidence}%
         </span>
@@ -74,31 +74,31 @@ export function TradePlanCard() {
           <span className="text-[10px] uppercase tracking-widest text-[var(--text-tertiary)]">current zone</span>
           {plan.targets.map((tg, i) => (
             <React.Fragment key={tg.reason}>
-              <span className="text-[10px] font-bold tabular-nums" style={{ color: reasonTone[tg.reason] || '#E5E5E5' }}>TP{i + 1} {fmt(tg.price)}</span>
+              <span className="text-[10px] font-bold tabular-nums" style={{ color: reasonTone[tg.reason] || 'var(--text-primary)' }}>TP{i + 1} {fmt(tg.price)}</span>
               <div className="h-1.5 rounded-sm bg-[var(--surface)] overflow-hidden"><div className="h-full rounded-sm" style={{ width: `${Math.min(100, Math.max(6, Math.abs(tg.distancePct) / 0.015 * 100))}%`, background: reasonTone[tg.reason] || '#888' }} /></div>
               <span className="text-[10px] uppercase tracking-widest" style={{ color: reasonTone[tg.reason] || 'var(--text-tertiary)' }}>{tg.reason}</span>
             </React.Fragment>
           ))}
-          <span className="text-[10px] font-black uppercase tracking-widest text-[#F87171]">Stop</span>
-          <span className="text-[10px] tabular-nums text-[#F87171]">{fmt(plan.stop)}</span>
+          <span className="text-[10px] font-black uppercase tracking-widest text-[var(--danger)]">Stop</span>
+          <span className="text-[10px] tabular-nums text-[var(--danger)]">{fmt(plan.stop)}</span>
           <span className="text-[10px] uppercase tracking-widest text-[var(--text-tertiary)]">−0.5σ EM</span>
         </div>
       </div>
 
       {/* Technical readout */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-[10px]">
-        <div className="rounded border border-[var(--border)] bg-[var(--surface)] px-2 py-1.5"><div className="text-[var(--text-tertiary)] uppercase tracking-widest text-[10px]">EMA Stack</div><div className="font-bold" style={{ color: t.emaAlignment === 'BULLISH' ? '#4ADE80' : t.emaAlignment === 'BEARISH' ? '#F87171' : 'var(--text-tertiary)' }}>{t.emaAlignment}</div></div>
+        <div className="rounded border border-[var(--border)] bg-[var(--surface)] px-2 py-1.5"><div className="text-[var(--text-tertiary)] uppercase tracking-widest text-[10px]">EMA Stack</div><div className="font-bold" style={{ color: t.emaAlignment === 'BULLISH' ? 'var(--success)' : t.emaAlignment === 'BEARISH' ? 'var(--danger)' : 'var(--text-tertiary)' }}>{t.emaAlignment}</div></div>
         <div className="rounded border border-[var(--border)] bg-[var(--surface)] px-2 py-1.5"><div className="text-[var(--text-tertiary)] uppercase tracking-widest text-[10px]">RSI 1m/5m/15m</div><div className="font-bold tabular-nums text-[var(--text-secondary)]">{t.rsi.m1}/{t.rsi.m5}/{t.rsi.m15}{t.rsi.allRising ? ' ↑' : ''}</div></div>
-        <div className="rounded border border-[var(--border)] bg-[var(--surface)] px-2 py-1.5"><div className="text-[var(--text-tertiary)] uppercase tracking-widest text-[10px]">TTM Squeeze</div><div className="font-bold" style={{ color: t.squeeze.firing ? '#4ADE80' : t.squeeze.squeezeOn ? '#FBBF24' : 'var(--text-tertiary)' }}>{t.squeeze.firing ? 'FIRING' : t.squeeze.squeezeOn ? 'COMPRESSED' : 'OFF'}</div></div>
+        <div className="rounded border border-[var(--border)] bg-[var(--surface)] px-2 py-1.5"><div className="text-[var(--text-tertiary)] uppercase tracking-widest text-[10px]">TTM Squeeze</div><div className="font-bold" style={{ color: t.squeeze.firing ? 'var(--success)' : t.squeeze.squeezeOn ? 'var(--warning)' : 'var(--text-tertiary)' }}>{t.squeeze.firing ? 'FIRING' : t.squeeze.squeezeOn ? 'COMPRESSED' : 'OFF'}</div></div>
         <div className="rounded border border-[var(--border)] bg-[var(--surface)] px-2 py-1.5"><div className="text-[var(--text-tertiary)] uppercase tracking-widest text-[10px]">VWAP</div><div className="font-bold text-[var(--text-secondary)]">{t.vwapPosition}</div></div>
       </div>
 
       {/* Context flags */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-x-4 gap-y-1 text-[10px] border-t border-[var(--border)] pt-2">
         <span className="flex items-center justify-between"><span className="text-[var(--text-tertiary)] uppercase tracking-widest text-[10px]">Hold</span><span className="tabular-nums text-[var(--text-secondary)] flex items-center gap-1"><Clock className="w-3 h-3" />{plan.expectedHoldMin}m</span></span>
-        <span className="flex items-center justify-between"><span className="text-[var(--text-tertiary)] uppercase tracking-widest text-[10px]">Flow</span><span className="font-bold" style={{ color: plan.dealerFlow.includes('Positive') ? '#4ADE80' : '#F87171' }}>{plan.dealerFlow.split(' ')[0]} γ</span></span>
-        <span className="flex items-center justify-between"><span className="text-[var(--text-tertiary)] uppercase tracking-widest text-[10px]">Confirm</span><span className="flex items-center gap-1" style={{ color: plan.flowConfirmation ? '#4ADE80' : 'var(--text-tertiary)' }}>{plan.flowConfirmation ? <CheckCircle2 className="w-3 h-3" /> : <XCircle className="w-3 h-3" />}{plan.flowConfirmation ? 'Yes' : 'No'}</span></span>
-        <span className="flex items-center justify-between"><span className="text-[var(--text-tertiary)] uppercase tracking-widest text-[10px]">Win Rate</span><span className="tabular-nums font-bold" style={{ color: plan.winRate >= 65 ? '#4ADE80' : plan.winRate >= 50 ? '#FBBF24' : '#F87171' }}>{plan.winRate}%</span></span>
+        <span className="flex items-center justify-between"><span className="text-[var(--text-tertiary)] uppercase tracking-widest text-[10px]">Flow</span><span className="font-bold" style={{ color: plan.dealerFlow.includes('Positive') ? 'var(--success)' : 'var(--danger)' }}>{plan.dealerFlow.split(' ')[0]} γ</span></span>
+        <span className="flex items-center justify-between"><span className="text-[var(--text-tertiary)] uppercase tracking-widest text-[10px]">Confirm</span><span className="flex items-center gap-1" style={{ color: plan.flowConfirmation ? 'var(--success)' : 'var(--text-tertiary)' }}>{plan.flowConfirmation ? <CheckCircle2 className="w-3 h-3" /> : <XCircle className="w-3 h-3" />}{plan.flowConfirmation ? 'Yes' : 'No'}</span></span>
+        <span className="flex items-center justify-between"><span className="text-[var(--text-tertiary)] uppercase tracking-widest text-[10px]">Win Rate</span><span className="tabular-nums font-bold" style={{ color: plan.winRate >= 65 ? 'var(--success)' : plan.winRate >= 50 ? 'var(--warning)' : 'var(--danger)' }}>{plan.winRate}%</span></span>
         <span className="flex items-center justify-between sm:col-span-2"><span className="text-[var(--text-tertiary)] uppercase tracking-widest text-[10px] flex items-center gap-1"><Activity className="w-3 h-3" />Trend</span><span className="text-[var(--text-secondary)]">{plan.trendRegime}</span></span>
       </div>
 

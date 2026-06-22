@@ -265,7 +265,7 @@ function ExposureProfileChart({ profile, decimals, type }: { profile: any; decim
                 {/* Right Hover details for Call */}
                 <div className={`absolute right-0 top-full mt-0.5 z-30 hidden group-hover/call:block border rounded-[4px] p-2 text-[9px] font-mono whitespace-nowrap shadow-2xl backdrop-blur-md pointer-events-none ring-1 ${
                   isLight 
-                    ? 'bg-white border-black ring-zinc-555/5 text-zinc-650' 
+                    ? 'bg-white border-black ring-zinc-550/5 text-zinc-650' 
                     : 'bg-black/95 border-black ring-zinc-850 text-[var(--success)]'
                 }`}>
                   <div className="flex items-center gap-1.5 mb-1">
@@ -426,37 +426,37 @@ export function DealerFlowView() {
         return {
           accent: 'emerald',
           text: 'text-emerald-700',
-          border: 'border-emerald-200 hover:border-emerald-350',
+          border: 'border-emerald-200 hover:border-emerald-300',
           cardBg: 'bg-[#e6fcf0] border border-emerald-200/80 shadow-[0_4px_24px_rgba(16,185,129,0.03)]',
           chipBg: 'bg-emerald-100 border border-emerald-200 text-emerald-800',
           iconColor: 'text-emerald-600',
           headerIconBg: 'bg-emerald-100 border border-emerald-200',
           glow: 'rgba(16, 185, 129, 0.04)',
-          primaryText: 'text-emerald-955',
-          buttonActive: 'bg-emerald-600 border border-emerald-750 text-[#E5E5E5] shadow-sm',
-          buttonInactive: 'bg-emerald-50 border border-emerald-250 text-emerald-650 hover:bg-emerald-100',
+          primaryText: 'text-emerald-950',
+          buttonActive: 'bg-emerald-600 border border-emerald-700 text-[#E5E5E5] shadow-sm',
+          buttonInactive: 'bg-emerald-50 border border-emerald-200 text-emerald-600 hover:bg-emerald-100',
           gexNetPlus: 'text-emerald-700 font-bold',
           gexNetMinus: 'text-rose-600',
           themeSuffix: 'call',
-          headerColor: 'text-emerald-955',
+          headerColor: 'text-emerald-950',
         };
       } else {
         return {
           accent: 'rose',
           text: 'text-rose-700',
-          border: 'border-rose-200 hover:border-rose-350',
+          border: 'border-rose-200 hover:border-rose-300',
           cardBg: 'bg-[#fdf2f2] border border-rose-200/80 shadow-[0_4px_24px_rgba(244,63,94,0.03)]',
           chipBg: 'bg-rose-100 border border-rose-200 text-rose-800',
           iconColor: 'text-rose-600',
           headerIconBg: 'bg-rose-100 border border-rose-200',
           glow: 'rgba(244, 63, 94, 0.04)',
-          primaryText: 'text-rose-955',
-          buttonActive: 'bg-rose-600 border border-rose-750 text-[#E5E5E5] shadow-sm',
-          buttonInactive: 'bg-rose-50 border border-rose-250 text-rose-650 hover:bg-rose-100',
+          primaryText: 'text-rose-950',
+          buttonActive: 'bg-rose-600 border border-rose-700 text-[#E5E5E5] shadow-sm',
+          buttonInactive: 'bg-rose-50 border border-rose-200 text-rose-600 hover:bg-rose-100',
           gexNetPlus: 'text-[var(--success)] font-bold',
           gexNetMinus: 'text-rose-600',
           themeSuffix: 'put',
-          headerColor: 'text-rose-955',
+          headerColor: 'text-rose-950',
         };
       }
     }
@@ -464,11 +464,11 @@ export function DealerFlowView() {
     if (!isConSelected) {
       return {
         accent: 'white',
-        text: 'text-zinc-250',
+        text: 'text-zinc-300',
         border: 'border-white/10 hover:border-white/15',
         cardBg: 'bg-white/[0.03] backdrop-blur-md border border-white/10 shadow-[0_8px_32px_0_rgba(255,255,255,0.01)]',
         chipBg: 'bg-white/5 border border-white/10 text-[var(--success)]',
-        iconColor: 'text-zinc-350',
+        iconColor: 'text-zinc-400',
         headerIconBg: 'bg-white/[0.04] border border-white/10',
         glow: 'rgba(255, 255, 255, 0.05)',
         primaryText: 'text-[#E5E5E5]',
@@ -509,7 +509,7 @@ export function DealerFlowView() {
         iconColor: 'text-[var(--danger)]',
         headerIconBg: 'bg-rose-500/10 border border-rose-500/20',
         glow: 'rgba(244, 63, 94, 0.06)',
-        primaryText: 'text-rose-355',
+        primaryText: 'text-rose-400',
         buttonActive: 'bg-rose-500/10 border border-rose-500 text-[#E5E5E5] shadow-[0_0_12px_rgba(244,63,94,0.12)]',
         buttonInactive: 'bg-black/45 border border-black text-zinc-500 hover:text-[var(--success)] hover:border-black',
         gexNetPlus: 'text-[var(--success)] font-bold',
@@ -794,7 +794,7 @@ export function DealerFlowView() {
           <div>
             <div className="flex items-center gap-2">
               <h1 className="text-sm font-black tracking-widest text-[var(--text-primary)] uppercase font-sans">
-                PINPOINT | {selectedAsset.ticker}
+                Pinpoint GEX · {selectedAsset.ticker}
               </h1>
               <FeedChip feed={filteredProfile?.feed || profile?.feed} />
             </div>
@@ -880,11 +880,10 @@ export function DealerFlowView() {
           >
             <div className="absolute top-0 left-0 w-1 h-full bg-[#06B6D4]/50" />
             <span className="w-2.5 h-2.5 bg-[#06B6D4] animate-pulse mr-2 shrink-0 rounded-sm opacity-80" />
-            <span className="text-[#06B6D4] font-mono text-[10px] mr-1.5 opacity-60">sys@idx:~#</span>
             <input
               type="text"
-              placeholder="LOAD_ASSET<...>"
-              className="bg-transparent border-none outline-none text-[11px] font-mono uppercase tracking-widest text-[#06B6D4] w-full placeholder:text-[#06B6D4]/30"
+              placeholder="Search ticker or company…"
+              className="bg-transparent border-none outline-none text-[11px] font-mono tracking-widest text-[#06B6D4] w-full placeholder:text-[#06B6D4]/40"
               value={searchQuery}
               onChange={(e) => {
                 setSearchQuery(e.target.value);
@@ -910,7 +909,7 @@ export function DealerFlowView() {
               />
               <div className="absolute top-full mt-2 left-0 sm:left-auto right-0 w-full sm:w-[480px] bg-[#050505] border border-[#06B6D4]/40 shadow-[0_0_30px_rgba(0,0,0,0.9)] z-50 max-h-[440px] overflow-y-auto python-scrollbar origin-top-right animate-in fade-in zoom-in-95 duration-150">
                 <div className="sticky top-0 bg-[#050505]/95 backdrop-blur-sm border-b border-[#06B6D4]/20 px-3 py-2 z-10 flex justify-between items-center">
-                  <span className="text-[9px] font-mono text-[#06B6D4] tracking-widest uppercase opacity-80">[ GLOBAL ASSET REGISTRY // SECURE CONNECTION ]</span>
+                  <span className="text-[9px] font-mono text-[#06B6D4] tracking-widest uppercase opacity-80">Search securities</span>
                 </div>
                 {(() => {
                   const query = searchQuery.toLowerCase().trim();
@@ -1015,7 +1014,7 @@ export function DealerFlowView() {
                             <span className="text-[10px] font-sans text-[#06B6D4]/70">Initialize dynamic asset profile over network</span>
                           </div>
                           <span className="text-[8px] font-mono tracking-widest text-[#06B6D4]/90 border border-[#06B6D4]/30 px-1 py-0.5">
-                            EXECUTE
+                            Load
                           </span>
                         </div>
                       )}
@@ -1023,7 +1022,7 @@ export function DealerFlowView() {
                       {filtered.length === 0 && (
                         <div className="px-4 py-6 text-center">
                           <Search className="w-5 h-5 text-[#06B6D4]/50 mx-auto mb-2" />
-                          <div className="text-[10px] uppercase font-mono tracking-widest text-[#06B6D4]/50">AWAITING INPUT...</div>
+                          <div className="text-[10px] uppercase font-mono tracking-widest text-[#06B6D4]/50">Type a ticker to search</div>
                         </div>
                       )}
                     </div>
@@ -1073,7 +1072,7 @@ export function DealerFlowView() {
             <div className="flex flex-col md:flex-row md:items-center justify-between border-b border-[var(--border)] pb-2.5 gap-3">
               <div className="flex flex-col gap-1">
                 <span className="text-[10px] font-black uppercase text-[var(--text-secondary)] tracking-widest leading-none flex items-center gap-2">
-                  TRADER INTENT EXPIRY CADENCES
+                  Expiry
                   <span className="text-[10px] bg-[var(--success)]/10 text-[var(--success)] border border-[var(--success)]/20 px-1.5 py-0.5 rounded font-bold font-mono">
                     {selectedAsset.ticker} PIPELINE
                   </span>
@@ -1135,7 +1134,7 @@ export function DealerFlowView() {
                     All Dates
                   </span>
                   <span className={`text-[7.5px] font-black mt-2 tracking-widest ${expiryTab === 'aggregated' ? 'text-[var(--success)]' : 'text-zinc-500'}`}>
-                    🌌 TOTAL GRAVITY
+                    Total Gravity
                   </span>
                 </button>
               )}

@@ -66,6 +66,13 @@ export const InteractiveChart = React.memo(function InteractiveChart({
   useEffect(() => {
     if (!containerRef.current) return;
 
+    // Resolve the semantic theme tokens once so the candle branding matches the
+    // token-driven UI instead of a hardcoded hex (the down/neon palette below is
+    // intentional chart-specific brand art and is left as-is).
+    const css = getComputedStyle(document.documentElement);
+    const tok = (n: string, f: string) => { const v = css.getPropertyValue(n).trim(); return v || f; };
+    const successTok = tok('--success', '#4ADE80');
+
     // 1. Create Chart once, using deep configuration
     const chart: any = createChart(containerRef.current, {
       autoSize: true, // Auto-size to container
@@ -118,11 +125,11 @@ export const InteractiveChart = React.memo(function InteractiveChart({
 
     // 2. Add Candlestick Series once with high contrast neon branding
     const candlestickSeries = chart.addSeries(CandlestickSeries, {
-      upColor: '#4ADE80',
+      upColor: successTok,
       downColor: '#ff4545',
-      borderUpColor: '#4ADE80',
+      borderUpColor: successTok,
       borderDownColor: '#ff4545',
-      wickUpColor: '#4ADE80',
+      wickUpColor: successTok,
       wickDownColor: '#ff4545',
     });
 
@@ -204,6 +211,10 @@ export const InteractiveChart = React.memo(function InteractiveChart({
   useEffect(() => {
     if (!chartRef.current || !seriesRef.current) return;
 
+    // Resolve the danger token once for the token-driven displacement marker.
+    const css = getComputedStyle(document.documentElement);
+    const dangerTok = (css.getPropertyValue('--danger').trim() || '#F87171');
+
     const markers: any[] = [];
 
     // 1. Draw Liquidity Sweeps / Dealer Events
@@ -240,7 +251,7 @@ export const InteractiveChart = React.memo(function InteractiveChart({
           markers.push({
             time: timeSecs,
             position: isBullish ? 'belowBar' : 'aboveBar',
-            color: isBullish ? '#d4d4d8' : '#F87171', // distinct from sweeps
+            color: isBullish ? '#d4d4d8' : dangerTok, // distinct from sweeps
             shape: isBullish ? 'arrowUp' : 'arrowDown',
             text: `DISP ${z.score}`,
             size: 2
@@ -360,7 +371,7 @@ export const InteractiveChart = React.memo(function InteractiveChart({
   }, [chartData, showLiquiditySweeps, liquidityEvents, targets, showFVGs, fvgs, showDisplacementEvents, displacementZones, tape]);
 
   return (
-    <div className="w-full h-full relative bg-black flex flex-col border border-black rounded-sm">
+    <div className="w-full h-full relative bg-[var(--surface)] flex flex-col border border-[var(--border)] rounded-sm">
       {/* Chart canvas DOM */}
       <div 
         ref={containerRef} 

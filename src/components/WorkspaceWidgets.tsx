@@ -117,14 +117,14 @@ const ScoreGauge = ({ score, stateLabel, tone }: { score: number; stateLabel: st
   const clamped = Math.max(0, Math.min(100, score));
   const color = STATUS_COLOR[tone];
   return (
-    <div className="flex flex-col h-full gap-1 text-zinc-300 font-mono">
+    <div className="flex flex-col h-full gap-1 text-[var(--text-secondary)] font-mono">
       <div className="flex items-center justify-between bg-[#0a0a0a] border border-zinc-800/50 rounded-sm px-3 py-1.5 shadow-sm">
-        <span className="text-[8.5px] font-bold uppercase tracking-[0.2em] text-zinc-500">State</span>
+        <span className="text-[8.5px] font-bold uppercase tracking-[0.2em] text-[var(--text-tertiary)]">State</span>
         <span className="text-[8.5px] font-black uppercase tracking-[0.16em]" style={{ color }}>{stateLabel}</span>
       </div>
       <div className="flex-1 flex flex-col items-center justify-center p-6 bg-[#0a0a0a] border border-zinc-800/50 rounded-sm relative shadow-sm min-h-[100px]">
         <div className="text-[32px] font-black tracking-tighter text-white leading-none">{Math.round(clamped)}</div>
-        <div className="text-[8.5px] font-bold text-zinc-500 uppercase tracking-[0.25em] mt-2">System Score</div>
+        <div className="text-[8.5px] font-bold text-[var(--text-tertiary)] uppercase tracking-[0.25em] mt-2">System Score</div>
         
         {/* Progress Bar exactly matching screenshot */}
         <div className="absolute bottom-0 left-0 right-0 h-[3px] bg-zinc-900/50 rounded-b-sm overflow-hidden">

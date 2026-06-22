@@ -112,7 +112,7 @@ const TICKER_PROFILES: Record<string, TICKER_PROFILE_METRICS> = {
     netCex: 12.8e6,
     fwdVar: 0.0422,
     vpin: '0.82 (HIGH)',
-    vpinColor: 'text-[#F87171]',
+    vpinColor: 'text-[var(--danger)]',
     friction: 0.0014,
     volState: 'VOL FALLING',
     marketEnergy: '0.457 λ',
@@ -126,7 +126,7 @@ const TICKER_PROFILES: Record<string, TICKER_PROFILE_METRICS> = {
     netCex: 18.5e6,
     fwdVar: 0.0680,
     vpin: '0.87 (HIGH)',
-    vpinColor: 'text-[#F87171]',
+    vpinColor: 'text-[var(--danger)]',
     friction: 0.0021,
     volState: 'VOL EXPANDING',
     marketEnergy: '0.621 λ',
@@ -140,7 +140,7 @@ const TICKER_PROFILES: Record<string, TICKER_PROFILE_METRICS> = {
     netCex: 0.85e6,
     fwdVar: 0.0570,
     vpin: '0.74 (MODERATE)',
-    vpinColor: 'text-amber-400',
+    vpinColor: 'text-[var(--warning)]',
     friction: 0.0008,
     volState: 'VOL FALLING',
     marketEnergy: '0.288 λ',
@@ -154,7 +154,7 @@ const TICKER_PROFILES: Record<string, TICKER_PROFILE_METRICS> = {
     netCex: 1.20e6,
     fwdVar: 0.0380,
     vpin: '0.65 (MODERATE)',
-    vpinColor: 'text-amber-400',
+    vpinColor: 'text-[var(--warning)]',
     friction: 0.0006,
     volState: 'LOW VOL / QUIET',
     marketEnergy: '0.194 λ',
@@ -168,7 +168,7 @@ const TICKER_PROFILES: Record<string, TICKER_PROFILE_METRICS> = {
     netCex: -0.40e6,
     fwdVar: 0.0820,
     vpin: '0.89 (HIGH)',
-    vpinColor: 'text-[#F87171]',
+    vpinColor: 'text-[var(--danger)]',
     friction: 0.0035,
     volState: 'HIGH VOL / UNSTABLE',
     marketEnergy: '0.748 λ',
@@ -184,7 +184,7 @@ const TICKER_PROFILES: Record<string, TICKER_PROFILE_METRICS> = {
 function SourceTag({ live }: { live: boolean }) {
   return (
     <span
-      className="text-[9px] font-black tracking-widest uppercase px-1 py-px rounded-sm leading-none"
+      className="text-[10px] font-black tracking-widest uppercase px-1 py-px rounded-sm leading-none"
       style={{
         color: live ? 'var(--success)' : 'var(--text-tertiary)',
         border: `1px solid ${live ? 'var(--success)' : 'var(--border)'}`,
@@ -242,6 +242,18 @@ export function InstitutionalPhysicsDashboard({ profile: externalProfile, ticker
   // Helper: a finite number > 0 (used to validate optional payload fields).
   const numOr = (v: unknown, fallback: number): number =>
     typeof v === 'number' && isFinite(v) ? v : fallback;
+
+  // Resolve design tokens once for any raw color literals used in inline styles
+  // or chart/canvas color values, so they track the shared theme.
+  const css = getComputedStyle(document.documentElement);
+  const tok = (n: string, f: string) => { const v = css.getPropertyValue(n).trim(); return v || f; };
+  const C = {
+    success: tok('--success', '#4ADE80'),
+    danger: tok('--danger', '#F87171'),
+    warning: tok('--warning', '#FBBF24'),
+    info: tok('--info', '#60A5FA'),
+    textPrimary: tok('--text-primary', '#E5E5E5'),
+  };
 
   // Local calculation states
   const [ticker, setTicker] = useState<string>(activeTicker);
@@ -1027,36 +1039,36 @@ export function InstitutionalPhysicsDashboard({ profile: externalProfile, ticker
       <header className="quant-panel mb-4 flex flex-row justify-between items-center py-3.5 px-5 h-auto min-h-[64px]" id="quant-header" style={{ display: 'flex', flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px' }}>
         <div className="flex items-center gap-4">
           <div className="flex items-center gap-2">
-            <span className="w-2 h-2 rounded-full bg-black/40 animate-pulse" />
-            <span className="text-[10px] font-black tracking-widest text-zinc-100 font-sans uppercase">
+            <span className="w-2 h-2 rounded-full bg-[var(--surface)]" />
+            <span className="text-[10px] font-black tracking-widest text-[var(--text-primary)] font-sans uppercase">
               DEALER MAP
             </span>
           </div>
-          <div className="h-4 w-px bg-black" />
+          <div className="h-4 w-px bg-[var(--border)]" />
           
-          <div className="flex items-center gap-1.5 bg-black/80 border border-black px-2.5 py-1 rounded">
-            <span className="text-zinc-500 text-[10px] font-bold">ACTIVE ASSET:</span>
-            <span className="text-[#4ADE80] font-extrabold text-[11px] font-mono tracking-wider">{ticker}</span>
+          <div className="flex items-center gap-1.5 bg-[var(--surface-2)] border border-[var(--border)] px-2.5 py-1 rounded">
+            <span className="text-[color:var(--text-tertiary)] text-[10px] font-bold">ACTIVE ASSET:</span>
+            <span className="text-[var(--success)] font-extrabold text-[11px] font-mono tracking-wider">{ticker}</span>
           </div>
         </div>
 
-        <div className="flex items-center gap-6 text-[9.5px]">
+        <div className="flex items-center gap-6 text-[10px]">
           {/* State Classifier indicator */}
           <div className="flex flex-col text-left">
             <span className="text-[color:var(--text-tertiary)] font-extrabold uppercase text-[10px] tracking-wider leading-none mb-1">STATUS</span>
-            <span className={`font-black tracking-wide leading-none text-[10px] ${systemState === 'SYSTEM ACTIVE' ? 'text-[#4ADE80]' : 'text-amber-500 animate-pulse'}`}>
+            <span className={`font-black tracking-wide leading-none text-[10px] ${systemState === 'SYSTEM ACTIVE' ? 'text-[var(--success)]' : 'text-[var(--warning)] animate-pulse'}`}>
               ● {systemState}
             </span>
           </div>
 
-          <div className="h-4 w-px bg-black" />
+          <div className="h-4 w-px bg-[var(--border)]" />
 
           <div className="flex flex-col text-left">
             <span className="text-[color:var(--text-tertiary)] font-extrabold uppercase text-[10px] tracking-wider leading-none mb-1 flex items-center gap-1.5">DEALER FLOW INTENSITY <SourceTag live={false} /></span>
             <span className="text-[color:var(--text-secondary)] font-bold leading-none text-[10px]">{profile.marketEnergy}</span>
           </div>
 
-          <div className="h-4 w-px bg-black" />
+          <div className="h-4 w-px bg-[var(--border)]" />
 
           <div className="flex flex-col text-left">
             <span className="text-[color:var(--text-tertiary)] font-extrabold uppercase text-[10px] tracking-wider leading-none mb-1 flex items-center gap-1.5">MARKET CONDITION <SourceTag live={false} /></span>
@@ -1079,43 +1091,43 @@ export function InstitutionalPhysicsDashboard({ profile: externalProfile, ticker
           <div className="mb-4">
             <div className="panel-header-alt">
               <span>DEALER INVENTORY STATE</span>
-              <Terminal className="w-3 h-3 text-zinc-600" />
+              <Terminal className="w-3 h-3 text-[color:var(--text-tertiary)]" />
             </div>
 
             <div className="grid grid-cols-1 gap-3.5">
-              <div className="bg-black/45 p-3 border border-black rounded-sm">
+              <div className="bg-[var(--surface-2)] p-3 border border-[var(--border)] rounded-sm">
                 <div className="hud-label flex items-center justify-between">
                   <span>NET DEALER GAMMA (GEX)</span>
                   <SourceTag live={isLive} />
                 </div>
                 <div className="flex items-baseline gap-2">
-                  <span className={`hud-value ${effectiveProfile.netGex >= 0 ? 'text-[#4ADE80]' : 'text-[#F87171]'}`}>
+                  <span className={`hud-value tabular-nums ${effectiveProfile.netGex >= 0 ? 'text-[var(--success)]' : 'text-[var(--danger)]'}`}>
                     {fmtBn(effectiveProfile.netGex)}
                   </span>
                   <span className="text-[10px] text-[color:var(--text-tertiary)]">USD/sh</span>
                 </div>
               </div>
 
-              <div className="bg-black/45 p-3 border border-black rounded-sm">
+              <div className="bg-[var(--surface-2)] p-3 border border-[var(--border)] rounded-sm">
                 <div className="hud-label flex items-center justify-between">
                   <span>NET VANNA EXPOSURE (VEX)</span>
                   <SourceTag live={isLive} />
                 </div>
                 <div className="flex items-baseline gap-2">
-                  <span className={`hud-value ${effectiveProfile.netVex >= 0 ? 'text-[#4ADE80]' : 'text-[#F87171]'}`}>
+                  <span className={`hud-value tabular-nums ${effectiveProfile.netVex >= 0 ? 'text-[var(--success)]' : 'text-[var(--danger)]'}`}>
                     {fmtBn(effectiveProfile.netVex)}
                   </span>
                   <span className="text-[10px] text-[color:var(--text-tertiary)]">USD/vol</span>
                 </div>
               </div>
 
-              <div className="bg-black/45 p-3 border border-black rounded-sm">
+              <div className="bg-[var(--surface-2)] p-3 border border-[var(--border)] rounded-sm">
                 <div className="hud-label flex items-center justify-between">
                   <span>NET CHARM EXPOSURE (CEX)</span>
                   <SourceTag live={false} />
                 </div>
                 <div className="flex items-baseline gap-2">
-                  <span className={`hud-value ${effectiveProfile.netCex >= 0 ? 'text-[#4ADE80]' : 'text-[#F87171]'}`}>
+                  <span className={`hud-value tabular-nums ${effectiveProfile.netCex >= 0 ? 'text-[var(--success)]' : 'text-[var(--danger)]'}`}>
                     {fmtBn(effectiveProfile.netCex)}
                   </span>
                   <span className="text-[10px] text-[color:var(--text-tertiary)]">/24h</span>
@@ -1125,7 +1137,7 @@ export function InstitutionalPhysicsDashboard({ profile: externalProfile, ticker
               {/* Key dealer levels — rendered straight from the live gex_profile.
                   Only shown when the server actually supplies them (premium tier). */}
               {(typeof liveGex?.callWall === 'number' || typeof liveGex?.putWall === 'number' || typeof liveGex?.gammaFlip === 'number') && (
-                <div className="bg-black/45 p-3 border border-black rounded-sm">
+                <div className="bg-[var(--surface-2)] p-3 border border-[var(--border)] rounded-sm">
                   <div className="hud-label flex items-center justify-between">
                     <span>KEY DEALER LEVELS</span>
                     <SourceTag live={isLive} />
@@ -1133,19 +1145,19 @@ export function InstitutionalPhysicsDashboard({ profile: externalProfile, ticker
                   <div className="grid grid-cols-3 gap-2 mt-1">
                     <div className="flex flex-col">
                       <span className="text-[10px] text-[color:var(--text-tertiary)] uppercase tracking-wider">Call Wall</span>
-                      <span className="hud-value text-[#4ADE80] text-[13px]">
+                      <span className="hud-value text-[var(--success)] text-[13px] tabular-nums">
                         {typeof liveGex?.callWall === 'number' ? liveGex.callWall.toFixed(decimals) : '—'}
                       </span>
                     </div>
                     <div className="flex flex-col">
                       <span className="text-[10px] text-[color:var(--text-tertiary)] uppercase tracking-wider">Put Wall</span>
-                      <span className="hud-value text-[#F87171] text-[13px]">
+                      <span className="hud-value text-[var(--danger)] text-[13px] tabular-nums">
                         {typeof liveGex?.putWall === 'number' ? liveGex.putWall.toFixed(decimals) : '—'}
                       </span>
                     </div>
                     <div className="flex flex-col">
                       <span className="text-[10px] text-[color:var(--text-tertiary)] uppercase tracking-wider">Flip</span>
-                      <span className="hud-value text-[color:var(--info)] text-[13px]">
+                      <span className="hud-value text-[color:var(--info)] text-[13px] tabular-nums">
                         {typeof liveGex?.gammaFlip === 'number' ? liveGex.gammaFlip.toFixed(decimals) : '—'}
                       </span>
                     </div>
@@ -1161,13 +1173,13 @@ export function InstitutionalPhysicsDashboard({ profile: externalProfile, ticker
               <span>HEDGING PROFILE</span>
               <div className="flex items-center gap-2">
                 <SourceTag live={Boolean(realStrikes)} />
-                <Layers className="w-3 h-3 text-zinc-600" />
+                <Layers className="w-3 h-3 text-[color:var(--text-tertiary)]" />
               </div>
             </div>
 
-            <div className="flex flex-col gap-[3px] bg-black/30 p-2.5 border border-black rounded-sm flex-1 overflow-y-auto max-h-[220px]">
+            <div className="flex flex-col gap-[3px] bg-[var(--surface-2)] p-2.5 border border-[var(--border)] rounded-sm flex-1 overflow-y-auto max-h-[220px]">
               {/* Header */}
-              <div className="grid grid-cols-5 text-[10px] text-[color:var(--text-tertiary)] font-extrabold uppercase border-b border-black pb-1.5 mb-1 tracking-wider text-center">
+              <div className="grid grid-cols-5 text-[10px] text-[color:var(--text-tertiary)] font-extrabold uppercase border-b border-[var(--border)] pb-1.5 mb-1 tracking-wider text-center">
                 <span className="text-left">C_GEX</span>
                 <span>C_OI</span>
                 <span className="text-[color:var(--text-secondary)]">STRIKE</span>
@@ -1181,19 +1193,19 @@ export function InstitutionalPhysicsDashboard({ profile: externalProfile, ticker
                 return (
                   <div
                     key={strRow.strike}
-                    className={`grid grid-cols-5 text-[8.5px] font-mono py-1 px-1 items-center justify-center text-center border border-black/40 relative rounded-sm transition-all duration-150 ${
+                    className={`grid grid-cols-5 text-[10px] tabular-nums font-mono py-1 px-1 items-center justify-center text-center border border-[var(--border)] relative rounded-sm transition-all duration-150 ${
                       isAtSpotIdx
-                        ? 'bg-black/70 border border-black ring-[1px] ring-zinc-500/30'
+                        ? 'bg-[var(--surface-2)] border border-[var(--border-strong)] ring-[1px] ring-[var(--border-strong)]'
                         : isPositive
-                          ? 'bg-black/40 border-black text-[#4ADE80]'
-                          : 'bg-rose-950/20 border-rose-900/35 text-[#F87171]'
+                          ? 'bg-[var(--surface-2)] border-[var(--border)] text-[var(--success)]'
+                          : 'bg-rose-950/20 border-rose-900/35 text-[var(--danger)]'
                     }`}
                   >
-                    <span className="text-[#4ADE80] text-left font-bold px-0.5">{(strRow.callGex / 1e6).toFixed(1)}M</span>
-                    <span className="text-[color:var(--text-tertiary)] font-medium">{Math.round(strRow.callOi / 100)}h</span>
-                    <span className={`font-black font-mono text-[9px] ${isAtSpotIdx ? 'text-[#E5E5E5]' : 'text-[color:var(--text-secondary)]'}`}>{strRow.strike}</span>
-                    <span className="text-[color:var(--text-tertiary)] font-medium">{Math.round(strRow.putOi / 100)}h</span>
-                    <span className="text-[#F87171] text-right font-bold px-0.5">{(strRow.putGex / 1e6).toFixed(1)}M</span>
+                    <span className="text-[var(--success)] text-left font-bold px-0.5 tabular-nums">{(strRow.callGex / 1e6).toFixed(1)}M</span>
+                    <span className="text-[color:var(--text-tertiary)] font-medium tabular-nums">{Math.round(strRow.callOi / 100)}h</span>
+                    <span className={`font-black font-mono text-[10px] tabular-nums ${isAtSpotIdx ? 'text-[var(--text-primary)]' : 'text-[color:var(--text-secondary)]'}`}>{strRow.strike}</span>
+                    <span className="text-[color:var(--text-tertiary)] font-medium tabular-nums">{Math.round(strRow.putOi / 100)}h</span>
+                    <span className="text-[var(--danger)] text-right font-bold px-0.5 tabular-nums">{(strRow.putGex / 1e6).toFixed(1)}M</span>
                   </div>
                 );
               })}
@@ -1206,53 +1218,53 @@ export function InstitutionalPhysicsDashboard({ profile: externalProfile, ticker
          ------------------------------------------------------------ */}
         <main 
           className={isExpanded 
-            ? "fixed inset-0 z-[999] bg-black/98 backdrop-blur-md p-6 flex flex-col justify-between gap-4 animate-fade-in" 
+            ? "fixed inset-0 z-[999] bg-[var(--surface)] backdrop-blur-md p-6 flex flex-col justify-between gap-4 animate-fade-in"
             : "quant-panel flex-1 justify-between flex flex-col p-4 relative min-h-[500px]"
           } 
           id="pane-center"
         >
           
           {/* Top Panel Control Row for Morph Surface Shifts */}
-          <div className="flex justify-between items-center border-b border-black/70 pb-3 mb-2" id="canvas-control-overlay">
+          <div className="flex justify-between items-center border-b border-[var(--border)] pb-3 mb-2" id="canvas-control-overlay">
             <div className="flex items-center gap-3">
               {isExpanded && (
-                <span className="text-[9px] font-black tracking-widest text-black font-mono uppercase bg-[#4ADE80] border border-black px-2 py-1 rounded-sm">
+                <span className="text-[10px] font-black tracking-widest text-black font-mono uppercase bg-[var(--success)] border border-[var(--border)] px-2 py-1 rounded-sm">
                   FULLSCREEN VIEW
                 </span>
               )}
-              <div className="flex gap-1 bg-black p-0.5 border border-black rounded-sm">
+              <div className="flex gap-1 bg-[var(--surface-2)] p-0.5 border border-[var(--border)] rounded-sm">
                 <button
                   type="button"
                   onClick={() => setSurfaceMode('neutral')}
-                  className={`px-3 py-1 text-[8.5px] uppercase font-extrabold tracking-wider rounded-xs focus:outline-none transition-colors ${surfaceMode === 'neutral' ? 'bg-black text-zinc-200' : 'text-zinc-500 hover:text-zinc-400'}`}
+                  className={`px-3 py-1 text-[10px] uppercase font-extrabold tracking-wider rounded-xs focus:outline-none focus-visible:ring-1 focus-visible:ring-[var(--border-strong)] transition-colors ${surfaceMode === 'neutral' ? 'bg-[var(--surface-3)] text-[color:var(--text-secondary)]' : 'text-[color:var(--text-tertiary)] hover:text-[color:var(--text-secondary)]'}`}
                 >
                   ● NEUTRAL VIEW
                 </button>
                 <button
                   type="button"
                   onClick={() => setSurfaceMode('call')}
-                  className={`px-3 py-1 text-[8.5px] uppercase font-extrabold tracking-wider rounded-xs focus:outline-none transition-colors ${surfaceMode === 'call' ? 'bg-black/40 border border-black text-[#4ADE80]' : 'text-zinc-500 hover:text-zinc-400'}`}
+                  className={`px-3 py-1 text-[10px] uppercase font-extrabold tracking-wider rounded-xs focus:outline-none focus-visible:ring-1 focus-visible:ring-[var(--border-strong)] transition-colors ${surfaceMode === 'call' ? 'bg-[var(--surface-3)] border border-[var(--border)] text-[var(--success)]' : 'text-[color:var(--text-tertiary)] hover:text-[color:var(--text-secondary)]'}`}
                 >
                   CALL WALL VIEW
                 </button>
                 <button
                   type="button"
                   onClick={() => setSurfaceMode('put')}
-                  className={`px-3 py-1 text-[8.5px] uppercase font-extrabold tracking-wider rounded-xs focus:outline-none transition-colors ${surfaceMode === 'put' ? 'bg-rose-950 border border-rose-900 text-[#F87171]' : 'text-zinc-500 hover:text-zinc-400'}`}
+                  className={`px-3 py-1 text-[10px] uppercase font-extrabold tracking-wider rounded-xs focus:outline-none focus-visible:ring-1 focus-visible:ring-[var(--border-strong)] transition-colors ${surfaceMode === 'put' ? 'bg-rose-950 border border-rose-900 text-[var(--danger)]' : 'text-[color:var(--text-tertiary)] hover:text-[color:var(--text-secondary)]'}`}
                 >
                   PUT WALL VIEW
                 </button>
                 <button
                   type="button"
                   onClick={() => setSurfaceMode('gex')}
-                  className={`px-3 py-1 text-[8.5px] uppercase font-extrabold tracking-wider rounded-xs focus:outline-none transition-colors ${surfaceMode === 'gex' ? 'bg-cyan-950/50 border border-cyan-900 text-[#67e8f9]' : 'text-zinc-500 hover:text-zinc-400'}`}
+                  className={`px-3 py-1 text-[10px] uppercase font-extrabold tracking-wider rounded-xs focus:outline-none focus-visible:ring-1 focus-visible:ring-[var(--border-strong)] transition-colors ${surfaceMode === 'gex' ? 'bg-cyan-950/50 border border-cyan-900 text-[#67e8f9]' : 'text-[color:var(--text-tertiary)] hover:text-[color:var(--text-secondary)]'}`}
                 >
                   GEX PROFILE
                 </button>
                 <button
                   type="button"
                   onClick={() => setShowRnd(!showRnd)}
-                  className={`px-3 py-1 text-[8.5px] uppercase font-extrabold tracking-wider rounded-xs focus:outline-none transition-all ${showRnd ? 'bg-emerald-950/60 border border-emerald-900/50 text-[#4ADE80]' : 'text-zinc-500 hover:text-zinc-400'}`}
+                  className={`px-3 py-1 text-[10px] uppercase font-extrabold tracking-wider rounded-xs focus:outline-none focus-visible:ring-1 focus-visible:ring-[var(--border-strong)] transition-all ${showRnd ? 'bg-emerald-950/60 border border-emerald-900/50 text-[var(--success)]' : 'text-[color:var(--text-tertiary)] hover:text-[color:var(--text-secondary)]'}`}
                   title="Toggle Implied vs Historical Probability Density"
                 >
                   {showRnd ? '● HIDE DENSITY' : '○ SHOW DENSITY'}
@@ -1267,10 +1279,10 @@ export function InstitutionalPhysicsDashboard({ profile: externalProfile, ticker
                     claims a live feed and there is no "60Hz" / pulsing live dot. */}
               {isLive ? (
                 <div
-                  className="flex items-center gap-2 px-2.5 py-1 rounded-xs border select-none bg-emerald-950/20 border-emerald-900/50 text-[#4ADE80]"
+                  className="flex items-center gap-2 px-2.5 py-1 rounded-xs border select-none bg-emerald-950/20 border-emerald-900/50 text-[var(--success)]"
                   title="Live option chain feed from the server"
                 >
-                  <span className="w-1.5 h-1.5 rounded-full bg-[#4ADE80] animate-pulse" />
+                  <span className="w-1.5 h-1.5 rounded-full bg-[var(--success)] animate-pulse" />
                   <span className="text-[10px] font-black tracking-widest uppercase font-mono">
                     FEED: LIVE
                   </span>
@@ -1290,13 +1302,13 @@ export function InstitutionalPhysicsDashboard({ profile: externalProfile, ticker
             </div>
 
             <div className="flex items-center gap-2">
-              <div className="text-[10px] text-[color:var(--text-tertiary)] border border-black bg-black px-2.5 py-1.5 rounded-sm uppercase tracking-wider font-extrabold">
+              <div className="text-[10px] text-[color:var(--text-tertiary)] border border-[var(--border)] bg-[var(--surface-2)] px-2.5 py-1.5 rounded-sm uppercase tracking-wider font-extrabold">
                 DRAG TO ROTATE
               </div>
               <button
                 type="button"
                 onClick={() => setIsExpanded(!isExpanded)}
-                className="bg-black hover:mirror-panel hover:border-black text-zinc-400 hover:text-[#E5E5E5] rounded-xs p-1.5 px-3 transition-all text-[8.5px] font-bold flex items-center gap-1 cursor-pointer"
+                className="bg-[var(--surface-2)] hover:mirror-panel hover:border-[var(--border-strong)] text-[color:var(--text-tertiary)] hover:text-[var(--text-primary)] rounded-xs p-1.5 px-3 transition-all text-[10px] font-bold flex items-center gap-1 cursor-pointer focus-visible:ring-1 focus-visible:ring-[var(--border-strong)] focus:outline-none"
                 title={isExpanded ? "Exit Fullscreen" : "Expand to Fullscreen"}
               >
                 <span>{isExpanded ? " COLLAPSE [ESC]" : " EXPAND"}</span>
@@ -1305,7 +1317,7 @@ export function InstitutionalPhysicsDashboard({ profile: externalProfile, ticker
           </div>
 
           {/* Interactive 3D Canvas Box */}
-          <div className="flex-1 relative bg-black border border-black rounded-sm overflow-hidden animate-fade-in" id="canvas-stage-wrapper">
+          <div className="flex-1 relative bg-[var(--surface)] border border-[var(--border)] rounded-sm overflow-hidden animate-fade-in" id="canvas-stage-wrapper">
             <canvas
               key={resizeKey}
               ref={canvasRef}
@@ -1318,14 +1330,14 @@ export function InstitutionalPhysicsDashboard({ profile: externalProfile, ticker
             {/* Axis + active-mode legend (HTML overlay — keeps the abstract surface legible) */}
             <div className="absolute bottom-2 left-3 z-10 pointer-events-none flex flex-col gap-1">
               <div className="flex items-center gap-1.5">
-                <span className="w-3 h-1.5 rounded-full" style={{ background: surfaceMode === 'call' ? '#4ADE80' : surfaceMode === 'put' ? '#F87171' : surfaceMode === 'gex' ? '#67e8f9' : '#a1a1aa' }} />
-                <span className="text-[7.5px] font-mono font-black uppercase tracking-widest text-zinc-400">
+                <span className="w-3 h-1.5 rounded-full" style={{ background: surfaceMode === 'call' ? C.success : surfaceMode === 'put' ? C.danger : surfaceMode === 'gex' ? '#67e8f9' : '#a1a1aa' }} />
+                <span className="text-[10px] font-mono font-black uppercase tracking-widest text-[color:var(--text-tertiary)]">
                   {surfaceMode === 'call' ? 'Call-wall gamma' : surfaceMode === 'put' ? 'Put-wall gamma' : surfaceMode === 'gex' ? 'Net GEX profile' : 'Net gamma (blended)'}
                 </span>
               </div>
-              <span className="text-[7px] font-mono text-zinc-600 uppercase tracking-[0.2em]">← strikes →</span>
+              <span className="text-[10px] font-mono text-[color:var(--text-tertiary)] uppercase tracking-[0.2em]">← strikes →</span>
             </div>
-            <div className="absolute top-2 right-3 z-10 pointer-events-none text-[7px] font-mono text-zinc-600 uppercase tracking-[0.2em]">
+            <div className="absolute top-2 right-3 z-10 pointer-events-none text-[10px] font-mono text-[color:var(--text-tertiary)] uppercase tracking-[0.2em]">
               height ↑ exposure
             </div>
           </div>
@@ -1341,60 +1353,60 @@ export function InstitutionalPhysicsDashboard({ profile: externalProfile, ticker
             >
               <div className="w-full md:w-5/12 flex flex-col justify-between gap-3 text-left">
                 <div>
-                  <div className="text-[10px] font-black tracking-widest text-[#4ADE80] uppercase mb-2 flex items-center gap-1.5 border-b border-emerald-950 pb-1">
+                  <div className="text-[10px] font-black tracking-widest text-[var(--success)] uppercase mb-2 flex items-center gap-1.5 border-b border-emerald-950 pb-1">
                     <Layers className="w-3.5 h-3.5" />
                     <span>RISK-NEUTRAL DENSITY (RND)</span>
                   </div>
-                  <p className="text-[7.5px] text-zinc-500 leading-normal mb-3">
+                  <p className="text-[10px] text-[color:var(--text-tertiary)] leading-normal mb-3">
                     Shows the market-implied probability of each price level at expiry, derived from option prices across strikes:
-                    <span className="text-zinc-400 font-bold"> f(K) = e^(rT) ∂²C/∂K²</span>.
+                    <span className="text-[color:var(--text-secondary)] font-bold"> f(K) = e^(rT) ∂²C/∂K²</span>.
                   </p>
                 </div>
 
                 <div className="grid grid-cols-2 gap-3">
-                  <div className="bg-black/60 p-2.5 border border-[#1e293b]/30 rounded-sm">
-                    <div className="text-[7px] text-zinc-500 uppercase tracking-widest font-black">Implied Gamma Peak</div>
-                    <div className="text-[11px] font-black text-[#4ADE80] mt-0.5">
-                      {rndAnalysis.gexConcentrationPeak.toFixed(1)} <span className="text-[7.5px] text-zinc-500 font-normal">pts</span>
+                  <div className="bg-[var(--surface-2)] p-2.5 border border-[#1e293b]/30 rounded-sm">
+                    <div className="text-[10px] text-[color:var(--text-tertiary)] uppercase tracking-widest font-black">Implied Gamma Peak</div>
+                    <div className="text-[11px] font-black text-[var(--success)] mt-0.5 tabular-nums">
+                      {rndAnalysis.gexConcentrationPeak.toFixed(1)} <span className="text-[10px] text-[color:var(--text-tertiary)] font-normal">pts</span>
                     </div>
                   </div>
 
-                  <div className="bg-black/60 p-2.5 border border-[#1e293b]/30 rounded-sm">
-                    <div className="text-[7px] text-[#f43f5e] uppercase tracking-widest font-black">Implied vs Hist Divergence</div>
-                    <div className="text-[11px] font-black text-[#f43f5e] mt-0.5">
-                      {rndAnalysis.entropyDivergence.toFixed(4)} <span className="text-[7.5px] text-zinc-500 font-normal">nats</span>
+                  <div className="bg-[var(--surface-2)] p-2.5 border border-[#1e293b]/30 rounded-sm">
+                    <div className="text-[10px] text-[#f43f5e] uppercase tracking-widest font-black">Implied vs Hist Divergence</div>
+                    <div className="text-[11px] font-black text-[#f43f5e] mt-0.5 tabular-nums">
+                      {rndAnalysis.entropyDivergence.toFixed(4)} <span className="text-[10px] text-[color:var(--text-tertiary)] font-normal">nats</span>
                     </div>
                   </div>
 
-                  <div className="bg-black/60 p-2.5 border border-[#1e293b]/30 rounded-sm">
+                  <div className="bg-[var(--surface-2)] p-2.5 border border-[#1e293b]/30 rounded-sm">
                     <div className="text-[10px] text-[color:var(--text-tertiary)] uppercase tracking-widest font-black">Implied Price Mean</div>
-                    <div className="text-[10.5px] font-bold text-zinc-200 mt-0.5">
-                      {rndAnalysis.impliedMean.toFixed(2)} <span className="text-[7.5px] text-zinc-500 font-normal">avg</span>
+                    <div className="text-[10.5px] font-bold text-[color:var(--text-secondary)] mt-0.5 tabular-nums">
+                      {rndAnalysis.impliedMean.toFixed(2)} <span className="text-[10px] text-[color:var(--text-tertiary)] font-normal">avg</span>
                     </div>
                   </div>
 
                   <div className="bg-[#1c1917]/20 p-2.5 border border-stone-800 rounded-sm">
                     <div className="text-[10px] text-[color:var(--text-tertiary)] uppercase tracking-widest font-black">Hist Price Mean</div>
-                    <div className="text-[10.5px] font-bold text-zinc-300 mt-0.5">
-                      {rndAnalysis.historicalMean.toFixed(2)} <span className="text-[7.5px] text-zinc-500 font-normal">avg</span>
+                    <div className="text-[10.5px] font-bold text-[color:var(--text-secondary)] mt-0.5 tabular-nums">
+                      {rndAnalysis.historicalMean.toFixed(2)} <span className="text-[10px] text-[color:var(--text-tertiary)] font-normal">avg</span>
                     </div>
                   </div>
 
-                  <div className="bg-black/60 p-2.5 border border-[#1e293b]/30 rounded-sm col-span-2">
+                  <div className="bg-[var(--surface-2)] p-2.5 border border-[#1e293b]/30 rounded-sm col-span-2">
                     <div className="text-[10px] text-[color:var(--text-tertiary)] uppercase tracking-widest font-black">Implied Price Range (1 Std Dev)</div>
                     <div className="flex justify-between items-baseline mt-0.5">
-                      <span className="text-[11px] font-black text-[#4ADE80]">
-                        ±{rndAnalysis.impliedStdDev.toFixed(1)} <span className="text-[7.5px] text-zinc-500 font-normal">pts</span>
+                      <span className="text-[11px] font-black text-[var(--success)] tabular-nums">
+                        ±{rndAnalysis.impliedStdDev.toFixed(1)} <span className="text-[10px] text-[color:var(--text-tertiary)] font-normal">pts</span>
                       </span>
-                      <span className="text-[10px] text-rose-400 text-right">
+                      <span className="text-[10px] text-rose-400 text-right tabular-nums">
                         Realized Vol Range: ±{rndAnalysis.historicalStdDev.toFixed(1)}
                       </span>
                     </div>
                   </div>
                 </div>
 
-                <div className="text-[7.5px] leading-relaxed text-zinc-400 border-l-2 border-emerald-500 pl-2 bg-emerald-950/10 py-1.5">
-                  <span className="font-extrabold text-[#4ADE80] text-[8px] uppercase block tracking-wider mb-0.5">Dealer Hedging Read:</span>
+                <div className="text-[10px] leading-relaxed text-[color:var(--text-tertiary)] border-l-2 border-emerald-500 pl-2 bg-emerald-950/10 py-1.5">
+                  <span className="font-extrabold text-[var(--success)] text-[10px] uppercase block tracking-wider mb-0.5">Dealer Hedging Read:</span>
                   {rndAnalysis.entropyDivergence > 0.04
                     ? "Heavy put skew. Traders are paying a large premium for downside protection relative to historical vol, signaling fear of a sharp drop."
                     : "Vol expectations are balanced and tight. Implied tail pricing is close to realized vol with low extra premium."
@@ -1403,12 +1415,12 @@ export function InstitutionalPhysicsDashboard({ profile: externalProfile, ticker
               </div>
 
               {/* Graphical distribution density comparator block */}
-              <div className="flex-1 min-h-[180px] bg-black/40 border border-[#1e293b]/30 p-2 rounded-sm flex flex-col">
-                <div className="text-[8px] font-black tracking-widest text-zinc-400 uppercase mb-2 flex justify-between items-center px-1 border-b border-black/80 pb-1.5">
+              <div className="flex-1 min-h-[180px] bg-[var(--surface-2)] border border-[#1e293b]/30 p-2 rounded-sm flex flex-col">
+                <div className="text-[10px] font-black tracking-widest text-[color:var(--text-tertiary)] uppercase mb-2 flex justify-between items-center px-1 border-b border-[var(--border)] pb-1.5">
                   <span>PRICE PROBABILITY BY STRIKE (x: STRIKE / y: PROBABILITY)</span>
                   <div className="flex gap-3">
-                    <span className="flex items-center gap-1 text-[8px] font-black uppercase"><span className="w-1.5 h-1.5 rounded-full bg-[#10b981]" /> OPTION-IMPLIED</span>
-                    <span className="flex items-center gap-1 text-[8px] font-black uppercase"><span className="w-1.5 h-1.5 rounded-full bg-[#f43f5e]" /> HISTORICAL</span>
+                    <span className="flex items-center gap-1 text-[10px] font-black uppercase"><span className="w-1.5 h-1.5 rounded-full bg-[#10b981]" /> OPTION-IMPLIED</span>
+                    <span className="flex items-center gap-1 text-[10px] font-black uppercase"><span className="w-1.5 h-1.5 rounded-full bg-[#f43f5e]" /> HISTORICAL</span>
                   </div>
                 </div>
                 <div className="flex-1 relative min-h-[160px]">
@@ -1419,11 +1431,11 @@ export function InstitutionalPhysicsDashboard({ profile: externalProfile, ticker
                         dataKey="strike" 
                         domain={['auto', 'auto']}
                         tickFormatter={(v) => Math.round(v).toString()}
-                        tick={{ fill: '#71717a', fontSize: '7.5px', fontFamily: 'monospace' }}
+                        tick={{ fill: '#71717a', fontSize: '10px', fontFamily: 'monospace' }}
                         stroke="#111"
                       />
                       <YAxis 
-                        tick={{ fill: '#71717a', fontSize: '7.5px', fontFamily: 'monospace' }}
+                        tick={{ fill: '#71717a', fontSize: '10px', fontFamily: 'monospace' }}
                         stroke="#111"
                       />
                       <Tooltip 
@@ -1431,8 +1443,8 @@ export function InstitutionalPhysicsDashboard({ profile: externalProfile, ticker
                           if (active && payload && payload.length) {
                             const data = payload[0].payload;
                             return (
-                              <div className="bg-[#09090b] border border-[#1e293b] p-2 text-mono text-[7.5px] space-y-1 rounded-sm shadow-xl">
-                                <div className="text-zinc-200 font-bold border-b border-[#27272a] pb-0.5 mb-1 text-[8.5px]">Strike: {Math.round(data.strike)}</div>
+                              <div className="bg-[#09090b] border border-[#1e293b] p-2 text-mono text-[10px] space-y-1 rounded-sm shadow-xl tabular-nums">
+                                <div className="text-[color:var(--text-secondary)] font-bold border-b border-[#27272a] pb-0.5 mb-1 text-[10px]">Strike: {Math.round(data.strike)}</div>
                                 <div className="text-[#10b981] flex justify-between gap-4"><span>Option-Implied:</span> <span>{(data.impliedDensity * 100).toFixed(4)}%</span></div>
                                 <div className="text-[#f43f5e] flex justify-between gap-4"><span>Historical:</span> <span>{(data.historicalDensity * 100).toFixed(4)}%</span></div>
                                 <div className="text-sky-400 flex justify-between gap-4"><span>Implied Vol:</span> <span>{(data.impliedVol * 100).toFixed(2)}%</span></div>
@@ -1485,42 +1497,42 @@ export function InstitutionalPhysicsDashboard({ profile: externalProfile, ticker
           <div className="mb-4">
             <div className="panel-header-alt">
               <span>VOLATILITY & ORDER FLOW</span>
-              <ShieldAlert className="w-3.5 h-3.5 text-zinc-600" />
+              <ShieldAlert className="w-3.5 h-3.5 text-[color:var(--text-tertiary)]" />
             </div>
 
             <div className="grid grid-cols-1 gap-3.5">
-              <div className="bg-black/45 p-3 border border-black rounded-sm">
+              <div className="bg-[var(--surface-2)] p-3 border border-[var(--border)] rounded-sm">
                 <div className="hud-label flex items-center justify-between">
                   <span>FORWARD VARIANCE (IV^2)</span>
                   <SourceTag live={false} />
                 </div>
                 <div className="flex items-baseline gap-2">
-                  <span className="hud-value text-sky-400">
+                  <span className="hud-value text-sky-400 tabular-nums">
                     {profile.fwdVar.toFixed(4)}
                   </span>
                   <span className="text-[10px] text-[color:var(--text-tertiary)]">v2_std</span>
                 </div>
               </div>
 
-              <div className="bg-black/45 p-3 border border-black rounded-sm">
+              <div className="bg-[var(--surface-2)] p-3 border border-[var(--border)] rounded-sm">
                 <div className="hud-label flex items-center justify-between">
-                  <span className="text-[#F87171]/90">ORDER FLOW IMBALANCE (VPIN)</span>
+                  <span className="text-[var(--danger)]/90">ORDER FLOW IMBALANCE (VPIN)</span>
                   <SourceTag live={false} />
                 </div>
                 <div className="flex items-baseline gap-2">
-                  <span className={`hud-value ${profile.vpinColor}`}>
+                  <span className={`hud-value tabular-nums ${profile.vpinColor}`}>
                     {profile.vpin}
                   </span>
                 </div>
               </div>
 
-              <div className="bg-black/45 p-3 border border-black rounded-sm">
+              <div className="bg-[var(--surface-2)] p-3 border border-[var(--border)] rounded-sm">
                 <div className="hud-label flex items-center justify-between">
                   <span>BID/ASK FRICTION (Λ)</span>
                   <SourceTag live={false} />
                 </div>
                 <div className="flex items-baseline gap-2">
-                  <span className="hud-value text-[color:var(--text-primary)]">
+                  <span className="hud-value text-[color:var(--text-primary)] tabular-nums">
                     {profile.friction.toFixed(4)}
                   </span>
                   <span className="text-[10px] text-[color:var(--text-tertiary)]">coeff</span>
@@ -1533,44 +1545,44 @@ export function InstitutionalPhysicsDashboard({ profile: externalProfile, ticker
           <div className="flex-1 flex flex-col justify-end" id="target-propagation-module">
             <div className="panel-header-alt mt-1.5">
               <span>PRICE TARGET RANGE (95% CI)</span>
-              <Compass className="w-3 h-3 text-zinc-600" />
+              <Compass className="w-3 h-3 text-[color:var(--text-tertiary)]" />
             </div>
 
-            <div className="bg-black/45 p-3 border border-black rounded-sm flex-1 flex flex-col justify-between">
+            <div className="bg-[var(--surface-2)] p-3 border border-[var(--border)] rounded-sm flex-1 flex flex-col justify-between">
               <div className="space-y-3">
                 {/* These three are illustrative model constants — there is no live
                     source for them in the payload, so they are tagged MODEL. */}
-                <div className="flex justify-between items-center text-[9px] font-mono">
+                <div className="flex justify-between items-center text-[10px] font-mono">
                   <span className="text-[color:var(--text-tertiary)] font-black tracking-widest uppercase flex items-center gap-1.5">
                     Theta Decay Rate (per hr) <SourceTag live={false} />
                   </span>
-                  <span className="text-[color:var(--text-secondary)] font-bold">-0.842v / hr</span>
+                  <span className="text-[color:var(--text-secondary)] font-bold tabular-nums">-0.842v / hr</span>
                 </div>
-                <div className="flex justify-between items-center text-[9px] font-mono">
+                <div className="flex justify-between items-center text-[10px] font-mono">
                   <span className="text-[color:var(--text-tertiary)] font-black tracking-widest uppercase flex items-center gap-1.5">
                     Spread Friction (Λ) <SourceTag live={false} />
                   </span>
-                  <span className="text-[color:var(--text-secondary)] font-bold">1.22μ</span>
+                  <span className="text-[color:var(--text-secondary)] font-bold tabular-nums">1.22μ</span>
                 </div>
-                <div className="flex justify-between items-center text-[9px] font-mono">
+                <div className="flex justify-between items-center text-[10px] font-mono">
                   <span className="text-[color:var(--text-tertiary)] font-black tracking-widest uppercase flex items-center gap-1.5">
                     Dealer Hedge Activity <SourceTag live={false} />
                   </span>
-                  <span className="text-[color:var(--text-secondary)] font-bold">94.2%</span>
+                  <span className="text-[color:var(--text-secondary)] font-bold tabular-nums">94.2%</span>
                 </div>
-                <div className="h-px bg-black/60 my-1" />
+                <div className="h-px bg-[var(--border)] my-1" />
               </div>
 
               <div className="pt-3">
-                <div className="flex justify-between items-center text-[9px] text-[color:var(--text-secondary)] font-extrabold pb-1">
+                <div className="flex justify-between items-center text-[10px] text-[color:var(--text-secondary)] font-extrabold pb-1">
                   <span className="flex items-center gap-1.5">95% CI <SourceTag live={isLive} /></span>
                   <span>RANGE</span>
                 </div>
-                <div className="grid grid-cols-2 gap-2 text-center text-[10.5px] font-mono">
-                  <span className="text-[#F87171] bg-rose-950/20 border border-[#F87171]/40 py-1.5 rounded-sm">
+                <div className="grid grid-cols-2 gap-2 text-center text-[10.5px] font-mono tabular-nums">
+                  <span className="text-[var(--danger)] bg-rose-950/20 border border-[var(--danger)]/40 py-1.5 rounded-sm tabular-nums">
                     {(effectiveProfile.spot * (1 - 1.96 * effectiveProfile.expectedMovePct)).toFixed(decimals === 0 ? 0 : 2)}
                   </span>
-                  <span className="text-[#4ADE80] bg-black/40 border border-black py-1.5 rounded-sm">
+                  <span className="text-[var(--success)] bg-[var(--surface-2)] border border-[var(--border)] py-1.5 rounded-sm tabular-nums">
                     {(effectiveProfile.spot * (1 + 1.96 * effectiveProfile.expectedMovePct)).toFixed(decimals === 0 ? 0 : 2)}
                   </span>
                 </div>
@@ -1600,10 +1612,10 @@ export function InstitutionalPhysicsDashboard({ profile: externalProfile, ticker
             {/* CARD 1: SPOT DELTA INTEGRATION */}
             <div className="greek-card">
               <label>
-                <Activity className="w-3.5 h-3.5 text-[#4ADE80] icon-small" />
+                <Activity className="w-3.5 h-3.5 text-[var(--success)] icon-small" />
                 DELTA
               </label>
-              <span>
+              <span className="tabular-nums">
                 {calculatedGreeks.delta.toFixed(4)} <span className="unit">Δ</span>
               </span>
             </div>
@@ -1611,10 +1623,10 @@ export function InstitutionalPhysicsDashboard({ profile: externalProfile, ticker
             {/* CARD 2: SPOT GAMMA CONVEXITY */}
             <div className="greek-card">
               <label>
-                <GitCommit className="w-3.5 h-3.5 text-zinc-400 icon-small" />
+                <GitCommit className="w-3.5 h-3.5 text-[color:var(--text-tertiary)] icon-small" />
                 GAMMA (how fast delta changes)
               </label>
-              <span>
+              <span className="tabular-nums">
                 {calculatedGreeks.gamma.toFixed(6)} <span className="unit">Γ</span>
               </span>
             </div>
@@ -1622,10 +1634,10 @@ export function InstitutionalPhysicsDashboard({ profile: externalProfile, ticker
             {/* CARD 3: VANNA COVARIANCE */}
             <div className="greek-card">
               <label>
-                <Percent className="w-3.5 h-3.5 text-[#F87171] icon-small" />
+                <Percent className="w-3.5 h-3.5 text-[var(--danger)] icon-small" />
                 VANNA (delta shift per vol move)
               </label>
-              <span>
+              <span className="tabular-nums">
                 {calculatedGreeks.vanna.toFixed(4)} <span className="unit">∂Δ/∂Σ</span>
               </span>
             </div>
@@ -1633,10 +1645,10 @@ export function InstitutionalPhysicsDashboard({ profile: externalProfile, ticker
             {/* CARD 4: CHARM DECAY SPEED */}
             <div className="greek-card">
               <label>
-                <Clock className="w-3.5 h-3.5 text-zinc-400 icon-small" />
+                <Clock className="w-3.5 h-3.5 text-[color:var(--text-tertiary)] icon-small" />
                 CHARM (delta decay per day)
               </label>
-              <span>
+              <span className="tabular-nums">
                 {calculatedGreeks.charm.toFixed(4)} <span className="unit">∂Δ/∂T</span>
               </span>
             </div>
@@ -1647,7 +1659,7 @@ export function InstitutionalPhysicsDashboard({ profile: externalProfile, ticker
                 <Crosshair className="w-3.5 h-3.5 text-sky-400 icon-small" />
                 MAGNET STRIKE
               </label>
-              <span className="text-sky-400">
+              <span className="text-sky-400 tabular-nums">
                 {effectiveProfile.spot.toFixed(decimals)} <span className="unit">ATM</span>
               </span>
             </div>

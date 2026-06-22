@@ -49,7 +49,7 @@ const NavCtx = React.createContext<NavCtxValue>({
   activeTab: 'home', setActiveTab: () => {}, isSidebarExpanded: false, closeMobile: () => {}, session: null,
 });
 
-function NavItem({ id, label, icon: Icon, adminOnly = false, activeColor = 'text-white', isMobile = false }: any) {
+function NavItem({ id, label, icon: Icon, adminOnly = false, activeColor = 'text-[var(--text-primary)]', isMobile = false }: any) {
   const { activeTab, setActiveTab, isSidebarExpanded, closeMobile, session } = React.useContext(NavCtx);
   if (adminOnly && !(session?.is_super_admin || ['super_admin', 'owner', 'admin'].includes(session?.admin_role || ''))) {
     return null;
@@ -66,10 +66,10 @@ function NavItem({ id, label, icon: Icon, adminOnly = false, activeColor = 'text
       className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-colors border ${
         isActive
           ? adminOnly
-            ? 'bg-rose-950/40 text-[#E5E5E5] border-rose-500/50'
-            : 'bg-[var(--surface-2)] text-[#E5E5E5] border-[var(--border-strong)] shadow-[0_0_15px_rgba(255,255,255,0.03)]'
-          : 'border-transparent text-zinc-500 hover:bg-[var(--surface-2)] hover:text-[#E5E5E5]'
-      }`}
+            ? 'bg-rose-950/40 text-[var(--text-primary)] border-rose-500/50'
+            : 'bg-[var(--surface-2)] text-[var(--text-primary)] border-[var(--border-strong)] shadow-[0_0_15px_rgba(255,255,255,0.03)]'
+          : 'border-transparent text-[var(--text-tertiary)] hover:bg-[var(--surface-2)] hover:text-[var(--text-primary)]'
+      } focus-visible:ring-1 focus-visible:ring-[var(--border-strong)] focus:outline-none`}
     >
       <Icon className={`w-4 h-4 shrink-0 ${isActive ? (adminOnly ? 'text-rose-500' : activeColor) : ''}`} />
       <span className={`flex-1 text-left whitespace-nowrap overflow-hidden transition-all duration-300 ${isSidebarExpanded || isMobile ? 'opacity-100 max-w-[200px]' : 'opacity-0 max-w-0'}`}>{label}</span>
@@ -81,10 +81,14 @@ function NavItem({ id, label, icon: Icon, adminOnly = false, activeColor = 'text
 // Live data-feed status indicator (driven by the SSE connection state).
 function FeedPill({ status, compact = false }: { status?: 'connecting' | 'live' | 'offline'; compact?: boolean }) {
   const s = status || 'connecting';
+  // Resolve theme tokens once so the status dot matches the token-driven UI
+  // (instead of hardcoded hexes) across light/dark/custom themes.
+  const css = getComputedStyle(document.documentElement);
+  const tok = (n: string, f: string) => { const v = css.getPropertyValue(n).trim(); return v || f; };
   const map = {
-    live: { c: '#4ADE80', t: 'LIVE' },
-    connecting: { c: '#FBBF24', t: 'CONNECTING' },
-    offline: { c: '#F87171', t: 'OFFLINE' },
+    live: { c: tok('--success', '#4ADE80'), t: 'LIVE' },
+    connecting: { c: tok('--warning', '#FBBF24'), t: 'CONNECTING' },
+    offline: { c: tok('--danger', '#F87171'), t: 'OFFLINE' },
   } as const;
   const cfg = map[s];
   return (
@@ -93,7 +97,7 @@ function FeedPill({ status, compact = false }: { status?: 'connecting' | 'live' 
         {s === 'live' && <span className="animate-ping absolute inline-flex h-full w-full rounded-full opacity-75" style={{ background: cfg.c }} />}
         <span className="relative inline-flex rounded-full h-1.5 w-1.5" style={{ background: cfg.c }} />
       </span>
-      {!compact && <span className="text-[9px] font-black uppercase tracking-widest" style={{ color: cfg.c }}>{cfg.t}</span>}
+      {!compact && <span className="text-[10px] font-black uppercase tracking-widest" style={{ color: cfg.c }}>{cfg.t}</span>}
     </div>
   );
 }
@@ -132,7 +136,7 @@ export function AppShell({ children, session, onLogout, tierInfo, onUpgradeClick
           className="flex-1 overflow-y-auto px-2 py-4 flex flex-col gap-1.5 scrollbar-none scroll-smooth touch-pan-y overflow-x-hidden"
           style={{ WebkitOverflowScrolling: 'touch' }}
         >
-          <div className={`text-[9px] text-[var(--text-tertiary)] font-black tracking-widest px-2 py-1 uppercase mb-1 whitespace-nowrap overflow-hidden transition-all duration-300 ${isSidebarExpanded ? 'opacity-100' : 'opacity-0 h-0 py-0 mb-0 pointer-events-none'}`}>
+          <div className={`text-[10px] text-[var(--text-tertiary)] font-black tracking-widest px-2 py-1 uppercase mb-1 whitespace-nowrap overflow-hidden transition-all duration-300 ${isSidebarExpanded ? 'opacity-100' : 'opacity-0 h-0 py-0 mb-0 pointer-events-none'}`}>
             Main Views
           </div>
           
@@ -142,7 +146,7 @@ export function AppShell({ children, session, onLogout, tierInfo, onUpgradeClick
           <NavItem id="quant" label="Quant Lab" icon={LineChart} activeColor="text-[#D9A15C]" />
           <NavItem id="auditor" label="Trade History" icon={Database} />
           
-          <div className={`text-[9px] text-[var(--text-tertiary)] font-black tracking-widest px-2 py-1 uppercase mt-4 mb-1 whitespace-nowrap overflow-hidden transition-all duration-300 ${isSidebarExpanded ? 'opacity-100' : 'opacity-0 h-0 py-0 mb-0 mt-0 pointer-events-none'}`}>
+          <div className={`text-[10px] text-[var(--text-tertiary)] font-black tracking-widest px-2 py-1 uppercase mt-4 mb-1 whitespace-nowrap overflow-hidden transition-all duration-300 ${isSidebarExpanded ? 'opacity-100' : 'opacity-0 h-0 py-0 mb-0 mt-0 pointer-events-none'}`}>
             Tools
           </div>
 
@@ -162,16 +166,15 @@ export function AppShell({ children, session, onLogout, tierInfo, onUpgradeClick
            {/* Tier Info */}
            <div 
              onClick={onUpgradeClick}
-             className={`flex items-center gap-2.5 px-3 py-2 mb-3 bg-[var(--surface-2)] border border-[var(--border)] rounded-md cursor-pointer hover:border-zinc-700 transition-all font-mono mx-auto ${isSidebarExpanded ? 'w-full justify-start' : 'w-max justify-center'}`}
+             className={`flex items-center gap-2.5 px-3 py-2 mb-3 bg-[var(--surface-2)] border border-[var(--border)] rounded-md cursor-pointer hover:border-[var(--border-strong)] transition-all font-mono mx-auto ${isSidebarExpanded ? 'w-full justify-start' : 'w-max justify-center'}`}
              title={!isSidebarExpanded ? tierInfo?.label : undefined}
            >
               <span className="relative flex h-2 w-2 shrink-0">
-                <span className={`animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 ${tierInfo?.dotColor}`}></span>
                 <span className={`relative inline-flex rounded-full h-2 w-2 ${tierInfo?.dotColor}`}></span>
               </span>
               <div className={`flex flex-col text-left transition-all duration-300 ${isSidebarExpanded ? 'opacity-100 max-w-[200px]' : 'opacity-0 max-w-0 overflow-hidden'}`}>
-                <span className="text-[10px] font-black tracking-wider text-[#E5E5E5] truncate">{tierInfo?.label}</span>
-                <span className="text-[9px] text-[var(--text-tertiary)] font-bold tracking-wider uppercase truncate">{tierInfo?.desc}</span>
+                <span className="text-[10px] font-black tracking-wider text-[var(--text-primary)] truncate">{tierInfo?.label}</span>
+                <span className="text-[10px] text-[var(--text-tertiary)] font-bold tracking-wider truncate">{tierInfo?.desc}</span>
               </div>
            </div>
 
@@ -181,10 +184,10 @@ export function AppShell({ children, session, onLogout, tierInfo, onUpgradeClick
                    {session.avatar && (
                      <img src={session.avatar} alt="Avatar" className="w-6 h-6 shrink-0 rounded-xs border border-[var(--border)]" referrerPolicy="no-referrer" />
                    )}
-                   <span className={`text-[10px] font-black uppercase truncate text-zinc-400 transition-all duration-300 ${isSidebarExpanded ? 'opacity-100 max-w-[120px]' : 'opacity-0 max-w-0'}`}>{session.name}</span>
+                   <span className={`text-[10px] font-black uppercase truncate text-[var(--text-tertiary)] transition-all duration-300 ${isSidebarExpanded ? 'opacity-100 max-w-[120px]' : 'opacity-0 max-w-0'}`}>{session.name}</span>
                 </div>
                 {isSidebarExpanded && (
-                  <button onClick={onLogout} className="text-zinc-500 hover:text-amber-500 transition-colors p-2" title="Logout">
+                  <button onClick={onLogout} className="text-[var(--text-tertiary)] hover:text-[var(--warning)] transition-colors p-2 rounded focus-visible:ring-1 focus-visible:ring-[var(--border-strong)] focus:outline-none" title="Logout">
                     <LogOut className="w-4 h-4 shrink-0" />
                   </button>
                 )}
@@ -192,7 +195,7 @@ export function AppShell({ children, session, onLogout, tierInfo, onUpgradeClick
            ) : (
               <button
                 onClick={() => setShowAuthModal(true)}
-                className={`w-full px-3 py-2 border border-[var(--border)] hover:border-[#333] bg-black text-[#4ADE80] hover:text-[#E5E5E5] uppercase font-black transition-all flex items-center justify-center gap-1.5 text-[9px] rounded-lg cursor-pointer active:scale-95 ${isSidebarExpanded ? '' : 'px-0'}`}
+                className={`w-full px-3 py-2 border border-[var(--border)] hover:border-[var(--border-strong)] bg-[var(--surface)] text-[var(--success)] hover:text-[var(--text-primary)] uppercase font-black transition-all flex items-center justify-center gap-1.5 text-[10px] rounded-lg cursor-pointer active:scale-95 focus-visible:ring-1 focus-visible:ring-[var(--border-strong)] focus:outline-none ${isSidebarExpanded ? '' : 'px-0'}`}
                 title="LOGIN"
               >
                 {isSidebarExpanded ? 'LOGIN / CREATE ACCOUNT' : <Lock className="w-4 h-4" />}
@@ -208,7 +211,7 @@ export function AppShell({ children, session, onLogout, tierInfo, onUpgradeClick
          </div>
          <div className="flex items-center gap-3">
            <FeedPill status={feedStatus} />
-           <button onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)} className="text-zinc-400 p-2">
+           <button onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)} className="text-[var(--text-tertiary)] p-2 rounded focus-visible:ring-1 focus-visible:ring-[var(--border-strong)] focus:outline-none">
              {isMobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
            </button>
          </div>
@@ -217,11 +220,11 @@ export function AppShell({ children, session, onLogout, tierInfo, onUpgradeClick
       {/* Mobile Menu Dropdown */}
       {isMobileMenuOpen && (
         <div 
-          className="md:hidden fixed inset-0 top-[57px] z-[90] bg-black/95 backdrop-blur-xl border-t border-[var(--border)] overflow-y-auto pb-20 touch-pan-y scroll-smooth"
+          className="md:hidden fixed inset-0 top-[57px] z-[90] bg-[var(--surface)]/95 backdrop-blur-xl border-t border-[var(--border)] overflow-y-auto pb-20 touch-pan-y scroll-smooth"
           style={{ WebkitOverflowScrolling: 'touch' }}
         >
           <div className="p-4 flex flex-col gap-2">
-            <div className="text-[9px] text-[var(--text-tertiary)] font-black tracking-widest px-2 py-1 uppercase mb-2">
+            <div className="text-[10px] text-[var(--text-tertiary)] font-black tracking-widest px-2 py-1 uppercase mb-2">
               Main Views
             </div>
             <NavItem id="home" label="Home" icon={Home} activeColor="text-[#F4F5F6]" isMobile />
@@ -230,7 +233,7 @@ export function AppShell({ children, session, onLogout, tierInfo, onUpgradeClick
             <NavItem id="quant" label="Quant Lab" icon={LineChart} activeColor="text-[#D9A15C]" isMobile />
             <NavItem id="auditor" label="Trade History" icon={Database} isMobile />
 
-            <div className="text-[9px] text-[var(--text-tertiary)] font-black tracking-widest px-2 py-1 uppercase mt-6 mb-2">
+            <div className="text-[10px] text-[var(--text-tertiary)] font-black tracking-widest px-2 py-1 uppercase mt-6 mb-2">
               Tools
             </div>
 
@@ -241,15 +244,15 @@ export function AppShell({ children, session, onLogout, tierInfo, onUpgradeClick
             
             {session?.authenticated ? (
               <button 
-                onClick={() => { onLogout(); setIsMobileMenuOpen(false); }} 
-                className="w-full flex items-center gap-3 px-3 py-3 rounded-lg text-[10px] font-bold uppercase tracking-wider text-amber-500 bg-amber-500/10 border border-amber-500/20 mt-6 justify-center"
+                onClick={() => { onLogout(); setIsMobileMenuOpen(false); }}
+                className="w-full flex items-center gap-3 px-3 py-3 rounded-lg text-[10px] font-bold uppercase tracking-wider text-[var(--warning)] bg-[var(--warning)]/10 border border-[var(--warning)]/20 mt-6 justify-center focus-visible:ring-1 focus-visible:ring-[var(--border-strong)] focus:outline-none"
               >
                 <LogOut className="w-4 h-4" /> LOGOUT
               </button>
             ) : (
               <button
                 onClick={() => { setShowAuthModal(true); setIsMobileMenuOpen(false); }}
-                className="w-full px-3 py-3 mt-6 border border-[var(--border)] bg-[var(--surface-2)] text-[#4ADE80] uppercase font-black transition-all flex items-center justify-center gap-1.5 text-[10px] rounded-lg tracking-widest"
+                className="w-full px-3 py-3 mt-6 border border-[var(--border)] bg-[var(--surface-2)] text-[var(--success)] uppercase font-black transition-all flex items-center justify-center gap-1.5 text-[10px] rounded-lg tracking-widest focus-visible:ring-1 focus-visible:ring-[var(--border-strong)] focus:outline-none"
               >
                 LOGIN / CREATE ACCOUNT
               </button>
@@ -259,7 +262,7 @@ export function AppShell({ children, session, onLogout, tierInfo, onUpgradeClick
       )}
 
       {/* Main Content Area */}
-      <div className="flex-1 flex flex-col min-w-0 h-full relative bg-black md:pt-0 pt-[57px]">
+      <div className="flex-1 flex flex-col min-w-0 h-full relative bg-[var(--surface)] md:pt-0 pt-[57px]">
         {children}
       </div>
     </div>

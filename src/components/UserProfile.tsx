@@ -169,7 +169,7 @@ export function UserProfile({ session, onUpdateSession }: UserProfileProps) {
     imgTester.onerror = () => {
       // Decode failure: revoke the object URL (otherwise it leaks) and surface an error.
       URL.revokeObjectURL(blobUrl);
-      setErrorMsg('VALIDATION FAILURE: Could not read the selected image. Please try a different file.');
+      setErrorMsg('Couldn’t read that image. Try a different file.');
     };
 
     // Helper for correct resolution scope
@@ -313,7 +313,7 @@ export function UserProfile({ session, onUpdateSession }: UserProfileProps) {
           }
         } catch (e) {
           console.error('[CROP UPLOAD ERROR]', e);
-          setErrorMsg('Failed to process image crop array.');
+          setErrorMsg('Couldn’t process the cropped image. Please try again.');
         } finally {
           setIsUploading(false);
           URL.revokeObjectURL(cropParams.originalSrc);
@@ -324,7 +324,7 @@ export function UserProfile({ session, onUpdateSession }: UserProfileProps) {
         setIsUploading(false);
         URL.revokeObjectURL(cropParams.originalSrc);
         setCropParams(null);
-        setErrorMsg('Failed to process image crop array.');
+        setErrorMsg('Couldn’t process the cropped image. Please try again.');
       }
     };
     imgElement.onerror = () => {
@@ -371,21 +371,21 @@ export function UserProfile({ session, onUpdateSession }: UserProfileProps) {
       }
     } catch (e) {
       console.error('[PROFILE SAVE ERROR]', e);
-      setErrorMsg('Backend database synchronization error.');
+      setErrorMsg('Couldn’t save your profile. Please try again.');
     } finally {
       setIsUpdating(false);
     }
   };
 
   return (
-    <div className="bg-black/55 border border-black rounded-xl p-6 space-y-6 relative shadow-2xl">
+    <div className="bg-black/55 border border-[var(--border)] rounded-xl p-6 space-y-6 relative shadow-2xl">
       <div className="absolute top-0 right-0 p-3 text-[10px] text-zinc-600 font-bold uppercase tracking-widest font-mono">
         PUBLIC PROFILE
       </div>
 
-      <div className="flex items-center gap-2.5 border-b border-black pb-3">
+      <div className="flex items-center gap-2.5 border-b border-[var(--border)] pb-3">
         <User className="w-5 h-5 text-indigo-400" />
-        <h2 className="text-lg font-black tracking-tight text-[#E5E5E5] uppercase font-mono">
+        <h2 className="text-lg font-black tracking-tight text-[var(--text-primary)] uppercase font-mono">
           Your Public Profile
         </h2>
       </div>
@@ -397,7 +397,7 @@ export function UserProfile({ session, onUpdateSession }: UserProfileProps) {
             initial={{ opacity: 0, y: -10 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -10 }}
-            className="p-3 bg-rose-950/20 border border-rose-900/50 rounded text-[#F87171] text-xs font-mono flex items-center gap-2"
+            className="p-3 bg-rose-950/20 border border-rose-900/50 rounded text-[var(--danger)] text-xs font-mono flex items-center gap-2"
           >
             <AlertCircle className="w-4 h-4 shrink-0 animate-pulse" />
             <span>{errorMsg}</span>
@@ -409,9 +409,9 @@ export function UserProfile({ session, onUpdateSession }: UserProfileProps) {
             initial={{ opacity: 0, y: -10 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -10 }}
-            className="p-3 bg-black/40 border border-black rounded text-[#4ADE80] text-xs font-mono flex items-center gap-2"
+            className="p-3 bg-black/40 border border-[var(--border)] rounded text-[var(--success)] text-xs font-mono flex items-center gap-2"
           >
-            <CheckCircle2 className="w-4 h-4 shrink-0 text-[#4ADE80]" />
+            <CheckCircle2 className="w-4 h-4 shrink-0 text-[var(--success)]" />
             <span>{successMsg}</span>
           </motion.div>
         )}
@@ -420,7 +420,7 @@ export function UserProfile({ session, onUpdateSession }: UserProfileProps) {
       <div className="space-y-6">
         {/* Step A: Cover Banner Dropzone Container */}
         <div className="space-y-2">
-          <label className="text-xs text-zinc-400 font-bold block uppercase tracking-wider font-mono">
+          <label className="text-xs text-[var(--text-tertiary)] font-bold block uppercase tracking-wider font-mono">
             Profile Cover Photo
           </label>
           <div
@@ -452,7 +452,7 @@ export function UserProfile({ session, onUpdateSession }: UserProfileProps) {
                 />
                 <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center gap-1.5">
                   <Camera className="w-6 h-6 text-indigo-400 animate-pulse" />
-                  <span className="text-[9px] font-mono text-[#4ADE80] font-black tracking-widest uppercase">
+                  <span className="text-[9px] font-mono text-[var(--success)] font-black tracking-widest uppercase">
                     DRAG & DROP OR CLICK TO RE-UPLOAD
                   </span>
                 </div>
@@ -460,10 +460,10 @@ export function UserProfile({ session, onUpdateSession }: UserProfileProps) {
             ) : (
               <div className="text-center space-y-2 px-4">
                 <div className="w-10 h-10 rounded-full bg-black flex items-center justify-center mx-auto group-hover:bg-black transition-colors">
-                  <Upload className="w-4 h-4 text-zinc-500" />
+                  <Upload className="w-4 h-4 text-[var(--text-tertiary)]" />
                 </div>
                 <div>
-                  <span className="text-xs text-zinc-400 font-bold font-mono uppercase block">
+                  <span className="text-xs text-[var(--text-tertiary)] font-bold font-mono uppercase block">
                     DRAG AND DROP OR CLICK TO UPLOAD COVER PHOTO
                   </span>
                   <span className="text-[10px] text-zinc-600 font-mono block mt-0.5">
@@ -504,7 +504,7 @@ export function UserProfile({ session, onUpdateSession }: UserProfileProps) {
                 />
                 <div className="absolute inset-0 bg-black/75 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center gap-1">
                   <Camera className="w-4 h-4 text-indigo-400 animate-pulse" />
-                  <span className="text-[7.5px] font-mono text-[#4ADE80] font-black tracking-widest uppercase">
+                  <span className="text-[7.5px] font-mono text-[var(--success)] font-black tracking-widest uppercase">
                     UPLOAD
                   </span>
                 </div>
@@ -517,10 +517,10 @@ export function UserProfile({ session, onUpdateSession }: UserProfileProps) {
           </div>
 
           <div className="space-y-1 shrink-0 pb-2">
-            <h3 className="text-sm font-black text-[#E5E5E5] font-mono tracking-wider uppercase">
+            <h3 className="text-sm font-black text-[var(--text-primary)] font-mono tracking-wider uppercase">
               {nickname || 'YOUR NAME'}
             </h3>
-            <p className="text-[10px] text-zinc-500 font-mono uppercase tracking-widest">
+            <p className="text-[10px] text-[var(--text-tertiary)] font-mono uppercase tracking-widest">
               {handle ? `@${handle}` : 'NO USERNAME SET'}
             </p>
           </div>
@@ -530,7 +530,7 @@ export function UserProfile({ session, onUpdateSession }: UserProfileProps) {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-5 pt-3">
           <div className="space-y-1.5">
             <div className="flex items-center justify-between">
-              <label className="text-xs text-zinc-400 font-bold block uppercase tracking-wider font-mono">
+              <label className="text-xs text-[var(--text-tertiary)] font-bold block uppercase tracking-wider font-mono">
                 Display Name
               </label>
               <span className="text-[9px] text-zinc-650 font-mono font-bold">
@@ -542,29 +542,29 @@ export function UserProfile({ session, onUpdateSession }: UserProfileProps) {
               value={nickname}
               maxLength={50}
               onChange={(e) => setNickname(e.target.value)}
-              className="w-full bg-black/40 border border-black focus:border-indigo-500/50 text-[#E5E5E5] rounded-lg p-2.5 text-sm transition-colors focus:outline-none placeholder-zinc-750 font-mono"
+              className="w-full bg-black/40 border border-[var(--border)] focus:border-indigo-500/50 text-[var(--text-primary)] rounded-lg p-2.5 text-sm transition-colors focus:outline-none placeholder-zinc-750 font-mono"
               placeholder="e.g. Robin Slayer"
             />
-            <p className="text-[9.5px] text-zinc-600 font-mono leading-relaxed uppercase">
+            <p className="text-[10px] text-zinc-600 font-mono leading-relaxed uppercase">
               Shown publicly on your profile. Spaces and special characters allowed.
             </p>
           </div>
 
           <div className="space-y-1.5">
             <div className="flex items-center justify-between">
-              <label className="text-xs text-zinc-400 font-bold block uppercase tracking-wider font-mono">
+              <label className="text-xs text-[var(--text-tertiary)] font-bold block uppercase tracking-wider font-mono">
                 Handle (Username)
               </label>
               {/* Availability Indicator badges */}
               {availability !== 'idle' && (
                 <div className="flex items-center gap-1 font-mono text-[9px] uppercase font-bold shrink-0">
                   {availability === 'checking' && (
-                    <span className="text-zinc-500 flex items-center gap-1">
+                    <span className="text-[var(--text-tertiary)] flex items-center gap-1">
                       <Loader2 className="w-2.5 h-2.5 animate-spin" /> Verifying...
                     </span>
                   )}
                   {availability === 'available' && (
-                    <span className="text-[#4ADE80] flex items-center gap-1">
+                    <span className="text-[var(--success)] flex items-center gap-1">
                       <Check className="w-2.5 h-2.5" /> Handle Available
                     </span>
                   )}
@@ -582,18 +582,18 @@ export function UserProfile({ session, onUpdateSession }: UserProfileProps) {
               )}
             </div>
             <div className="relative">
-              <span className="absolute left-3 top-2.5 text-zinc-500 text-sm font-mono font-bold">@</span>
+              <span className="absolute left-3 top-2.5 text-[var(--text-tertiary)] text-sm font-mono font-bold">@</span>
               <input
                 type="text"
                 value={handle}
                 onChange={(e) => setHandle(e.target.value.toLowerCase().replace(/\s+/g, ''))}
-                className={`w-full bg-black/40 border border-black focus:border-indigo-500/50 text-[#E5E5E5] rounded-lg p-2.5 pl-8 text-sm transition-colors focus:outline-none placeholder-zinc-750 font-mono ${
-                  availability === 'available' ? 'border-black' : availability === 'taken' || availability === 'invalid' ? 'border-rose-500/30' : 'border-black'
+                className={`w-full bg-black/40 border border-[var(--border)] focus:border-indigo-500/50 text-[var(--text-primary)] rounded-lg p-2.5 pl-8 text-sm transition-colors focus:outline-none placeholder-zinc-750 font-mono ${
+                  availability === 'available' ? 'border-[var(--border)]' : availability === 'taken' || availability === 'invalid' ? 'border-rose-500/30' : 'border-[var(--border)]'
                 }`}
-                placeholder="slayer_quant_bot"
+                placeholder="your_handle"
               />
             </div>
-            <p className="text-[9.5px] text-zinc-600 font-mono leading-relaxed md:w-11/12 uppercase">
+            <p className="text-[10px] text-zinc-600 font-mono leading-relaxed md:w-11/12 uppercase">
               {availabilityReason || '3-20 characters limit. Lowercase letters, numbers, or underscores only.'}
             </p>
           </div>
@@ -604,7 +604,7 @@ export function UserProfile({ session, onUpdateSession }: UserProfileProps) {
           <button
             onClick={handleSaveCompleteProfile}
             disabled={isUpdating || availability === 'taken' || availability === 'invalid'}
-            className="py-2.5 px-5 bg-black hover:bg-indigo-500/10 text-indigo-400 hover:text-indigo-300 border border-black hover:border-indigo-500/40 rounded-lg text-xs font-bold font-mono uppercase flex items-center gap-2 transition-all cursor-pointer disabled:opacity-45 disabled:cursor-not-allowed"
+            className="py-2.5 px-5 bg-black hover:bg-indigo-500/10 text-indigo-400 hover:text-indigo-300 border border-[var(--border)] hover:border-indigo-500/40 rounded-lg text-xs font-bold font-mono uppercase flex items-center gap-2 transition-all cursor-pointer disabled:opacity-45 disabled:cursor-not-allowed"
           >
             {isUpdating ? (
               <>
@@ -627,12 +627,12 @@ export function UserProfile({ session, onUpdateSession }: UserProfileProps) {
           <motion.div
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
-            className="bg-black border border-black rounded-xl overflow-hidden max-w-lg w-full shadow-2xl space-y-4"
+            className="bg-black border border-[var(--border)] rounded-xl overflow-hidden max-w-lg w-full shadow-2xl space-y-4"
           >
-            <div className="p-4 border-b border-black flex items-center justify-between">
+            <div className="p-4 border-b border-[var(--border)] flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <ImageIcon className="w-4 h-4 text-indigo-400" />
-                <span className="text-xs font-bold text-[#E5E5E5] uppercase tracking-widest font-mono">
+                <span className="text-xs font-bold text-[var(--text-primary)] uppercase tracking-widest font-mono">
                   Crop {cropParams.type === 'avatar' ? 'Profile Photo' : 'Cover Photo'}
                 </span>
               </div>
@@ -642,19 +642,19 @@ export function UserProfile({ session, onUpdateSession }: UserProfileProps) {
                   setCropActive(false);
                   setCropParams(null);
                 }}
-                className="text-zinc-500 hover:text-[#E5E5E5] transition-colors cursor-pointer"
+                className="text-[var(--text-tertiary)] hover:text-[var(--text-primary)] transition-colors cursor-pointer"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
 
             <div className="px-5 space-y-4">
-              <p className="text-[10px] text-zinc-400 font-mono uppercase bg-black/40 p-2 border border-black rounded">
+              <p className="text-[10px] text-[var(--text-tertiary)] font-mono uppercase bg-black/40 p-2 border border-[var(--border)] rounded">
                 Drag the image to reposition it, then use the zoom slider to scale.
               </p>
 
               {/* Crop Box Window */}
-              <div className="relative w-full aspect-square md:aspect-video bg-black border border-black rounded-lg overflow-hidden select-none">
+              <div className="relative w-full aspect-square md:aspect-video bg-black border border-[var(--border)] rounded-lg overflow-hidden select-none">
                 <div
                   className="absolute inset-0 cursor-move flex items-center justify-center"
                   onMouseDown={startDragImagePose}
@@ -690,7 +690,7 @@ export function UserProfile({ session, onUpdateSession }: UserProfileProps) {
 
               {/* Zoom slider control */}
               <div className="space-y-1">
-                <div className="flex items-center justify-between font-mono text-[10px] text-zinc-400">
+                <div className="flex items-center justify-between font-mono text-[10px] text-[var(--text-tertiary)]">
                   <span>ZOOM</span>
                   <span className="text-zinc-200 font-bold">{Math.round(cropParams.zoom * 100)}%</span>
                 </div>
@@ -712,21 +712,21 @@ export function UserProfile({ session, onUpdateSession }: UserProfileProps) {
               </div>
             </div>
 
-            <div className="p-4 bg-black border-t border-black flex justify-end gap-3">
+            <div className="p-4 bg-black border-t border-[var(--border)] flex justify-end gap-3">
               <button
                 onClick={() => {
                   URL.revokeObjectURL(cropParams.originalSrc);
                   setCropActive(false);
                   setCropParams(null);
                 }}
-                className="py-2 px-4 text-zinc-500 hover:text-[#E5E5E5] uppercase font-mono font-bold tracking-wider text-[10px] bg-black hover:bg-black rounded cursor-pointer"
+                className="py-2 px-4 text-[var(--text-tertiary)] hover:text-[var(--text-primary)] uppercase font-mono font-bold tracking-wider text-[10px] bg-black hover:bg-black rounded cursor-pointer"
               >
                 Cancel
               </button>
               <button
                 onClick={executeCommenceCrop}
                 disabled={isUploading}
-                className="py-2 px-5 bg-indigo-600 hover:bg-indigo-500 text-[#E5E5E5] font-mono font-bold uppercase tracking-wider text-[10px] rounded flex items-center gap-1 cursor-pointer disabled:opacity-45"
+                className="py-2 px-5 bg-indigo-600 hover:bg-indigo-500 text-[var(--text-primary)] font-mono font-bold uppercase tracking-wider text-[10px] rounded flex items-center gap-1 cursor-pointer disabled:opacity-45"
               >
                 {isUploading ? (
                   <>

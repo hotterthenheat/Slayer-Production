@@ -70,35 +70,35 @@ export function WhyWeLikeCard({ score, isBullish = true, asset }: WhyWeLikeTrade
   ];
 
   return (
-    <div className="bg-black border border-black rounded-sm font-mono overflow-hidden shadow-lg p-5 flex flex-col justify-between h-full">
+    <div className="bg-[var(--surface)] border border-[var(--border)] rounded-sm font-mono overflow-hidden shadow-lg p-5 flex flex-col justify-between h-full">
       <div>
-        <div className="flex items-center justify-between border-b border-black pb-3 mb-4">
+        <div className="flex items-center justify-between border-b border-[var(--border)] pb-3 mb-4">
           <div className="flex items-center gap-1.5">
-            <Info className="w-4 h-4 text-[#4ADE80]" />
-            <span className="text-xs tracking-[0.2em] font-bold text-[#E0E0E0]">WHY SKYVISION LIKES THIS TRADE</span>
+            <Info className="w-4 h-4 text-[var(--success)]" />
+            <span className="text-xs tracking-[0.2em] font-bold text-[var(--text-primary)]">WHY SKYVISION LIKES THIS TRADE</span>
           </div>
-          <span className="text-[9px] text-[#888888] font-bold uppercase select-none border border-black px-2 bg-black/40 py-0.5">ALGORITHMIC LOGIC</span>
+          <span className="text-[10px] text-[var(--text-tertiary)] font-bold uppercase select-none border border-[var(--border)] px-2 bg-[var(--surface-2)] py-0.5">ALGORITHMIC LOGIC</span>
         </div>
 
-        <p className="text-[11px] text-[#888888] leading-normal mb-4 font-sans">
+        <p className="text-[11px] text-[var(--text-tertiary)] leading-normal mb-4 font-sans">
           The system actively scans and validates institutional order blocks. All checked parameters identify strong core agreement:
         </p>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {factors.map((f, idx) => (
-            <div key={idx} className="bg-black/30 border border-black p-3 rounded-sm flex items-start gap-2.5">
+            <div key={idx} className="bg-[var(--surface-2)] border border-[var(--border)] p-3 rounded-sm flex items-start gap-2.5">
               <div className={`w-4 h-4 mt-0.5 rounded-sm flex items-center justify-center border transition-all ${
-                f.status 
-                  ? 'border-black bg-black/40 text-[#4ADE80]' 
-                  : 'border-black bg-black text-zinc-650'
+                f.status
+                  ? 'border-[var(--border)] bg-[var(--surface-3)] text-[var(--success)]'
+                  : 'border-[var(--border)] bg-[var(--surface)] text-[var(--text-tertiary)]'
               }`}>
-                {f.status ? <Check className="w-3 h-3 stroke-[2.5]" /> : <span className="text-[8px]">◌</span>}
+                {f.status ? <Check className="w-3 h-3 stroke-[2.5]" /> : <span className="text-[10px]">◌</span>}
               </div>
               <div>
-                <span className={`text-xs font-bold block ${f.status ? 'text-[#E5E5E5]' : 'text-zinc-500 line-through'}`}>
+                <span className={`text-xs font-bold block ${f.status ? 'text-[var(--text-primary)]' : 'text-[var(--text-tertiary)] line-through'}`}>
                   {f.label}
                 </span>
-                <span className="text-[10px] text-zinc-500 block leading-tight mt-0.5 font-sans">
+                <span className="text-[10px] text-[var(--text-tertiary)] block leading-tight mt-0.5 font-sans">
                   {f.description}
                 </span>
               </div>
@@ -107,8 +107,8 @@ export function WhyWeLikeCard({ score, isBullish = true, asset }: WhyWeLikeTrade
         </div>
       </div>
 
-      <div className="mt-5 pt-3.5 border-t border-black text-[9.5px] text-zinc-650 italic flex items-center gap-1.5 leading-none">
-        <ShieldAlert className="w-3.5 text-zinc-600" />
+      <div className="mt-5 pt-3.5 border-t border-[var(--border)] text-[10px] text-[var(--text-tertiary)] italic flex items-center gap-1.5 leading-none">
+        <ShieldAlert className="w-3.5 text-[var(--text-tertiary)]" />
         <span>No subjective bias. Purely data-driven mathematical thesis verification.</span>
       </div>
     </div>

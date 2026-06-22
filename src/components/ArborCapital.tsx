@@ -181,9 +181,9 @@ export default function ArborCapital() {
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 rounded-xl border border-[var(--border)] bg-[var(--surface)] p-5">
         <div>
           <div className="flex items-center gap-2 mb-1.5">
-            <Users className="w-4 h-4 text-[#4ADE80]" />
+            <Users className="w-4 h-4 text-[var(--success)]" />
             <span className="text-[10px] font-black uppercase tracking-[0.24em] text-[var(--text-tertiary)]">
-              Slayer Labs
+              Arbor Capital
             </span>
           </div>
           <h2 className="text-lg font-bold tracking-tight text-[var(--text-primary)]">
@@ -222,7 +222,7 @@ export default function ArborCapital() {
           What This Is
         </h3>
         <p className="text-xs md:text-[13px] text-[var(--text-secondary)] leading-relaxed max-w-4xl">
-          Slayer is a software company —{' '}
+          Slayer Terminal is a software platform —{' '}
           <span className="font-bold text-[var(--text-primary)]">not a signal group or Discord alert room</span>.
           The tools help traders make better decisions with real, measurable data. The community exists to
           support the software and keep results accountable.
@@ -230,7 +230,7 @@ export default function ArborCapital() {
         <div className="flex flex-wrap gap-x-5 gap-y-2 mt-4 text-[10px] uppercase tracking-[0.12em] text-[var(--text-tertiary)]">
           {['Software first', 'Logged results', 'Data-driven methods'].map((t) => (
             <span key={t} className="flex items-center gap-1.5">
-              <span className="w-1 h-1 rounded-full bg-[#4ADE80]" />
+              <span className="w-1 h-1 rounded-full bg-[var(--success)]" />
               {t}
             </span>
           ))}
@@ -274,7 +274,7 @@ export default function ArborCapital() {
           {/* Live session note */}
           <div className="mt-1 rounded-xl border border-[var(--border)] bg-[var(--surface)] p-4 flex flex-col gap-2.5">
             <div className="flex items-center gap-1.5">
-              <Calendar className="w-3.5 h-3.5 text-[#4ADE80]" />
+              <Calendar className="w-3.5 h-3.5 text-[var(--success)]" />
               <span className="text-[9px] font-black uppercase tracking-[0.16em] text-[var(--text-tertiary)]">
                 Live Sessions
               </span>
@@ -293,7 +293,7 @@ export default function ArborCapital() {
           {activeChannel === 'verified' && (
             <div className="flex flex-col gap-4 animate-fadeIn">
               <SectionHeader
-                icon={<ShieldCheck className="w-4 h-4 text-[#4ADE80]" />}
+                icon={<ShieldCheck className="w-4 h-4 text-[var(--success)]" />}
                 title="Trade Ledger"
                 meta={serverState?.data_source ? `Source · ${serverState.data_source}` : undefined}
               />
@@ -405,7 +405,7 @@ export default function ArborCapital() {
           {activeChannel === 'research' && (
             <div className="flex flex-col gap-4 animate-fadeIn">
               <SectionHeader
-                icon={<FileText className="w-4 h-4 text-[#4ADE80]" />}
+                icon={<FileText className="w-4 h-4 text-[var(--success)]" />}
                 title="Research Library"
                 meta="Methodology"
               />
@@ -420,7 +420,7 @@ export default function ArborCapital() {
                     className="rounded-lg border border-[var(--border)] bg-[var(--surface-2)] p-4"
                   >
                     <div className="flex items-center justify-between gap-3 mb-2">
-                      <span className="text-[9px] font-bold uppercase tracking-[0.12em] text-[#4ADE80] px-2 py-0.5 rounded border border-[#4ADE80]/30 bg-[#4ADE80]/10">
+                      <span className="text-[9px] font-bold uppercase tracking-[0.12em] text-[var(--success)] px-2 py-0.5 rounded border border-[var(--success)]/30 bg-[var(--success)]/10">
                         {a.tag}
                       </span>
                     </div>
@@ -438,7 +438,7 @@ export default function ArborCapital() {
           {activeChannel === 'education' && (
             <div className="flex flex-col gap-4 animate-fadeIn">
               <SectionHeader
-                icon={<GraduationCap className="w-4 h-4 text-[#4ADE80]" />}
+                icon={<GraduationCap className="w-4 h-4 text-[var(--success)]" />}
                 title="Options Education"
                 meta="Core curriculum"
               />
@@ -476,7 +476,7 @@ export default function ArborCapital() {
           {activeChannel === 'support' && (
             <div className="flex flex-col gap-4 animate-fadeIn">
               <SectionHeader
-                icon={<HelpCircle className="w-4 h-4 text-[#4ADE80]" />}
+                icon={<HelpCircle className="w-4 h-4 text-[var(--success)]" />}
                 title="Support & Feature Requests"
                 meta="Product roadmap"
               />
@@ -486,7 +486,7 @@ export default function ArborCapital() {
                 {/* Submit */}
                 <div className="rounded-lg border border-[var(--border)] bg-[var(--surface-2)] p-4">
                   <div className="flex items-center gap-1.5 mb-2">
-                    <MessageSquarePlus className="w-4 h-4 text-[#4ADE80]" />
+                    <MessageSquarePlus className="w-4 h-4 text-[var(--success)]" />
                     <h4 className="text-[11px] font-black uppercase tracking-[0.14em] text-[var(--text-primary)]">
                       Submit a Request
                     </h4>
@@ -497,7 +497,7 @@ export default function ArborCapital() {
                   </p>
 
                   {requestSubmitted ? (
-                    <div className="rounded-lg border border-[#4ADE80]/40 bg-[#4ADE80]/10 p-4 flex items-start gap-2.5">
+                    <div className="rounded-lg border border-[var(--success)]/40 bg-[var(--success)]/10 p-4 flex items-start gap-2.5">
                       <CheckCircle className="w-4 h-4 shrink-0 mt-0.5" style={{ color: '#4ADE80' }} />
                       <div>
                         <span className="text-xs font-bold text-[var(--text-primary)] block">
@@ -519,7 +519,7 @@ export default function ArborCapital() {
                           value={newRequestTitle}
                           onChange={(e) => setNewRequestTitle(e.target.value)}
                           placeholder="e.g. Alert when IV drops below 15%"
-                          className="w-full rounded-lg border border-[var(--border)] bg-[var(--surface)] p-2.5 text-xs text-[var(--text-primary)] placeholder:text-[var(--text-tertiary)] focus:outline-none focus:border-[#4ADE80]/60"
+                          className="w-full rounded-lg border border-[var(--border)] bg-[var(--surface)] p-2.5 text-xs text-[var(--text-primary)] placeholder:text-[var(--text-tertiary)] focus:outline-none focus:border-[var(--success)]/60"
                           required
                         />
                       </div>
@@ -530,7 +530,7 @@ export default function ArborCapital() {
                         <select
                           value={newRequestType}
                           onChange={(e) => setNewRequestType(e.target.value)}
-                          className="w-full rounded-lg border border-[var(--border)] bg-[var(--surface)] p-2.5 text-xs text-[var(--text-secondary)] focus:outline-none focus:border-[#4ADE80]/60"
+                          className="w-full rounded-lg border border-[var(--border)] bg-[var(--surface)] p-2.5 text-xs text-[var(--text-secondary)] focus:outline-none focus:border-[var(--success)]/60"
                         >
                           <option value="Feature Request">Feature Request</option>
                           <option value="Technical Bug">Technical Bug</option>
@@ -539,7 +539,7 @@ export default function ArborCapital() {
                       </div>
                       <button
                         type="submit"
-                        className="w-full rounded-lg py-2.5 bg-[#4ADE80] hover:bg-[#3fcf72] text-black font-bold uppercase text-[10px] tracking-[0.12em] transition-colors"
+                        className="w-full rounded-lg py-2.5 bg-[var(--success)] hover:bg-[#3fcf72] text-black font-bold uppercase text-[10px] tracking-[0.12em] transition-colors"
                       >
                         Submit Request
                       </button>
@@ -551,7 +551,7 @@ export default function ArborCapital() {
                 <div className="rounded-lg border border-[var(--border)] bg-[var(--surface-2)] p-4 flex flex-col">
                   <div className="flex items-center justify-between gap-2 mb-3 pb-2.5 border-b border-[var(--border)]">
                     <div className="flex items-center gap-1.5">
-                      <Bookmark className="w-4 h-4 text-[#4ADE80]" />
+                      <Bookmark className="w-4 h-4 text-[var(--success)]" />
                       <h4 className="text-[11px] font-black uppercase tracking-[0.14em] text-[var(--text-primary)]">
                         Open Requests
                       </h4>
@@ -599,9 +599,9 @@ export default function ArborCapital() {
                           </div>
                           <button
                             onClick={() => handleVote(req.id)}
-                            className="flex flex-col items-center justify-center rounded-lg border border-[var(--border)] bg-[var(--surface-2)] px-2.5 py-1.5 shrink-0 hover:border-[#4ADE80]/60 transition-colors"
+                            className="flex flex-col items-center justify-center rounded-lg border border-[var(--border)] bg-[var(--surface-2)] px-2.5 py-1.5 shrink-0 hover:border-[var(--success)]/60 transition-colors"
                           >
-                            <ChevronUp className="w-3.5 h-3.5 text-[#4ADE80]" />
+                            <ChevronUp className="w-3.5 h-3.5 text-[var(--success)]" />
                             <span className="text-[11px] font-bold tabular-nums text-[var(--text-primary)]">
                               {req.votes}
                             </span>

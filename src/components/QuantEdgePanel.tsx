@@ -22,7 +22,7 @@ function Card({ title, icon, accent, children }: { title: string; icon: React.Re
 function Stat({ label, value, tone }: { label: string; value: string; tone?: string }) {
   return (
     <div className="flex flex-col">
-      <span className="text-[9px] uppercase tracking-widest text-[var(--text-tertiary)]">{label}</span>
+      <span className="text-[10px] uppercase tracking-widest text-[var(--text-tertiary)]">{label}</span>
       <span className="text-[13px] font-bold tabular-nums" style={{ color: tone || 'var(--text-primary)' }}>{value}</span>
     </div>
   );
@@ -45,19 +45,24 @@ function DensityCurve({ density, spot, p25, p75 }: { density: { k: number; f: nu
     return { d, spotX: x(spot), p25X: x(p25), p75X: x(p75), W, H };
   }, [density, spot, p25, p75]);
   if (!path) return null;
+  // Resolve theme tokens once so the SVG curve tracks the design system.
+  const css = getComputedStyle(document.documentElement);
+  const tok = (n: string, f: string) => { const v = css.getPropertyValue(n).trim(); return v || f; };
+  const success = tok('--success', '#4ADE80');
+  const textPrimary = tok('--text-primary', '#E5E5E5');
   return (
     <svg viewBox={`0 0 ${path.W} ${path.H}`} preserveAspectRatio="none" className="w-full h-[44px]">
       <defs>
         <linearGradient id="rndg" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor="#4ADE80" stopOpacity="0.45" />
-          <stop offset="100%" stopColor="#4ADE80" stopOpacity="0.02" />
+          <stop offset="0%" stopColor={success} stopOpacity="0.45" />
+          <stop offset="100%" stopColor={success} stopOpacity="0.02" />
         </linearGradient>
       </defs>
       {/* interquartile band */}
-      <rect x={Math.min(path.p25X, path.p75X)} y={0} width={Math.abs(path.p75X - path.p25X)} height={path.H} fill="#4ADE80" opacity={0.07} />
-      <path d={path.d} fill="url(#rndg)" stroke="#4ADE80" strokeWidth={0.8} vectorEffect="non-scaling-stroke" />
+      <rect x={Math.min(path.p25X, path.p75X)} y={0} width={Math.abs(path.p75X - path.p25X)} height={path.H} fill={success} opacity={0.07} />
+      <path d={path.d} fill="url(#rndg)" stroke={success} strokeWidth={0.8} vectorEffect="non-scaling-stroke" />
       {/* spot marker */}
-      <line x1={path.spotX} y1={0} x2={path.spotX} y2={path.H} stroke="#E5E5E5" strokeWidth={0.6} strokeDasharray="2 2" vectorEffect="non-scaling-stroke" />
+      <line x1={path.spotX} y1={0} x2={path.spotX} y2={path.H} stroke={textPrimary} strokeWidth={0.6} strokeDasharray="2 2" vectorEffect="non-scaling-stroke" />
     </svg>
   );
 }
@@ -86,25 +91,31 @@ export function QuantEdgePanel() {
   const sc = edge.scenario;
   const kelly = edge.kelly;
   const clock = edge.dealerClock;
-  const richTone = vrp?.richness === 'IV RICH' ? '#4ADE80' : vrp?.richness === 'IV CHEAP' ? '#F87171' : '#A1A1AA';
+
+  // Resolve theme tokens once so inline-styled signal colors track the design system.
+  const css = getComputedStyle(document.documentElement);
+  const tok = (n: string, f: string) => { const v = css.getPropertyValue(n).trim(); return v || f; };
+  const C = { success: tok('--success', '#4ADE80'), danger: tok('--danger', '#F87171'), warning: tok('--warning', '#FBBF24'), info: tok('--info', '#60A5FA'), neutral: tok('--text-tertiary', '#A3A3A3'), textPrimary: tok('--text-primary', '#E5E5E5') };
+
+  const richTone = vrp?.richness === 'IV RICH' ? C.success : vrp?.richness === 'IV CHEAP' ? C.danger : C.neutral;
 
   return (
-    <div className="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-5 flex flex-col gap-3" style={{ borderLeftColor: '#4ADE80', borderLeftWidth: '3px' }}>
+    <div className="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-5 flex flex-col gap-3" style={{ borderLeftColor: 'var(--success)', borderLeftWidth: '3px' }}>
       <div className="flex items-center gap-2 pb-3 border-b border-[var(--border)]">
-        <Sigma className="w-4 h-4 text-[#4ADE80]" />
+        <Sigma className="w-4 h-4 text-[var(--success)]" />
         <h2 className="text-xs font-black tracking-widest uppercase text-[var(--text-primary)]">Edge Analytics — {selectedAsset?.ticker}</h2>
-        <span className="text-[9px] text-[var(--text-tertiary)] uppercase tracking-widest ml-auto">live</span>
+        <span className="text-[10px] text-[var(--text-tertiary)] uppercase tracking-widest ml-auto">live</span>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
         {/* Risk-Neutral Density */}
         {rnd && (
-          <Card title="Market-Implied Probability Distribution" icon={<Activity className="w-3.5 h-3.5 text-[#4ADE80]" />} accent="#4ADE80">
+          <Card title="Market-Implied Probability Distribution" icon={<Activity className="w-3.5 h-3.5 text-[var(--success)]" />} accent={C.success}>
             <DensityCurve density={rnd.density} spot={selectedAsset?.defaultPrice || rnd.percentiles?.p50 || 0} p25={rnd.percentiles?.p25 || 0} p75={rnd.percentiles?.p75 || 0} />
             <div className="grid grid-cols-3 gap-2">
-              <Stat label="P(up by exp)" value={pct(rnd.pAboveSpot)} tone={rnd.pAboveSpot >= 0.5 ? '#4ADE80' : '#F87171'} />
+              <Stat label="P(up by exp)" value={pct(rnd.pAboveSpot)} tone={rnd.pAboveSpot >= 0.5 ? C.success : C.danger} />
               <Stat label={`Implied move (${rnd.dteDays}d)`} value={`±${pct(rnd.expectedMovePct)}`} />
-              <Stat label="Skew bias" value={rnd.skewBias} tone={rnd.skewBias === 'DOWNSIDE SKEW' ? '#F87171' : rnd.skewBias === 'UPSIDE SKEW' ? '#4ADE80' : '#A1A1AA'} />
+              <Stat label="Skew bias" value={rnd.skewBias} tone={rnd.skewBias === 'DOWNSIDE SKEW' ? C.danger : rnd.skewBias === 'UPSIDE SKEW' ? C.success : C.neutral} />
             </div>
             <div className="flex flex-wrap gap-x-3 gap-y-1 mt-0.5">
               {(rnd.levels || []).map((l: any) => (
@@ -113,21 +124,21 @@ export function QuantEdgePanel() {
                 </span>
               ))}
             </div>
-            <span className="text-[9px] text-[var(--text-tertiary)] uppercase tracking-widest">Tail risk vs normal: {num(rnd.fatTailRatio, 2)}x</span>
+            <span className="text-[10px] text-[var(--text-tertiary)] uppercase tracking-widest">Tail risk vs normal: {num(rnd.fatTailRatio, 2)}x</span>
           </Card>
         )}
 
         {/* Realized Vol + VRP */}
         {vrp && rv && (
-          <Card title="Realized Vol and Variance Risk Premium" icon={<Gauge className="w-3.5 h-3.5 text-[#60A5FA]" />} accent="#60A5FA">
+          <Card title="Realized Vol and Variance Risk Premium" icon={<Gauge className="w-3.5 h-3.5 text-[var(--info)]" />} accent={C.info}>
             <div className="grid grid-cols-3 gap-2">
               <Stat label="Implied (ATM)" value={pct(vrp.iv)} />
               <Stat label="Realized (YZ)" value={pct(vrp.rv)} />
-              <Stat label="VRP" value={signedPct(vrp.vrp)} tone={vrp.vrp >= 0 ? '#4ADE80' : '#F87171'} />
+              <Stat label="VRP" value={signedPct(vrp.vrp)} tone={vrp.vrp >= 0 ? C.success : C.danger} />
             </div>
             <div className="flex items-center gap-2">
-              <span className="text-[9px] font-black tracking-widest px-2 py-0.5 rounded" style={{ color: richTone, border: `1px solid ${richTone}`, background: `${richTone}14` }}>{vrp.richness}</span>
-              <span className="text-[9px] text-[var(--text-tertiary)] uppercase tracking-widest">IV/RV {num(vrp.ratio, 2)}x · RV pctile {num(vrp.rvPercentile, 0)}</span>
+              <span className="text-[10px] font-black tracking-widest px-2 py-0.5 rounded" style={{ color: richTone, border: `1px solid ${richTone}`, background: `${richTone}14` }}>{vrp.richness}</span>
+              <span className="text-[10px] text-[var(--text-tertiary)] uppercase tracking-widest">IV/RV {num(vrp.ratio, 2)}x · RV pctile {num(vrp.rvPercentile, 0)}</span>
             </div>
             <div className="grid grid-cols-4 gap-1.5 mt-0.5">
               <Stat label="Parkinson" value={pct(rv.parkinson)} />
@@ -142,12 +153,12 @@ export function QuantEdgePanel() {
         {skew && (
           <Card title="Skew (25Δ Risk Reversal / Butterfly)" icon={<Layers className="w-3.5 h-3.5 text-[#C084FC]" />} accent="#C084FC">
             <div className="grid grid-cols-3 gap-2">
-              <Stat label="RR 25Δ" value={signedPct(skew.riskReversal25, 2)} tone={skew.riskReversal25 >= 0 ? '#F87171' : '#4ADE80'} />
+              <Stat label="RR 25Δ" value={signedPct(skew.riskReversal25, 2)} tone={skew.riskReversal25 >= 0 ? C.danger : C.success} />
               <Stat label="Fly 25Δ" value={signedPct(skew.butterfly25, 2)} />
               <Stat label="Slope" value={num(skew.skewSlope, 3)} />
             </div>
             <div className="grid grid-cols-3 gap-2">
-              <Stat label="Bias" value={skew.bias} tone={skew.bias === 'PUT SKEW' ? '#F87171' : skew.bias === 'CALL SKEW' ? '#4ADE80' : '#A1A1AA'} />
+              <Stat label="Bias" value={skew.bias} tone={skew.bias === 'PUT SKEW' ? C.danger : skew.bias === 'CALL SKEW' ? C.success : C.neutral} />
               <Stat label="RR pctile" value={num(skew.rrPercentile, 0)} />
               <Stat label="Fly pctile" value={num(skew.bfPercentile, 0)} />
             </div>
@@ -156,23 +167,23 @@ export function QuantEdgePanel() {
 
         {/* Scenario matrix */}
         {sc && (
-          <Card title="Scenario P&L: Spot vs IV Change" icon={<Target className="w-3.5 h-3.5 text-[#FBBF24]" />} accent="#FBBF24">
+          <Card title="Scenario P&L: Spot vs IV Change" icon={<Target className="w-3.5 h-3.5 text-[var(--warning)]" />} accent={C.warning}>
             <div className="overflow-x-auto">
               <table className="w-full border-separate" style={{ borderSpacing: 2 }}>
                 <thead>
                   <tr>
-                    <th className="text-[8px] text-[var(--text-tertiary)] font-black uppercase">IV\Spot</th>
+                    <th className="text-[10px] text-[var(--text-tertiary)] font-black uppercase">IV\Spot</th>
                     {sc.spotShiftsPct.map((s: number) => (
-                      <th key={s} className="text-[8px] text-[var(--text-tertiary)] font-bold tabular-nums px-0.5">{s >= 0 ? '+' : ''}{(s * 100).toFixed(1)}</th>
+                      <th key={s} className="text-[10px] text-[var(--text-tertiary)] font-bold tabular-nums px-0.5">{s >= 0 ? '+' : ''}{(s * 100).toFixed(1)}</th>
                     ))}
                   </tr>
                 </thead>
                 <tbody>
                   {sc.pnlPct.map((row: number[], i: number) => (
                     <tr key={i}>
-                      <td className="text-[8px] text-[var(--text-tertiary)] font-bold tabular-nums pr-1">{sc.ivShiftsAbs[i] >= 0 ? '+' : ''}{(sc.ivShiftsAbs[i] * 100).toFixed(0)}</td>
+                      <td className="text-[10px] text-[var(--text-tertiary)] font-bold tabular-nums pr-1">{sc.ivShiftsAbs[i] >= 0 ? '+' : ''}{(sc.ivShiftsAbs[i] * 100).toFixed(0)}</td>
                       {row.map((v: number, j: number) => (
-                        <td key={j} className="text-[8px] text-center tabular-nums rounded font-bold" style={{ background: pnlColor(v), color: '#E5E5E5', minWidth: 30 }}>
+                        <td key={j} className="text-[10px] text-center tabular-nums rounded font-bold" style={{ background: pnlColor(v), color: C.textPrimary, minWidth: 30 }}>
                           {isFinite(v) ? `${v > 0 ? '+' : ''}${v.toFixed(0)}` : '—'}
                         </td>
                       ))}
@@ -182,9 +193,9 @@ export function QuantEdgePanel() {
               </table>
             </div>
             <div className="flex items-center gap-3">
-              <Stat label="Best" value={`${sc.best.pnlPct > 0 ? '+' : ''}${num(sc.best.pnlPct, 0)}%`} tone="#4ADE80" />
-              <Stat label="Worst" value={`${num(sc.worst.pnlPct, 0)}%`} tone="#F87171" />
-              <span className="text-[9px] text-[var(--text-tertiary)] uppercase tracking-widest ml-auto">{sc.daysForward}d theta decay</span>
+              <Stat label="Best" value={`${sc.best.pnlPct > 0 ? '+' : ''}${num(sc.best.pnlPct, 0)}%`} tone={C.success} />
+              <Stat label="Worst" value={`${num(sc.worst.pnlPct, 0)}%`} tone={C.danger} />
+              <span className="text-[10px] text-[var(--text-tertiary)] uppercase tracking-widest ml-auto">{sc.daysForward}d theta decay</span>
             </div>
           </Card>
         )}
@@ -198,7 +209,7 @@ export function QuantEdgePanel() {
               <Stat label="Half-Kelly" value={pct(kelly.recommended, 1)} tone="#34D399" />
               <Stat label="Full Kelly" value={pct(kelly.kelly, 1)} />
               <Stat label="Payoff" value={`${num(kelly.payoffRatio, 2)}x`} />
-              <Stat label="Verdict" value={kelly.verdict} tone={kelly.verdict === 'STRONG' ? '#4ADE80' : kelly.verdict === 'NO EDGE' ? '#F87171' : '#A1A1AA'} />
+              <Stat label="Verdict" value={kelly.verdict} tone={kelly.verdict === 'STRONG' ? C.success : kelly.verdict === 'NO EDGE' ? C.danger : C.neutral} />
             </div>
             <div className="h-1.5 w-full rounded-full bg-[var(--surface-3)] overflow-hidden">
               <div className="h-full bg-[#34D399]" style={{ width: `${Math.min(100, (kelly.recommended || 0) * 100 * 2)}%` }} />

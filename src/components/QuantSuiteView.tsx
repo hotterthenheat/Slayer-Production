@@ -521,7 +521,7 @@ export default function QuantSuiteView() {
         <div>
           <h2 className="text-[13px] font-bold tracking-[0.14em] text-[var(--text-primary)] uppercase flex items-center gap-2">
             <Calculator className="w-4 h-4 text-[#D9A15C]" />
-            Options Quant Lab
+            Quant Lab
             <span
               className={`text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded border ${
                 isLiveData

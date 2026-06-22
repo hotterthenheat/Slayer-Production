@@ -132,7 +132,7 @@ export function CommandPalette() {
               data-idx={i}
               onMouseEnter={() => setActive(i)}
               onClick={() => c.run()}
-              className={`w-full flex items-center justify-between px-4 py-2.5 text-left text-sm transition-colors ${i === active ? 'bg-white/10 text-white' : 'text-zinc-400'}`}
+              className={`w-full flex items-center justify-between px-4 py-2.5 text-left text-sm transition-colors ${i === active ? 'bg-white/10 text-white' : 'text-[var(--text-tertiary)]'}`}
             >
               <span>{c.title}</span>
               {c.hint && <span className="text-[10px] uppercase tracking-wider text-zinc-600 ml-3 shrink-0">{c.hint}</span>}

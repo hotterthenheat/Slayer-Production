@@ -37,7 +37,7 @@ export function SettingsView() {
         <div className="flex gap-2 items-center">
           <Key className="w-4 h-4 text-[var(--success)]" />
           <span className="text-[10px] text-[var(--success)] uppercase tracking-widest font-black">
-            SLAYER CONFIG SYSTEM SETTINGS
+            Settings
           </span>
         </div>
         <div className="flex items-center gap-1.5 bg-[var(--surface-2)] text-[var(--success)] border border-[var(--border)] px-3 py-1 rounded-lg text-[10px] font-black uppercase">
@@ -150,7 +150,7 @@ export function SettingsView() {
         {/* API Credentials */}
         <div className="apple-glass p-5 rounded-2xl flex flex-col justify-between text-left space-y-4 border border-[var(--border)] bg-[var(--surface-2)] shadow-md">
           <div className="space-y-1.5">
-            <span className="text-[10px] text-[var(--text-secondary)] block uppercase font-bold tracking-widest">TELECOM WEBHOOK CHANNELS [DEMO]</span>
+            <span className="text-[10px] text-[var(--text-secondary)] block uppercase font-bold tracking-widest">SMS Notifications (Demo)</span>
             <h4 className="text-xs font-black text-[var(--text-primary)] uppercase">TWILIO INTEGRATION CREDENTIALS</h4>
             <p className="text-[10px] text-[var(--text-tertiary)] font-sans uppercase leading-snug">
               SMS dispatch is a client-side simulation. The values below are placeholder demo data &mdash; no real credentials are read or displayed here.
@@ -186,7 +186,7 @@ export function SettingsView() {
             </div>
             <div className="p-3 bg-[var(--surface)] border border-[var(--border)] rounded-xl flex justify-between items-center shadow-inner">
               <span className="text-[var(--text-tertiary)] block uppercase text-[10px] font-bold">VERSION BUILD ID [DEMO]</span>
-              <span className="text-[var(--text-secondary)] font-mono text-[10px] tabular-nums">SLAYERS-V11.2.9S-W1</span>
+              <span className="text-[var(--text-secondary)] font-mono text-[10px] tabular-nums">v11.2.9</span>
             </div>
           </div>
         </div>
@@ -206,7 +206,7 @@ export function SettingsView() {
             The four toggles above are saved to your browser&rsquo;s localStorage and persist across reloads. All underlying data streams, telemetry records, and GEX calculations are computed on backend server nodes and are unaffected by these client preferences.
           </p>
           <p>
-            For safety and custody standards, do not attempt to bypass strict compliance gates during high-imbalance markets, as rapid volatility expansion sequences can impair outcome probability models.
+            Keep strict compliance enabled in volatile markets for more reliable signals.
           </p>
         </div>
       </div>

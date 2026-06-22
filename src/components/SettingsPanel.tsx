@@ -81,7 +81,7 @@ function ReferralCodeBox() {
       <div>
         <span className="text-[10px] text-[var(--text-tertiary)] uppercase tracking-widest font-bold">Your Referral Code</span>
         <div className="flex items-center gap-2 mt-1.5">
-          <code className="flex-1 bg-[var(--surface)] border border-[var(--border)] rounded-lg px-3 py-2.5 text-sm font-mono font-bold text-[#4ADE80] tracking-widest">{code || '…'}</code>
+          <code className="flex-1 bg-[var(--surface)] border border-[var(--border)] rounded-lg px-3 py-2.5 text-sm font-mono font-bold text-[var(--success)] tracking-widest">{code || '…'}</code>
           <button onClick={copy} className="px-3 py-2.5 bg-[var(--surface)] border border-[var(--border)] rounded-lg text-[10px] font-bold uppercase tracking-widest text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors">{copied ? 'Copied' : 'Copy'}</button>
         </div>
         <p className="text-[10px] text-[var(--text-tertiary)] mt-1.5">Share this code — referees get 10% off and you earn +1 token per use.</p>
@@ -95,9 +95,9 @@ function ReferralCodeBox() {
             placeholder="FRND10OFF"
             className="flex-1 bg-[var(--surface)] border border-[var(--border)] rounded-lg px-3 py-2.5 text-sm font-mono text-[var(--text-primary)] uppercase placeholder:text-[var(--text-tertiary)] focus:outline-none focus:border-indigo-500 transition-colors"
           />
-          <button onClick={apply} disabled={applying} className="px-4 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-[#E5E5E5] rounded-lg text-[10px] font-bold uppercase tracking-widest disabled:opacity-50 transition-colors">{applying ? '…' : 'Apply'}</button>
+          <button onClick={apply} disabled={applying} className="px-4 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-[var(--text-primary)] rounded-lg text-[10px] font-bold uppercase tracking-widest disabled:opacity-50 transition-colors">{applying ? '…' : 'Apply'}</button>
         </div>
-        {applyMsg && <p className={`text-[10px] mt-1.5 ${applyMsg.ok ? 'text-[#4ADE80]' : 'text-[#F87171]'}`}>{applyMsg.text}</p>}
+        {applyMsg && <p className={`text-[10px] mt-1.5 ${applyMsg.ok ? 'text-[var(--success)]' : 'text-[var(--danger)]'}`}>{applyMsg.text}</p>}
       </div>
     </div>
   );
@@ -146,7 +146,7 @@ function KeybindRow({ bindId, label }: { bindId: keyof ContractStore['keybinds']
           className="flex items-center justify-center min-w-[36px] min-h-[36px] rounded-lg cursor-pointer"
           aria-label={isDisabled ? 'Enable keybind' : 'Disable keybind'}
         >
-          <span className={`w-4 h-4 rounded flex items-center justify-center border ${isDisabled ? 'bg-transparent border-[var(--border-strong)]' : 'bg-indigo-500 border-indigo-500 text-[#E5E5E5]'}`}>
+          <span className={`w-4 h-4 rounded flex items-center justify-center border ${isDisabled ? 'bg-transparent border-[var(--border-strong)]' : 'bg-indigo-500 border-indigo-500 text-[var(--text-primary)]'}`}>
             {!isDisabled && <svg viewBox="0 0 24 24" fill="none" className="w-3 h-3 stroke-current stroke-[3]"><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>}
           </span>
         </button>
@@ -457,7 +457,7 @@ export function SettingsPanel({ session, onUpdateSession }: SettingsPanelProps) 
           window.location.reload();
         }, 1200);
       } else {
-        showToast('Encountered issue revoking secondary endpoints.', 'error');
+        showToast('Couldn’t sign out your other sessions.', 'error');
       }
     } catch (e) {
       showToast('Network timeout during session revocation.', 'error');
@@ -501,7 +501,7 @@ export function SettingsPanel({ session, onUpdateSession }: SettingsPanelProps) 
       if (!res.ok) {
         setPwError(data.error || 'Password update refused by server check.');
       } else {
-        setPwSuccess('Vault security key updated and rehashed successfully.');
+        setPwSuccess('Password updated.');
         setCurrentPassword('');
         setNewPassword('');
         showToast('Password updated.');
@@ -584,7 +584,7 @@ export function SettingsPanel({ session, onUpdateSession }: SettingsPanelProps) 
       if (!res.ok) {
         setDeleteError(data.error || 'Failed to trigger deactivation flow.');
       } else {
-        showToast('Vault deactivated. Logging out...', 'success');
+        showToast('Account deactivated. Signing out…', 'success');
         setTimeout(() => {
           window.location.href = '/';
         }, 1500);
@@ -699,14 +699,14 @@ export function SettingsPanel({ session, onUpdateSession }: SettingsPanelProps) 
                   <div className="text-[var(--text-primary)] font-mono font-bold">{session?.email || 'N/A'}</div>
                 </div>
 
-                {emailError && <div className="text-xs font-bold text-[#F87171] p-2 bg-[var(--surface-2)] rounded-md border border-[#F87171]/30">{emailError}</div>}
-                {emailSuccess && <div className="text-xs font-bold text-[#4ADE80] p-2 bg-[var(--surface-2)] rounded-md border border-[#4ADE80]/30">{emailSuccess}</div>}
+                {emailError && <div className="text-xs font-bold text-[var(--danger)] p-2 bg-[var(--surface-2)] rounded-md border border-[var(--danger)]/30">{emailError}</div>}
+                {emailSuccess && <div className="text-xs font-bold text-[var(--success)] p-2 bg-[var(--surface-2)] rounded-md border border-[var(--success)]/30">{emailSuccess}</div>}
 
                 {otpSent ? (
                   <form onSubmit={handleEmailUpdateVerify} className="space-y-3 animate-fadeIn">
                     <div className="p-3 bg-indigo-500/5 border border-indigo-500/30 rounded-lg text-xs space-y-2">
                       <div className="font-bold text-indigo-300 uppercase tracking-wider text-[10px]">Verification Code</div>
-                      <div className="font-mono text-sm font-bold text-[#4ADE80] bg-[var(--surface-2)] px-2 py-1 rounded w-fit select-all border border-[var(--border)]">
+                      <div className="font-mono text-sm font-bold text-[var(--success)] bg-[var(--surface-2)] px-2 py-1 rounded w-fit select-all border border-[var(--border)]">
                         {simulatedOtp}
                       </div>
                     </div>
@@ -732,7 +732,7 @@ export function SettingsPanel({ session, onUpdateSession }: SettingsPanelProps) 
                       </button>
                       <button
                         type="submit"
-                        className="px-4 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-[#E5E5E5] rounded-lg text-xs font-bold cursor-pointer transition-colors"
+                        className="px-4 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-[var(--text-primary)] rounded-lg text-xs font-bold cursor-pointer transition-colors"
                       >
                         Verify &amp; Save
                       </button>
@@ -753,7 +753,7 @@ export function SettingsPanel({ session, onUpdateSession }: SettingsPanelProps) 
                     <div className="flex justify-end">
                       <button
                         type="submit"
-                        className="px-4 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-[#E5E5E5] rounded-lg text-xs font-bold cursor-pointer transition-colors"
+                        className="px-4 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-[var(--text-primary)] rounded-lg text-xs font-bold cursor-pointer transition-colors"
                       >
                         Send Verification Code
                       </button>
@@ -771,8 +771,8 @@ export function SettingsPanel({ session, onUpdateSession }: SettingsPanelProps) 
               </div>
 
               <form onSubmit={handleChangePasswordSubmit} className="space-y-4">
-                {pwError && <div className="text-xs font-bold text-[#F87171] p-2 bg-[var(--surface-2)] rounded-md border border-[#F87171]/30">{pwError}</div>}
-                {pwSuccess && <div className="text-xs font-bold text-[#4ADE80] p-2 bg-[var(--surface-2)] rounded-md border border-[#4ADE80]/30">{pwSuccess}</div>}
+                {pwError && <div className="text-xs font-bold text-[var(--danger)] p-2 bg-[var(--surface-2)] rounded-md border border-[var(--danger)]/30">{pwError}</div>}
+                {pwSuccess && <div className="text-xs font-bold text-[var(--success)] p-2 bg-[var(--surface-2)] rounded-md border border-[var(--success)]/30">{pwSuccess}</div>}
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="space-y-1">
@@ -806,7 +806,7 @@ export function SettingsPanel({ session, onUpdateSession }: SettingsPanelProps) 
                 <div className="flex justify-end">
                   <button
                     type="submit"
-                    className="px-4 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-[#E5E5E5] rounded-lg text-xs font-bold cursor-pointer transition-colors"
+                    className="px-4 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-[var(--text-primary)] rounded-lg text-xs font-bold cursor-pointer transition-colors"
                   >
                     Update Password
                   </button>
@@ -824,7 +824,7 @@ export function SettingsPanel({ session, onUpdateSession }: SettingsPanelProps) 
                 <button
                   onClick={handleRevokeAllSessions}
                   type="button"
-                  className="px-3 py-1 bg-[#F87171]/10 hover:bg-[#F87171] border border-[#F87171]/20 hover:border-[#F87171] text-[#F87171] hover:text-[#E5E5E5] text-[11px] font-bold rounded-lg cursor-pointer transition-all"
+                  className="px-3 py-1 bg-[var(--danger)]/10 hover:bg-[var(--danger)] border border-[var(--danger)]/20 hover:border-[var(--danger)] text-[var(--danger)] hover:text-[var(--text-primary)] text-[11px] font-bold rounded-lg cursor-pointer transition-all"
                 >
                   Log Out All Devices
                 </button>
@@ -843,7 +843,7 @@ export function SettingsPanel({ session, onUpdateSession }: SettingsPanelProps) 
                         <div className="flex items-center gap-2">
                           <span className="font-bold text-[var(--text-primary)] font-mono">{sess.ip_address}</span>
                           {sess.is_current ? (
-                            <span className="px-2 py-0.5 bg-[#4ADE80]/10 border border-[#4ADE80]/30 text-[#4ADE80] font-bold text-[9px] rounded-full uppercase tracking-wider">
+                            <span className="px-2 py-0.5 bg-[var(--success)]/10 border border-[var(--success)]/30 text-[var(--success)] font-bold text-[9px] rounded-full uppercase tracking-wider">
                               Current
                             </span>
                           ) : (
@@ -866,19 +866,19 @@ export function SettingsPanel({ session, onUpdateSession }: SettingsPanelProps) 
             </div>
 
             {/* GDPR Deactivation & Account Purge Container */}
-            <div className="bg-[var(--surface)] border border-[#F87171]/20 rounded-xl p-5 space-y-4">
-              <div className="flex items-center gap-2.5 border-b border-[#F87171]/20 pb-3">
-                <svg viewBox="0 0 24 24" fill="none" className="w-4 h-4 text-[#F87171] stroke-current stroke-2"><path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
-                <span className="text-[10px] font-mono font-bold uppercase tracking-[0.2em] text-[#F87171]">Delete Account</span>
+            <div className="bg-[var(--surface)] border border-[var(--danger)]/20 rounded-xl p-5 space-y-4">
+              <div className="flex items-center gap-2.5 border-b border-[var(--danger)]/20 pb-3">
+                <svg viewBox="0 0 24 24" fill="none" className="w-4 h-4 text-[var(--danger)] stroke-current stroke-2"><path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
+                <span className="text-[10px] font-mono font-bold uppercase tracking-[0.2em] text-[var(--danger)]">Delete Account</span>
               </div>
               <p className="text-xs text-[var(--text-secondary)] leading-normal">
                 Under GDPR you can request account deletion. Your account is deactivated immediately and permanently removed after 30 days.
               </p>
 
-              {deleteError && <div className="text-xs font-bold text-[#F87171] p-2 bg-[var(--surface-2)] rounded-md border border-[#F87171]/30">{deleteError}</div>}
+              {deleteError && <div className="text-xs font-bold text-[var(--danger)] p-2 bg-[var(--surface-2)] rounded-md border border-[var(--danger)]/30">{deleteError}</div>}
 
               {showDeleteConfirm ? (
-                <div className="p-4 bg-[var(--surface-2)] border border-[#F87171]/30 rounded-lg space-y-3 animate-fadeIn">
+                <div className="p-4 bg-[var(--surface-2)] border border-[var(--danger)]/30 rounded-lg space-y-3 animate-fadeIn">
                   <div className="text-xs text-[var(--text-primary)] font-bold">Are you absolutely sure?</div>
                   <p className="text-[11px] text-[var(--text-tertiary)] leading-normal">
                     This immediately disables your username, API keys, and options flow access. After 30 days it cannot be undone.
@@ -892,7 +892,7 @@ export function SettingsPanel({ session, onUpdateSession }: SettingsPanelProps) 
                     </button>
                     <button
                       onClick={handleSoftDeleteAccount}
-                      className="px-4 py-1.5 bg-[#F87171] hover:brightness-110 text-black rounded-lg text-xs font-bold cursor-pointer transition-all"
+                      className="px-4 py-1.5 bg-[var(--danger)] hover:brightness-110 text-black rounded-lg text-xs font-bold cursor-pointer transition-all"
                     >
                       Confirm Delete Account
                     </button>
@@ -901,7 +901,7 @@ export function SettingsPanel({ session, onUpdateSession }: SettingsPanelProps) 
               ) : (
                 <button
                   onClick={() => setShowDeleteConfirm(true)}
-                  className="px-4 py-2 bg-[#F87171]/10 hover:bg-[#F87171] border border-[#F87171]/20 hover:border-[#F87171] text-[#F87171] hover:text-black text-xs font-bold rounded-lg cursor-pointer transition-all"
+                  className="px-4 py-2 bg-[var(--danger)]/10 hover:bg-[var(--danger)] border border-[var(--danger)]/20 hover:border-[var(--danger)] text-[var(--danger)] hover:text-black text-xs font-bold rounded-lg cursor-pointer transition-all"
                 >
                   Request Account Deletion
                 </button>
@@ -1099,7 +1099,7 @@ export function SettingsPanel({ session, onUpdateSession }: SettingsPanelProps) 
                   <button
                     type="button"
                     onClick={triggerGdprExport}
-                    className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-[#E5E5E5] rounded-lg text-xs font-bold cursor-pointer transition-colors"
+                    className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-[var(--text-primary)] rounded-lg text-xs font-bold cursor-pointer transition-colors"
                   >
                     Export My Data
                   </button>
@@ -1109,7 +1109,7 @@ export function SettingsPanel({ session, onUpdateSession }: SettingsPanelProps) 
               {/* Download Container */}
               {exportDownloadUrl && (
                 <div className="mt-4 p-4 bg-[var(--surface-2)] border border-[var(--border)] rounded-xl space-y-3 animate-fadeIn">
-                  <div className="flex items-center gap-2 text-xs font-bold text-[#4ADE80]">
+                  <div className="flex items-center gap-2 text-xs font-bold text-[var(--success)]">
                     <svg viewBox="0 0 20 20" fill="currentColor" className="w-5 h-5"><path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" /></svg>
                     <span>Data export ready</span>
                   </div>
@@ -1122,7 +1122,7 @@ export function SettingsPanel({ session, onUpdateSession }: SettingsPanelProps) 
                     <a
                       href={exportDownloadUrl}
                       download
-                      className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-[#E5E5E5] rounded-lg text-xs font-bold text-center cursor-pointer transition-colors flex items-center justify-center gap-2"
+                      className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-[var(--text-primary)] rounded-lg text-xs font-bold text-center cursor-pointer transition-colors flex items-center justify-center gap-2"
                     >
                       <span>Download Export Package</span>
                     </a>
@@ -1306,7 +1306,7 @@ export function SettingsPanel({ session, onUpdateSession }: SettingsPanelProps) 
                       >
                         {activeTheme === t.id && (
                           <span className="absolute inset-0 flex items-center justify-center">
-                            <Check className="w-4 h-4 text-[#E5E5E5] drop-shadow-[0_1px_2px_rgba(0,0,0,0.9)]" />
+                            <Check className="w-4 h-4 text-[var(--text-primary)] drop-shadow-[0_1px_2px_rgba(0,0,0,0.9)]" />
                           </span>
                         )}
                       </button>
@@ -1321,7 +1321,7 @@ export function SettingsPanel({ session, onUpdateSession }: SettingsPanelProps) 
 
             {/* Informational notification */}
             <div className="p-4 bg-[var(--surface-2)] border border-[var(--border)] text-[11px] rounded-xl text-[var(--text-secondary)] leading-normal flex gap-3">
-              <ShieldAlert className="w-4 h-4 text-[#4ADE80] shrink-0 mt-0.5" />
+              <ShieldAlert className="w-4 h-4 text-[var(--success)] shrink-0 mt-0.5" />
               <span>
                 Themes change background and panel colors only. Signal indicators, heat maps, and status colors stay the same so data is always readable.
               </span>
@@ -1377,11 +1377,11 @@ export function SettingsPanel({ session, onUpdateSession }: SettingsPanelProps) 
 
               <div className={`space-y-2 transition-opacity duration-300 ${!globalKeybindsEnabled ? 'opacity-30 pointer-events-none' : ''}`}>
                 {[
-                  { id: 'prismMenu', label: 'Toggle Prism Command Menu', default: 'cmd+k' },
+                  { id: 'prismMenu', label: 'Toggle Command Palette', default: 'cmd+k' },
                   { id: 'home', label: 'Workspace: Home', default: 'shift+h' },
                   { id: 'skyvision', label: 'Workspace: SkyVision', default: 'shift+s' },
-                  { id: 'pinpoint', label: 'Workspace: Pinpoint AI', default: 'shift+p' },
-                  { id: 'auditor', label: 'Workspace: Quant Auditor', default: 'shift+a' },
+                  { id: 'pinpoint', label: 'Workspace: Pinpoint GEX', default: 'shift+p' },
+                  { id: 'auditor', label: 'Workspace: Trade History', default: 'shift+a' },
                   { id: 'dealerflow', label: 'Workspace: Dealer Flow', default: 'shift+d' },
                   { id: 'community', label: 'Workspace: Research & Community', default: 'shift+r' },
                   { id: 'settings', label: 'Settings & Preferences', default: 'shift+o' },
@@ -1392,7 +1392,7 @@ export function SettingsPanel({ session, onUpdateSession }: SettingsPanelProps) 
             </div>
 
             <div className="p-4 bg-[var(--surface-2)] border border-[var(--border)] text-[11px] rounded-xl text-[var(--text-secondary)] leading-normal flex gap-3">
-              <ShieldAlert className="w-4 h-4 text-[#4ADE80] shrink-0 mt-0.5" />
+              <ShieldAlert className="w-4 h-4 text-[var(--success)] shrink-0 mt-0.5" />
               <span>
                 To rebind, click a shortcut button and press your new key combination. Use a modifier (Shift, Ctrl, Alt, Meta) plus a character.
               </span>
@@ -1405,7 +1405,7 @@ export function SettingsPanel({ session, onUpdateSession }: SettingsPanelProps) 
             {/* Module 5: Referrals token stats */}
             <div className="bg-[var(--surface)] border border-[var(--border)] rounded-xl p-5 space-y-5">
               <div className="flex items-center gap-2.5 border-b border-[var(--border)] pb-3">
-                <Coins className="w-4 h-4 text-[#4ADE80]" />
+                <Coins className="w-4 h-4 text-[var(--success)]" />
                 <span className="text-[10px] font-mono font-bold uppercase tracking-[0.2em] text-[var(--text-tertiary)]">Referral Rewards</span>
               </div>
 
@@ -1415,11 +1415,11 @@ export function SettingsPanel({ session, onUpdateSession }: SettingsPanelProps) 
               <div className="bg-[var(--surface-2)] border border-[var(--border)] rounded-xl p-4 overflow-hidden">
                 <div className="flex justify-between items-center mb-2">
                   <span className="text-xs font-bold text-[var(--text-primary)]">Tokens to Next Free Month</span>
-                  <span className="text-xs font-mono text-[#4ADE80]">{session?.referral_tokens_pool || 0} / 10</span>
+                  <span className="text-xs font-mono text-[var(--success)]">{session?.referral_tokens_pool || 0} / 10</span>
                 </div>
                 <div className="w-full h-2.5 bg-[var(--surface-3)] rounded-full overflow-hidden">
                   <div
-                    className="h-full bg-[#4ADE80] rounded-full transition-all duration-1000"
+                    className="h-full bg-[var(--success)] rounded-full transition-all duration-1000"
                     style={{ width: `${Math.min(100, ((session?.referral_tokens_pool || 0) / 10) * 100)}%` }}
                   />
                 </div>
@@ -1429,7 +1429,7 @@ export function SettingsPanel({ session, onUpdateSession }: SettingsPanelProps) 
               <div className="grid grid-cols-2 gap-3 bg-[var(--surface-2)] border border-[var(--border)] rounded-xl p-4 text-center">
                 <div className="space-y-1">
                   <span className="text-[10px] text-[var(--text-tertiary)] font-bold uppercase tracking-wider block">Your Tokens</span>
-                  <span className="text-2xl font-black text-[#4ADE80] font-mono block">
+                  <span className="text-2xl font-black text-[var(--success)] font-mono block">
                     {session?.referral_tokens_pool || 0}
                   </span>
                   <span className="text-[10px] text-[var(--text-tertiary)] block font-mono mt-1">1 Token = 10% Off</span>
@@ -1461,7 +1461,7 @@ export function SettingsPanel({ session, onUpdateSession }: SettingsPanelProps) 
                     </div>
                     <button
                       onClick={copyReferralLink}
-                      className="px-6 py-2 bg-indigo-600 hover:bg-indigo-500 text-[#E5E5E5] text-xs font-bold rounded-lg flex items-center justify-center cursor-pointer transition-colors sm:shrink-0"
+                      className="px-6 py-2 bg-indigo-600 hover:bg-indigo-500 text-[var(--text-primary)] text-xs font-bold rounded-lg flex items-center justify-center cursor-pointer transition-colors sm:shrink-0"
                       title="Copy full referral link to clipboard"
                     >
                       {referralCopied ? 'Copied!' : 'Copy Link'}
@@ -1494,12 +1494,12 @@ export function SettingsPanel({ session, onUpdateSession }: SettingsPanelProps) 
                   <div className="text-2xl font-black uppercase text-[var(--text-primary)] tracking-widest flex items-center gap-2 flex-wrap">
                     <span>{session?.access_tier || 'GUEST'} TIER</span>
                     {session?.cancels_at_period_end ? (
-                      <span className="text-[9px] tracking-normal font-sans font-semibold bg-[#F87171]/10 border border-[#F87171]/20 text-[#F87171] px-2.5 py-0.5 rounded-full">
+                      <span className="text-[9px] tracking-normal font-sans font-semibold bg-[var(--danger)]/10 border border-[var(--danger)]/20 text-[var(--danger)] px-2.5 py-0.5 rounded-full">
                         Cancels at Period End
                       </span>
                     ) : (
                       session?.access_tier && !['guest', 'discord'].includes(session?.access_tier) && (
-                        <span className="text-[9px] tracking-normal font-sans font-semibold bg-[#4ADE80]/10 border border-[#4ADE80]/20 text-[#4ADE80] px-2.5 py-0.5 rounded-full">
+                        <span className="text-[9px] tracking-normal font-sans font-semibold bg-[var(--success)]/10 border border-[var(--success)]/20 text-[var(--success)] px-2.5 py-0.5 rounded-full">
                           Active &amp; Auto-renewing
                         </span>
                       )
@@ -1512,7 +1512,7 @@ export function SettingsPanel({ session, onUpdateSession }: SettingsPanelProps) 
                       useContractStore.getState().setActiveTab('subscription');
                       window.scrollTo({ top: 0, behavior: 'auto' });
                     }}
-                    className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-[#E5E5E5] font-bold text-xs uppercase tracking-widest rounded-lg transition-colors cursor-pointer"
+                    className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-[var(--text-primary)] font-bold text-xs uppercase tracking-widest rounded-lg transition-colors cursor-pointer"
                   >
                     View Upgrades
                   </button>
@@ -1524,7 +1524,7 @@ export function SettingsPanel({ session, onUpdateSession }: SettingsPanelProps) 
                       className={`px-4 py-2 font-bold text-xs uppercase tracking-widest rounded-lg transition-all cursor-pointer border ${
                         session?.cancels_at_period_end
                           ? 'bg-[var(--surface-2)] text-[var(--text-tertiary)] cursor-not-allowed border-[var(--border)]'
-                          : 'bg-[var(--surface-2)] hover:bg-[#F87171]/10 text-[#F87171] border-[var(--border)] hover:border-[#F87171]/30'
+                          : 'bg-[var(--surface-2)] hover:bg-[var(--danger)]/10 text-[var(--danger)] border-[var(--border)] hover:border-[var(--danger)]/30'
                       }`}
                     >
                       {session?.cancels_at_period_end ? 'Cancellation Logged' : 'Cancel Subscription'}
@@ -1544,7 +1544,7 @@ export function SettingsPanel({ session, onUpdateSession }: SettingsPanelProps) 
                     </div>
                     <div>
                       <span className="text-[var(--text-tertiary)] font-bold block text-[9px] uppercase">Tokenized Payment Method ID</span>
-                      <code className="text-[#4ADE80] font-mono text-[10px]">{session.payment_method_id || 'Not Saved (Iframe Protected)'}</code>
+                      <code className="text-[var(--success)] font-mono text-[10px]">{session.payment_method_id || 'Not Saved (Iframe Protected)'}</code>
                     </div>
                   </div>
                   <p className="text-[9px] text-[var(--text-tertiary)] italic leading-tight pt-1">
@@ -1557,7 +1557,7 @@ export function SettingsPanel({ session, onUpdateSession }: SettingsPanelProps) 
               {showCancelConfirm && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fadeIn">
                   <div className="bg-[var(--surface)] border border-[var(--border)] rounded-2xl max-w-md w-full p-6 text-left space-y-4 shadow-2xl relative">
-                    <div className="flex items-center gap-3 text-[#F87171] pb-2 border-b border-[var(--border)]">
+                    <div className="flex items-center gap-3 text-[var(--danger)] pb-2 border-b border-[var(--border)]">
                       <svg viewBox="0 0 24 24" fill="none" className="w-6 h-6 stroke-current stroke-2"><path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
                       <h3 className="text-base font-black uppercase tracking-wider">Are you sure?</h3>
                     </div>
@@ -1578,7 +1578,7 @@ export function SettingsPanel({ session, onUpdateSession }: SettingsPanelProps) 
                         type="button"
                         onClick={handleCancelSubscription}
                         disabled={isCanceling}
-                        className="px-4 py-2 bg-[#F87171] hover:brightness-110 text-black font-bold text-xs uppercase tracking-widest rounded-lg cursor-pointer transition-all flex items-center gap-2 disabled:opacity-50"
+                        className="px-4 py-2 bg-[var(--danger)] hover:brightness-110 text-black font-bold text-xs uppercase tracking-widest rounded-lg cursor-pointer transition-all flex items-center gap-2 disabled:opacity-50"
                       >
                         {isCanceling ? 'Processing…' : 'Confirm Cancel'}
                       </button>
@@ -1631,11 +1631,11 @@ export function SettingsPanel({ session, onUpdateSession }: SettingsPanelProps) 
                     <span className="font-normal">Tier: {invoiceLog.access_tier}</span>
                   </div>
                   <div className="flex justify-between">Monthly Plan Price <span className="text-[var(--text-primary)] font-bold">${invoiceLog.base_rate}.00</span></div>
-                  <div className="flex justify-between">Tokens Used <span className="text-[#F87171]">-{invoiceLog.tokens_deducted} ({invoiceLog.discount_rate_pct}% Off)</span></div>
-                  <div className="flex justify-between">Discount Applied <span className="text-[#4ADE80]">-${(invoiceLog.discount_amount_usd ?? 0).toFixed(2)}</span></div>
+                  <div className="flex justify-between">Tokens Used <span className="text-[var(--danger)]">-{invoiceLog.tokens_deducted} ({invoiceLog.discount_rate_pct}% Off)</span></div>
+                  <div className="flex justify-between">Discount Applied <span className="text-[var(--success)]">-${(invoiceLog.discount_amount_usd ?? 0).toFixed(2)}</span></div>
                   <div className="border-t border-[var(--border)] pt-2 mt-2 font-bold flex justify-between text-[11px]">
                     <span className="text-[var(--text-primary)]">Net Charged</span>
-                    <span className="text-[#4ADE80]">${(invoiceLog.total_charged_usd ?? 0).toFixed(2)} USD</span>
+                    <span className="text-[var(--success)]">${(invoiceLog.total_charged_usd ?? 0).toFixed(2)} USD</span>
                   </div>
                   <div className="border-t border-[var(--border)] pt-2 mt-2 text-[9px] text-[var(--text-tertiary)] uppercase flex gap-1.5 items-center">
                     <FolderSync className="w-3.5 h-3.5 text-indigo-400/80 shrink-0" />
@@ -1652,10 +1652,10 @@ export function SettingsPanel({ session, onUpdateSession }: SettingsPanelProps) 
         <motion.div
           initial={{ opacity: 0, y: 10, scale: 0.95 }}
           animate={{ opacity: 1, y: 0, scale: 1 }}
-          className={`fixed bottom-5 right-5 z-[100] p-4 bg-[var(--surface-2)] border ${toastType === 'success' ? 'border-[#4ADE80]/30' : 'border-[#F87171]/30'} shadow-2xl flex items-center gap-2.5 font-mono text-[10.5px] text-[var(--text-primary)] rounded-lg`}
+          className={`fixed bottom-5 right-5 z-[100] p-4 bg-[var(--surface-2)] border ${toastType === 'success' ? 'border-[var(--success)]/30' : 'border-[var(--danger)]/30'} shadow-2xl flex items-center gap-2.5 font-mono text-[10.5px] text-[var(--text-primary)] rounded-lg`}
         >
-          <span className={`w-1.5 h-1.5 rounded-full ${toastType === 'success' ? 'bg-[#4ADE80]' : 'bg-[#F87171]'} animate-pulse`} />
-          <span className={`uppercase font-semibold tracking-wider ${toastType === 'success' ? 'text-[#4ADE80]' : 'text-[#F87171]'}`}>{toastType === 'success' ? 'Success' : 'Error'}:</span>
+          <span className={`w-1.5 h-1.5 rounded-full ${toastType === 'success' ? 'bg-[var(--success)]' : 'bg-[var(--danger)]'} animate-pulse`} />
+          <span className={`uppercase font-semibold tracking-wider ${toastType === 'success' ? 'text-[var(--success)]' : 'text-[var(--danger)]'}`}>{toastType === 'success' ? 'Success' : 'Error'}:</span>
           <span>{toastText}</span>
         </motion.div>
       )}

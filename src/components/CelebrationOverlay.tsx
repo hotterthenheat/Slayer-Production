@@ -63,18 +63,11 @@ export function CelebrationOverlay({ purchasedTier, isOpen, onComplete }: Celebr
 
     // Helper to spawn individual custom styled particles
     const spawnParticle = (isInitial = false) => {
-      const type = purchasedTier === 3 ? (Math.random() > 0.4 ? 'bill' : 'coin') : 'confetti';
-      
-      let color = '';
-      if (purchasedTier === 2) {
-        // Vibrant neon rainbow elements
-        const colors = ['#ff2d55', '#ff9500', '#ffcc00', '#4cd964', '#5ac8fa', '#007aff', '#5856d6', '#ff2d55', '#4ADE80', '#0a84ff'];
-        color = colors[Math.floor(Math.random() * colors.length)];
-      } else if (purchasedTier >= 4) {
-        // Elite Gold & Silver glitter
-        const metallics = ['#ffd700', '#e6c300', '#ffe875', '#e6e8fa', '#c0c0c0', '#b8860b', '#8a8d8f', '#ffffff'];
-        color = metallics[Math.floor(Math.random() * metallics.length)];
-      }
+      const type = 'confetti';
+
+      // Restrained monochrome confetti for every tier
+      const colors = ['#E5E5E5', '#A3A3A3', '#71717A', '#D4D4D8', '#FFFFFF'];
+      const color = colors[Math.floor(Math.random() * colors.length)];
 
       const life = purchasedTier >= 4 ? 800 + Math.random() * 800 : 2000 + Math.random() * 1000;
 
@@ -82,10 +75,10 @@ export function CelebrationOverlay({ purchasedTier, isOpen, onComplete }: Celebr
         x: Math.random() * width,
         y: isInitial ? Math.random() * height : -30,
         vx: (Math.random() - 0.5) * 5,
-        vy: type === 'coin' ? 6 + Math.random() * 7 : 5 + Math.random() * 7, // Leave screen fast!
-        size: type === 'bill' ? 0 : 4 + Math.random() * 7,
-        width: type === 'bill' ? 36 + Math.random() * 14 : 0,
-        height: type === 'bill' ? 16 + Math.random() * 5 : 0,
+        vy: 5 + Math.random() * 7, // Leave screen fast!
+        size: 4 + Math.random() * 7,
+        width: 0,
+        height: 0,
         color,
         angle: Math.random() * Math.PI * 2,
         spin: (Math.random() - 0.5) * 0.16,
@@ -127,13 +120,6 @@ export function CelebrationOverlay({ purchasedTier, isOpen, onComplete }: Celebr
         p.x += p.vx + Math.sin(p.swayOffset + p.y * p.swaySpeed) * 0.4;
         p.angle += p.spin;
 
-        if (p.type === 'bill') {
-          p.scaleY += p.scaleYSpeed;
-          if (p.scaleY > 1 || p.scaleY < -1) {
-            p.scaleYSpeed = -p.scaleYSpeed;
-          }
-        }
-
         // Fast blending & fading rules for Tier 4 gold/silver blizzard
         if (purchasedTier >= 4) {
           const age = Date.now() - p.birth;
@@ -163,72 +149,25 @@ export function CelebrationOverlay({ purchasedTier, isOpen, onComplete }: Celebr
         ctx.rotate(p.angle);
         ctx.globalAlpha = Math.min(1, Math.max(0, p.opacity));
 
-        if (p.type === 'bill') {
-          // $100 Bill Renderer
-          ctx.scale(1, p.scaleY);
-          
-          ctx.fillStyle = '#10371a'; 
-          ctx.fillRect(-p.width / 2, -p.height / 2, p.width, p.height);
-
-          ctx.fillStyle = '#659c6b'; 
-          ctx.fillRect(-p.width / 2 + 1.2, -p.height / 2 + 1.2, p.width - 2.4, p.height - 2.4);
-
-          ctx.strokeStyle = '#224425'; 
-          ctx.lineWidth = 1;
-          ctx.strokeRect(-p.width / 2 + 2.5, -p.height / 2 + 2.5, p.width - 5, p.height - 5);
-
-          ctx.fillStyle = '#ffffff';
-          ctx.font = 'bold 8px monospace';
-          ctx.textAlign = 'center';
-          ctx.textBaseline = 'middle';
-          ctx.fillText('$100', 0, 0);
-
-        } else if (p.type === 'coin') {
-          // Shiny 3D Gold Coin with radial highlights
-          const grad = ctx.createRadialGradient(-p.size/3, -p.size/3, 1, 0, 0, p.size);
-          grad.addColorStop(0, '#fffae3');
-          grad.addColorStop(0.3, '#ffd700');
-          grad.addColorStop(0.75, '#be9416');
-          grad.addColorStop(1, '#664c05');
-
-          ctx.fillStyle = grad;
+        // Restrained monochrome confetti flakes
+        ctx.fillStyle = p.color;
+        if (purchasedTier >= 4) {
+          // Diamond sparks
           ctx.beginPath();
-          ctx.arc(0, 0, p.size, 0, Math.PI * 2);
+          ctx.moveTo(0, -p.size * 1.1);
+          ctx.lineTo(p.size * 0.75, 0);
+          ctx.lineTo(0, p.size * 1.1);
+          ctx.lineTo(-p.size * 0.75, 0);
+          ctx.closePath();
           ctx.fill();
-
-          ctx.strokeStyle = '#3d2c01';
-          ctx.lineWidth = 1;
-          ctx.beginPath();
-          ctx.arc(0, 0, p.size - 1.2, 0, Math.PI * 2);
-          ctx.stroke();
-
-          ctx.fillStyle = '#ffe985';
-          ctx.font = `bold ${p.size * 1.05}px sans-serif`;
-          ctx.textAlign = 'center';
-          ctx.textBaseline = 'middle';
-          ctx.fillText('$', 0, 0);
-
         } else {
-          // Rainbow and Gold/Silver Confetti Flakes
-          ctx.fillStyle = p.color;
-          if (purchasedTier >= 4) {
-            // Metallic Diamond Sparks
-            ctx.beginPath();
-            ctx.moveTo(0, -p.size * 1.1);
-            ctx.lineTo(p.size * 0.75, 0);
-            ctx.lineTo(0, p.size * 1.1);
-            ctx.lineTo(-p.size * 0.75, 0);
-            ctx.closePath();
-            ctx.fill();
+          // Rectangular or circular confetti (size is a float, so key off its integer part)
+          if (Math.floor(p.size) % 2 === 0) {
+            ctx.fillRect(-p.size, -p.size / 2, p.size * 2, p.size);
           } else {
-            // Rectangular or circular confetti (size is a float, so key off its integer part)
-            if (Math.floor(p.size) % 2 === 0) {
-              ctx.fillRect(-p.size, -p.size / 2, p.size * 2, p.size);
-            } else {
-              ctx.beginPath();
-              ctx.arc(0, 0, p.size, 0, Math.PI * 2);
-              ctx.fill();
-            }
+            ctx.beginPath();
+            ctx.arc(0, 0, p.size, 0, Math.PI * 2);
+            ctx.fill();
           }
         }
 
@@ -315,7 +254,7 @@ export function CelebrationOverlay({ purchasedTier, isOpen, onComplete }: Celebr
               </p>
 
               <div className="inline-block bg-black/65 border border-black rounded-lg px-4 py-2.5 text-[9px] font-mono font-bold text-zinc-400 uppercase tracking-widest select-none">
-                <span className="text-[#4ADE80]">&gt;&gt;</span> READY
+                Ready
               </div>
             </motion.div>
           </div>

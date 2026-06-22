@@ -197,7 +197,7 @@ export function WorkspaceView({ isSuperAdmin }: Props) {
                           <button onClick={() => { commit(customLayouts[name].map(p => ({...p}))); setLoadOpen(false); setMaximized(null); }} className="flex-1 text-[var(--text-secondary)] font-medium text-left truncate hover:text-[var(--text-primary)]">
                             {name}
                           </button>
-                          <button onClick={(e) => deleteCustomLayout(name, e)} title="Delete" className="text-[var(--text-tertiary)] hover:text-[#F87171] opacity-0 group-hover:opacity-100 transition-opacity">
+                          <button onClick={(e) => deleteCustomLayout(name, e)} title="Delete" className="text-[var(--text-tertiary)] hover:text-[var(--danger)] opacity-0 group-hover:opacity-100 transition-opacity">
                             <X className="w-3 h-3" />
                           </button>
                         </div>
@@ -217,13 +217,13 @@ export function WorkspaceView({ isSuperAdmin }: Props) {
 
             <div className="relative">
               <button onClick={() => { setAddOpen(!addOpen); setLoadOpen(false); setShowSaveOverlay(false); }} className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-[var(--text-secondary)] bg-[var(--surface-2)] border border-[var(--border)] rounded-[3px] px-2.5 py-1.5 hover:bg-[var(--surface-3)] hover:text-[var(--text-primary)] transition-colors">
-                <Plus className="w-3 h-3 text-[#4ADE80]" /> <span className="hidden md:inline">Add Widget</span>
+                <Plus className="w-3 h-3 text-[var(--success)]" /> <span className="hidden md:inline">Add Widget</span>
               </button>
               {addOpen && (
                 <div className="absolute right-0 mt-1.5 w-64 max-h-96 overflow-y-auto bg-[var(--surface)] border border-[var(--border)] rounded-[3px] z-50 p-1.5 shadow-2xl text-left">
                   <div className="text-[10px] text-[var(--text-tertiary)] uppercase font-semibold px-2 py-1 tracking-[0.14em]">Available Widgets</div>
                   {visibleWidgets.map((w) => (
-                    <button key={w.type} onClick={() => addWidget(w.type)} className="w-full text-left px-2 py-1.5 text-[10px] font-medium text-[var(--text-secondary)] hover:text-[#4ADE80] hover:bg-[var(--surface-3)] rounded-[2px] transition-colors">
+                    <button key={w.type} onClick={() => addWidget(w.type)} className="w-full text-left px-2 py-1.5 text-[10px] font-medium text-[var(--text-secondary)] hover:text-[var(--success)] hover:bg-[var(--surface-3)] rounded-[2px] transition-colors">
                       {w.title}
                     </button>
                   ))}
@@ -307,7 +307,7 @@ export function WorkspaceView({ isSuperAdmin }: Props) {
               value={saveName}
               onChange={e => setSaveName(e.target.value)}
               placeholder="Workspace name"
-              className="bg-[var(--surface-2)] border border-[var(--border)] text-[var(--text-primary)] placeholder:text-[var(--text-tertiary)] px-3 py-2 text-[11px] font-medium focus:outline-none focus:border-[#4ADE80] transition-colors rounded-[3px]"
+              className="bg-[var(--surface-2)] border border-[var(--border)] text-[var(--text-primary)] placeholder:text-[var(--text-tertiary)] px-3 py-2 text-[11px] font-medium focus:outline-none focus:border-[var(--success)] transition-colors rounded-[3px]"
               autoFocus
               onKeyDown={(e) => {
                 if (e.key === 'Enter') saveCustomLayout();
@@ -324,7 +324,7 @@ export function WorkspaceView({ isSuperAdmin }: Props) {
               <button
                 onClick={saveCustomLayout}
                 disabled={!saveName.trim()}
-                className="text-[10px] uppercase font-semibold tracking-[0.12em] bg-[#4ADE80] text-[#04140A] hover:opacity-90 rounded-[3px] px-4 py-2 transition-opacity disabled:opacity-40 disabled:cursor-not-allowed"
+                className="text-[10px] uppercase font-semibold tracking-[0.12em] bg-[var(--success)] text-[#04140A] hover:opacity-90 rounded-[3px] px-4 py-2 transition-opacity disabled:opacity-40 disabled:cursor-not-allowed"
               >
                 Save
               </button>
