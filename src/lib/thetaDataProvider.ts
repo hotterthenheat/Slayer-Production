@@ -28,6 +28,27 @@ import { calculateAnalyticGreeks } from './v11Math';
 const DEFAULT_BASE = 'http://127.0.0.1:25503/v3';
 const INDEX_ROOTS = new Set(['SPX', 'NDX', 'RUT', 'VIX', 'XSP', 'DJX']);
 
+// ---------------------------------------------------------------------------
+// In-memory TTL caches (mirror Tradier/Polygon's 6s pattern). The universe grew
+// to 100+ tickers fetched on a round-robin; without caching every SSE-driven tick
+// would re-issue the full spot + greeks + OI + quote chain per asset and blow the
+// provider's rate limit. Spot is short-lived, the chain is heavier so it lives
+// longer, and the front expiration never changes intraday (memoized per UTC day).
+// ---------------------------------------------------------------------------
+const SPOT_TTL_MS = 3000;
+const CHAIN_TTL_MS = 12000;
+
+interface CachedData<T> {
+  data: T;
+  timestamp: number;
+}
+const spotCache: Record<string, CachedData<number>> = {};
+const chainCache: Record<string, CachedData<{ contracts: LiveOptionContract[]; source: string; message?: string }>> = {};
+// frontExpiration: the nearest listed expiry never changes during the trading day,
+// so cache the resolved YYYYMMDD per ticker keyed by the current UTC day. This turns
+// 1 list-expirations request per asset per tick into 1 per asset per day.
+const frontExpCache: Record<string, { utcDay: number; exp: number | null }> = {};
+
 export function isThetaConfigured(): boolean {
   return !!process.env.THETADATA_API_KEY || process.env.THETADATA_ENABLED === 'true';
 }
@@ -107,20 +128,50 @@ function ymd(d: Date): number {
   return d.getUTCFullYear() * 10000 + (d.getUTCMonth() + 1) * 100 + d.getUTCDate();
 }
 
+// Milliseconds to ADD to an ET wall-clock instant to obtain the UTC instant.
+// ET is UTC-4 (EDT) or UTC-5 (EST), so the offset is +4h or +5h. Derived from the
+// IANA tz database via Intl so DST transitions are handled correctly for the bar's
+// own date rather than today's. `utcMidnight` is the UTC ms of the bar's calendar
+// midnight (a stable reference point inside the trading day).
+function etOffsetMs(utcMidnight: number): number {
+  try {
+    const parts = new Intl.DateTimeFormat('en-US', {
+      timeZone: 'America/New_York', hour: '2-digit', hour12: false,
+    }).formatToParts(new Date(utcMidnight + 12 * 3600000)); // sample at local noon-ish to dodge edges
+    let etHour = Number(parts.find((p) => p.type === 'hour')?.value ?? 12);
+    if (etHour === 24) etHour = 0;
+    // The reference instant is 12:00 UTC; ET shows etHour. Offset = (12 - etHour)h.
+    const offsetHours = 12 - etHour;
+    // Clamp to the only valid US-eastern offsets.
+    return (offsetHours === 5 ? 5 : 4) * 3600000;
+  } catch {
+    return 4 * 3600000;
+  }
+}
+
 // ---------------------------------------------------------------------------
 // Spot price
 // ---------------------------------------------------------------------------
 export async function fetchThetaSpotPrice(ticker: string): Promise<number | null> {
   const sym = thetaSymbol(ticker);
+  const now = Date.now();
+  const cached = spotCache[sym];
+  if (cached && now - cached.timestamp < SPOT_TTL_MS) return cached.data;
+
   const path = isIndexRoot(ticker) ? '/index/snapshot/quote' : '/stock/snapshot/quote';
   const rows = rowsOf(await thetaFetch(path, { symbol: sym }));
   if (!rows.length) return null;
   const r = rows[0];
   const bid = num(pick(r, 'bid'));
   const ask = num(pick(r, 'ask'));
-  if (bid && ask && bid > 0 && ask > 0) return (bid + ask) / 2;
-  const last = num(pick(r, 'last', 'price', 'close', 'value', 'mid', 'mark'));
-  return last && last > 0 ? last : null;
+  let price: number | null = null;
+  if (bid && ask && bid > 0 && ask > 0) price = (bid + ask) / 2;
+  else {
+    const last = num(pick(r, 'last', 'price', 'close', 'value', 'mid', 'mark'));
+    price = last && last > 0 ? last : null;
+  }
+  if (price != null) spotCache[sym] = { data: price, timestamp: now };
+  return price;
 }
 
 // ---------------------------------------------------------------------------
@@ -128,13 +179,20 @@ export async function fetchThetaSpotPrice(ticker: string): Promise<number | null
 // ---------------------------------------------------------------------------
 async function frontExpiration(asset: AssetInfo): Promise<number | null> {
   const sym = thetaSymbol(asset.ticker);
-  const rows = rowsOf(await thetaFetch('/option/list/expirations', { symbol: sym }));
   const today = ymd(new Date());
+  // Memoize per ticker per UTC day — the nearest listed expiry can only change at a
+  // day boundary, so re-listing expirations every tick is pure waste.
+  const memo = frontExpCache[sym];
+  if (memo && memo.utcDay === today && memo.exp != null) return memo.exp;
+
+  const rows = rowsOf(await thetaFetch('/option/list/expirations', { symbol: sym }));
   const exps = rows
     .map((r) => num(pick(r, 'expiration', 'date', 'exp')))
     .filter((e): e is number => e != null && e >= today)
     .sort((a, b) => a - b);
-  return exps.length ? exps[0] : null;
+  const exp = exps.length ? exps[0] : null;
+  if (exp != null) frontExpCache[sym] = { utcDay: today, exp };
+  return exp;
 }
 
 // ---------------------------------------------------------------------------
@@ -145,6 +203,10 @@ export async function fetchThetaOptionChain(
   spotPrice: number,
 ): Promise<{ contracts: LiveOptionContract[]; source: string; message?: string }> {
   const sym = thetaSymbol(asset.ticker);
+  const now = Date.now();
+  const cached = chainCache[sym];
+  if (cached && now - cached.timestamp < CHAIN_TTL_MS) return cached.data;
+
   const exp = await frontExpiration(asset);
   if (!exp) return { contracts: [], source: 'THETADATA_LIVE', message: 'No listed expirations returned.' };
 
@@ -214,7 +276,9 @@ export async function fetchThetaOptionChain(
     });
   }
 
-  return { contracts, source: 'THETADATA_LIVE', message: `ThetaData ${sym} ${exp}: ${contracts.length} contracts` };
+  const result = { contracts, source: 'THETADATA_LIVE', message: `ThetaData ${sym} ${exp}: ${contracts.length} contracts` };
+  if (contracts.length > 0) chainCache[sym] = { data: result, timestamp: now };
+  return result;
 }
 
 // ---------------------------------------------------------------------------
@@ -252,10 +316,30 @@ export async function fetchThetaCandles(ticker: string, tf: string, count = 120)
     const l = num(pick(r, 'low'));
     const c = num(pick(r, 'close'));
     if (o == null || h == null || l == null || c == null) continue;
-    const ms = num(pick(r, 'ms_of_day', 'timestamp', 'time')) ?? 0;
+
+    // Timestamp resolution — the key matters:
+    //  • 'ms_of_day' is milliseconds since midnight in EXCHANGE-LOCAL (ET) time, so
+    //    it must be added to the ET midnight of the bar's `date` (i.e. the UTC date
+    //    base PLUS the ET→UTC offset for that day). Treating it as UTC ms-of-day
+    //    shifted every intraday bar 4–5 hours.
+    //  • 'timestamp' (and 'time') are a STANDALONE full epoch in ms — they must be
+    //    used as-is, NEVER summed onto a date base.
     const dateInt = num(pick(r, 'date')) ?? 0;
-    const y = Math.floor(dateInt / 10000), mo = Math.floor((dateInt % 10000) / 100), d = dateInt % 100;
-    const timestamp = dateInt > 0 ? Date.UTC(y, mo - 1, d) + (ms || 0) : (num(pick(r, 'timestamp')) ?? Date.now());
+    const msOfDay = num(pick(r, 'ms_of_day'));
+    const epoch = num(pick(r, 'timestamp', 'time'));
+    let timestamp: number;
+    if (msOfDay != null && dateInt > 0) {
+      const y = Math.floor(dateInt / 10000), mo = Math.floor((dateInt % 10000) / 100), d = dateInt % 100;
+      const utcMidnight = Date.UTC(y, mo - 1, d);
+      timestamp = utcMidnight + msOfDay + etOffsetMs(utcMidnight);
+    } else if (epoch != null) {
+      timestamp = epoch; // full epoch — use standalone, never summed
+    } else if (dateInt > 0) {
+      const y = Math.floor(dateInt / 10000), mo = Math.floor((dateInt % 10000) / 100), d = dateInt % 100;
+      timestamp = Date.UTC(y, mo - 1, d);
+    } else {
+      timestamp = Date.now();
+    }
     candles.push({ timestamp, open: o, high: h, low: l, close: c, volume: num(pick(r, 'volume', 'vol')) ?? 0 });
   }
   candles.sort((a, b) => a.timestamp - b.timestamp);

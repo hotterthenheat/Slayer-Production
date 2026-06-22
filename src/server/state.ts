@@ -15,7 +15,17 @@ export interface ServerDb {
   globalFlowFeed: any[];
   liveSpotPrices: Record<string, number>;
   liveOptionChains: Record<string, any[]>;
-  dataSource: 'POLYGON_LIVE' | 'TRADIER_LIVE' | 'SANDBOX_SYNTHETIC';
+  // Per-ticker source of the CURRENTLY-cached option chain (from
+  // getUnifiedOptionChain().source). A single global dataSource can't be honest when
+  // ThetaData powers one ticker's chain while Tradier/Polygon power another — this
+  // lets feedLabel read the real provider per chain (e.g. THETADATA_LIVE).
+  chainSource: Record<string, string>;
+  dataSource:
+    | 'THETADATA_LIVE'
+    | 'TRADIER_POLYGON_COMPLEMENTARY'
+    | 'POLYGON_LIVE'
+    | 'TRADIER_LIVE'
+    | 'SANDBOX_SYNTHETIC';
   apiStatusMessage: string;
   discoveryContracts: any[];
   discoveryFeedLogs: any[];
@@ -31,6 +41,7 @@ export const db: ServerDb = {
   globalFlowFeed: [],
   liveSpotPrices: {},
   liveOptionChains: {},
+  chainSource: {},
   dataSource: 'SANDBOX_SYNTHETIC',
   apiStatusMessage: 'Offline Sandbox Simulation Running',
   discoveryContracts: JSON.parse(JSON.stringify(INITIAL_DISCOVERY_CONTRACTS)),
