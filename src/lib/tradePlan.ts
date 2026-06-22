@@ -177,7 +177,11 @@ export function buildTradePlan(params: {
   // --- Expected hold: diffusion time to TP1, modulated by regime speed -----
   const distToTp1 = Math.abs(tp1 - spot);
   const regimeSpeed = /EXPANSION|TAIL/.test((regimeState || '').toUpperCase()) ? 1.5 : /MEAN_REVERSION/.test((regimeState || '').toUpperCase()) ? 0.7 : 1.0;
-  const reachFrac = em > 0 ? Math.pow(distToTp1 / em, 2) : 1;
+  // Floor the distance-in-EM BEFORE squaring. When TP1 sits ~on spot (distToTp1≈0)
+  // the squared term would vanish and collapse the hold to the 3-min floor; a
+  // quarter-EM floor keeps a sane minimum diffusion time for near-the-money targets.
+  const reachUnits = em > 0 ? Math.max(distToTp1 / em, 0.25) : 1;
+  const reachFrac = reachUnits * reachUnits;
   const expectedHoldMin = Math.round(clamp(reachFrac * hoursToClose * 60 / regimeSpeed, 3, Math.max(5, hoursToClose * 60)));
 
   const dealerFlow = dealer.netGex >= 0 ? 'Positive Gamma' : 'Negative Gamma';

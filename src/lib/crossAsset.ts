@@ -73,7 +73,12 @@ export function pcaResidualZScores(series: Record<string, Candle[]>, window = 60
   // Factor time series f(t) = Σ_i w_i · stdRet_i(t).
   const f: number[] = new Array(minLen).fill(0);
   for (let k = 0; k < minLen; k++) for (let i = 0; i < n; i++) f[k] += w[i] * stdz[tickers[i]][k];
-  const fVar = f.reduce((a, b) => a + b * b, 0) / (minLen - 1) || 1;
+  const fVarRaw = f.reduce((a, b) => a + b * b, 0) / (minLen - 1) || 1;
+  // Relative floor on the factor variance. Rows are standardized to unit variance,
+  // so an uncorrelated factor has Var(f)=Σw_i²=1 and a fully-correlated one ~n. A
+  // near-degenerate (e.g. anti-correlated) factor can drive Var(f)→0, which would
+  // blow up beta = cov/fVar. Floor at 0.1% of the unit baseline to bound betas.
+  const fVar = Math.max(fVarRaw, 1e-3);
 
   // Per asset: beta on factor, residual Z-score of the latest point.
   for (let i = 0; i < n; i++) {

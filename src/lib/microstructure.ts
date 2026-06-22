@@ -77,5 +77,7 @@ export function computeKylesLambda(candles: Candle[], lookback = 50): KyleLambda
   const px = c[c.length - 1].close || 1;
   const impactPct = px > 0 ? (Math.abs(lambda) * avgVol) / px : 0;
   // High impact per unit flow ⇒ thin/illiquid book ⇒ slippage/flash-crash risk.
-  return { lambda: Number(lambda.toExponential(2) as any) || lambda, impactPct: Number((impactPct * 100).toFixed(3)), slippageRisk: impactPct * 100 > 0.5 };
+  // Keep λ at full precision in the value (the toExponential(2) round-trip threw
+  // away precision that downstream consumers may need); round only for display.
+  return { lambda, impactPct: Number((impactPct * 100).toFixed(3)), slippageRisk: impactPct * 100 > 0.5 };
 }
