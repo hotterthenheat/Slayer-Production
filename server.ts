@@ -273,7 +273,7 @@ app.get('/api/auth/sandbox', async (req, res) => {
 // Strips sensitive fields from a user record before it is sent to any client.
 app.post('/api/auth/clerk-signup', express.json(), async (req, res) => {
   const { email, name, password, referralCode, avatar } = req.body;
-  if (!email || !name) {
+  if (!email || !name || typeof email !== 'string' || typeof name !== 'string') {
     return res.status(400).json({ error: 'Email and Name are required variables.' });
   }
 
@@ -420,7 +420,7 @@ app.post('/api/auth/clerk-signup', express.json(), async (req, res) => {
 
 app.post('/api/auth/clerk-login', express.json(), async (req, res) => {
   const { email, password } = req.body;
-  if (!email) {
+  if (!email || typeof email !== 'string') {
     return res.status(400).json({ error: 'Email address is required.' });
   }
 
@@ -949,7 +949,7 @@ app.post('/api/auth/request-email-update', express.json(), async (req, res) => {
   }
 
   const { newEmail } = req.body;
-  if (!newEmail || !newEmail.includes('@')) {
+  if (!newEmail || typeof newEmail !== 'string' || !newEmail.includes('@')) {
     return res.status(400).json({ error: 'Please specify a valid email address.' });
   }
 
@@ -1263,6 +1263,17 @@ app.post('/api/users/export-data', endpointRateLimit(5, '/api/users/export-data'
 
   const payloadString = JSON.stringify(exportPayload, null, 2);
 
+  // Sweep expired export blobs (PII) so undownloaded exports don't linger in
+  // memory for ~24h, and bound the map size as a backstop.
+  const nowSweep = Date.now();
+  for (const [k, v] of s3ComplianceStorage) {
+    if (v.expiresAt <= nowSweep) s3ComplianceStorage.delete(k);
+  }
+  if (s3ComplianceStorage.size > 500) {
+    const oldest = Array.from(s3ComplianceStorage.keys()).slice(0, s3ComplianceStorage.size - 500);
+    for (const k of oldest) s3ComplianceStorage.delete(k);
+  }
+
   s3ComplianceStorage.set(token, {
     email: userEmail,
     payload: payloadString,
@@ -1453,7 +1464,7 @@ function tierFromStripeSubscription(sub: any): { accessTier: string; plan: strin
 
 // Stripe subscription statuses that should hold paid access vs. revoke it.
 const STRIPE_ACTIVE_STATUSES = new Set(['active', 'trialing']);
-const STRIPE_REVOKE_STATUSES = new Set(['past_due', 'unpaid', 'canceled', 'incomplete_expired']);
+const STRIPE_REVOKE_STATUSES = new Set(['past_due', 'unpaid', 'canceled', 'incomplete_expired', 'paused']);
 
 app.post('/api/billing/webhook', express.raw({ type: 'application/json' }), async (req, res) => {
   if (!stripeClient) {
@@ -1535,6 +1546,9 @@ app.post('/api/billing/webhook', express.raw({ type: 'application/json' }), asyn
         break;
       }
 
+      // .created covers subscriptions made outside the checkout path (e.g. the
+      // Stripe dashboard), which would otherwise only be picked up on a later update.
+      case 'customer.subscription.created':
       case 'customer.subscription.updated': {
         const sub = event.data.object as Stripe.Subscription;
         const user = await findUserForSubscription(sub);
@@ -1614,7 +1628,7 @@ app.post('/api/billing/apply-coupon', express.json(), async (req, res) => {
   }
 
   const { referralCode } = req.body;
-  if (!referralCode) {
+  if (!referralCode || typeof referralCode !== 'string') {
     return res.status(400).json({ error: 'Promo or Referral Code is required.' });
   }
 
@@ -1763,11 +1777,17 @@ app.post('/api/billing/process', express.json(), async (req, res) => {
       }
     }
 
-    if (referrerMatch) {
-      referrerMatch.referral_tokens_pool = (referrerMatch.referral_tokens_pool || 0) + 1; // exactly 1 Token added to referrer (Module 5, rule 3)
+    if (referrerMatch && !user.referred_by) {
+      // Idempotent: credit a referrer at most ONCE per referee (mirrors signup +
+      // apply-coupon). Previously this credited +1 on every billing/process call.
+      user.referred_by = referrerMatch.email;
+      referrerMatch.referral_tokens_pool = (referrerMatch.referral_tokens_pool || 0) + 1;
       await persistUser(referrerMatch.email, referrerMatch);
+      await persistUser(user.email, user);
       referrerCredited = referrerMatch.email;
-      referralCreditLogs = `SUCCESS // Credited 1 token to referrer: "${referrerMatch.email}" (New pool: ${referrerMatch.referral_tokens_pool} tokens). 5% discount verified on Referee transaction.`;
+      referralCreditLogs = `SUCCESS // Credited 1 token to referrer "${referrerMatch.email}" (New pool: ${referrerMatch.referral_tokens_pool}).`;
+    } else if (referrerMatch) {
+      referralCreditLogs = `Referral already applied for ${user.email}; no re-credit.`;
     } else {
       referralCreditLogs = `Referral promo code "${referralCode}" not matched to active accounts in database system.`;
     }
@@ -2345,6 +2365,9 @@ app.post('/api/trades/add', async (req, res) => {
   };
 
   db.v8Trades.unshift(newTrade);
+  // Cap the shared global ledger so it can't grow without bound (and so every SSE
+  // broadcast doesn't serialize an ever-larger array to all connected clients).
+  if (db.v8Trades.length > 200) db.v8Trades.length = 200;
 
   // Instantly broadcast update
   broadcastSSE();
@@ -2616,7 +2639,10 @@ function moderationHandler(action: 'suspend' | 'unsuspend' | 'ban' | 'unban' | '
   return (req: any, res: any) => {
     const email = String(req.params.email || '').toLowerCase().trim();
     if (!email) return res.status(400).json({ error: 'Target email required.' });
-    if (ADMIN_EMAILS.includes(email)) return res.status(403).json({ error: 'Cannot moderate an admin account.' });
+    // Block moderating ANY privileged account (owner/admin/moderator), not just
+    // ADMIN_EMAILS — otherwise a moderator could suspend/force-logout the OWNER
+    // (whose identity lives in OWNER_EMAILS, outside ADMIN_EMAILS).
+    if (roleForEmail(email) !== 'user') return res.status(403).json({ error: 'Cannot moderate a privileged account.' });
     if (action === 'suspend') SUSPENDED_USERS.add(email);
     if (action === 'unsuspend') SUSPENDED_USERS.delete(email);
     if (action === 'ban') { BANNED_USERS.add(email); FORCE_LOGOUT_USERS.add(email); }
