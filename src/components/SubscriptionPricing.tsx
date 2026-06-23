@@ -155,7 +155,7 @@ export function SubscriptionPricing({ onUpgradeComplete, onEnterApp, session, on
     }
     if (referral) bodyLines.push('', `Heard about us via: ${referral}`);
 
-    const mailto = `mailto:support@slayerterminal.com?subject=${encodeURIComponent('Immortal Pass enquiry')}&body=${encodeURIComponent(bodyLines.join('\n'))}`;
+    const mailto = `mailto:info@slayerterminal.com?subject=${encodeURIComponent('Immortal Pass enquiry')}&body=${encodeURIComponent(bodyLines.join('\n'))}`;
     try {
       window.location.href = mailto;
     } catch {
@@ -464,7 +464,8 @@ export function SubscriptionPricing({ onUpgradeComplete, onEnterApp, session, on
         {/* Compact risk caption directly beneath the plans, not just in the page footer. */}
         <p className="mt-8 mx-auto max-w-xl text-center text-[11px] leading-relaxed text-[var(--text-tertiary)]">
           Analytics and informational tools only — not investment advice. Options involve substantial risk.{' '}
-          <button type="button" onClick={() => useLegal.getState().open('risk')} className="text-[var(--text-secondary)] hover:text-[var(--text-primary)] underline underline-offset-2 transition-colors cursor-pointer">Read the full Risk Disclosure</button>.
+          <button type="button" onClick={() => useLegal.getState().open('risk')} className="text-[var(--text-secondary)] hover:text-[var(--text-primary)] underline underline-offset-2 transition-colors cursor-pointer">Read the full Risk Disclosure</button>. All sales are final and non-refundable —{' '}
+          <button type="button" onClick={() => useLegal.getState().open('refunds')} className="text-[var(--text-secondary)] hover:text-[var(--text-primary)] underline underline-offset-2 transition-colors cursor-pointer">see policy</button>.
         </p>
       </motion.section>
 
@@ -790,7 +791,7 @@ export function SubscriptionPricing({ onUpgradeComplete, onEnterApp, session, on
                                   />
                                   {lifetimeBusMessage.length >= 500 && (
                                     <div className="text-[11px] text-[var(--danger)] font-medium mt-1">
-                                      For longer requirements, email <a href="mailto:support@slayerterminal.com" className="underline hover:opacity-80">support@slayerterminal.com</a>
+                                      For longer requirements, email <a href="mailto:info@slayerterminal.com" className="underline hover:opacity-80">info@slayerterminal.com</a>
                                     </div>
                                   )}
                                 </div>
@@ -839,7 +840,7 @@ export function SubscriptionPricing({ onUpgradeComplete, onEnterApp, session, on
                     </h4>
                     <p className="text-[12px] text-[var(--text-tertiary)] leading-relaxed max-w-sm mx-auto">
                       Your mail app should have opened with the details pre-filled. If it didn&apos;t, email
-                      us directly at <a href="mailto:support@slayerterminal.com" className="underline text-[var(--text-secondary)] hover:opacity-80">support@slayerterminal.com</a> and
+                      us directly at <a href="mailto:info@slayerterminal.com" className="underline text-[var(--text-secondary)] hover:opacity-80">info@slayerterminal.com</a> and
                       our team will follow up with a custom Immortal Pass quote.
                     </p>
                   </div>

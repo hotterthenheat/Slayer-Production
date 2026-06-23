@@ -770,7 +770,7 @@ export function SettingsPanel({ session, onUpdateSession }: SettingsPanelProps) 
                         id="settings-new-email"
                         type="email"
                         autoComplete="email"
-                        placeholder="newemailaddress@trade.com"
+                        placeholder="you@example.com"
                         value={newEmail}
                         onChange={e => setNewEmail(e.target.value)}
                         className="w-full bg-[var(--surface-2)] border border-[var(--border)] rounded-lg px-3 py-2 text-sm text-[var(--text-primary)] focus:outline-none focus:border-indigo-500 transition-colors"
