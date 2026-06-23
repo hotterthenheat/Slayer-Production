@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { formatDateTime } from '../lib/timeUtils';
+import { ConfirmDialog } from './ConfirmDialog';
 import {
   ShieldAlert, Users, Activity, Key, MonitorPlay, Radio,
   Ticket, Power, ToggleLeft, ToggleRight, Ban, UserX, LogOut, Eye, Search, RefreshCw, ScrollText
@@ -206,6 +207,9 @@ function UsersTab() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [actionError, setActionError] = useState('');
+  const [confirmDialog, setConfirmDialog] = useState<{
+    title: string; message: string; confirmLabel: string; danger?: boolean; onConfirm: () => void;
+  } | null>(null);
 
   const load = useCallback((c: string | null) => {
     setLoading(true);
@@ -218,8 +222,7 @@ function UsersTab() {
 
   useEffect(() => { load(cursors.current); }, [cursors.current, load]);
 
-  const act = async (email: string, action: string) => {
-    if (action === 'ban' && !confirm(`Permanently BAN ${email}?`)) return;
+  const runAct = async (email: string, action: string) => {
     setActionError('');
     try {
       await api(`/api/admin/users/${encodeURIComponent(email)}/${action}`, { method: 'POST' });
@@ -230,8 +233,20 @@ function UsersTab() {
     if (action === 'impersonate') { window.location.reload(); return; }
     load(cursors.current);
   };
-  const impersonate = async (email: string) => {
-    if (!confirm(`Impersonate ${email}? You'll view the app as this user (read-only).`)) return;
+  const act = (email: string, action: string) => {
+    if (action === 'ban') {
+      setConfirmDialog({
+        title: 'Ban user',
+        message: `Ban ${email}? They will lose access immediately. You can reverse this later from the moderation store.`,
+        confirmLabel: 'Ban user',
+        danger: true,
+        onConfirm: () => runAct(email, action),
+      });
+      return;
+    }
+    runAct(email, action);
+  };
+  const runImpersonate = async (email: string) => {
     setActionError('');
     try {
       await api(`/api/admin/impersonate/${encodeURIComponent(email)}`, { method: 'POST' });
@@ -240,6 +255,14 @@ function UsersTab() {
       return;
     }
     window.location.reload();
+  };
+  const impersonate = (email: string) => {
+    setConfirmDialog({
+      title: 'Impersonate user',
+      message: `View the app as ${email}? You'll see their session read-only until you exit the preview.`,
+      confirmLabel: 'Impersonate',
+      onConfirm: () => runImpersonate(email),
+    });
   };
   const changeTier = async (email: string, tier: string) => {
     setActionError('');
@@ -254,6 +277,15 @@ function UsersTab() {
 
   return (
     <div className="space-y-3 animate-fadeIn">
+      <ConfirmDialog
+        open={!!confirmDialog}
+        title={confirmDialog?.title ?? ''}
+        message={confirmDialog?.message ?? ''}
+        confirmLabel={confirmDialog?.confirmLabel}
+        danger={confirmDialog?.danger}
+        onConfirm={() => { confirmDialog?.onConfirm(); setConfirmDialog(null); }}
+        onCancel={() => setConfirmDialog(null)}
+      />
       <div className="flex items-center gap-2">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-[var(--text-tertiary)]" />

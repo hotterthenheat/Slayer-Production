@@ -2495,16 +2495,21 @@ app.get('/api/dealer-flow', endpointRateLimit(20, '/api/dealer-flow'), async (re
 
 // GET Systems health verification
 app.get('/api/health', async (req, res) => {
+  const isThetaConfig = !!process.env.THETADATA_API_KEY || process.env.THETADATA_ENABLED === 'true';
   const isTradierConfig = !!process.env.TRADIER_API_KEY;
   const isPolygonConfig = !!process.env.POLYGON_API_KEY;
   const lastTradierErr = getLastTradierError();
-  
+
   res.json({
     status: 'ok',
     timestamp: new Date().toISOString(),
+    uptime_seconds: Math.floor(process.uptime()),
     env: {
+      thetadata_configured: isThetaConfig,
       tradier_configured: isTradierConfig,
       polygon_configured: isPolygonConfig,
+      stripe_configured: !!stripeClient,
+      database_configured: !!process.env.SQL_HOST,
       node_env: process.env.NODE_ENV || 'development'
     },
     integrations: {
@@ -2513,6 +2518,22 @@ app.get('/api/health', async (req, res) => {
       lastTradierError: lastTradierErr
     }
   });
+});
+
+// Client-side error sink. The React ErrorBoundary POSTs uncaught render errors
+// here so production crashes are captured server-side. Size-capped and field-
+// truncated; this is the hook point to forward to Sentry/Datadog/etc.
+app.post('/api/client-error', express.json({ limit: '16kb' }), (req, res) => {
+  const b = (req.body || {}) as Record<string, unknown>;
+  const s = (v: unknown, n: number) => String(v ?? '').slice(0, n);
+  console.error('[client-error]', {
+    message: s(b.message, 500),
+    label: s(b.label, 80),
+    url: s(b.url, 300),
+    componentStack: s(b.componentStack, 1000),
+  });
+  // TODO(telemetry): forward this to your error-monitoring provider.
+  res.status(204).end();
 });
 
 
