@@ -22,6 +22,7 @@ import { GexReadCard } from './GexReadCard';
 import { ZeroDtePanel } from './ZeroDtePanel';
 import { LiveTerminalFlow } from './LiveTerminalFlow';
 import { DealerFlowMap } from './DealerFlowMap';
+import { PanelSkeleton } from './PanelSkeleton';
 import {
   Waves,
   Crosshair,
@@ -155,7 +156,7 @@ function ExposureProfileChart({ profile, decimals, type }: { profile: any; decim
       <div className={`flex items-center text-[9px] font-black tracking-widest uppercase pb-1.5 border-b mb-1.5 ${
         isLight ? 'text-zinc-500 border-black' : 'text-zinc-600 border-black'
       }`}>
-        <div className="w-[72px] shrink-0">Strike</div>
+        <div className="w-[58px] sm:w-[72px] shrink-0">Strike</div>
         <div className="flex-1 flex">
           <div className={`flex-1 text-right pr-2 ${
             type === 'gex' ? 'text-[var(--danger)]/70' : type === 'dex' ? 'text-amber-400/70' : 'text-fuchsia-400/70'
@@ -165,7 +166,7 @@ function ExposureProfileChart({ profile, decimals, type }: { profile: any; decim
             type === 'gex' ? 'text-[var(--success)]/70' : type === 'dex' ? 'text-sky-400/70' : 'text-indigo-400/70'
           }`}>Call {typeUpper} →</div>
         </div>
-        <div className="w-[64px] text-right shrink-0">Net</div>
+        <div className="w-[56px] sm:w-[64px] text-right shrink-0">Net</div>
       </div>
 
       {sortedDesc.map((r: any) => {
@@ -187,7 +188,7 @@ function ExposureProfileChart({ profile, decimals, type }: { profile: any; decim
             isSpot ? (isLight ? 'bg-black' : 'bg-white/[0.03]') : ''
           }`}>
             {/* Strike column */}
-            <div className={`w-[72px] shrink-0 text-[10.5px] font-black tracking-[0.06em] font-mono pl-1 ${
+            <div className={`w-[58px] sm:w-[72px] shrink-0 text-[10.5px] font-black tracking-[0.06em] font-mono pl-1 ${
               isSpot ? (isLight ? 'text-zinc-900 font-extrabold' : 'text-[#E5E5E5]') : isLight ? 'text-zinc-550' : 'text-zinc-400'
             }`}>
               {r.strike.toFixed(0)}
@@ -294,7 +295,7 @@ function ExposureProfileChart({ profile, decimals, type }: { profile: any; decim
             </div>
 
             {/* Net Column */}
-            <div className={`w-[64px] shrink-0 text-right text-[10px] font-bold tracking-[0.06em] tabular-nums pr-1 ${
+            <div className={`w-[56px] sm:w-[64px] shrink-0 text-right text-[10px] font-bold tracking-[0.06em] tabular-nums pr-1 ${
               r.netValue >= 0 
                 ? type === 'gex' ? 'text-[var(--success)]' : type === 'dex' ? 'text-sky-400/90' : 'text-indigo-400/90' 
                 : type === 'gex' ? 'text-[var(--danger)]/90' : type === 'dex' ? 'text-amber-400/90' : 'text-fuchsia-400/90'
@@ -761,23 +762,38 @@ export function DealerFlowView() {
 
   if (!serverState || !profile || !profile.strikes || !gauge || !disp) {
     return (
-      <div className="w-full flex flex-col items-center justify-center min-h-[460px] bg-[var(--surface)] border border-[var(--border)] rounded-lg p-8 text-center space-y-4" id="dealerflow-data-pending">
-        <div className="w-12 h-12 rounded-full bg-[var(--surface-2)] border border-[var(--border)] flex items-center justify-center">
-          <Waves className="w-6 h-6 text-[var(--success)]" />
+      <div
+        className="w-full bg-[var(--surface)] border border-[var(--border)] rounded-lg p-6 space-y-5"
+        id="dealerflow-data-pending"
+        role="status"
+        aria-busy="true"
+        aria-label="Loading dealer flow data"
+      >
+        <div className="flex flex-col items-center justify-center text-center space-y-3">
+          <div className="w-12 h-12 rounded-full bg-[var(--surface-2)] border border-[var(--border)] flex items-center justify-center">
+            <Waves className="w-6 h-6 text-[var(--success)]" />
+          </div>
+          <div className="space-y-1.5">
+            <h2 className="text-[11px] font-black tracking-widest text-[var(--text-primary)] uppercase font-sans">
+              LOADING DEALER FLOW DATA
+            </h2>
+            <p className="text-[10px] text-[var(--text-tertiary)] uppercase tracking-widest leading-relaxed max-w-sm mx-auto">
+              Loading hedging profiles, order flow, and price zones. Select any strike or option type to start the feed.
+            </p>
+          </div>
+          <div className="flex items-center gap-2 justify-center">
+            <span className="w-1.5 h-1.5 rounded-full bg-[var(--warning)] inline-block animate-pulse" />
+            <span className="text-[8px] font-mono tracking-widest text-[var(--text-tertiary)] font-bold uppercase">
+              CONNECTING TO LIVE FEED...
+            </span>
+          </div>
         </div>
-        <div className="space-y-1.5">
-          <h2 className="text-[11px] font-black tracking-widest text-[var(--text-primary)] uppercase font-sans">
-            LOADING DEALER FLOW DATA
-          </h2>
-          <p className="text-[9px] text-[var(--text-tertiary)] uppercase tracking-widest leading-relaxed max-w-sm mx-auto">
-            Loading hedging profiles, order flow, and price zones. Select any strike or option type to start the feed.
-          </p>
-        </div>
-        <div className="flex items-center gap-2 justify-center">
-          <span className="w-1.5 h-1.5 rounded-full bg-[var(--warning)] inline-block animate-pulse" />
-          <span className="text-[8px] font-mono tracking-widest text-[var(--text-tertiary)] font-bold uppercase">
-            CONNECTING TO LIVE FEED...
-          </span>
+
+        {/* Skeleton mirroring the GEX / DEX / VEX 3-column profile layout */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
+          <PanelSkeleton label="Gamma Exposure (GEX)" rows={5} />
+          <PanelSkeleton label="Delta Exposure (DEX)" rows={5} />
+          <PanelSkeleton label="Vega Exposure (VEX)" rows={5} />
         </div>
       </div>
     );
@@ -786,7 +802,7 @@ export function DealerFlowView() {
   return (
     <div className="w-full space-y-6 tabular-data" id="dealerflow-main-workspace-view">
       {/* ============== HEADER STRIP ============== */}
-      <div className={`${theme.cardBg} rounded-lg px-5 py-4 flex flex-col lg:flex-row lg:items-center gap-4 justify-between`} id="dealerflow-header-strip">
+      <div className={`${theme.cardBg} rounded-lg px-3 py-3 sm:px-5 sm:py-4 flex flex-col lg:flex-row lg:items-center gap-4 justify-between`} id="dealerflow-header-strip">
         <div className="flex items-center gap-3.5">
           <div className={`w-9 h-9 rounded-md flex items-center justify-center ${theme.headerIconBg}`}>
             <Waves className={`w-4.5 h-4.5 ${theme.iconColor}`} />
@@ -804,7 +820,7 @@ export function DealerFlowView() {
           </div>
         </div>
 
-        <div className="grid grid-cols-3 sm:grid-cols-6 gap-2 lg:flex lg:flex-nowrap lg:items-center">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:flex lg:flex-nowrap lg:items-center gap-2">
           {[
             { label: 'Net GEX', value: filteredProfile ? fmtBn(filteredProfile.netGex) : '—', tone: (filteredProfile?.netGex ?? 0) >= 0 ? 'var(--success)' : 'var(--danger)' },
             { label: 'Call Wall', value: filteredProfile?.callWall?.toLocaleString(undefined, { maximumFractionDigits: 0 }) ?? '—', tone: 'var(--success)' },
@@ -813,11 +829,11 @@ export function DealerFlowView() {
             { label: 'Pin Magnet', value: filteredProfile?.magnet?.toLocaleString(undefined, { maximumFractionDigits: 0 }) ?? '—', tone: 'var(--info)' },
             { label: 'Dist to Flip', value: filteredProfile?.gammaFlip ? `${Math.abs(filteredProfile.spot - filteredProfile.gammaFlip).toLocaleString(undefined, { minimumFractionDigits: 1, maximumFractionDigits: 1 })}` : '—', tone: 'var(--text-primary)' },
           ].map(card => (
-            <div key={card.label} className="bg-[var(--surface-2)] border border-[var(--border)] rounded-md px-3 py-2 min-w-[84px] shrink-0" id={`card-${card.label.toLowerCase().replace(/\s+/g, '-')}`}>
-              <div className="text-[8px] font-black tracking-widest text-[var(--text-tertiary)] uppercase">
+            <div key={card.label} className="bg-[var(--surface-2)] border border-[var(--border)] rounded-md px-3 py-2 min-w-0 lg:min-w-[84px] shrink-0" id={`card-${card.label.toLowerCase().replace(/\s+/g, '-')}`}>
+              <div className="text-[8px] font-black tracking-widest text-[var(--text-tertiary)] uppercase truncate">
                 {card.label}
               </div>
-              <div className="text-[14px] font-mono font-bold tabular-nums" style={{ color: card.tone }}>{card.value}</div>
+              <div className="text-[13px] sm:text-[14px] font-mono font-bold tabular-nums truncate" style={{ color: card.tone }}>{card.value}</div>
             </div>
           ))}
         </div>
@@ -828,6 +844,8 @@ export function DealerFlowView() {
         <div className="flex flex-nowrap overflow-x-auto scrollbar-none gap-2.5 justify-start items-center">
           <button
             onClick={() => setActiveEngineView('profile')}
+            aria-label="Hedging profile view"
+            aria-pressed={activeEngineView === 'profile'}
             className={`flex shrink-0 items-center gap-2 px-4 py-2.5 font-mono text-[9px] font-black uppercase tracking-wider border rounded-lg transition-colors cursor-pointer ${
               activeEngineView === 'profile'
                 ? 'bg-[var(--surface-3)] border-[#06B6D4]/50 text-[var(--text-primary)]'
@@ -839,6 +857,8 @@ export function DealerFlowView() {
           </button>
           <button
             onClick={() => setActiveEngineView('targets')}
+            aria-label="Ranked targets view"
+            aria-pressed={activeEngineView === 'targets'}
             className={`flex shrink-0 items-center gap-2 px-4 py-2.5 font-mono text-[9px] font-black uppercase tracking-wider border rounded-lg transition-colors cursor-pointer ${
               activeEngineView === 'targets'
                 ? 'bg-[var(--surface-3)] border-[var(--danger)]/50 text-[var(--text-primary)]'
@@ -850,6 +870,8 @@ export function DealerFlowView() {
           </button>
           <button
             onClick={() => setActiveEngineView('physics')}
+            aria-label="Dealer mechanics view"
+            aria-pressed={activeEngineView === 'physics'}
             className={`flex shrink-0 items-center gap-2 px-4 py-2.5 font-mono text-[9px] font-black uppercase tracking-wider border rounded-lg transition-colors cursor-pointer ${
               activeEngineView === 'physics'
                 ? 'bg-[var(--surface-3)] border-[var(--warning)]/50 text-[var(--text-primary)]'
@@ -861,6 +883,8 @@ export function DealerFlowView() {
           </button>
           <button
             onClick={() => setActiveEngineView('terminal')}
+            aria-label="Live terminal flow view"
+            aria-pressed={activeEngineView === 'terminal'}
             className={`flex shrink-0 items-center gap-2 px-4 py-2.5 font-mono text-[9px] font-black uppercase tracking-wider border rounded-lg transition-colors cursor-pointer ${
               activeEngineView === 'terminal'
                 ? 'bg-[var(--surface-3)] border-fuchsia-500/50 text-[var(--text-primary)]'
@@ -892,9 +916,11 @@ export function DealerFlowView() {
               onFocus={() => setShowSearch(true)}
             />
             {searchQuery && (
-              <button 
+              <button
                 onClick={(e) => { e.stopPropagation(); setSearchQuery(''); setShowSearch(false); }}
                 className="text-[#06B6D4]/50 hover:text-[#06B6D4] ml-2 font-mono text-[14px]"
+                aria-label="Clear search"
+                title="Clear search"
               >
                 ×
               </button>
@@ -1083,6 +1109,12 @@ export function DealerFlowView() {
                   )}
                 </span>
                 <span className="text-[11px] font-medium text-[var(--text-tertiary)]">Calendar is real; per-expiry hedging split is modeled from the aggregated chain (use ALL DATES for the live profile)</span>
+                {expiryTab !== 'aggregated' && (
+                  <span className="text-[10px] font-bold text-[var(--warning)] flex items-center gap-1">
+                    <ShieldAlert className="w-3 h-3 shrink-0" aria-hidden="true" />
+                    Model split — single-expiry breakdown is deterministic, not a per-expiration feed
+                  </span>
+                )}
               </div>
               
               {/* Dynamic Toggle Button */}
@@ -1114,13 +1146,13 @@ export function DealerFlowView() {
               </button>
             </div>
 
-            <div className="flex gap-2.5 overflow-x-auto pb-3 snap-x snap-mandatory" style={{ scrollbarWidth: 'thin', scrollbarColor: '#3f3f46 #18181b' }}>
+            <div className="flex flex-wrap sm:flex-nowrap gap-2.5 sm:overflow-x-auto pb-3 sm:snap-x sm:snap-mandatory" style={{ scrollbarWidth: 'thin', scrollbarColor: '#3f3f46 #18181b' }}>
               {!isMultiExpiry && (
                 <button
                   onClick={() => {
                     setExpiryTab('aggregated');
                   }}
-                  className={`flex shrink-0 min-w-[140px] flex-col text-left p-2.5 rounded-lg border transition-all cursor-pointer snap-start ${
+                  className={`flex w-full sm:w-auto sm:shrink-0 sm:min-w-[140px] flex-col text-left p-2.5 rounded-lg border transition-all cursor-pointer sm:snap-start ${
                     expiryTab === 'aggregated'
                       ? 'bg-emerald-500/10 border-emerald-500/30'
                       : 'bg-[var(--surface-3)] border-[var(--border)] hover:bg-[var(--surface-2)] hover:border-zinc-700'
@@ -1160,7 +1192,7 @@ export function DealerFlowView() {
                         setExpiryTab(item.id as any);
                       }
                     }}
-                    className={`flex flex-col text-left p-2.5 rounded-lg border transition-all cursor-pointer relative overflow-hidden shrink-0 min-w-[130px] snap-start ${
+                    className={`flex flex-col text-left p-2.5 rounded-lg border transition-all cursor-pointer relative overflow-hidden w-full sm:w-auto sm:shrink-0 sm:min-w-[130px] sm:snap-start ${
                       isActive
                         ? 'bg-[#06B6D4]/10 border-[#06B6D4]/40'
                         : 'bg-[var(--surface-3)] border-[var(--border)] hover:bg-[var(--surface-2)] hover:border-[var(--border-strong)]'
@@ -1198,7 +1230,7 @@ export function DealerFlowView() {
           </div>
 
           {/* ============== DEALER FLOW MAP (Hero Chart) ============== */}
-          <div className="bg-[var(--surface)] border border-[var(--border)] rounded-sm p-5 shadow-sm" id="dealerflow-map-panel">
+          <div className="bg-[var(--surface)] border border-[var(--border)] rounded-sm p-3 sm:p-5 shadow-sm" id="dealerflow-map-panel">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-5 pb-3 border-b border-[var(--border)]">
               <div className="flex items-center gap-2">
                 <Layers className="w-4 h-4 text-[var(--success)] opacity-80" />
@@ -1271,7 +1303,7 @@ export function DealerFlowView() {
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-5" id="dealerflow-main-grid">
             
             {/* GEX PROFILE */}
-            <div className="bg-[var(--surface)] border border-[var(--border)] rounded-lg p-5 flex flex-col justify-between" id="gex-profile-chart-panel">
+            <div className="bg-[var(--surface)] border border-[var(--border)] rounded-lg p-3 sm:p-5 flex flex-col justify-between" id="gex-profile-chart-panel">
               <div>
                 <div className="flex items-center gap-2 text-[9px] font-black tracking-widest uppercase mb-4 text-[var(--success)]">
                   <Layers className="w-3.5 h-3.5" />
@@ -1307,7 +1339,7 @@ export function DealerFlowView() {
             </div>
 
             {/* DEX PROFILE */}
-            <div className="bg-[var(--surface)] border border-[var(--border)] rounded-lg p-5 flex flex-col justify-between" id="dex-profile-chart-panel">
+            <div className="bg-[var(--surface)] border border-[var(--border)] rounded-lg p-3 sm:p-5 flex flex-col justify-between" id="dex-profile-chart-panel">
               <div>
                 <div className="flex items-center gap-2 text-[9px] font-black tracking-widest uppercase mb-4 text-[#38BDF8]">
                   <Waves className="w-3.5 h-3.5" />
@@ -1343,7 +1375,7 @@ export function DealerFlowView() {
             </div>
 
             {/* VEX PROFILE */}
-            <div className="bg-[var(--surface)] border border-[var(--border)] rounded-lg p-5 flex flex-col justify-between" id="vex-profile-chart-panel">
+            <div className="bg-[var(--surface)] border border-[var(--border)] rounded-lg p-3 sm:p-5 flex flex-col justify-between" id="vex-profile-chart-panel">
               <div>
                 <div className="flex items-center gap-2 text-[9px] font-black tracking-widest uppercase mb-4 text-[#C084FC]">
                   <Zap className="w-3.5 h-3.5" />
@@ -1396,7 +1428,7 @@ export function DealerFlowView() {
           <DealerDynamicsPanel />
 
           {/* ============== FULL WIDTH CHART AT BOTTOM ============== */}
-          <div className="bg-[var(--surface)] border border-[var(--border)] rounded-lg p-5 flex flex-col w-full overflow-hidden" id="displacement-overlay-chart-panel" style={{ minHeight: '380px' }}>
+          <div className="bg-[var(--surface)] border border-[var(--border)] rounded-lg p-3 sm:p-5 flex flex-col w-full overflow-hidden" id="displacement-overlay-chart-panel" style={{ minHeight: '380px' }}>
             <div className="flex items-center justify-between mb-3 shrink-0">
               <div className="flex items-center gap-2 text-[9px] font-black tracking-widest text-[var(--text-secondary)] uppercase">
                 <ShieldAlert className="w-3.5 h-3.5 text-[var(--danger)]" />

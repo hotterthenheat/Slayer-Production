@@ -30,7 +30,7 @@ import { buildGexProfile, computeDealerFlowGauge } from './src/lib/gexEngine';
 import { getLastTradierError } from './src/lib/tradierProvider';
 import { ensureSchema, dbLoadModeration, dbSetModeration, dbIsWebhookProcessed, dbMarkWebhookProcessed } from './src/db/index.ts';
 import bcrypt from 'bcryptjs';
-import { PORT, stripeClient, TIER_PRICING, ADMIN_EMAILS, roleForEmail, type AdminRole } from './src/server/config';
+import { PORT, stripeClient, TIER_PRICING, ADMIN_EMAILS, OWNER_EMAILS, roleForEmail, type AdminRole } from './src/server/config';
 import {
   COOKIE_SECRET, signCookieValue, verifyAndExtractCookieValue,
   type ActiveSession, activeSessionsDb, REDIS_PRESENCE, updateRedisPresence,
@@ -2495,16 +2495,21 @@ app.get('/api/dealer-flow', endpointRateLimit(20, '/api/dealer-flow'), async (re
 
 // GET Systems health verification
 app.get('/api/health', async (req, res) => {
+  const isThetaConfig = !!process.env.THETADATA_API_KEY || process.env.THETADATA_ENABLED === 'true';
   const isTradierConfig = !!process.env.TRADIER_API_KEY;
   const isPolygonConfig = !!process.env.POLYGON_API_KEY;
   const lastTradierErr = getLastTradierError();
-  
+
   res.json({
     status: 'ok',
     timestamp: new Date().toISOString(),
+    uptime_seconds: Math.floor(process.uptime()),
     env: {
+      thetadata_configured: isThetaConfig,
       tradier_configured: isTradierConfig,
       polygon_configured: isPolygonConfig,
+      stripe_configured: !!stripeClient,
+      database_configured: !!process.env.SQL_HOST,
       node_env: process.env.NODE_ENV || 'development'
     },
     integrations: {
@@ -2513,6 +2518,22 @@ app.get('/api/health', async (req, res) => {
       lastTradierError: lastTradierErr
     }
   });
+});
+
+// Client-side error sink. The React ErrorBoundary POSTs uncaught render errors
+// here so production crashes are captured server-side. Size-capped and field-
+// truncated; this is the hook point to forward to Sentry/Datadog/etc.
+app.post('/api/client-error', express.json({ limit: '16kb' }), (req, res) => {
+  const b = (req.body || {}) as Record<string, unknown>;
+  const s = (v: unknown, n: number) => String(v ?? '').slice(0, n);
+  console.error('[client-error]', {
+    message: s(b.message, 500),
+    label: s(b.label, 80),
+    url: s(b.url, 300),
+    componentStack: s(b.componentStack, 1000),
+  });
+  // TODO(telemetry): forward this to your error-monitoring provider.
+  res.status(204).end();
 });
 
 
@@ -2741,7 +2762,78 @@ app.post('/api/admin/impersonate/:email', requireAdmin(['owner']), async (req: a
   res.json({ success: true, impersonating: targetEmail, read_only: true });
 });
 
+/**
+ * Boot-time configuration preflight. Logs a clear readiness checklist and, in
+ * production only, refuses to boot when a critical secret is missing or an
+ * insecure flag is set — so a misconfigured deploy fails loudly instead of
+ * silently running insecure or on synthetic data. Never logs secret values.
+ */
+function preflightConfig() {
+  const isProd = process.env.NODE_ENV === 'production';
+  const has = (v?: string) => typeof v === 'string' && v.trim().length > 0;
+  const critical: string[] = [];
+  const warnings: string[] = [];
+  const lines: string[] = [];
+  const mark = (ok: boolean, label: string, detail = '') =>
+    lines.push(`  ${ok ? '✓' : '✗'} ${label}${detail ? ' — ' + detail : ''}`);
+
+  // --- Security ---
+  const sandboxAuth = process.env.ALLOW_SANDBOX_AUTH === 'true';
+  if (isProd && sandboxAuth) critical.push('ALLOW_SANDBOX_AUTH=true in production — the sandbox auth bypass MUST be off in prod.');
+  mark(!(isProd && sandboxAuth), 'Sandbox auth bypass', sandboxAuth ? 'ENABLED' : 'off');
+
+  const cookieSecret = has(process.env.COOKIE_SECRET);
+  if (isProd && !cookieSecret) critical.push('COOKIE_SECRET is not set — required in production (sessions are invalidated on every restart otherwise).');
+  else if (!cookieSecret) warnings.push('COOKIE_SECRET not set — using an ephemeral secret (dev only); sessions reset on restart.');
+  mark(cookieSecret, 'COOKIE_SECRET', cookieSecret ? 'set' : 'missing');
+
+  const adminConfigured = OWNER_EMAILS.length > 0 || ADMIN_EMAILS.length > 0;
+  if (isProd && !has(process.env.OWNER_EMAILS) && !has(process.env.ADMIN_EMAILS)) warnings.push('Admin allow-list is using the built-in owner default — set OWNER_EMAILS/ADMIN_EMAILS explicitly in production.');
+  mark(adminConfigured, 'Admin/owner allow-list', `${OWNER_EMAILS.length} owner(s), ${ADMIN_EMAILS.length} admin(s)`);
+
+  // --- Billing (Stripe) ---
+  const stripeKey = has(process.env.STRIPE_SECRET_KEY);
+  const stripeHook = has(process.env.STRIPE_WEBHOOK_SECRET);
+  if (!stripeKey) warnings.push('STRIPE_SECRET_KEY not set — billing/checkout endpoints will respond 503.');
+  if (stripeKey && !stripeHook) warnings.push('STRIPE_WEBHOOK_SECRET not set — Stripe webhooks cannot be verified, so paid subscriptions will not activate.');
+  mark(stripeKey, 'Stripe secret key', stripeKey ? 'set' : 'missing');
+  mark(stripeHook, 'Stripe webhook secret', stripeHook ? 'set' : 'missing');
+  if (!has(process.env.APP_URL)) warnings.push('APP_URL not set — Stripe checkout success/cancel redirect URLs may be incorrect.');
+
+  // --- Market-data provider (resolution order mirrors providerAbstraction) ---
+  const theta = has(process.env.THETADATA_API_KEY) || process.env.THETADATA_ENABLED === 'true';
+  const tradier = has(process.env.TRADIER_API_KEY);
+  const polygon = has(process.env.POLYGON_API_KEY);
+  const provider = theta ? 'ThetaData' : tradier ? 'Tradier' : polygon ? 'Polygon' : 'SANDBOX_SYNTHETIC (no live data)';
+  if (isProd && !theta && !tradier && !polygon) warnings.push('No market-data provider key set — running on SYNTHETIC data in production.');
+  mark(theta || tradier || polygon, 'Market-data provider', provider);
+
+  // --- Database ---
+  const db = has(process.env.SQL_HOST);
+  if (isProd && !db) warnings.push('SQL_HOST not set — DB-backed features (accounts, moderation, trade history) are unavailable in production.');
+  mark(db, 'Database (SQL_HOST)', db ? 'configured' : 'none (in-memory only)');
+
+  // --- Output ---
+  console.log(`\n┌─ Slayer Terminal · config preflight (${isProd ? 'production' : process.env.NODE_ENV || 'development'})`);
+  for (const l of lines) console.log(l);
+  if (warnings.length) {
+    console.log('  ⚠ warnings:');
+    for (const w of warnings) console.log(`     · ${w}`);
+  }
+  console.log('└' + '─'.repeat(58) + '\n');
+
+  if (critical.length) {
+    console.error('[FATAL] Production config preflight failed:');
+    for (const c of critical) console.error(`   ✗ ${c}`);
+    console.error('Set the required environment variables and restart. Refusing to boot insecure.\n');
+    process.exit(1);
+  }
+}
+
 async function startServer() {
+  // Validate configuration first so a misconfigured production deploy fails fast.
+  preflightConfig();
+
   // Bootstrap the DB schema (idempotent) so a fresh Postgres works on first deploy.
   // ensureSchema() no-ops when SQL_HOST is unset and swallows connection errors,
   // so this is safe in keyless/sandbox mode too.

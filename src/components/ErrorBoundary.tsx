@@ -24,8 +24,31 @@ export class ErrorBoundary extends React.Component<Props, State> {
   }
 
   componentDidCatch(error: Error, info: React.ErrorInfo) {
-    // Surface to console (and any future telemetry sink) without crashing the shell.
+    // Surface to console without crashing the shell.
     console.error(`[ErrorBoundary${this.props.label ? ' · ' + this.props.label : ''}]`, error, info?.componentStack);
+    // Best-effort telemetry: report to the backend sink (which can forward to
+    // Sentry/Datadog/etc.) and to an optional client-side hook. Never throws.
+    try {
+      const payload = {
+        message: error?.message || String(error),
+        stack: error?.stack || null,
+        componentStack: info?.componentStack || null,
+        label: this.props.label || null,
+        url: typeof window !== 'undefined' ? window.location.href : null,
+        ts: new Date().toISOString(),
+      };
+      (window as any).__slayerOnError?.(payload);
+      if (typeof fetch === 'function') {
+        fetch('/api/client-error', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+          keepalive: true,
+        }).catch(() => {});
+      }
+    } catch {
+      /* telemetry must never break the fallback UI */
+    }
   }
 
   private reset = () => this.setState({ hasError: false, error: null });

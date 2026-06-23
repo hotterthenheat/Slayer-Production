@@ -9,6 +9,7 @@
 import React, { useEffect, useState } from 'react';
 import { useContractStore } from '../lib/store';
 import { Brain, Clock } from 'lucide-react';
+import { formatTime } from '../lib/timeUtils';
 
 function useCountdown(target?: number): string {
   const [now, setNow] = useState(() => Date.now());
@@ -56,8 +57,10 @@ export function GexReadCard() {
         <p className="text-[12px] text-[var(--text-tertiary)] animate-pulse">Reading dealer-gamma posture…</p>
       )}
 
-      <span className="text-[9px] text-[var(--text-tertiary)] uppercase tracking-widest">
-        Auto-generated from this ticker&apos;s live GEX — refreshes every 30 min
+      <span className="text-[9px] text-[var(--text-tertiary)] uppercase tracking-widest tabular-nums">
+        {summary?.generatedAt
+          ? `As of ${formatTime(summary.generatedAt)} · auto-generated from this ticker's live GEX — refreshes every 30 min`
+          : "Model estimate — auto-generated from this ticker's live GEX, refreshes every 30 min"}
       </span>
     </div>
   );

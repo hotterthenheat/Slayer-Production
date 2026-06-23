@@ -15,6 +15,7 @@ import { ClerkGate } from './components/ClerkGate';
 import { CelebrationOverlay } from './components/CelebrationOverlay';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { CommandPalette } from './components/CommandPalette';
+import { LegalCenter, useLegal } from './components/LegalCenter';
 // Eagerly imported because SlayerIntro (also eager, on the landing path) imports it
 // statically — a lazy() wrapper here can't code-split it and only warns at build.
 import { SubscriptionPricing } from './components/SubscriptionPricing';
@@ -350,16 +351,6 @@ export default function App() {
   const filterTickersList = useMemo(() => {
     const query = globalSearchInput.trim().toLowerCase();
 
-    // Contextual static items
-    const staticContracts = [
-      { ticker: 'SPX', name: 'SPX 7650C Call Winning Transaction', contract: 'SPX 7650C', pnl: '+$4.20B', status: 'Success Target 3', id: 'stat-1', isContract: true },
-      { ticker: 'NDX', name: 'NDX 18200C Call Early Closed Transaction', contract: 'NDX 18200C', pnl: '+$2.50B', status: 'Success Target 2', id: 'stat-2', isContract: true },
-      { ticker: 'NDX', name: 'NDX 18200P Put Swing Trade', contract: 'NDX 18200P', pnl: '+$1.80B', status: 'Success Target 2', id: 'stat-sp1', isContract: true },
-      { ticker: 'SPY', name: 'SPY 448P Put Imbalance Washout', contract: 'SPY 448P', pnl: '+$240M', status: 'Success Target 3', id: 'stat-sp2', isContract: true },
-      { ticker: 'QQQ', name: 'QQQ 492P Volatility Expansion Swing', contract: 'QQQ 492P', pnl: '-$45M', status: 'Stop Loss Hit', id: 'stat-sp3', isContract: true },
-      { ticker: 'SPY', name: 'SPY 445P Put Short Cover Raid', contract: 'SPY 445P', pnl: '+$310M', status: 'Success Target 3', id: 'stat-sp4', isContract: true },
-    ];
-
     const convertedLive = trades.map(t => ({
       ticker: t.underlying,
       name: `${t.underlying} ${t.contract} ${t.direction === 'BULLISH' ? 'CALL' : 'PUT'} Execution`,
@@ -370,12 +361,12 @@ export default function App() {
       isContract: true
     }));
 
-    const mergedContracts = [...convertedLive, ...staticContracts];
+    // Search surfaces only real, logged trades — never fabricated track-record entries.
+    const mergedContracts = convertedLive;
 
     const toolsItems = [
       { ticker: 'SVI', name: 'SVI Volatility Solver', pnl: 'Volatility Tool', id: 'svi-solver', isTool: true },
-      { ticker: 'G3D', name: '3D Gamma Map', pnl: 'Visualizer', id: 'gamma-surface', isTool: true },
-      { ticker: 'VPIN', name: 'Order Flow Toxicity', pnl: 'Order Flow', id: 'vpin-tracker', isTool: true }
+      { ticker: 'G3D', name: '3D Gamma Map', pnl: 'Visualizer', id: 'gamma-surface', isTool: true }
     ];
 
     const navItems = [
@@ -388,12 +379,14 @@ export default function App() {
       { id: 'nav-settings', name: 'Settings & Preferences', ticker: 'SETT', pnl: 'System', isNav: true, targetTab: 'settings' }
     ];
 
+    // Asset quick-nav. No prices/changes here — search must not show fabricated quotes;
+    // the right column shows the asset class instead.
     const defaultTickers = [
-      { ticker: 'SPX', name: 'S&P 500 Index', price: 7623.00, change: '+0.88%', isUp: true, isContract: false },
-      { ticker: 'NDX', name: 'Nasdaq 100 Index', price: 18250.00, change: '+1.42%', isUp: true, isContract: false },
-      { ticker: 'QQQ', name: 'Invesco QQQ Trust', price: 445.50, change: '+1.24%', isUp: true, isContract: false },
-      { ticker: 'SPY', name: 'SPDR S&P 500 ETF', price: 512.30, change: '+0.65%', isUp: true, isContract: false },
-      { ticker: 'RUT', name: 'Russell 2000 Index', price: 2025.00, change: '+0.92%', isUp: true, isContract: false },
+      { ticker: 'SPX', name: 'S&P 500 Index', kind: 'Index', isContract: false },
+      { ticker: 'NDX', name: 'Nasdaq 100 Index', kind: 'Index', isContract: false },
+      { ticker: 'QQQ', name: 'Invesco QQQ Trust', kind: 'ETF', isContract: false },
+      { ticker: 'SPY', name: 'SPDR S&P 500 ETF', kind: 'ETF', isContract: false },
+      { ticker: 'RUT', name: 'Russell 2000 Index', kind: 'Index', isContract: false },
     ];
 
     let combinedSet = [];
@@ -831,15 +824,15 @@ export default function App() {
           This account is active on another device. Only one live session is allowed at a time.
         </p>
         <div className="text-[10px] text-[var(--text-tertiary)] uppercase">
-          If this was you, please wait 30 seconds and refresh to initiate a new primary handshake.
+          If this was you, wait about 30 seconds and refresh to start a new session.
         </div>
         <button
           onClick={() => {
             window.location.reload();
           }}
-          className="mt-6 px-4 py-2 bg-red-600 hover:bg-red-500 text-[var(--text-primary)] font-bold text-xs uppercase tracking-widest rounded transition-colors cursor-pointer"
+          className="mt-6 px-4 py-2 bg-red-600 hover:bg-red-500 text-[var(--text-primary)] font-bold text-xs uppercase tracking-widest rounded transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[var(--border-strong)]"
         >
-          Re-establish Session Hook
+          Reconnect
         </button>
       </div>
     );
@@ -849,8 +842,8 @@ export default function App() {
     return (
       <div className="min-h-screen bg-black text-[var(--text-tertiary)] flex flex-col justify-center items-center font-mono select-none antialiased">
         <div className="w-8 h-8 border-t-2 border-white rounded-full animate-spin mb-4"></div>
-        <div className="tracking-widest uppercase text-xs text-[var(--text-primary)]">SECURE WORKSTATION COCKPIT CONNECTING...</div>
-        <div className="text-[10px] text-zinc-650 mt-2 uppercase font-mono font-bold animate-pulse">Verifying verified Clerk credentials and security cookies</div>
+        <div className="tracking-widest uppercase text-xs text-[var(--text-primary)]">Connecting to your workspace…</div>
+        <div className="text-[10px] text-zinc-650 mt-2 uppercase font-mono font-bold">Verifying your secure session</div>
       </div>
     );
   }
@@ -863,8 +856,8 @@ export default function App() {
     return (
       <div className="min-h-screen bg-black text-[var(--text-tertiary)] flex flex-col justify-center items-center font-mono select-none antialiased">
         <div className="w-8 h-8 border-t-2 border-white rounded-full animate-spin mb-4"></div>
-        <div className="tracking-widest uppercase text-xs text-[var(--text-primary)]">SLAYER CLIENT HYDRATION ENGINE ONLINE...</div>
-        <div className="text-[10px] text-zinc-650 mt-2 uppercase font-mono">Resolving dynamic system variables</div>
+        <div className="tracking-widest uppercase text-xs text-[var(--text-primary)]">Loading live market data…</div>
+        <div className="text-[10px] text-zinc-650 mt-2 uppercase font-mono">Syncing the analytics engine</div>
       </div>
     );
   }
@@ -910,7 +903,7 @@ export default function App() {
             onClick={() => {
               fetch('/api/auth/logout', { method: 'POST' }).then(() => window.location.reload());
             }}
-            className="w-full bg-red-600 text-white font-bold text-center py-2 text-xs cursor-pointer hover:bg-red-700 transition-colors z-[9999]"
+            className="w-full bg-red-600 text-white font-bold text-center py-2 px-3 text-[10px] sm:text-xs leading-snug cursor-pointer hover:bg-red-700 transition-colors z-[9999]"
           >
             IMPERSONATING USER - CLICK HERE TO TERMINATE SESSION
           </div>
@@ -918,6 +911,13 @@ export default function App() {
         {showAlerts && <SkyseyeAlertHub />}
 
         <div className="flex-1 flex flex-col w-full mx-auto relative z-10 h-full overflow-hidden">
+          {/* Stale-feed banner: surface SSE disconnects inside the views, not just the sidebar dot. */}
+          {feedStatus === 'offline' && !['home', 'subscription'].includes(activeTab) && (
+            <div role="status" aria-live="polite" className="shrink-0 flex items-center justify-center gap-2 bg-[var(--warning)]/10 border-b border-[var(--warning)]/30 px-4 py-1.5 text-[10px] font-mono uppercase tracking-widest text-[var(--warning)]">
+              <span className="h-1.5 w-1.5 rounded-full bg-[var(--warning)] animate-pulse" aria-hidden="true" />
+              Live feed disconnected — reconnecting. Figures may be stale.
+            </div>
+          )}
           {/* Main workspace frame */}
           <main 
             className={`flex-1 flex flex-col w-full max-w-full justify-start overflow-y-auto overflow-x-hidden scroll-smooth touch-pan-y ${['workspace', 'home'].includes(activeTab) ? 'p-0 gap-0' : 'p-2 sm:p-4 md:p-6 gap-4 md:gap-6'}`}
@@ -1006,7 +1006,7 @@ export default function App() {
             {/* TAB: INSTITUTIONAL QUANT LAB */}
             {activeTab === 'quant' && (
               <div className="view-enter border border-[var(--border)] bg-black/80 rounded-md p-1 drop-shadow-2xl">
-                <TierGuard requiredTier={3} tabKey="quant" planKey="quant" planName="Quant Lab" planPrice="$800">
+                <TierGuard requiredTier={4} tabKey="quant" planKey="quant" planName="Quant Lab" planPrice="$1,500">
                   <QuantSuiteView />
                 </TierGuard>
               </div>
@@ -1015,7 +1015,7 @@ export default function App() {
             {/* TAB 5: AUDIT (TRUST ENGINE) */}
             {activeTab === 'auditor' && (
               <div className="view-enter">
-                <TierGuard requiredTier={4} tabKey="trust archive & registry" planKey="quant" planName="Quant Lab" planPrice="$1500">
+                <TierGuard requiredTier={4} tabKey="trust archive & registry" planKey="quant" planName="Quant Lab" planPrice="$1,500">
                   <QuantAuditView
                     selectedAsset={selectedAsset}
                     isCall={selectedOptionType === 'C'}
@@ -1057,6 +1057,20 @@ export default function App() {
                 onSimulateTier={handleSimulateTier}
               />
             )}
+
+            {/* Defensive fallback: an unknown tab (e.g. corrupt persisted value) never blanks the workspace. */}
+            {!['home', 'subscription', 'skyvision', 'pinpoint', 'quant', 'auditor', 'community', 'settings', 'workspace', 'admin'].includes(activeTab) && (
+              <div className="w-full flex-1 flex flex-col items-center justify-center text-center py-24 px-6 select-none">
+                <div className="text-[var(--text-tertiary)] font-mono text-[11px] uppercase tracking-widest mb-3">View not found</div>
+                <p className="text-[var(--text-secondary)] text-sm max-w-sm mb-6 leading-relaxed">This workspace view isn’t available. Let’s get you back to the home cockpit.</p>
+                <button
+                  onClick={() => useContractStore.getState().setActiveTab('home')}
+                  className="px-4 py-2 text-[11px] font-bold uppercase tracking-widest rounded-md bg-[var(--text-primary)] text-[var(--surface)] hover:opacity-90 transition cursor-pointer focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[var(--border-strong)]"
+                >
+                  Return home
+                </button>
+              </div>
+            )}
             </Suspense>
             </ErrorBoundary>
           </main>
@@ -1078,14 +1092,14 @@ export default function App() {
 
       {/* VIEWPORT SIMULATION ACTIVE BANNER */}
       {isSimulating && (
-        <div className="fixed top-0 left-0 right-0 z-[9999] bg-rose-600 text-[var(--text-primary)] px-4 py-1.5 flex justify-between items-center font-mono text-[10px] tracking-widest font-black shadow-[0_0_20px_rgba(225,29,72,0.4)]">
-          <div className="flex items-center gap-3">
-            <span className="w-2 h-2 bg-white rounded-full animate-ping" />
-            <span><span className="font-black">Preview mode</span> · Viewing as {session?.access_tier}</span>
+        <div className="fixed top-0 left-0 right-0 z-[9999] bg-rose-600 text-[var(--text-primary)] px-3 sm:px-4 py-1.5 flex flex-wrap gap-2 justify-between items-center font-mono text-[10px] tracking-widest font-black shadow-[0_0_20px_rgba(225,29,72,0.4)]">
+          <div className="flex items-center gap-3 min-w-0">
+            <span className="w-2 h-2 bg-white rounded-full animate-ping shrink-0" />
+            <span className="truncate"><span className="font-black">Preview mode</span> · Viewing as {session?.access_tier}</span>
           </div>
           <button
             onClick={handleExitSimulation}
-            className="bg-black hover:bg-black text-[var(--text-primary)] px-4 py-1 transition-colors border border-rose-800"
+            className="bg-black hover:bg-black text-[var(--text-primary)] px-4 py-1 transition-colors border border-rose-800 shrink-0"
           >
             Exit preview
           </button>
@@ -1107,17 +1121,28 @@ export default function App() {
         </div>
       )}
 
+      {/* Legal center — global overlay (Terms / Privacy / Risk / Refunds / Cookies) */}
+      <LegalCenter />
+
       {/* Terminal Footer Status Bar */}
       {activeTab !== 'workspace' && (
-        <footer className="mt-auto border-t border-white/5 bg-black px-6 py-3.5 flex flex-col sm:flex-row items-center justify-between text-[9px] text-[var(--text-tertiary)] font-mono tracking-widest uppercase gap-2">
+        <footer className="mt-auto border-t border-white/5 bg-black px-4 sm:px-6 py-3.5 flex flex-col sm:flex-row items-center justify-between text-[9px] text-[var(--text-tertiary)] font-mono tracking-widest uppercase gap-2">
         <div className="flex items-center gap-2">
           <span className="text-[var(--text-tertiary)]">NY</span>
           <FooterClock />
         </div>
-        <span className="normal-case tracking-normal text-[var(--text-tertiary)] order-last sm:order-none">Not investment advice.</span>
+        <div className="flex items-center gap-x-3 gap-y-1.5 flex-wrap justify-center order-last sm:order-none normal-case tracking-normal">
+          <button onClick={() => useLegal.getState().open('terms')} className="text-[var(--text-tertiary)] hover:text-[var(--text-secondary)] transition-colors cursor-pointer">Terms</button>
+          <span className="text-[var(--border-strong)]" aria-hidden="true">·</span>
+          <button onClick={() => useLegal.getState().open('privacy')} className="text-[var(--text-tertiary)] hover:text-[var(--text-secondary)] transition-colors cursor-pointer">Privacy</button>
+          <span className="text-[var(--border-strong)]" aria-hidden="true">·</span>
+          <button onClick={() => useLegal.getState().open('risk')} className="text-[var(--text-tertiary)] hover:text-[var(--text-secondary)] transition-colors cursor-pointer">Risk Disclosure</button>
+          <span className="text-[var(--border-strong)]" aria-hidden="true">·</span>
+          <span className="text-[var(--text-tertiary)]">Not investment advice.</span>
+        </div>
         <div className="flex items-center gap-2 mt-2 sm:mt-0">
-          <div className="w-1.5 h-1.5 bg-[var(--success)] rounded-full animate-pulse"></div>
-          <span className="text-[var(--text-tertiary)] font-bold">{serverState?.data_source === 'SANDBOX_SYNTHETIC' ? 'Sandbox Feed' : 'Live Feed'}</span>
+          <div className={`w-1.5 h-1.5 rounded-full ${feedStatus === 'offline' ? 'bg-[var(--danger)]' : 'bg-[var(--success)] animate-pulse'}`}></div>
+          <span className="text-[var(--text-tertiary)] font-bold">{feedStatus === 'offline' ? 'Offline' : serverState?.data_source === 'SANDBOX_SYNTHETIC' ? 'Sandbox Feed' : 'Live Feed'}</span>
         </div>
       </footer>
       )}
@@ -1140,12 +1165,15 @@ export default function App() {
             className="fixed inset-0 bg-black/90 z-[999] flex items-center justify-center p-4 backdrop-blur-md font-mono cursor-default" 
             id="prism-menu"
           >
-            <motion.div 
+            <motion.div
               initial={{ scale: 0.95, y: 16, opacity: 0 }}
               animate={{ scale: 1, y: 0, opacity: 1 }}
               exit={{ scale: 0.95, y: 12, opacity: 0 }}
               transition={{ duration: 0.5, ease: [0.22, 1.2, 0.36, 1] }} // --ease-spring
-              className="w-full max-w-lg bg-black border border-black rounded-lg shadow-2xl overflow-hidden text-left"
+              role="dialog"
+              aria-modal="true"
+              aria-label="Global command menu"
+              className="w-full max-w-lg bg-black border border-[var(--border-strong)] rounded-lg shadow-2xl overflow-hidden text-left"
             >
               <div className="p-4 border-b border-black/60 flex flex-col gap-3">
                 <div className="flex items-center gap-3">
@@ -1265,7 +1293,7 @@ export default function App() {
                         </div>
                         <div className="flex items-center gap-2.5 shrink-0">
                           <span className="text-[10px] font-bold text-[var(--text-tertiary)] font-mono">
-                            {tickerItem.isContract || tickerItem.isTool || tickerItem.isNav ? tickerItem.pnl : `$${tickerItem.price?.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
+                            {tickerItem.isContract || tickerItem.isTool || tickerItem.isNav ? tickerItem.pnl : tickerItem.kind}
                           </span>
                           <ChevronRight className={`w-3.5 h-3.5 transition-colors ${isActive ? 'text-[var(--text-primary)]' : 'text-zinc-700'}`} />
                         </div>

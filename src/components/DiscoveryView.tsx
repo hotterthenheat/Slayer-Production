@@ -760,6 +760,9 @@ export function DiscoveryView({
 
   const [optionTypeFilter, setOptionTypeFilter] = useState<'all' | 'calls' | 'puts'>('all');
   const [feedLogs, setFeedLogs] = useState(INITIAL_FEED_LOGS);
+  // True when the sample discovery SSE stream drops; surfaced as a subtle
+  // "reconnecting" chip on the tape (the browser EventSource auto-reconnects).
+  const [feedError, setFeedError] = useState(false);
   const [lastFlashingId, setLastFlashingId] = useState<string | null>(null);
   const [flashDirection, setFlashDirection] = useState<'up' | 'down'>('up');
   const [metricsPulse, setMetricsPulse] = useState(false);
@@ -836,6 +839,9 @@ export function DiscoveryView({
   const [brierScore, setBrierScore] = useState(0.042);
   const [globalGex, setGlobalGex] = useState(485.4);
   const [scanRate, setScanRate] = useState(14.8);
+  // Wall-clock of the last sample-metric tick, shown as an "as of" caption so the
+  // illustrative readouts carry a freshness cue (consistent with the SAMPLE label).
+  const [metricsAsOf, setMetricsAsOf] = useState<number>(() => Date.now());
 
   // Subscribe to the backend discovery SSE stream. NOTE: this stream currently
   // carries the SAMPLE seed rows with light server-side jitter — it does not read
@@ -845,14 +851,24 @@ export function DiscoveryView({
     const eventSource = new EventSource(url);
     const flashTimers: ReturnType<typeof setTimeout>[] = [];
 
+    eventSource.onopen = () => {
+      // A successful (re)connection clears any prior error chip.
+      setFeedError(false);
+    };
+
     eventSource.onmessage = (event) => {
       try {
+        // Any delivered message means the stream is healthy again.
+        setFeedError(false);
         const data = JSON.parse(event.data);
         if (data.contracts) setContracts(data.contracts);
         if (data.feedLogs) setFeedLogs(data.feedLogs);
         if (typeof data.brierScore === 'number') setBrierScore(data.brierScore);
         if (typeof data.globalGex === 'number') setGlobalGex(data.globalGex);
         if (typeof data.scanRate === 'number') setScanRate(data.scanRate);
+        if (typeof data.brierScore === 'number' || typeof data.globalGex === 'number' || typeof data.scanRate === 'number') {
+          setMetricsAsOf(Date.now());
+        }
         if (data.lastFlashingId) {
           setLastFlashingId(data.lastFlashingId);
           if (data.flashDirection) setFlashDirection(data.flashDirection);
@@ -868,6 +884,9 @@ export function DiscoveryView({
 
     eventSource.onerror = (err) => {
       console.error('[SkyVision Discovery Client] EventSource Error', err);
+      // Surface a subtle reconnecting state without tearing down the pipeline —
+      // EventSource reconnects on its own; onopen/onmessage will clear this.
+      setFeedError(true);
     };
 
     return () => {
@@ -1081,7 +1100,7 @@ export function DiscoveryView({
     <div className={`w-full flex flex-col font-mono select-none antialiased space-y-6 max-w-6xl mx-auto pt-2 pb-12 ${c_textColor}`}>
       
       {/* 1. TOP STATUS BAR */}
-      <div className={`flex flex-col md:flex-row justify-between items-stretch md:items-center p-4 rounded-xl gap-4 md:gap-2 border ${c_cardBg}`}>
+      <div className={`flex flex-col md:flex-row justify-between items-stretch md:items-center p-3 sm:p-4 rounded-xl gap-4 md:gap-2 border ${c_cardBg}`}>
 
         <div className="flex items-center gap-2.5">
           <Target className="w-4 h-4 text-[var(--success)] shrink-0" />
@@ -1116,6 +1135,11 @@ export function DiscoveryView({
             <span className="text-[9.5px] text-[var(--text-tertiary)] uppercase block tracking-wider font-extrabold">Scan Rate</span>
             <span className="text-[var(--info)] font-bold block font-mono">
               {scanRate.toFixed(1)}/s
+            </span>
+          </div>
+          <div className="w-full md:w-auto md:basis-full">
+            <span className="text-[8.5px] text-[var(--text-tertiary)] uppercase tracking-wider font-bold tabular-nums">
+              Sample · as of {formatTime(metricsAsOf)}
             </span>
           </div>
         </div>
@@ -1303,7 +1327,12 @@ export function DiscoveryView({
       {/* 2B. EXPANDABLE STRATEGY EXPLANATION */}
       <div className={`w-full p-4 rounded-xl text-left border ${c_cardBg}`}>
 
-        <div className="flex justify-between items-center cursor-pointer select-none pb-2.5 border-b border-[var(--border)]" onClick={() => setIsStrategyExpanded(!isStrategyExpanded)}>
+        <button
+          type="button"
+          onClick={() => setIsStrategyExpanded(!isStrategyExpanded)}
+          aria-expanded={isStrategyExpanded}
+          className="w-full text-left flex justify-between items-center cursor-pointer select-none pb-2.5 border-b border-[var(--border)] focus-visible:ring-1 focus-visible:ring-[var(--border-strong)] focus:outline-none"
+        >
           <div className="flex items-center gap-2">
             <Info className="w-4 h-4 text-[var(--info)]" />
             <span className="text-[11px] font-extrabold uppercase tracking-widest text-[var(--text-primary)]">
@@ -1316,7 +1345,7 @@ export function DiscoveryView({
             </span>
             {isStrategyExpanded ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
           </div>
-        </div>
+        </button>
 
         <AnimatePresence initial={false}>
           {isStrategyExpanded && (
@@ -1421,11 +1450,11 @@ export function DiscoveryView({
               {sortedTickers.map((ticker) => {
                 const tickerContracts = groupedByTickerAndSorted[ticker];
                 return (
-                  <div key={ticker} className="space-y-3 p-4 rounded-xl text-left border bg-[var(--surface)] border-[var(--border)]">
+                  <div key={ticker} className="space-y-3 p-3 sm:p-4 rounded-xl text-left border bg-[var(--surface)] border-[var(--border)]">
 
                     {/* Ticker Section Title segment */}
-                    <div className="flex items-center justify-between border-b pb-2.5 mb-1 border-[var(--border)]">
-                      <div className="flex items-center gap-4">
+                    <div className="flex items-center justify-between gap-2 border-b pb-2.5 mb-1 border-[var(--border)] flex-wrap">
+                      <div className="flex items-center gap-2 sm:gap-4 flex-wrap">
                         <div className="flex items-center gap-2">
                           <span className={`text-xs font-black tracking-widest uppercase font-mono ${c_textWhite}`}>{ticker}</span>
                           <span className="bg-[var(--info)]/10 border border-[var(--info)]/20 text-[var(--info)] text-[8px] font-bold px-1.5 py-0.5 rounded uppercase tracking-wider">
@@ -1439,7 +1468,7 @@ export function DiscoveryView({
                           </span>
                         </div>
                       </div>
-                      <span className="text-[7.5px] text-[var(--text-tertiary)] uppercase tracking-widest font-black">
+                      <span className="text-[7.5px] text-[var(--text-tertiary)] uppercase tracking-widest font-black shrink-0">
                         Strongest → Weakest
                       </span>
                     </div>
@@ -1490,7 +1519,11 @@ export function DiscoveryView({
                             animate={{ opacity: 1, y: 0 }}
                             exit={{ opacity: 0, scale: 0.95 }}
                             transition={{ duration: 0.25 }}
-                            className={`p-4 border rounded-xl flex flex-col gap-2.5 text-left transition-colors cursor-pointer ${
+                            role="button"
+                            tabIndex={0}
+                            aria-expanded={isCardExpanded}
+                            aria-label={`${c.ticker} ${c.strike}${c.isCall ? 'C' : 'P'} — ${isCardExpanded ? 'collapse' : 'expand'} details`}
+                            className={`p-4 border rounded-xl flex flex-col gap-2.5 text-left transition-colors cursor-pointer focus-visible:ring-1 focus-visible:ring-[var(--border-strong)] focus:outline-none ${
                               isFlashing
                                 ? (flashDirection === 'up' ? 'bg-[var(--success)]/5 border-[var(--success)]/30' : 'bg-[var(--danger)]/5 border-[var(--danger)]/30')
                                 : isCardExpanded
@@ -1502,6 +1535,15 @@ export function DiscoveryView({
                                 ...prev,
                                 [c.id]: !prev[c.id]
                               }));
+                            }}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter' || e.key === ' ') {
+                                e.preventDefault();
+                                setExpandedContracts(prev => ({
+                                  ...prev,
+                                  [c.id]: !prev[c.id]
+                                }));
+                              }
                             }}
                           >
 
@@ -1696,7 +1738,7 @@ export function DiscoveryView({
           </div>
 
           {/* GRID SUMMARY */}
-          <div className={`w-full rounded-xl p-5 text-left flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border ${c_cardBg}`}>
+          <div className={`w-full rounded-xl p-3 sm:p-5 text-left flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border ${c_cardBg}`}>
             <div className="space-y-1">
               <span className="text-[8.5px] text-[var(--info)] tracking-widest uppercase font-black block">How This Works</span>
               <p className="text-[10px] tracking-wide leading-relaxed font-sans font-medium text-[var(--text-secondary)]">
@@ -1721,7 +1763,7 @@ export function DiscoveryView({
         <div className="lg:col-span-4 flex flex-col gap-4 w-full">
 
           {/* A. LARGEST TRADES (derived from live tape) */}
-          <div className={`border rounded-xl p-4.5 text-left flex flex-col gap-3.5 ${c_cardBg}`}>
+          <div className={`border rounded-xl p-3 sm:p-4.5 text-left flex flex-col gap-3.5 ${c_cardBg}`}>
 
             <div className="flex items-center gap-2 border-b pb-2.5 border-[var(--border)]">
               <Flame className="w-4 h-4 text-[var(--danger)]" />
@@ -1794,7 +1836,7 @@ export function DiscoveryView({
           </div>
 
           {/* B. LIVE FLOW FEED */}
-          <div className={`border rounded-xl p-4.5 text-left flex flex-col gap-3.5 ${c_cardBg}`}>
+          <div className={`border rounded-xl p-3 sm:p-4.5 text-left flex flex-col gap-3.5 ${c_cardBg}`}>
 
             <div className="flex items-center justify-between border-b pb-2.5 border-[var(--border)]">
               <div className="flex items-center gap-2">
@@ -1803,6 +1845,16 @@ export function DiscoveryView({
                   Sample Option Flow
                 </h2>
               </div>
+              {feedError && (
+                <span
+                  className="flex items-center gap-1.5 text-[8px] font-black uppercase tracking-widest px-1.5 py-0.5 rounded border bg-[var(--warning)]/10 text-[var(--warning)] border-[var(--warning)]/30"
+                  role="status"
+                  aria-live="polite"
+                >
+                  <RefreshCw className="w-2.5 h-2.5 animate-spin" aria-hidden="true" />
+                  Reconnecting…
+                </span>
+              )}
             </div>
 
             {/* Scrolling Tape Container */}
@@ -1830,7 +1882,8 @@ export function DiscoveryView({
                             {log.side.toUpperCase()}
                           </span>
                         </div>
-                        <span className={`font-mono font-extrabold ${isBullish ? 'text-[var(--success)]' : 'text-[var(--warning)]'}`}>
+                        <span className={`font-mono font-extrabold flex items-center gap-1 ${isBullish ? 'text-[var(--success)]' : 'text-[var(--warning)]'}`}>
+                          <span aria-hidden="true">{isBullish ? '▲' : '▼'}</span>
                           {log.action}
                         </span>
                       </div>
@@ -1840,7 +1893,7 @@ export function DiscoveryView({
                           {log.ticker} {log.strike}{log.type}
                         </span>
                         <span className={isBullish ? 'text-[var(--success)]' : 'text-[var(--warning)]'}>
-                          {log.premium}
+                          <span aria-hidden="true">{isBullish ? '+' : '−'}</span>{log.premium}
                         </span>
                       </div>
 

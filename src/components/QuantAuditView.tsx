@@ -431,10 +431,20 @@ export function QuantAuditView({
     return (
       <div
         key={t.id}
-        className={`bg-[var(--surface)] border transition-all rounded-xl overflow-hidden cursor-pointer ${
+        role="button"
+        tabIndex={0}
+        aria-expanded={isExpanded}
+        aria-label={`${t.contract} ${ticker} trade — ${outcome.text}. ${isExpanded ? 'Collapse' : 'Expand'} details`}
+        className={`bg-[var(--surface)] border transition-all rounded-xl overflow-hidden cursor-pointer focus-visible:ring-1 focus-visible:ring-[var(--border-strong)] focus:outline-none ${
           isExpanded ? 'border-[var(--border-strong)]' : 'border-[var(--border)] hover:border-[var(--border-strong)]'
         }`}
         onClick={() => toggleExpand(t.id)}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            toggleExpand(t.id);
+          }
+        }}
       >
         <div className="p-3.5 flex items-center justify-between gap-2">
           <div className="flex items-center gap-3 min-w-0">
@@ -481,9 +491,9 @@ export function QuantAuditView({
             </div>
             <span className={outcome.classes}>{outcome.text}</span>
             {isExpanded ? (
-              <ChevronUp className="w-4 h-4 text-[var(--text-tertiary)]" />
+              <ChevronUp className="w-4 h-4 text-[var(--text-tertiary)]" aria-label="Collapse trade details" />
             ) : (
-              <ChevronDown className="w-4 h-4 text-[var(--text-tertiary)]" />
+              <ChevronDown className="w-4 h-4 text-[var(--text-tertiary)]" aria-label="Expand trade details" />
             )}
           </div>
         </div>
@@ -526,6 +536,13 @@ export function QuantAuditView({
     { key: 'WINS', label: 'WINS' },
     { key: 'LOSSES', label: 'LOSSES' },
   ];
+
+  // "as of" cue for the session footer — reflects when this view last rendered
+  // its session tally (recomputed whenever the trade set changes). Not a live clock.
+  const sessionAsOf = useMemo(
+    () => new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+    [trades]
+  );
 
   const macKey = typeof window !== 'undefined' && navigator.userAgent.includes('Mac');
   const prismLabel = prismKeybind
@@ -629,6 +646,7 @@ export function QuantAuditView({
       <div className="flex flex-col lg:flex-row gap-3">
         <button
           onClick={() => useContractStore.getState().setIsGlobalSearchOpen(true)}
+          aria-label="Open trade history search"
           className="global-prism-trigger flex-1 bg-[var(--surface)] border border-[var(--border)] p-3 rounded-lg flex items-center justify-between gap-2 text-left cursor-pointer hover:border-[var(--border-strong)] transition-all focus-visible:ring-1 focus-visible:ring-[var(--border-strong)] focus:outline-none"
         >
           <div className="flex items-center gap-2.5">
@@ -657,13 +675,13 @@ export function QuantAuditView({
           </div>
         </button>
 
-        <div className="flex gap-2">
-          <div className="flex bg-[var(--surface)] p-1 border border-[var(--border)] rounded-lg">
+        <div className="flex flex-wrap gap-2">
+          <div className="flex flex-1 sm:flex-none overflow-x-auto scrollbar-none bg-[var(--surface)] p-1 border border-[var(--border)] rounded-lg">
             {['ALL', 'SPX', 'NDX', 'QQQ', 'SPY'].map(ticker => (
               <button
                 key={ticker}
                 onClick={() => setAssetFilter(ticker)}
-                className={`px-3 py-1.5 text-[10px] font-bold uppercase rounded transition-all cursor-pointer focus-visible:ring-1 focus-visible:ring-[var(--border-strong)] focus:outline-none ${
+                className={`shrink-0 px-3 py-1.5 text-[10px] font-bold uppercase rounded transition-all cursor-pointer focus-visible:ring-1 focus-visible:ring-[var(--border-strong)] focus:outline-none ${
                   assetFilter === ticker
                     ? 'bg-[var(--surface-3)] text-[var(--text-primary)]'
                     : 'text-[var(--text-tertiary)] hover:text-[var(--text-secondary)]'
@@ -673,12 +691,12 @@ export function QuantAuditView({
               </button>
             ))}
           </div>
-          <div className="flex bg-[var(--surface)] p-1 border border-[var(--border)] rounded-lg">
+          <div className="flex flex-1 sm:flex-none overflow-x-auto scrollbar-none bg-[var(--surface)] p-1 border border-[var(--border)] rounded-lg">
             {filterPills.map(({ key, label }) => (
               <button
                 key={key}
                 onClick={() => setOutcomeFilter(key)}
-                className={`px-3 py-1.5 text-[10px] font-bold uppercase rounded transition-all cursor-pointer focus-visible:ring-1 focus-visible:ring-[var(--border-strong)] focus:outline-none ${
+                className={`shrink-0 flex-1 sm:flex-none px-3 py-1.5 text-[10px] font-bold uppercase rounded transition-all cursor-pointer focus-visible:ring-1 focus-visible:ring-[var(--border-strong)] focus:outline-none ${
                   outcomeFilter === key
                     ? 'bg-[var(--surface-3)] text-[var(--text-primary)]'
                     : 'text-[var(--text-tertiary)] hover:text-[var(--text-secondary)]'
@@ -712,7 +730,7 @@ export function QuantAuditView({
       {/* Footer */}
       <div className="text-center pt-4 border-t border-[var(--border)]">
         <span className="text-[var(--text-tertiary)] text-[10px] uppercase tracking-[0.28em] font-bold">
-          {stats.total} {stats.total === 1 ? 'Trade' : 'Trades'} · Logged This Session
+          {stats.total} {stats.total === 1 ? 'Trade' : 'Trades'} · Logged This Session · as of {sessionAsOf}
         </span>
       </div>
     </div>

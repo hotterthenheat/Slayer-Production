@@ -22,6 +22,7 @@ interface Props { isSuperAdmin?: boolean; }
 
 export function WorkspaceView({ isSuperAdmin }: Props) {
   const [layout, setLayout] = useState<PaneLayout[]>([]);
+  const [loading, setLoading] = useState(true);
   const [maximized, setMaximized] = useState<string | null>(null);
   const [addOpen, setAddOpen] = useState(false);
   const [loadOpen, setLoadOpen] = useState(false);
@@ -29,6 +30,16 @@ export function WorkspaceView({ isSuperAdmin }: Props) {
   const [colWidth, setColWidth] = useState(80);
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const interaction = useRef<null | { id: string; mode: 'move' | 'resize'; startX: number; startY: number; orig: PaneLayout }>(null);
+
+  // Lightweight self-contained toast for surfacing save failures.
+  const [toast, setToast] = useState<string | null>(null);
+  const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const notifyError = useCallback((text: string) => {
+    setToast(text);
+    if (toastTimer.current) clearTimeout(toastTimer.current);
+    toastTimer.current = setTimeout(() => setToast(null), 4000);
+  }, []);
+  useEffect(() => () => { if (toastTimer.current) clearTimeout(toastTimer.current); }, []);
 
   useEffect(() => {
     const measure = () => {
@@ -48,9 +59,11 @@ export function WorkspaceView({ isSuperAdmin }: Props) {
         method: 'PATCH', credentials: 'same-origin',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ layout: next }),
-      }).catch(() => {});
+      })
+        .then((r) => { if (!r.ok) throw new Error(`HTTP ${r.status}`); })
+        .catch(() => notifyError('Workspace changes saved locally but failed to sync to your account.'));
     }, 1000);
-  }, []);
+  }, [notifyError]);
 
   const commit = useCallback((next: PaneLayout[]) => { setLayout(next); persist(next); }, [persist]);
 
@@ -80,7 +93,8 @@ export function WorkspaceView({ isSuperAdmin }: Props) {
           persist(fb); // hydrate Template A into the user's profile
         }
       })
-      .catch(() => { if (!cancelled) setLayout(fallback()); });
+      .catch(() => { if (!cancelled) setLayout(fallback()); })
+      .finally(() => { if (!cancelled) setLoading(false); });
     return () => { cancelled = true; };
   }, [persist]);
 
@@ -143,6 +157,23 @@ export function WorkspaceView({ isSuperAdmin }: Props) {
 
   const [saveName, setSaveName] = useState('');
   const [showSaveOverlay, setShowSaveOverlay] = useState(false);
+  const saveInputRef = useRef<HTMLInputElement>(null);
+  const saveTriggerRef = useRef<HTMLButtonElement>(null);
+
+  // Save-Workspace modal a11y: focus the name field on open, support Escape to
+  // close, and restore focus to the trigger when the modal closes.
+  useEffect(() => {
+    if (!showSaveOverlay) return;
+    saveInputRef.current?.focus();
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') { setShowSaveOverlay(false); setSaveName(''); }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => {
+      window.removeEventListener('keydown', onKey);
+      saveTriggerRef.current?.focus();
+    };
+  }, [showSaveOverlay]);
   const [customLayouts, setCustomLayouts] = useState<Record<string, PaneLayout[]>>(() => {
     try {
       const stored = localStorage.getItem('slayer_ws_custom');
@@ -179,7 +210,7 @@ export function WorkspaceView({ isSuperAdmin }: Props) {
         <div className="flex-none bg-[var(--surface)] border-b border-[var(--border)] px-3 py-2 flex items-center justify-between gap-3 z-40">
           <span className="text-[10px] font-semibold uppercase tracking-[0.18em] text-[var(--text-tertiary)]">Workspace Editor</span>
           <div className="flex items-center gap-1.5">
-            <button onClick={() => { setShowSaveOverlay(true); setLoadOpen(false); setAddOpen(false); }} className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-[var(--text-secondary)] bg-[var(--surface-2)] border border-[var(--border)] rounded-[3px] px-2.5 py-1.5 hover:bg-[var(--surface-3)] hover:text-[var(--text-primary)] transition-colors">
+            <button ref={saveTriggerRef} onClick={() => { setShowSaveOverlay(true); setLoadOpen(false); setAddOpen(false); }} className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-[var(--text-secondary)] bg-[var(--surface-2)] border border-[var(--border)] rounded-[3px] px-2.5 py-1.5 hover:bg-[var(--surface-3)] hover:text-[var(--text-primary)] transition-colors">
               <Plus className="w-3 h-3" /> <span className="hidden md:inline">Save</span>
             </button>
 
@@ -267,9 +298,20 @@ export function WorkspaceView({ isSuperAdmin }: Props) {
                 </div>
               );
             })}
-            {layout.length === 0 && (
-              <div className="absolute inset-0 flex items-center justify-center text-[10px] font-medium text-[var(--text-tertiary)] uppercase tracking-[0.18em]">
-                Loading workspace…
+            {layout.length === 0 && loading && (
+              <div className="absolute inset-0 p-2" aria-busy="true" aria-label="Loading workspace">
+                <div className="grid grid-cols-2 lg:grid-cols-3 auto-rows-[160px] gap-2">
+                  {Array.from({ length: 6 }).map((_, i) => (
+                    <div key={i} className="flex flex-col bg-[var(--surface)] border border-[var(--border)] rounded-[3px] overflow-hidden animate-pulse">
+                      <div className="h-7 shrink-0 bg-[var(--surface-2)] border-b border-[var(--border)]" />
+                      <div className="flex-1 p-3 flex flex-col gap-2">
+                        <div className="h-3 w-2/3 rounded bg-[var(--surface-3)]" />
+                        <div className="h-3 w-1/2 rounded bg-[var(--surface-3)]" />
+                        <div className="h-3 w-3/4 rounded bg-[var(--surface-3)]" />
+                      </div>
+                    </div>
+                  ))}
+                </div>
               </div>
             )}
           </div>
@@ -296,22 +338,29 @@ export function WorkspaceView({ isSuperAdmin }: Props) {
       </div>
 
       {showSaveOverlay && (
-        <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
-          <div className="bg-[var(--surface)] border border-[var(--border)] rounded-[4px] p-5 w-full max-w-sm flex flex-col gap-4 shadow-2xl">
-            <h2 className="text-[var(--text-primary)] font-semibold text-[11px] tracking-[0.14em] uppercase">Save Workspace</h2>
+        <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/70 backdrop-blur-sm p-4" onClick={() => { setShowSaveOverlay(false); setSaveName(''); }}>
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="save-workspace-title"
+            onClick={(e) => e.stopPropagation()}
+            className="bg-[var(--surface)] border border-[var(--border)] rounded-[4px] p-5 w-full max-w-sm flex flex-col gap-4 shadow-2xl"
+          >
+            <h2 id="save-workspace-title" className="text-[var(--text-primary)] font-semibold text-[11px] tracking-[0.14em] uppercase">Save Workspace</h2>
             <p className="text-[var(--text-tertiary)] text-[10px] leading-relaxed">
               Saved locally in this browser.
             </p>
+            <label htmlFor="save-workspace-name" className="sr-only">Workspace name</label>
             <input
+              id="save-workspace-name"
+              ref={saveInputRef}
               type="text"
               value={saveName}
               onChange={e => setSaveName(e.target.value)}
               placeholder="Workspace name"
               className="bg-[var(--surface-2)] border border-[var(--border)] text-[var(--text-primary)] placeholder:text-[var(--text-tertiary)] px-3 py-2 text-[11px] font-medium focus:outline-none focus:border-[var(--success)] transition-colors rounded-[3px]"
-              autoFocus
               onKeyDown={(e) => {
                 if (e.key === 'Enter') saveCustomLayout();
-                if (e.key === 'Escape') { setShowSaveOverlay(false); setSaveName(''); }
               }}
             />
             <div className="flex items-center justify-end gap-2 pt-1">
@@ -330,6 +379,16 @@ export function WorkspaceView({ isSuperAdmin }: Props) {
               </button>
             </div>
           </div>
+        </div>
+      )}
+
+      {toast && (
+        <div
+          role="alert"
+          className="fixed bottom-5 right-5 z-[300] flex items-center gap-2.5 bg-[var(--surface-2)] border border-[var(--danger)]/30 rounded-[3px] px-4 py-3 shadow-2xl text-[10px] font-medium text-[var(--text-primary)] max-w-xs"
+        >
+          <span className="w-1.5 h-1.5 rounded-full bg-[var(--danger)] shrink-0" />
+          <span>{toast}</span>
         </div>
       )}
     </>

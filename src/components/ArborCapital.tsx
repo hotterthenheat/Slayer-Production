@@ -170,7 +170,7 @@ export default function ArborCapital() {
   const fmtTime = (ts?: string) => {
     if (!ts) return '';
     const d = new Date(ts);
-    if (isNaN(d.getTime())) return '';
+    if (isNaN(d.getTime())) return '—'; // unparseable timestamp — show an em dash, not a blank
     return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   };
 
@@ -295,7 +295,7 @@ export default function ArborCapital() {
               <SectionHeader
                 icon={<ShieldCheck className="w-4 h-4 text-[var(--success)]" />}
                 title="Trade Ledger"
-                meta={serverState?.data_source ? `Source · ${serverState.data_source}` : undefined}
+                meta={serverState?.data_source && serverState.data_source !== 'undefined' ? `Source · ${serverState.data_source}` : undefined}
               />
 
               {/* Stat strip from real archive */}
@@ -362,11 +362,12 @@ export default function ArborCapital() {
                               {t.contract}
                             </span>
                             <span className="text-[10px] text-[var(--text-tertiary)] tabular-nums">
-                              {fmtTime(t.closeTs || t.timestamp)} · {t.recommendation}
+                              {fmtTime(t.closeTs || t.timestamp) || '—'}
+                              {t.recommendation && (t.recommendation as string) !== 'undefined' ? ` · ${t.recommendation}` : ''}
                             </span>
                           </div>
                         </div>
-                        <div className="flex items-center gap-4 shrink-0">
+                        <div className="flex items-center gap-2.5 sm:gap-4 shrink-0">
                           <div className="flex flex-col items-end">
                             <span className="text-[9px] uppercase tracking-[0.12em] text-[var(--text-tertiary)]">
                               Max gain
@@ -392,9 +393,15 @@ export default function ArborCapital() {
               ) : (
                 <div className="rounded-lg border border-dashed border-[var(--border)] bg-[var(--surface-2)] p-8 text-center">
                   <ShieldCheck className="w-7 h-7 text-[var(--text-tertiary)] mx-auto mb-2" />
-                  <p className="text-xs text-[var(--text-secondary)]">No closed trades recorded yet.</p>
+                  <p className="text-xs text-[var(--text-secondary)]">
+                    {ledgerStats.total === 0
+                      ? 'No trades recorded yet.'
+                      : `No closed trades yet — ${ledgerStats.active} open ${ledgerStats.active === 1 ? 'position' : 'positions'}.`}
+                  </p>
                   <p className="text-[10px] text-[var(--text-tertiary)] mt-1">
-                    Your live track record starts at launch — logged trades appear here as the engine records them.
+                    {ledgerStats.total === 0
+                      ? 'Your live track record starts at launch — logged trades appear here as the engine records them.'
+                      : 'Closed results appear here once open positions resolve.'}
                   </p>
                 </div>
               )}
@@ -599,9 +606,10 @@ export default function ArborCapital() {
                           </div>
                           <button
                             onClick={() => handleVote(req.id)}
-                            className="flex flex-col items-center justify-center rounded-lg border border-[var(--border)] bg-[var(--surface-2)] px-2.5 py-1.5 shrink-0 hover:border-[var(--success)]/60 transition-colors"
+                            aria-label={`Upvote "${req.title}" — ${req.votes} ${req.votes === 1 ? 'vote' : 'votes'}`}
+                            className="flex flex-col items-center justify-center rounded-lg border border-[var(--border)] bg-[var(--surface-2)] px-2.5 py-1.5 shrink-0 hover:border-[var(--success)]/60 transition-colors focus-visible:ring-1 focus-visible:ring-[var(--border-strong)] focus:outline-none"
                           >
-                            <ChevronUp className="w-3.5 h-3.5 text-[var(--success)]" />
+                            <ChevronUp className="w-3.5 h-3.5 text-[var(--success)]" aria-hidden="true" />
                             <span className="text-[11px] font-bold tabular-nums text-[var(--text-primary)]">
                               {req.votes}
                             </span>

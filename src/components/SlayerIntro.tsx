@@ -109,9 +109,9 @@ export default function SlayerIntro({
         initial={{ opacity: 0, y: 24 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
-        className="relative z-10 w-full max-w-6xl mx-auto px-6 pb-16 pt-20 md:pt-28 flex flex-col gap-16"
+        className="relative z-10 w-full max-w-6xl mx-auto px-4 sm:px-6 pb-16 pt-20 md:pt-28 flex flex-col gap-16"
       >
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-16 items-center">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 sm:gap-12 lg:gap-16 items-center">
           {/* Left — message */}
           <div className="flex flex-col items-start text-left">
             <span className="inline-flex items-center gap-2 text-[10px] font-semibold tracking-[0.18em] uppercase text-[var(--text-tertiary)] mb-6">
@@ -146,7 +146,7 @@ export default function SlayerIntro({
             </div>
 
             {/* Honest, prop-derived stats */}
-            <div className="grid grid-cols-3 gap-6 mt-12 w-full max-w-md border-t border-[var(--border)] pt-6">
+            <div className="grid grid-cols-3 gap-3 sm:gap-6 mt-12 w-full max-w-md border-t border-[var(--border)] pt-6">
               <div>
                 <span className="block text-xl font-bold text-[var(--text-primary)] tabular-nums">{contractsScanned}</span>
                 <span className="block text-[10px] uppercase tracking-wider text-[var(--text-tertiary)] mt-1">Contracts ranked</span>
@@ -208,7 +208,7 @@ export default function SlayerIntro({
             <div
               id="slayer-hero-opportunity"
               onClick={handleLaunchToActiveOpportunity}
-              className="w-full rounded-2xl p-6 bg-[var(--surface)] border border-[var(--border)] hover:border-[var(--border-strong)] transition-colors duration-200 cursor-pointer flex flex-col gap-4"
+              className="w-full rounded-2xl p-4 sm:p-6 bg-[var(--surface)] border border-[var(--border)] hover:border-[var(--border-strong)] transition-colors duration-200 cursor-pointer flex flex-col gap-4"
             >
               {/* Header */}
               <div className="flex items-center justify-between pb-3 border-b border-[var(--border)]">
@@ -223,43 +223,53 @@ export default function SlayerIntro({
                 </span>
               </div>
 
-              {/* Headline contract */}
-              <div className="flex items-center justify-between gap-4">
-                <div>
-                  <span className="block text-2xl font-bold text-[var(--text-primary)] tracking-tight">
-                    {bestOpportunity.ticker}
-                  </span>
-                  <span className="block text-[11px] text-[var(--text-tertiary)] uppercase tracking-wide mt-1">
-                    {bestOpportunity.isCall ? 'Call' : 'Put'} · {activeHeroIdx}
-                  </span>
-                </div>
-                <span className={`text-[11px] font-semibold uppercase tracking-wide px-3 py-1.5 rounded-md ${
-                  bestOpportunity.isCall ? 'bg-[var(--success)]/15 text-[var(--success)]' : 'bg-[var(--danger)]/15 text-[var(--danger)]'
-                }`}>
-                  {bestOpportunity.isCall ? 'Bullish' : 'Bearish'}
-                </span>
-              </div>
+              {/* Headline contract + pricing — guarded so a partial/incomplete
+                  opportunity object can never render a blank ticker or NaN figures. */}
+              {bestOpportunity?.ticker ? (
+                <>
+                  <div className="flex items-center justify-between gap-4">
+                    <div>
+                      <span className="block text-2xl font-bold text-[var(--text-primary)] tracking-tight">
+                        {bestOpportunity.ticker}
+                      </span>
+                      <span className="block text-[11px] text-[var(--text-tertiary)] uppercase tracking-wide mt-1">
+                        {bestOpportunity.isCall ? 'Call' : 'Put'} · {activeHeroIdx}
+                      </span>
+                    </div>
+                    <span className={`text-[11px] font-semibold uppercase tracking-wide px-3 py-1.5 rounded-md ${
+                      bestOpportunity.isCall ? 'bg-[var(--success)]/15 text-[var(--success)]' : 'bg-[var(--danger)]/15 text-[var(--danger)]'
+                    }`}>
+                      {bestOpportunity.isCall ? 'Bullish' : 'Bearish'}
+                    </span>
+                  </div>
 
-              {/* Real pricing metrics */}
-              <div className="grid grid-cols-3 gap-3 p-3 rounded-xl bg-[var(--surface-2)] border border-[var(--border)]">
-                <div>
-                  <span className="block text-[10px] uppercase tracking-wide text-[var(--text-tertiary)]">Trade score</span>
-                  <span className="block text-base font-bold text-[var(--success)] mt-1 tabular-nums">{Math.round(bestOpportunity.confidence)}</span>
-                </div>
-                <div>
-                  <span className="block text-[10px] uppercase tracking-wide text-[var(--text-tertiary)]">Market</span>
-                  <span className="block text-base font-bold text-[var(--text-primary)] mt-1 tabular-nums">{bestOpportunity.currentPrice}</span>
-                </div>
-                <div>
-                  <span className="block text-[10px] uppercase tracking-wide text-[var(--text-tertiary)]">Fair value</span>
-                  <span className="block text-base font-bold text-[var(--text-primary)] mt-1 tabular-nums">{bestOpportunity.fairValue}</span>
-                </div>
-              </div>
+                  {/* Real pricing metrics */}
+                  <div className="grid grid-cols-3 gap-3 p-3 rounded-xl bg-[var(--surface-2)] border border-[var(--border)]">
+                    <div>
+                      <span className="block text-[10px] uppercase tracking-wide text-[var(--text-tertiary)]">Trade score</span>
+                      <span className="block text-base font-bold text-[var(--success)] mt-1 tabular-nums">{Number.isFinite(bestOpportunity.confidence) ? Math.round(bestOpportunity.confidence) : '—'}</span>
+                    </div>
+                    <div>
+                      <span className="block text-[10px] uppercase tracking-wide text-[var(--text-tertiary)]">Market</span>
+                      <span className="block text-base font-bold text-[var(--text-primary)] mt-1 tabular-nums">{bestOpportunity.currentPrice ?? '—'}</span>
+                    </div>
+                    <div>
+                      <span className="block text-[10px] uppercase tracking-wide text-[var(--text-tertiary)]">Fair value</span>
+                      <span className="block text-base font-bold text-[var(--text-primary)] mt-1 tabular-nums">{bestOpportunity.fairValue ?? '—'}</span>
+                    </div>
+                  </div>
 
-              <div className="flex items-center justify-between text-[11px]">
-                <span className="uppercase tracking-wide text-[var(--text-tertiary)]">Entry zone</span>
-                <span className="font-semibold text-[var(--text-secondary)] tabular-nums">{bestOpportunity.entryZone}</span>
-              </div>
+                  <div className="flex items-center justify-between text-[11px]">
+                    <span className="uppercase tracking-wide text-[var(--text-tertiary)]">Entry zone</span>
+                    <span className="font-semibold text-[var(--text-secondary)] tabular-nums">{bestOpportunity.entryZone ?? '—'}</span>
+                  </div>
+                </>
+              ) : (
+                <div className="flex flex-col items-center justify-center gap-1 p-5 rounded-xl border border-dashed border-[var(--border)] bg-[var(--surface-2)]">
+                  <span className="text-[11px] uppercase tracking-wide text-[var(--text-tertiary)]">Ranking best opportunity for {activeHeroIdx}</span>
+                  <span className="text-[10px] text-[var(--text-tertiary)]">Syncing live market data…</span>
+                </div>
+              )}
 
               {/* Dealer intelligence — only rendered when genuinely live */}
               {dealerMetrics ? (

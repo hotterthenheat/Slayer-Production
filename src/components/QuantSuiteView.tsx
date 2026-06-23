@@ -401,7 +401,7 @@ export default function QuantSuiteView() {
   const [alertsRules, setAlertsRules] = useState<AlertRule[]>([
     { id: '1', name: `${activeTicker} Crosses Gamma Flip`, metric: 'gex_flip', operator: 'crosses', isActive: true },
     { id: '2', name: 'Dealers Short Gamma', metric: 'gex_negative', operator: 'is_negative', isActive: true },
-    { id: '3', name: 'IV Richness (VRP ≥ 5 pts)', metric: 'vrp_high', operator: 'above', thresholdValue: 5, isActive: true },
+    { id: '3', name: 'IV Richness (variance risk premium ≥ 5 pts)', metric: 'vrp_high', operator: 'above', thresholdValue: 5, isActive: true },
   ]);
 
   const [alertsLog, setAlertsLog] = useState<AlertDispatch[]>([]);
@@ -697,6 +697,9 @@ export default function QuantSuiteView() {
                         {probabilityPricingText.statement}
                       </p>
                     </div>
+                    <p className="text-[10px] text-[var(--text-tertiary)] leading-snug mt-1.5">
+                      Model estimate — risk-neutral, excludes slippage/commissions; not investment advice
+                    </p>
                   </div>
                 </div>
               </div>
@@ -708,7 +711,7 @@ export default function QuantSuiteView() {
                 <div className="lg:col-span-2 flex flex-col gap-4">
                   <div className="bg-[var(--surface)] border border-[var(--border)] p-4 rounded-lg">
                     <SectionHeader icon={<Activity className="w-3.5 h-3.5 text-[var(--text-tertiary)]" />} label="Realized Volatility Estimators (20d)" />
-                    <div className="grid grid-cols-3 gap-3">
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                       {[
                         { l: 'Parkinson', v: volSuite.parkinson, t: 'text-[var(--danger)]', d: 'high/low range; excludes overnight gaps' },
                         { l: 'Garman-Klass', v: volSuite.garmanKlass, t: 'text-[var(--success)]', d: 'OHLC; captures intraday range' },
@@ -736,6 +739,7 @@ export default function QuantSuiteView() {
 
                 <div className="bg-[var(--surface)] border border-[var(--border)] p-4 rounded-lg flex flex-col">
                   <SectionHeader icon={<History className="w-3.5 h-3.5 text-[var(--text-tertiary)]" />} label="Vol Cone" />
+                  <div className="overflow-x-auto -mx-1 px-1">
                   <table className="w-full text-left text-[11px]">
                     <thead>
                       <tr className="border-b border-[var(--border)] text-[var(--text-tertiary)] uppercase h-7 text-[10px]">
@@ -758,6 +762,7 @@ export default function QuantSuiteView() {
                       ))}
                     </tbody>
                   </table>
+                  </div>
                 </div>
               </div>
             )}
@@ -771,7 +776,7 @@ export default function QuantSuiteView() {
                     label="Auto-Built Strategy"
                     right={
                       <span className="text-[10px] text-[var(--text-tertiary)] tracking-wide">
-                        ATM {atmStrike.toLocaleString()} · EM ±{expectedMovePts.toFixed(0)} ({expectedMovePct.toFixed(1)}%)
+                        ATM {atmStrike.toLocaleString()} · EM (expected move) ±{expectedMovePts.toFixed(0)} pts ({expectedMovePct.toFixed(1)}%)
                       </span>
                     }
                   />
@@ -868,6 +873,9 @@ export default function QuantSuiteView() {
                       tone="text-[var(--danger)]"
                     />
                   </div>
+                  <p className="text-[10px] text-[var(--text-tertiary)] leading-snug">
+                    Prob. of profit is a model estimate — risk-neutral, excludes slippage/commissions; not investment advice
+                  </p>
 
                   <div className="bg-[var(--surface-2)] border border-[var(--border)] p-3 rounded-md">
                     <span className="text-[10px] text-[var(--success)] font-semibold uppercase tracking-wide block">Half-Kelly Size</span>
@@ -921,7 +929,8 @@ export default function QuantSuiteView() {
                     }
                   />
 
-                  <div className="overflow-x-auto">
+                  {/* Full matrix — sm and up (horizontal scroll only when truly needed) */}
+                  <div className="hidden sm:block overflow-x-auto">
                     <div className="min-w-[420px] grid grid-cols-6 gap-1 text-center text-[11px] font-semibold">
                       <span className="border-b border-[var(--border)] pb-1.5 text-[var(--text-tertiary)] uppercase text-[10px]">Spot ↓ / Vol →</span>
                       {volShocks.map((vol, vIdx) => (
@@ -966,6 +975,37 @@ export default function QuantSuiteView() {
                       ))}
                     </div>
                   </div>
+
+                  {/* Stacked-card fallback — below sm (no horizontal scroll on phones).
+                      One card per spot shock; each lists the P&L across vol shocks. */}
+                  <div className="sm:hidden flex flex-col gap-2">
+                    {spotShocks.map((spotScr, sIdx) => (
+                      <div key={sIdx} className="bg-[var(--surface-2)] border border-[var(--border)] rounded-md p-2.5">
+                        <div className="flex items-center justify-between border-b border-[var(--border)] pb-1.5 mb-1.5">
+                          <span className="text-[10px] uppercase tracking-wide text-[var(--text-tertiary)] font-semibold">Spot Shock</span>
+                          <span className="text-[11px] font-bold tabular-nums text-[var(--text-secondary)]">{(spotScr * 100).toFixed(0)}%</span>
+                        </div>
+                        <div className="flex flex-col gap-1">
+                          {volShocks.map((volScr, vIdx) => {
+                            const matchNode = scenarioMatrix.find(n =>
+                              Math.abs(n.spotChange - spotScr) < 1e-4 &&
+                              Math.abs(n.volChange - volScr) < 1e-4 &&
+                              n.dteRemaining === selectedDteScenario
+                            );
+                            const pnlValue = matchNode ? matchNode.pnl : 0;
+                            return (
+                              <div key={vIdx} className="flex items-center justify-between text-[11px] tabular-nums">
+                                <span className="text-[var(--text-tertiary)]">Vol {(volScr * 100).toFixed(0)}%</span>
+                                <span className={`font-bold ${pnlValue > 0 ? 'text-[var(--success)]' : pnlValue < 0 ? 'text-[var(--danger)]' : 'text-[var(--text-tertiary)]'}`}>
+                                  {pnlValue === 0 ? '$0' : pnlValue > 0 ? `+$${pnlValue.toLocaleString(undefined, { maximumFractionDigits: 0 })}` : `-$${Math.abs(pnlValue).toLocaleString(undefined, { maximumFractionDigits: 0 })}`}
+                                </span>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
                 </div>
 
                 <div className="flex flex-col bg-[var(--surface)] border border-[var(--border)] p-4 rounded-lg gap-3">
@@ -1001,9 +1041,9 @@ export default function QuantSuiteView() {
                     label="Position Book"
                     right={
                       <div className="flex gap-1.5">
-                        <button onClick={handleAddPortfolioStock} className="px-2 py-1 border border-[var(--border)] text-[10px] rounded font-semibold hover:bg-[var(--surface-2)] uppercase tracking-wide cursor-pointer text-[var(--text-secondary)]">+ Shares</button>
-                        <button onClick={() => handleAddPortfolioOption('call')} className="px-2 py-1 border border-[var(--border)] text-[10px] rounded font-semibold hover:bg-[var(--surface-2)] uppercase tracking-wide cursor-pointer text-[var(--success)]">+ Call</button>
-                        <button onClick={() => handleAddPortfolioOption('put')} className="px-2 py-1 border border-[var(--border)] text-[10px] rounded font-semibold hover:bg-[var(--surface-2)] uppercase tracking-wide cursor-pointer text-[var(--danger)]">+ Put</button>
+                        <button onClick={handleAddPortfolioStock} aria-label="Add shares to book" className="px-2 py-1 min-h-[40px] inline-flex items-center justify-center border border-[var(--border)] text-[10px] rounded font-semibold hover:bg-[var(--surface-2)] uppercase tracking-wide cursor-pointer text-[var(--text-secondary)]">+ Shares</button>
+                        <button onClick={() => handleAddPortfolioOption('call')} aria-label="Add call option to book" className="px-2 py-1 min-h-[40px] inline-flex items-center justify-center border border-[var(--border)] text-[10px] rounded font-semibold hover:bg-[var(--surface-2)] uppercase tracking-wide cursor-pointer text-[var(--success)]">+ Call</button>
+                        <button onClick={() => handleAddPortfolioOption('put')} aria-label="Add put option to book" className="px-2 py-1 min-h-[40px] inline-flex items-center justify-center border border-[var(--border)] text-[10px] rounded font-semibold hover:bg-[var(--surface-2)] uppercase tracking-wide cursor-pointer text-[var(--danger)]">+ Put</button>
                       </div>
                     }
                   />
