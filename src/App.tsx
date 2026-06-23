@@ -185,7 +185,7 @@ export default function App() {
     custom_referral_code?: string;
     selected_font_scale?: 'STANDARD' | 'ENHANCED';
     compact_view_enabled?: boolean;
-    selected_theme?: 'SLAYER PURE DARK' | 'DEALER FLOW SLATE' | 'VOLATILITY RADAR' | 'CARBON MONITOR MATTE' | 'FOREST ALGORITHM' | 'CRIMSON TAPE' | 'MIDNIGHT OCEAN' | string;
+    selected_theme?: string; // theme id from the generated library (see src/lib/themes.generated.ts)
     no_refund_policy_logged?: boolean;
   } | null>(null);
 
@@ -864,24 +864,10 @@ export default function App() {
 
   const isCall = selectedOptionType === 'C';
 
-  let bgClass = "h-full min-h-full text-[#f4f4f5] flex flex-col font-mono select-none overflow-x-hidden antialiased relative transition-colors duration-700 ease-in-out";
-  const activeSlayerTheme = session?.selected_theme || 'SLAYER PURE DARK';
-
-  if (activeSlayerTheme === 'CARBON MONITOR MATTE') {
-    bgClass += " bg-black text-zinc-100";
-  } else if (activeSlayerTheme === 'VOLATILITY RADAR') {
-    bgClass += " bg-black text-purple-100";
-  } else if (activeSlayerTheme === 'DEALER FLOW SLATE') {
-    bgClass += " bg-black text-blue-50";
-  } else if (activeSlayerTheme === 'FOREST ALGORITHM') {
-    bgClass += " bg-[#4ADE80] text-[#4ADE80]";
-  } else if (activeSlayerTheme === 'CRIMSON TAPE') {
-    bgClass += " bg-black text-rose-50";
-  } else if (activeSlayerTheme === 'MIDNIGHT OCEAN') {
-    bgClass += " bg-black text-[#4ADE80]";
-  } else {
-    bgClass += " bg-black text-[#f4f4f5]";
-  }
+  // The page frame follows the active theme's design tokens (set by <html data-theme>;
+  // the :root defaults are the Slayer Dark look). The 73-theme library is generated —
+  // see scripts/genThemes.mjs → themes.css / themes.generated.ts.
+  const bgClass = "h-full min-h-full bg-[var(--bg-base)] text-[var(--text-primary)] flex flex-col font-mono select-none overflow-x-hidden antialiased relative transition-colors duration-700 ease-in-out";
 
   // Determine if alert notifications are allowed to display.
   // Alert notifications are only allowed if purchasedTier > 1 (paid tiers).
