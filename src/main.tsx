@@ -1,6 +1,7 @@
 import { createRoot } from 'react-dom/client';
 import App from './App.tsx';
 import './index.css';
+import './themes.css';
 
 // Monkey patch fetch to automatically handle Token Rotation (Access/Refresh)
 function monkeyPatchFetchAndButtons() {

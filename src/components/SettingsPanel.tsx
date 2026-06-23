@@ -27,6 +27,9 @@ import { useContractStore, ContractStore } from '../lib/store';
 import { THEMES, applyTheme, applyTextSize, applyCompact, applyUltrawide } from '../lib/displayPrefs';
 import { formatTime, formatDateTime } from '../lib/timeUtils';
 
+// Ordered, de-duplicated theme groups (preserves the curated order from the generator).
+const THEME_GROUPS = [...new Set(THEMES.map((t) => t.group))];
+
 interface SettingsPanelProps {
   session: any;
   onUpdateSession: () => void;
@@ -173,7 +176,8 @@ export function SettingsPanel({ session, onUpdateSession }: SettingsPanelProps) 
   const [selectedFont, setSelectedFont] = useState<'STANDARD' | 'ENHANCED' | 'ENHANCED_XL'>(session?.selected_font_scale || 'STANDARD');
   const [compactMode, setCompactMode] = useState<boolean>(!!session?.compact_view_enabled);
   const [ultrawideMode, setUltrawideMode] = useState<boolean>(!!session?.ultrawide_enabled);
-  const [activeTheme, setActiveTheme] = useState<string>(session?.selected_theme || 'SLAYER PURE DARK');
+  // '' = native Slayer default (no data-theme). Any other value is a theme id from the generated library.
+  const [activeTheme, setActiveTheme] = useState<string>(session?.selected_theme || '');
 
   const globalKeybindsEnabled = useContractStore(state => state.globalKeybindsEnabled);
   const setGlobalKeybindsEnabled = useContractStore(state => state.setGlobalKeybindsEnabled);
@@ -651,6 +655,9 @@ export function SettingsPanel({ session, onUpdateSession }: SettingsPanelProps) 
     { id: 'keybinds', label: 'Keyboard Shortcuts', icon: Type },
     { id: 'referrals', label: 'Referrals', icon: Coins },
   ] as const;
+
+  // The Default swatch is "active" whenever no valid custom theme id is selected.
+  const isDefaultThemeActive = !THEMES.some((t) => t.id === activeTheme);
 
   return (
     <div id="slayer-settings-panel" className="w-full flex flex-col gap-4 text-left font-mono max-w-[860px] mx-auto">
@@ -1319,33 +1326,67 @@ export function SettingsPanel({ session, onUpdateSession }: SettingsPanelProps) 
                   Changes the background and panel colors across the app.
                 </p>
 
-                <div className="max-h-72 overflow-y-auto pr-1 -mr-1 mt-3">
-                  <div className="grid grid-cols-6 sm:grid-cols-8 gap-2.5">
-                    {THEMES.map(t => (
+                <div className="max-h-80 overflow-y-auto pr-1 -mr-1 mt-3 space-y-4">
+                  {/* Default / brand reset — restores the native Slayer black-and-white design */}
+                  <div>
+                    <div className="text-[10px] text-[var(--text-tertiary)] uppercase tracking-widest font-mono mb-1.5">Default</div>
+                    <div className="grid grid-cols-6 sm:grid-cols-8 gap-2.5">
                       <button
-                        key={t.id}
-                        title={t.name}
+                        title="Default (Slayer)"
                         type="button"
                         onClick={() => {
-                          setActiveTheme(t.id);
-                          applyTheme(t.id);
-                          handleSaveSettings(selectedFont, compactMode, t.id);
+                          setActiveTheme('');
+                          applyTheme('');
+                          handleSaveSettings(selectedFont, compactMode, '');
                         }}
                         className={`group relative aspect-square rounded-lg border-2 transition-all ${
-                          activeTheme === t.id
+                          isDefaultThemeActive
                             ? 'border-indigo-500 scale-110 z-10'
                             : 'border-[var(--border)] hover:border-[var(--border-strong)] hover:scale-105'
                         }`}
-                        style={{ background: `linear-gradient(135deg, ${t.surface} 0%, ${t.surface} 50%, ${t.accent} 50%, ${t.accent} 100%)` }}
+                        style={{ background: 'linear-gradient(135deg, #0A0A0A 0%, #0A0A0A 50%, #FFFFFF 50%, #FFFFFF 100%)' }}
                       >
-                        {activeTheme === t.id && (
+                        {isDefaultThemeActive && (
                           <span className="absolute inset-0 flex items-center justify-center">
-                            <Check className="w-4 h-4 text-[var(--text-primary)] drop-shadow-[0_1px_2px_rgba(0,0,0,0.9)]" />
+                            <Check className="w-4 h-4 text-white drop-shadow-[0_1px_2px_rgba(0,0,0,0.9)]" />
                           </span>
                         )}
                       </button>
-                    ))}
+                    </div>
                   </div>
+
+                  {/* Curated theme groups */}
+                  {THEME_GROUPS.map(group => (
+                    <div key={group}>
+                      <div className="text-[10px] text-[var(--text-tertiary)] uppercase tracking-widest font-mono mb-1.5">{group}</div>
+                      <div className="grid grid-cols-6 sm:grid-cols-8 gap-2.5">
+                        {THEMES.filter(t => t.group === group).map(t => (
+                          <button
+                            key={t.id}
+                            title={t.name}
+                            type="button"
+                            onClick={() => {
+                              setActiveTheme(t.id);
+                              applyTheme(t.id);
+                              handleSaveSettings(selectedFont, compactMode, t.id);
+                            }}
+                            className={`group relative aspect-square rounded-lg border-2 transition-all ${
+                              activeTheme === t.id
+                                ? 'border-indigo-500 scale-110 z-10'
+                                : 'border-[var(--border)] hover:border-[var(--border-strong)] hover:scale-105'
+                            }`}
+                            style={{ background: `linear-gradient(135deg, ${t.surface} 0%, ${t.surface} 50%, ${t.accent} 50%, ${t.accent} 100%)` }}
+                          >
+                            {activeTheme === t.id && (
+                              <span className="absolute inset-0 flex items-center justify-center">
+                                <Check className="w-4 h-4 text-[var(--text-primary)] drop-shadow-[0_1px_2px_rgba(0,0,0,0.9)]" />
+                              </span>
+                            )}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
                 </div>
                 <div className="mt-2 text-[10px] text-[var(--text-tertiary)] uppercase tracking-widest font-mono">
                   Active: <span className="text-[var(--text-primary)] font-bold">{THEMES.find(t => t.id === activeTheme)?.name || 'Default'}</span> · {THEMES.length} themes
