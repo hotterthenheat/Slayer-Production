@@ -384,7 +384,7 @@ export function UserProfile({ session, onUpdateSession }: UserProfileProps) {
       </div>
 
       <div className="flex items-center gap-2.5 border-b border-[var(--border)] pb-3">
-        <User className="w-5 h-5 text-indigo-400" />
+        <User className="w-5 h-5 text-[var(--accent-color)]" />
         <h2 className="text-lg font-black tracking-tight text-[var(--text-primary)] uppercase font-mono">
           Your Public Profile
         </h2>
@@ -430,7 +430,7 @@ export function UserProfile({ session, onUpdateSession }: UserProfileProps) {
             onClick={() => coverInputRef.current?.click()}
             className={`w-full h-36 md:h-44 rounded-lg relative overflow-hidden transition-all duration-300 border-2 select-none group cursor-pointer flex flex-col items-center justify-center ${
               isDragOverCover
-                ? 'border-indigo-500 bg-indigo-950/10'
+                ? 'border-[var(--accent-color)] bg-[var(--accent-color)]/10'
                 : 'border-black bg-black/30 hover:border-black'
             }`}
           >
@@ -451,7 +451,7 @@ export function UserProfile({ session, onUpdateSession }: UserProfileProps) {
                   referrerPolicy="no-referrer"
                 />
                 <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center gap-1.5">
-                  <Camera className="w-6 h-6 text-indigo-400 animate-pulse" />
+                  <Camera className="w-6 h-6 text-[var(--accent-color)] animate-pulse" />
                   <span className="text-[9px] font-mono text-[var(--success)] font-black tracking-widest uppercase">
                     DRAG & DROP OR CLICK TO RE-UPLOAD
                   </span>
@@ -483,7 +483,7 @@ export function UserProfile({ session, onUpdateSession }: UserProfileProps) {
             onDrop={(e) => handleDropEvent(e, 'avatar')}
             onClick={() => avatarInputRef.current?.click()}
             className={`w-28 h-28 rounded-full relative overflow-hidden transition-all duration-300 border-4 border-black select-none group cursor-pointer flex items-center justify-center bg-black ${
-              isDragOverAvatar ? 'scale-110 border-indigo-500' : 'hover:scale-105 hover:border-black'
+              isDragOverAvatar ? 'scale-110 border-[var(--accent-color)]' : 'hover:scale-105 hover:border-black'
             }`}
           >
             <input
@@ -503,7 +503,7 @@ export function UserProfile({ session, onUpdateSession }: UserProfileProps) {
                   referrerPolicy="no-referrer"
                 />
                 <div className="absolute inset-0 bg-black/75 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center gap-1">
-                  <Camera className="w-4 h-4 text-indigo-400 animate-pulse" />
+                  <Camera className="w-4 h-4 text-[var(--accent-color)] animate-pulse" />
                   <span className="text-[7.5px] font-mono text-[var(--success)] font-black tracking-widest uppercase">
                     UPLOAD
                   </span>
@@ -542,7 +542,7 @@ export function UserProfile({ session, onUpdateSession }: UserProfileProps) {
               value={nickname}
               maxLength={50}
               onChange={(e) => setNickname(e.target.value)}
-              className="w-full bg-black/40 border border-[var(--border)] focus:border-indigo-500/50 text-[var(--text-primary)] rounded-lg p-2.5 text-sm transition-colors focus:outline-none placeholder-zinc-750 font-mono"
+              className="w-full bg-black/40 border border-[var(--border)] focus-visible:ring-1 focus-visible:ring-[var(--border-strong)] focus:border-[var(--border-strong)] text-[var(--text-primary)] rounded-lg p-2.5 text-sm transition-colors focus:outline-none placeholder-zinc-750 font-mono"
               placeholder="e.g. Robin Slayer"
             />
             <p className="text-[10px] text-zinc-600 font-mono leading-relaxed uppercase">
@@ -587,7 +587,7 @@ export function UserProfile({ session, onUpdateSession }: UserProfileProps) {
                 type="text"
                 value={handle}
                 onChange={(e) => setHandle(e.target.value.toLowerCase().replace(/\s+/g, ''))}
-                className={`w-full bg-black/40 border border-[var(--border)] focus:border-indigo-500/50 text-[var(--text-primary)] rounded-lg p-2.5 pl-8 text-sm transition-colors focus:outline-none placeholder-zinc-750 font-mono ${
+                className={`w-full bg-black/40 border border-[var(--border)] focus-visible:ring-1 focus-visible:ring-[var(--border-strong)] focus:border-[var(--border-strong)] text-[var(--text-primary)] rounded-lg p-2.5 pl-8 text-sm transition-colors focus:outline-none placeholder-zinc-750 font-mono ${
                   availability === 'available' ? 'border-[var(--border)]' : availability === 'taken' || availability === 'invalid' ? 'border-rose-500/30' : 'border-[var(--border)]'
                 }`}
                 placeholder="your_handle"
@@ -604,7 +604,7 @@ export function UserProfile({ session, onUpdateSession }: UserProfileProps) {
           <button
             onClick={handleSaveCompleteProfile}
             disabled={isUpdating || availability === 'taken' || availability === 'invalid'}
-            className="py-2.5 px-5 bg-black hover:bg-indigo-500/10 text-indigo-400 hover:text-indigo-300 border border-[var(--border)] hover:border-indigo-500/40 rounded-lg text-xs font-bold font-mono uppercase flex items-center gap-2 transition-all cursor-pointer disabled:opacity-45 disabled:cursor-not-allowed"
+            className="py-2.5 px-5 bg-black hover:bg-[var(--accent-color)]/10 text-[var(--accent-color)] hover:text-[var(--accent-color)] border border-[var(--border)] hover:border-[var(--accent-color)]/40 rounded-lg text-xs font-bold font-mono uppercase flex items-center gap-2 transition-all cursor-pointer disabled:opacity-45 disabled:cursor-not-allowed"
           >
             {isUpdating ? (
               <>
@@ -613,7 +613,7 @@ export function UserProfile({ session, onUpdateSession }: UserProfileProps) {
               </>
             ) : (
               <>
-                <CheckCircle2 className="w-4 h-4 text-indigo-400" />
+                <CheckCircle2 className="w-4 h-4 text-[var(--accent-color)]" />
                 Save Profile
               </>
             )}
@@ -631,7 +631,7 @@ export function UserProfile({ session, onUpdateSession }: UserProfileProps) {
           >
             <div className="p-4 border-b border-[var(--border)] flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <ImageIcon className="w-4 h-4 text-indigo-400" />
+                <ImageIcon className="w-4 h-4 text-[var(--accent-color)]" />
                 <span className="text-xs font-bold text-[var(--text-primary)] uppercase tracking-widest font-mono">
                   Crop {cropParams.type === 'avatar' ? 'Profile Photo' : 'Cover Photo'}
                 </span>
@@ -680,10 +680,10 @@ export function UserProfile({ session, onUpdateSession }: UserProfileProps) {
                 <div className="absolute inset-0 pointer-events-none flex items-center justify-center">
                   {cropParams.type === 'avatar' ? (
                     // Circular avatar crop mask
-                    <div className="w-2/3 aspect-square rounded-full border-2 border-dashed border-indigo-400 shadow-[0_0_0_1000px_rgba(0,0,0,0.65)]" />
+                    <div className="w-2/3 aspect-square rounded-full border-2 border-dashed border-[var(--accent-color)] shadow-[0_0_0_1000px_rgba(0,0,0,0.65)]" />
                   ) : (
                     // Banner rectangle crop mask
-                    <div className="w-11/12 aspect-[3/1] border-2 border-dashed border-indigo-400 shadow-[0_0_0_1000px_rgba(0,0,0,0.65)]" />
+                    <div className="w-11/12 aspect-[3/1] border-2 border-dashed border-[var(--accent-color)] shadow-[0_0_0_1000px_rgba(0,0,0,0.65)]" />
                   )}
                 </div>
               </div>
@@ -707,7 +707,7 @@ export function UserProfile({ session, onUpdateSession }: UserProfileProps) {
                       return { ...prev, zoom: nextZoom };
                     });
                   }}
-                  className="w-full accent-indigo-500 bg-black rounded cursor-pointer"
+                  className="w-full accent-[var(--accent-color)] bg-black rounded cursor-pointer"
                 />
               </div>
             </div>
@@ -726,7 +726,7 @@ export function UserProfile({ session, onUpdateSession }: UserProfileProps) {
               <button
                 onClick={executeCommenceCrop}
                 disabled={isUploading}
-                className="py-2 px-5 bg-indigo-600 hover:bg-indigo-500 text-[var(--text-primary)] font-mono font-bold uppercase tracking-wider text-[10px] rounded flex items-center gap-1 cursor-pointer disabled:opacity-45"
+                className="py-2 px-5 bg-[var(--text-primary)] hover:opacity-90 text-[var(--bg-base)] font-mono font-bold uppercase tracking-wider text-[10px] rounded flex items-center gap-1 cursor-pointer disabled:opacity-45"
               >
                 {isUploading ? (
                   <>

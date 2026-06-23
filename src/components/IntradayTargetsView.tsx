@@ -311,11 +311,11 @@ export function IntradayTargetsView({ profile, ticker, decimals }: IntradayTarge
           {/* Active Spot Indicator */}
           <div className="bg-[var(--surface-2)] border border-[var(--border)] px-3 py-1.5 rounded-lg flex items-center gap-3 shrink-0">
             <span className="text-[10px] text-[var(--text-tertiary)] uppercase font-black tracking-widest flex items-center gap-1.5">
-              <Activity className="w-3.5 h-3.5 text-[#06B6D4]" /> ACTIVE SPOT:
+              <Activity className="w-3.5 h-3.5 text-[var(--accent-color)]" /> ACTIVE SPOT:
             </span>
             <span className="text-[12px] font-mono font-black text-[var(--text-primary)] flex items-center gap-1.5 tabular-nums">
               ${spot.toFixed(decimals)}
-              <span className="w-1.5 h-1.5 bg-[#06B6D4] rounded-full" />
+              <span className="w-1.5 h-1.5 bg-[var(--accent-color)] rounded-full" />
             </span>
           </div>
 
@@ -499,7 +499,7 @@ export function IntradayTargetsView({ profile, ticker, decimals }: IntradayTarge
                              <span className="text-[10px] tracking-widest text-[var(--warning)] font-bold uppercase mt-0.5 max-w-max">PRIMARY TARGET</span>
                            )}
                            {isActiveSpot && (
-                             <span className="text-[10px] tracking-widest text-[#06B6D4] font-bold uppercase mt-0.5 max-w-max">NEAREST TO SPOT</span>
+                             <span className="text-[10px] tracking-widest text-[var(--accent-color)] font-bold uppercase mt-0.5 max-w-max">NEAREST TO SPOT</span>
                            )}
                         </div>
 
@@ -555,7 +555,7 @@ export function IntradayTargetsView({ profile, ticker, decimals }: IntradayTarge
                     }}
                   >
                     {/* Color Top Edge Strip (token hues only) */}
-                  <div className={`absolute top-0 left-0 right-0 h-[3px] ${cellStyle.type === 'GOLD' ? 'bg-[var(--warning)]' : cellStyle.type === 'SPOTLIGHT' ? 'bg-[#06B6D4]' : cellStyle.type === 'NOTABLE' ? 'bg-[var(--info)]' : cellStyle.type === 'GREEN' ? 'bg-[var(--success)]' : cellStyle.type === 'RED' ? 'bg-[var(--danger)]' : 'bg-[var(--border-strong)]'}`} />
+                  <div className={`absolute top-0 left-0 right-0 h-[3px] ${cellStyle.type === 'GOLD' ? 'bg-[var(--warning)]' : cellStyle.type === 'SPOTLIGHT' ? 'bg-[var(--accent-color)]' : cellStyle.type === 'NOTABLE' ? 'bg-[var(--info)]' : cellStyle.type === 'GREEN' ? 'bg-[var(--success)]' : cellStyle.type === 'RED' ? 'bg-[var(--danger)]' : 'bg-[var(--border-strong)]'}`} />
 
                   {/* Gradient Backing */}
                   <div className={`absolute inset-0 bg-gradient-to-b ${cellStyle.gradientFrom} opacity-[0.22] pointer-events-none`} />
@@ -566,8 +566,8 @@ export function IntradayTargetsView({ profile, ticker, decimals }: IntradayTarge
                     <div className="flex justify-between items-start">
                       <div>
                         {isActiveSpot && (
-                          <div className="flex items-center gap-1 text-[#06B6D4] text-[10px] font-black tracking-widest uppercase mb-1">
-                            <span className="w-1.5 h-1.5 rounded-full bg-[#06B6D4] shrink-0" />
+                          <div className="flex items-center gap-1 text-[var(--accent-color)] text-[10px] font-black tracking-widest uppercase mb-1">
+                            <span className="w-1.5 h-1.5 rounded-full bg-[var(--accent-color)] shrink-0" />
                              SPOTLIGHT CORE ACTIVE
                           </div>
                         )}
@@ -601,7 +601,7 @@ export function IntradayTargetsView({ profile, ticker, decimals }: IntradayTarge
                     {/* KEY-FLAG BADGES ROW (real chain-derived flags only) */}
                     <div className="flex flex-wrap gap-1 mt-0.5">
                       {isActiveSpot && (
-                        <span className="px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-wider bg-[#06B6D4]/10 text-[#06B6D4] border border-[#06B6D4]/20">
+                        <span className="px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-wider bg-[var(--accent-color)]/10 text-[var(--accent-color)] border border-[var(--accent-color)]/20">
                            SPOT TARGET
                         </span>
                       )}

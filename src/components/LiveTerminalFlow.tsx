@@ -59,7 +59,7 @@ export function LiveTerminalFlow({ profile, ticker, decimals }: LiveTerminalFlow
       {/* HUD Header */}
       <div className={`flex items-center justify-between p-3 border-b ${isLight ? 'border-zinc-300 bg-white' : 'border-[var(--border)] bg-[var(--surface-2)]'}`}>
         <div className="flex items-center gap-3">
-          <div className="px-3 py-1.5 rounded-sm bg-[var(--surface-3)] border border-[var(--border)] text-[11px] font-mono font-bold tracking-widest text-[#06B6D4] uppercase shadow-inner">
+          <div className="px-3 py-1.5 rounded-sm bg-[var(--surface-3)] border border-[var(--border)] text-[11px] font-mono font-bold tracking-widest text-[var(--accent-color)] uppercase shadow-inner">
             <Activity className="w-3 h-3 inline-block mr-1.5 mb-0.5" />
             LIVE TERMINAL FLOW
           </div>
@@ -151,7 +151,7 @@ export function LiveTerminalFlow({ profile, ticker, decimals }: LiveTerminalFlow
                  <div key={row.strike} className={`grid grid-cols-[70px_1fr_1.4fr] gap-2 px-3 h-[22px] items-center text-[10px] tabular-nums font-mono hover:bg-[var(--surface-2)] relative group ${row.isSpot ? 'bg-[var(--surface-3)] border-y border-[var(--border-strong)]' : ''}`}>
 
                     {row.isSpot && (
-                      <div className="absolute left-0 top-0 bottom-0 w-[2px] bg-[#06B6D4]" />
+                      <div className="absolute left-0 top-0 bottom-0 w-[2px] bg-[var(--accent-color)]" />
                     )}
 
                     {/* Strike Col */}
@@ -159,7 +159,7 @@ export function LiveTerminalFlow({ profile, ticker, decimals }: LiveTerminalFlow
                       {row.isCallWall && <span className="w-1.5 h-1.5 rounded-full bg-[var(--success)]" title="Call Wall" />}
                       {row.isPutWall && <span className="w-1.5 h-1.5 rounded-full bg-[var(--danger)]" title="Put Wall" />}
                       {row.isFlip && <span className="w-1.5 h-1.5 rounded-sm bg-[var(--warning)]" title="Gamma Flip" />}
-                      <span className={`font-black tracking-wider ${row.isSpot ? 'text-[#06B6D4]' : 'text-[var(--text-secondary)] group-hover:text-[var(--text-primary)]'}`}>
+                      <span className={`font-black tracking-wider ${row.isSpot ? 'text-[var(--accent-color)]' : 'text-[var(--text-secondary)] group-hover:text-[var(--text-primary)]'}`}>
                         {row.strike.toFixed(decimals)}
                       </span>
                     </div>

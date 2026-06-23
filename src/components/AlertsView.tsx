@@ -367,7 +367,7 @@ export function AlertsView() {
       {/* 3. DYNAMIC INCIDENT LIST TABLE */}
       <div className="w-full animate-fadeIn">
         <div className="apple-glass rounded-2xl p-6 md:p-8 relative overflow-hidden shadow-2xl space-y-4">
-          <div className="absolute top-0 left-0 right-0 h-[3px] bg-gradient-to-r from-[var(--text-secondary)]/50 via-indigo-500/50 to-[var(--danger)]/50" />
+          <div className="absolute top-0 left-0 right-0 h-[3px] bg-gradient-to-r from-[var(--text-secondary)]/50 via-[var(--accent-color)]/50 to-[var(--danger)]/50" />
 
           <div className="border-b border-[var(--border)] pb-3 flex justify-between items-start">
             <div className="text-left space-y-1">

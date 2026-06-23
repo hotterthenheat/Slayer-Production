@@ -848,11 +848,11 @@ export function DealerFlowView() {
             aria-pressed={activeEngineView === 'profile'}
             className={`flex shrink-0 items-center gap-2 px-4 py-2.5 font-mono text-[9px] font-black uppercase tracking-wider border rounded-lg transition-colors cursor-pointer ${
               activeEngineView === 'profile'
-                ? 'bg-[var(--surface-3)] border-[#06B6D4]/50 text-[var(--text-primary)]'
+                ? 'bg-[var(--surface-3)] border-[var(--accent-color)]/50 text-[var(--text-primary)]'
                 : 'bg-[var(--surface-2)] border-[var(--border)] text-[var(--text-tertiary)] hover:text-[var(--text-primary)]'
             }`}
           >
-            <Layers className="w-3.5 h-3.5 text-[#06B6D4]" />
+            <Layers className="w-3.5 h-3.5 text-[var(--accent-color)]" />
             HEDGING PROFILE
           </button>
           <button
@@ -887,11 +887,11 @@ export function DealerFlowView() {
             aria-pressed={activeEngineView === 'terminal'}
             className={`flex shrink-0 items-center gap-2 px-4 py-2.5 font-mono text-[9px] font-black uppercase tracking-wider border rounded-lg transition-colors cursor-pointer ${
               activeEngineView === 'terminal'
-                ? 'bg-[var(--surface-3)] border-fuchsia-500/50 text-[var(--text-primary)]'
+                ? 'bg-[var(--surface-3)] border-[var(--accent-color)]/50 text-[var(--text-primary)]'
                 : 'bg-[var(--surface-2)] border-[var(--border)] text-[var(--text-tertiary)] hover:text-[var(--text-primary)]'
             }`}
           >
-            <Activity className="w-3.5 h-3.5 text-fuchsia-500" />
+            <Activity className="w-3.5 h-3.5 text-[var(--accent-color)]" />
             LIVE TERMINAL FLOW
           </button>
         </div>
@@ -899,15 +899,15 @@ export function DealerFlowView() {
         {/* Global Market Search */}
         <div className="relative w-full sm:w-[360px] shrink-0 group">
           <div 
-            className="bg-[#050505] border border-[#06B6D4]/30 rounded-none flex items-center px-3 py-2 cursor-text transition-all group-hover:border-[#06B6D4] focus-within:border-[#06B6D4] focus-within:shadow-[0_0_15px_rgba(6,182,212,0.15)] h-[36px] relative overflow-hidden"
+            className="bg-[var(--surface)] border border-[var(--accent-color)]/30 rounded-none flex items-center px-3 py-2 cursor-text transition-all group-hover:border-[var(--accent-color)] focus-within:border-[var(--border-strong)] h-[36px] relative overflow-hidden"
             onClick={() => setShowSearch(true)}
           >
-            <div className="absolute top-0 left-0 w-1 h-full bg-[#06B6D4]/50" />
-            <span className="w-2.5 h-2.5 bg-[#06B6D4] animate-pulse mr-2 shrink-0 rounded-sm opacity-80" />
+            <div className="absolute top-0 left-0 w-1 h-full bg-[var(--accent-color)]/50" />
+            <span className="w-2.5 h-2.5 bg-[var(--accent-color)] animate-pulse mr-2 shrink-0 rounded-sm opacity-80" />
             <input
               type="text"
               placeholder="Search ticker or company…"
-              className="bg-transparent border-none outline-none text-[11px] font-mono tracking-widest text-[#06B6D4] w-full placeholder:text-[#06B6D4]/40"
+              className="bg-transparent border-none outline-none text-[11px] font-mono tracking-widest text-[var(--accent-color)] w-full placeholder:text-[var(--accent-color)]/40"
               value={searchQuery}
               onChange={(e) => {
                 setSearchQuery(e.target.value);
@@ -918,7 +918,7 @@ export function DealerFlowView() {
             {searchQuery && (
               <button
                 onClick={(e) => { e.stopPropagation(); setSearchQuery(''); setShowSearch(false); }}
-                className="text-[#06B6D4]/50 hover:text-[#06B6D4] ml-2 font-mono text-[14px]"
+                className="text-[var(--accent-color)]/50 hover:text-[var(--accent-color)] ml-2 font-mono text-[14px]"
                 aria-label="Clear search"
                 title="Clear search"
               >
@@ -933,9 +933,9 @@ export function DealerFlowView() {
                 className="fixed inset-0 z-40"
                 onClick={() => setShowSearch(false)}
               />
-              <div className="absolute top-full mt-2 left-0 sm:left-auto right-0 w-full sm:w-[480px] bg-[#050505] border border-[#06B6D4]/40 shadow-[0_0_30px_rgba(0,0,0,0.9)] z-50 max-h-[440px] overflow-y-auto python-scrollbar origin-top-right animate-in fade-in zoom-in-95 duration-150">
-                <div className="sticky top-0 bg-[#050505]/95 backdrop-blur-sm border-b border-[#06B6D4]/20 px-3 py-2 z-10 flex justify-between items-center">
-                  <span className="text-[9px] font-mono text-[#06B6D4] tracking-widest uppercase opacity-80">Search securities</span>
+              <div className="absolute top-full mt-2 left-0 sm:left-auto right-0 w-full sm:w-[480px] bg-[var(--surface)] border border-[var(--accent-color)]/40 shadow-[0_0_30px_rgba(0,0,0,0.9)] z-50 max-h-[440px] overflow-y-auto python-scrollbar origin-top-right animate-in fade-in zoom-in-95 duration-150">
+                <div className="sticky top-0 bg-[var(--surface)]/95 backdrop-blur-sm border-b border-[var(--accent-color)]/20 px-3 py-2 z-10 flex justify-between items-center">
+                  <span className="text-[9px] font-mono text-[var(--accent-color)] tracking-widest uppercase opacity-80">Search securities</span>
                 </div>
                 {(() => {
                   const query = searchQuery.toLowerCase().trim();
@@ -957,8 +957,8 @@ export function DealerFlowView() {
                           if (!assets.length) return null;
                           return (
                             <div key={cat.name} className="mb-0">
-                               <div className="px-3 py-1.5 bg-[#06B6D4]/5 border-y border-[#06B6D4]/10 mt-2 first:mt-0">
-                                 <span className="text-[10px] font-mono text-[#06B6D4] tracking-widest font-bold">{cat.name}</span>
+                               <div className="px-3 py-1.5 bg-[var(--accent-color)]/5 border-y border-[var(--accent-color)]/10 mt-2 first:mt-0">
+                                 <span className="text-[10px] font-mono text-[var(--accent-color)] tracking-widest font-bold">{cat.name}</span>
                                </div>
                                <div className="px-2 py-1.5 grid grid-cols-2 gap-1.5">
                                  {assets.map(asset => (
@@ -969,11 +969,11 @@ export function DealerFlowView() {
                                          setSearchQuery('');
                                          setShowSearch(false);
                                        }}
-                                       className="px-2 py-2 hover:bg-[#06B6D4]/10 cursor-pointer border border-[#06B6D4]/5 hover:border-[#06B6D4]/30 transition-colors flex flex-col group rounded-sm"
+                                       className="px-2 py-2 hover:bg-[var(--accent-color)]/10 cursor-pointer border border-[var(--accent-color)]/5 hover:border-[var(--accent-color)]/30 transition-colors flex flex-col group rounded-sm"
                                     >
                                         <div className="flex justify-between items-center mb-0.5">
-                                          <span className="text-[11px] font-mono font-bold text-zinc-300 group-hover:text-[#06B6D4] transition-colors">{asset.ticker}</span>
-                                          <span className="text-[8px] font-mono text-[#06B6D4]/40 group-hover:text-[#06B6D4]/70 transition-colors">{asset.type}</span>
+                                          <span className="text-[11px] font-mono font-bold text-zinc-300 group-hover:text-[var(--accent-color)] transition-colors">{asset.ticker}</span>
+                                          <span className="text-[8px] font-mono text-[var(--accent-color)]/40 group-hover:text-[var(--accent-color)]/70 transition-colors">{asset.type}</span>
                                         </div>
                                         <span className="text-[9px] text-zinc-500 truncate font-sans">{asset.name}</span>
                                     </div>
@@ -994,7 +994,7 @@ export function DealerFlowView() {
                       {filtered.map(asset => (
                         <div
                           key={asset.ticker}
-                          className="flex items-center justify-between px-3 py-2.5 hover:bg-[#06B6D4]/10 cursor-pointer transition-colors border-b border-[#06B6D4]/5"
+                          className="flex items-center justify-between px-3 py-2.5 hover:bg-[var(--accent-color)]/10 cursor-pointer transition-colors border-b border-[var(--accent-color)]/5"
                           onClick={() => {
                             setSelectedAsset(asset);
                             setSearchQuery('');
@@ -1002,10 +1002,10 @@ export function DealerFlowView() {
                           }}
                         >
                           <div className="flex flex-col">
-                            <span className="text-[12px] font-mono font-bold text-[#06B6D4]">{asset.ticker}</span>
+                            <span className="text-[12px] font-mono font-bold text-[var(--accent-color)]">{asset.ticker}</span>
                             <span className="text-[10px] font-sans text-zinc-500">{asset.name}</span>
                           </div>
-                          <span className="text-[8px] font-mono tracking-widest text-[#06B6D4]/70">
+                          <span className="text-[8px] font-mono tracking-widest text-[var(--accent-color)]/70">
                             {asset.type}
                           </span>
                         </div>
@@ -1013,7 +1013,7 @@ export function DealerFlowView() {
                       
                       {query && !exactMatch && (
                         <div
-                          className="flex items-center justify-between px-3 py-2.5 hover:bg-[#06B6D4]/20 cursor-pointer transition-colors border-b border-[#06B6D4]/10"
+                          className="flex items-center justify-between px-3 py-2.5 hover:bg-[var(--accent-color)]/20 cursor-pointer transition-colors border-b border-[var(--accent-color)]/10"
                           onClick={() => {
                             const t = query.toUpperCase();
                             const newAsset = {
@@ -1036,10 +1036,10 @@ export function DealerFlowView() {
                           }}
                         >
                           <div className="flex flex-col">
-                            <span className="text-[12px] font-mono font-bold text-[#06B6D4]">FETCH [ {query.toUpperCase()} ]</span>
-                            <span className="text-[10px] font-sans text-[#06B6D4]/70">Initialize dynamic asset profile over network</span>
+                            <span className="text-[12px] font-mono font-bold text-[var(--accent-color)]">FETCH [ {query.toUpperCase()} ]</span>
+                            <span className="text-[10px] font-sans text-[var(--accent-color)]/70">Initialize dynamic asset profile over network</span>
                           </div>
-                          <span className="text-[8px] font-mono tracking-widest text-[#06B6D4]/90 border border-[#06B6D4]/30 px-1 py-0.5">
+                          <span className="text-[8px] font-mono tracking-widest text-[var(--accent-color)]/90 border border-[var(--accent-color)]/30 px-1 py-0.5">
                             Load
                           </span>
                         </div>
@@ -1047,8 +1047,8 @@ export function DealerFlowView() {
                       
                       {filtered.length === 0 && (
                         <div className="px-4 py-6 text-center">
-                          <Search className="w-5 h-5 text-[#06B6D4]/50 mx-auto mb-2" />
-                          <div className="text-[10px] uppercase font-mono tracking-widest text-[#06B6D4]/50">Type a ticker to search</div>
+                          <Search className="w-5 h-5 text-[var(--accent-color)]/50 mx-auto mb-2" />
+                          <div className="text-[10px] uppercase font-mono tracking-widest text-[var(--accent-color)]/50">Type a ticker to search</div>
                         </div>
                       )}
                     </div>
@@ -1085,8 +1085,8 @@ export function DealerFlowView() {
               <span className={`text-sm font-black ${headerAnalytics?.dealerControl === 'HIGH' ? 'text-[var(--success)]' : 'text-[var(--warning)]'}`}>{headerAnalytics?.dealerControl ?? '—'}</span>
             </div>
             {/* Market Control Score */}
-            <div className="flex flex-col p-3 rounded-lg border border-[var(--info)]/30 bg-[var(--info)]/10 justify-center">
-              <span className="text-[10px] uppercase tracking-widest text-[var(--info)] font-bold mb-1">Market Control</span>
+            <div className="flex flex-col p-3 rounded-lg border border-[var(--accent-color)]/30 bg-[var(--accent-color)]/10 justify-center">
+              <span className="text-[10px] uppercase tracking-widest text-[var(--accent-color)] font-bold mb-1">Market Control</span>
               <div className="flex items-end gap-2">
                 <span className="text-sm font-black text-[var(--text-primary)] tabular-nums">{headerAnalytics?.controlScore ?? '—'}<span className="text-[10px] text-[var(--text-tertiary)] font-medium">/100</span></span>
               </div>
@@ -1162,7 +1162,7 @@ export function DealerFlowView() {
                     <span className={`w-1 h-3 rounded-full ${expiryTab === 'aggregated' ? 'bg-[var(--success)]' : 'bg-zinc-650'}`} />
                     MASTER PROFILE
                   </span>
-                  <span className={`text-[11px] font-bold mt-1.5 leading-none ${expiryTab === 'aggregated' ? 'text-white' : 'text-[var(--text-secondary)]'}`}>
+                  <span className={`text-[11px] font-bold mt-1.5 leading-none ${expiryTab === 'aggregated' ? 'text-[var(--text-primary)]' : 'text-[var(--text-secondary)]'}`}>
                     All Dates
                   </span>
                   <span className={`text-[7.5px] font-black mt-2 tracking-widest ${expiryTab === 'aggregated' ? 'text-[var(--success)]' : 'text-zinc-500'}`}>
@@ -1194,14 +1194,14 @@ export function DealerFlowView() {
                     }}
                     className={`flex flex-col text-left p-2.5 rounded-lg border transition-all cursor-pointer relative overflow-hidden w-full sm:w-auto sm:shrink-0 sm:min-w-[130px] sm:snap-start ${
                       isActive
-                        ? 'bg-[#06B6D4]/10 border-[#06B6D4]/40'
+                        ? 'bg-[var(--accent-color)]/10 border-[var(--accent-color)]/40'
                         : 'bg-[var(--surface-3)] border-[var(--border)] hover:bg-[var(--surface-2)] hover:border-[var(--border-strong)]'
                     }`}
                   >
                     {isMultiExpiry && (
                       <div className="absolute top-2 right-2">
-                        <div className={`w-3.5 h-3.5 rounded border flex items-center justify-center ${isActive ? 'border-[#06B6D4] bg-[#06B6D4]/10' : 'border-[var(--border-strong)] bg-transparent'}`}>
-                          {isActive && <div className="w-1.5 h-1.5 rounded-sm bg-[#06B6D4]" />}
+                        <div className={`w-3.5 h-3.5 rounded border flex items-center justify-center ${isActive ? 'border-[var(--accent-color)] bg-[var(--accent-color)]/10' : 'border-[var(--border-strong)] bg-transparent'}`}>
+                          {isActive && <div className="w-1.5 h-1.5 rounded-sm bg-[var(--accent-color)]" />}
                         </div>
                       </div>
                     )}
@@ -1219,7 +1219,7 @@ export function DealerFlowView() {
                       <span className="text-[10px] font-mono font-bold tabular-nums text-[var(--text-secondary)]">
                         {item.dteDays}DTE
                       </span>
-                      <span className={`text-[10px] font-black tracking-widest ml-auto ${isActive ? 'text-[#06B6D4]' : 'text-[var(--text-tertiary)]'}`}>
+                      <span className={`text-[10px] font-black tracking-widest ml-auto ${isActive ? 'text-[var(--accent-color)]' : 'text-[var(--text-tertiary)]'}`}>
                         {isActive ? 'SELECTED' : 'SELECT'}
                       </span>
                     </div>
@@ -1257,7 +1257,7 @@ export function DealerFlowView() {
                         const firstActive = activeExpiries[0] || 'mon';
                         setExpiryTab(firstActive as any);
                       }}
-                      className="text-[7px] font-bold text-zinc-400 hover:text-white uppercase tracking-widest bg-zinc-800 px-1.5 py-0.5 rounded cursor-pointer border border-zinc-700/50 transition-all ml-1"
+                      className="text-[7px] font-bold text-zinc-400 hover:text-[var(--text-primary)] uppercase tracking-widest bg-zinc-800 px-1.5 py-0.5 rounded cursor-pointer border border-zinc-700/50 transition-all ml-1"
                     >
                       Disable
                     </button>
@@ -1283,7 +1283,7 @@ export function DealerFlowView() {
                             }}
                             className={`px-3 py-1 rounded cursor-pointer transition-all duration-150 ${
                               isActive
-                                ? 'bg-zinc-800 text-white font-black shadow-sm border border-zinc-700/50'
+                                ? 'bg-zinc-800 text-[var(--text-primary)] font-black shadow-sm border border-zinc-700/50'
                                 : 'text-[var(--text-tertiary)] hover:text-[var(--text-primary)]'
                             }`}
                           >
@@ -1341,7 +1341,7 @@ export function DealerFlowView() {
             {/* DEX PROFILE */}
             <div className="bg-[var(--surface)] border border-[var(--border)] rounded-lg p-3 sm:p-5 flex flex-col justify-between" id="dex-profile-chart-panel">
               <div>
-                <div className="flex items-center gap-2 text-[9px] font-black tracking-widest uppercase mb-4 text-[#38BDF8]">
+                <div className="flex items-center gap-2 text-[9px] font-black tracking-widest uppercase mb-4 text-[var(--accent-color)]">
                   <Waves className="w-3.5 h-3.5" />
                   <span className="text-[var(--text-secondary)]">Delta Exposure (DEX)</span>
                   <span className="text-[var(--text-tertiary)] font-normal normal-case tracking-normal">· $ per 1% spot move</span>
@@ -1377,7 +1377,7 @@ export function DealerFlowView() {
             {/* VEX PROFILE */}
             <div className="bg-[var(--surface)] border border-[var(--border)] rounded-lg p-3 sm:p-5 flex flex-col justify-between" id="vex-profile-chart-panel">
               <div>
-                <div className="flex items-center gap-2 text-[9px] font-black tracking-widest uppercase mb-4 text-[#C084FC]">
+                <div className="flex items-center gap-2 text-[9px] font-black tracking-widest uppercase mb-4 text-[var(--accent-color)]">
                   <Zap className="w-3.5 h-3.5" />
                   <span className="text-[var(--text-secondary)]">Vega Exposure (VEX)</span>
                   <span className="text-[var(--text-tertiary)] font-normal normal-case tracking-normal">· $ per 1% vol shift</span>
