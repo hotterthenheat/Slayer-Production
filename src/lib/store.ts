@@ -236,21 +236,21 @@ export function isLocalDevEnv(): boolean {
 
 /**
  * Single source of truth: map a server access_tier string to its numeric level.
- * The real values persisted by billing (see TIER_PRICING.accessTier) are
- * 'discord' | 'intraday' | 'quant' | 'enterprise' | 'lifetime' | 'guest'. The
- * plan-key aliases ('skyvision' → intraday level, 'pinpoint' → quant level) are kept
- * as defensive normalization so a plan key accidentally stored as a tier still
- * resolves to the right level instead of silently locking the user out (→ 0).
+ * Tier ladder (value order): Discord (1) → Pinpoint GEX (2) → SkyVision (3, the
+ * flagship — includes the GEX tool AND Quant Lab) → Lifetime (5). Canonical strings
+ * are 'discord' | 'pinpoint' | 'skyvision' | 'lifetime' | 'guest'. Legacy strings
+ * from before the restructure ('intraday'/'quant'/'enterprise') are normalized to the
+ * closest new level so no one is silently locked out (→ 0).
  * NOTE: the server mirrors this mapping in marketEngine.accessTierToLevel — keep in sync.
  */
 export function accessTierToNumber(accessTier?: string | null): number {
   switch (accessTier) {
     case 'discord': return 1;
-    case 'skyvision':
-    case 'intraday': return 2;
     case 'pinpoint':
-    case 'quant': return 3;
-    case 'enterprise': return 4;
+    case 'quant': return 2;          // Pinpoint GEX (commodity dealer-GEX tool); legacy 'quant' = old pinpoint plan
+    case 'skyvision':
+    case 'intraday':
+    case 'enterprise': return 3;     // SkyVision flagship (trade picks + GEX + Quant Lab); legacy 'intraday'/'enterprise'
     case 'lifetime': return 5;
     default: return 0;
   }

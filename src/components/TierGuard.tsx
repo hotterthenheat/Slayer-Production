@@ -21,7 +21,7 @@ const TIER_LOOKUP: Record<string, {
   badgeBg: string;
 }> = {
   discord: {
-    badge: "Tier 1 // Discord Plan",
+    badge: "Tier 1 // Discord",
     desc: "Get live trade alerts and join the active trader community on Discord.",
     features: [
       "Real-time Discord alerts and chat",
@@ -31,41 +31,43 @@ const TIER_LOOKUP: Record<string, {
     accentColor: "indigo",
     badgeBg: "bg-indigo-500/10 text-indigo-400 border-indigo-500/20"
   },
-  skyvision: {
-    badge: "Tier 2 // SkyVision",
-    desc: "Access the live volatility surface, expected P&L models, and the full trade dashboard.",
-    features: [
-      "Live volatility surface",
-      "Trade health score tracker",
-      "Expected P&L models",
-      "Discord alerts included"
-    ],
-    accentColor: "blue",
-    badgeBg: "bg-blue-500/10 text-blue-400 border-blue-500/20"
-  },
   pinpoint: {
-    badge: "Tier 3 // Pinpoint GEX",
-    desc: "Track market maker positioning and key GEX levels in real time.",
+    badge: "Tier 2 // Pinpoint GEX",
+    desc: "Track live dealer positioning and key GEX levels in real time — the dealer-GEX tool.",
     features: [
       "Live dealer positioning (GEX, DEX, VEX)",
-      "Gamma exposure chart by strike",
-      "Interactive dealer positioning grid",
-      "Tiers 1 and 2 included"
+      "Gamma exposure by strike",
+      "Zero-DTE levels and dealer dynamics",
+      "Discord included"
     ],
     accentColor: "zinc",
-    badgeBg: "bg-[var(--success)] text-black/10 text-[var(--success)] border-[var(--border)]"
+    badgeBg: "bg-[var(--surface-2)] text-[var(--text-secondary)] border-[var(--border)]"
+  },
+  skyvision: {
+    badge: "Tier 3 // SkyVision",
+    desc: "The flagship — it tells you which options to trade, with the live volatility surface, expected P&L and trade-health score, plus the Pinpoint GEX tool and Quant Lab built in.",
+    features: [
+      "Actionable trade picks & health score",
+      "Live volatility surface + expected P&L",
+      "Pinpoint GEX dealer positioning included",
+      "Quant Lab: backtester, order flow & momentum",
+      "Discord alerts included"
+    ],
+    accentColor: "zinc",
+    badgeBg: "bg-[var(--surface-3)] text-[var(--text-primary)] border-[var(--border-strong)]"
   },
   quant: {
-    badge: "Tier 4 // Quant Suite",
-    desc: "Backtest strategies, track live order flow, and monitor momentum and speed gauges.",
+    badge: "Tier 3 // SkyVision",
+    desc: "The flagship — it tells you which options to trade, with the live volatility surface, expected P&L and trade-health score, plus the Pinpoint GEX tool and Quant Lab built in.",
     features: [
-      "Strategy backtester",
-      "Momentum and speed gauges",
-      "Live order-flow monitor",
-      "All lower tiers included"
+      "Actionable trade picks & health score",
+      "Live volatility surface + expected P&L",
+      "Pinpoint GEX dealer positioning included",
+      "Quant Lab: backtester, order flow & momentum",
+      "Discord alerts included"
     ],
-    accentColor: "violet",
-    badgeBg: "bg-violet-500/10 text-violet-400 border-violet-500/20"
+    accentColor: "zinc",
+    badgeBg: "bg-[var(--surface-3)] text-[var(--text-primary)] border-[var(--border-strong)]"
   }
 };
 
@@ -112,7 +114,7 @@ export default function TierGuard({
               <span className="animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 bg-[#5865F2]"></span>
               <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-[#5865F2]"></span>
             </span>
-            <span>Discord Plan Active</span>
+            <span>Discord Active</span>
           </div>
 
           <div className="space-y-2">
@@ -227,11 +229,11 @@ export default function TierGuard({
 
   // Build current vs target designation labels
   const getTierLabel = (tierNum: number) => {
-    if (tierNum === 1) return "Tier 1: Discord Plan";
-    if (tierNum === 2) return "Tier 2: SkyVision Cockpit";
-    if (tierNum === 3) return "Tier 3: Pinpoint GEX";
-    if (tierNum === 4) return "Tier 4: Quant Suite";
-    if (tierNum >= 5) return "Tier 5: Lifetime Pass";
+    if (tierNum === 1) return "Tier 1: Discord";
+    if (tierNum === 2) return "Tier 2: Pinpoint GEX";
+    if (tierNum === 3) return "Tier 3: SkyVision";
+    if (tierNum === 4) return "Tier 3: SkyVision";
+    if (tierNum >= 5) return "Tier 5: Lifetime";
     return "Tier 0: Free Plan";
   };
 
@@ -275,18 +277,18 @@ export default function TierGuard({
             </span>
             <div className="space-y-3">
               {details.features.map((feature, i) => (
-                <div key={i} className="flex items-start gap-2.5 text-xs text-[var(--success)]">
+                <div key={i} className="flex items-start gap-2.5 text-xs text-[var(--text-secondary)]">
                   <span className="w-5 h-5 rounded-full bg-black/40 border border-[var(--border)] flex items-center justify-center shrink-0 mt-0.5">
-                    <Check className="w-3 h-3 text-[var(--success)]" />
+                    <Check className="w-3 h-3 text-[var(--text-secondary)]" />
                   </span>
-                  <span className="font-mono text-[var(--success)] leading-snug">{feature}</span>
+                  <span className="font-mono text-[var(--text-secondary)] leading-snug">{feature}</span>
                 </div>
               ))}
             </div>
           </div>
 
           <div className="text-[10px] text-[var(--text-tertiary)] border-t border-[var(--border)] pt-3 flex items-center gap-1.5 uppercase font-mono">
-            <ShieldCheck className="w-4 h-4 text-[var(--success)]" />
+            <ShieldCheck className="w-4 h-4 text-[var(--text-secondary)]" />
             <span>Includes all lower tiers</span>
           </div>
         </div>

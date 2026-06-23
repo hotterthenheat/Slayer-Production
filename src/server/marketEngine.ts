@@ -700,11 +700,11 @@ setInterval(runTickerCycle, TICK_INTERVAL);
 export function accessTierToLevel(accessTier?: string | null): number {
   switch (accessTier) {
     case 'discord': return 1;
-    case 'skyvision':
-    case 'intraday': return 2;
     case 'pinpoint':
-    case 'quant': return 3;
-    case 'enterprise': return 4;
+    case 'quant': return 2;          // Pinpoint GEX (commodity dealer-GEX tool)
+    case 'skyvision':
+    case 'intraday':
+    case 'enterprise': return 3;     // SkyVision flagship (trade picks + GEX + Quant Lab)
     case 'lifetime': return 5;
     default: return 0;
   }
@@ -712,22 +712,22 @@ export function accessTierToLevel(accessTier?: string | null): number {
 
 /**
  * Minimum access level required to receive each premium payload block over the stream.
- * The level for a block is the LOWEST requiredTier among the tabs whose components
- * consume it, so a paying user who can open a tab always gets its data:
- *   • trade_plan / strike_gravity  → SkyVision (tier 2)
- *   • gex_profile / zerodte / dealer_dynamics / quant_edge → Dealer Flow (tier 3)
- *   • option_chain                 → Quant Lab (tier 3)
+ * Value ladder: Pinpoint GEX (tier 2) is the commodity dealer-GEX tool; SkyVision
+ * (tier 3) is the flagship that picks the trades and folds in the GEX tool + Quant Lab:
+ *   • gex_profile / gex_summary / dealer_dynamics / zerodte → Pinpoint GEX (tier 2)
+ *   • sky_vision / trade_plan / strike_gravity            → SkyVision (tier 3)
+ *   • quant_edge / option_chain (Quant Lab, merged in)     → SkyVision (tier 3)
  * Blocks NOT listed here (deep_intelligence, system_score, candles, discovery, …) are
  * free — they drive the public home tab and the always-on alert hub.
  */
 const PREMIUM_BLOCK_TIERS: Record<string, number> = {
-  trade_plan: 2,
-  sky_vision: 2,
-  strike_gravity: 2,
-  gex_profile: 3,
-  zerodte: 3,
-  dealer_dynamics: 3,
-  gex_summary: 3,
+  gex_profile: 2,
+  gex_summary: 2,
+  dealer_dynamics: 2,
+  zerodte: 2,
+  sky_vision: 3,
+  trade_plan: 3,
+  strike_gravity: 3,
   quant_edge: 3,
   option_chain: 3,
 };
