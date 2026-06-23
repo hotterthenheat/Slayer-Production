@@ -272,50 +272,50 @@ export default function App() {
         return {
           label: "Guest",
           desc: "Sign in to unlock",
-          style: "bg-zinc-500/10 border-zinc-500/25 text-zinc-400 shadow-[0_0_15px_rgba(113,113,122,0.05)]",
-          dotColor: "bg-zinc-500",
-          iconColor: "text-zinc-400"
+          style: "border bg-[var(--surface-2)] border-[var(--border)] text-[var(--text-tertiary)]",
+          dotColor: "bg-[var(--text-tertiary)]",
+          iconColor: "text-[var(--text-tertiary)]"
         };
       case 1:
         return {
-          label: "Squire",
-          desc: "Live alerts active",
-          style: "bg-indigo-500/10 border-indigo-500/25 text-indigo-400 shadow-[0_0_15px_rgba(99,102,241,0.05)]",
-          dotColor: "bg-indigo-500",
-          iconColor: "text-indigo-400"
+          label: "Discord",
+          desc: "Community & live alerts",
+          style: "border bg-[var(--surface-2)] border-[var(--border)] text-[var(--text-secondary)]",
+          dotColor: "bg-[var(--text-secondary)]",
+          iconColor: "text-[var(--text-secondary)]"
         };
       case 2:
         return {
-          label: "Assassin",
-          desc: "SkyVision unlocked",
-          style: "bg-sky-500/10 border-sky-500/25 text-sky-400 shadow-[0_0_15px_rgba(14,165,233,0.05)]",
-          dotColor: "bg-sky-400",
-          iconColor: "text-sky-400"
+          label: "Pinpoint GEX",
+          desc: "Live dealer GEX",
+          style: "border bg-[var(--surface-2)] border-[var(--border)] text-[var(--text-secondary)]",
+          dotColor: "bg-[var(--text-secondary)]",
+          iconColor: "text-[var(--text-secondary)]"
         };
       case 3:
         return {
-          label: "Dragonslayer",
-          desc: "Live dealer flow",
-          style: "bg-[#4ADE80] text-black/10 border-black text-[#4ADE80] shadow-[0_0_15px_rgba(34,211,238,0.05)] border-2 border-black",
-          dotColor: "bg-black/40",
-          iconColor: "text-[#4ADE80] animate-pulse"
+          label: "SkyVision",
+          desc: "Full terminal access",
+          style: "border bg-[var(--surface-3)] border-[var(--border-strong)] text-[var(--text-primary)]",
+          dotColor: "bg-[var(--text-primary)]",
+          iconColor: "text-[var(--text-primary)]"
         };
       case 4:
         return {
-          label: "Reaper",
-          desc: "Full quant suite",
-          style: "bg-amber-500/10 border-amber-500/25 text-amber-400 shadow-[0_0_15px_rgba(245,158,11,0.05)]",
-          dotColor: "bg-amber-400",
-          iconColor: "text-amber-400"
+          label: "SkyVision",
+          desc: "Full terminal access",
+          style: "border bg-[var(--surface-3)] border-[var(--border-strong)] text-[var(--text-primary)]",
+          dotColor: "bg-[var(--text-primary)]",
+          iconColor: "text-[var(--text-primary)]"
         };
       case 5:
       default:
         return {
-          label: "Immortal",
+          label: "Lifetime",
           desc: "Lifetime access",
-          style: "bg-gradient-to-r from-red-500/5 via-amber-500/5 to-indigo-500/5 border-amber-500/40 text-amber-300 shadow-[0_0_20px_rgba(245,158,11,0.12)]",
-          dotColor: "bg-gradient-to-r from-red-400 via-amber-400 to-indigo-400",
-          iconColor: "text-amber-300 animate-pulse"
+          style: "border bg-[var(--surface-3)] border-[var(--border-strong)] text-[var(--text-primary)]",
+          dotColor: "bg-[var(--text-primary)]",
+          iconColor: "text-[var(--text-primary)]"
         };
     }
   }, [purchasedTier]);
@@ -988,7 +988,7 @@ export default function App() {
             {/* TAB 2: SKYVISION (DECISION ENGINE) */}
             {activeTab === 'skyvision' && (
               <div className="view-enter">
-                <TierGuard requiredTier={2} tabKey="skyvision" planKey="skyvision" planName="SkyVision Cockpit" planPrice="$350">
+                <TierGuard requiredTier={3} tabKey="skyvision" planKey="skyvision" planName="SkyVision" planPrice="$499">
                   <SkyVisionView />
                 </TierGuard>
               </div>
@@ -997,7 +997,7 @@ export default function App() {
             {/* TAB 3: PINPOINT AI (MARKET INTELLIGENCE) */}
             {activeTab === 'pinpoint' && (
               <div className="view-enter border border-[var(--border)] bg-black/80 rounded-md p-1 drop-shadow-2xl">
-                <TierGuard requiredTier={3} tabKey="pinpoint" planKey="pinpoint" planName="Pinpoint GEX" planPrice="$500">
+                <TierGuard requiredTier={2} tabKey="pinpoint" planKey="pinpoint" planName="Pinpoint GEX" planPrice="$99">
                   <DealerFlowView />
                 </TierGuard>
               </div>
@@ -1006,7 +1006,7 @@ export default function App() {
             {/* TAB: INSTITUTIONAL QUANT LAB */}
             {activeTab === 'quant' && (
               <div className="view-enter border border-[var(--border)] bg-black/80 rounded-md p-1 drop-shadow-2xl">
-                <TierGuard requiredTier={4} tabKey="quant" planKey="quant" planName="Quant Lab" planPrice="$1,500">
+                <TierGuard requiredTier={3} tabKey="quant" planKey="skyvision" planName="SkyVision" planPrice="$499">
                   <QuantSuiteView />
                 </TierGuard>
               </div>
@@ -1015,7 +1015,7 @@ export default function App() {
             {/* TAB 5: AUDIT (TRUST ENGINE) */}
             {activeTab === 'auditor' && (
               <div className="view-enter">
-                <TierGuard requiredTier={4} tabKey="trust archive & registry" planKey="quant" planName="Quant Lab" planPrice="$1,500">
+                <TierGuard requiredTier={3} tabKey="trust archive & registry" planKey="skyvision" planName="SkyVision" planPrice="$499">
                   <QuantAuditView
                     selectedAsset={selectedAsset}
                     isCall={selectedOptionType === 'C'}
@@ -1031,7 +1031,7 @@ export default function App() {
             {/* TAB 11: RESEARCH & COMMUNITY */}
             {activeTab === 'community' && (
               <div className="view-enter">
-                <TierGuard requiredTier={2} tabKey="research & community" planKey="skyvision" planName="SkyVision Cockpit" planPrice="$350">
+                <TierGuard requiredTier={1} tabKey="research & community" planKey="discord" planName="Discord" planPrice="$39">
                   <ArborCapital />
                 </TierGuard>
               </div>

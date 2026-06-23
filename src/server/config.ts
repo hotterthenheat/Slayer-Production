@@ -22,13 +22,15 @@ export const TIER_PRICING: Record<string, {
   monthly: number;
   annual: number;
   oneTime?: number;
-  accessTier: 'discord' | 'intraday' | 'quant' | 'enterprise' | 'lifetime';
+  accessTier: 'discord' | 'pinpoint' | 'skyvision' | 'lifetime';
 }> = {
-  discord:   { tier: 1, name: 'Discord Plan',      monthly: 6500,   annual: 66000,   accessTier: 'discord' },
-  skyvision: { tier: 2, name: 'SkyVision Cockpit', monthly: 35000,  annual: 348000,  accessTier: 'intraday' },
-  pinpoint:  { tier: 3, name: 'Pinpoint GEX',      monthly: 50000,  annual: 504000,  accessTier: 'quant' },
-  quant:     { tier: 4, name: 'Quant Suite',       monthly: 150000, annual: 1500000, accessTier: 'enterprise' },
-  lifetime:  { tier: 5, name: 'Lifetime Pass',     monthly: 0,      annual: 0,       oneTime: 500000, accessTier: 'lifetime' },
+  // Value ladder: Discord (entry) → Pinpoint GEX (commodity dealer-GEX tool) →
+  // SkyVision (flagship — picks the trades and includes the GEX tool + Quant Lab).
+  // Lifetime is contact-only (no self-serve price). Quant Lab is folded into SkyVision.
+  discord:   { tier: 1, name: 'Discord',      monthly: 3900,  annual: 38400,  accessTier: 'discord' },
+  pinpoint:  { tier: 2, name: 'Pinpoint GEX', monthly: 9900,  annual: 98400,  accessTier: 'pinpoint' },
+  skyvision: { tier: 3, name: 'SkyVision',    monthly: 49900, annual: 498000, accessTier: 'skyvision' },
+  lifetime:  { tier: 5, name: 'Lifetime',     monthly: 0,     annual: 0,      accessTier: 'lifetime' },
 };
 
 // Admins MUST be configured via ADMIN_EMAILS in production (fail closed); the

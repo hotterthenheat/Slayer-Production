@@ -7,7 +7,6 @@ import {
 } from 'lucide-react';
 import { useContractStore } from '../lib/store';
 import { useLegal } from './LegalCenter';
-import { WoodenSword, NeedleSword, ValyrianSword, CuteScythe, InfinityCrown } from './TierIcons';
 
 interface SubscriptionPricingProps {
   onUpgradeComplete?: (tier: number) => void;
@@ -20,7 +19,7 @@ export function SubscriptionPricing({ onUpgradeComplete, onEnterApp, session, on
   const [isMounted, setIsMounted] = useState(false);
   const [billingCycle, setBillingCycle] = useState<'monthly' | 'annual'>('monthly');
 
-  // The checkout modal is now only used for the lifetime/Immortal contact request.
+  // The checkout modal is now only used for the lifetime contact request.
   // Paid plans redirect straight to Stripe Checkout (see handleStripeCheckout); access
   // is granted server-side by the Stripe webhook — never on the client.
   const [selectedPlanForCheckout, setSelectedPlanForCheckout] = useState<string | null>(null);
@@ -74,7 +73,7 @@ export function SubscriptionPricing({ onUpgradeComplete, onEnterApp, session, on
 
   const [checkoutError, setCheckoutError] = useState<string>('');
 
-  // Opens the lifetime/Immortal contact modal. Paid plans never reach this — they
+  // Opens the lifetime contact modal. Paid plans never reach this — they
   // go straight to Stripe Checkout via handleStripeCheckout.
   const handleCheckoutPlan = (plan: string) => {
     // Prompt login if not authenticated
@@ -131,7 +130,7 @@ export function SubscriptionPricing({ onUpgradeComplete, onEnterApp, session, on
     }
   }
 
-  // Lifetime/Immortal is a sales contact request, not a self-serve purchase.
+  // Lifetime is a sales contact request, not a self-serve purchase.
   // We open the user's mail client with the details pre-filled and show a
   // confirmation. This never grants a tier — pricing is handled offline.
   const submitLifetimeContact = () => {
@@ -142,7 +141,7 @@ export function SubscriptionPricing({ onUpgradeComplete, onEnterApp, session, on
     const referral = isIndividual ? lifetimeIndReferralSource : lifetimeBusReferralSource;
 
     const bodyLines = [
-      'Immortal (Lifetime) Pass enquiry',
+      'Lifetime Pass enquiry',
       '',
       `Account type: ${isIndividual ? 'Individual' : 'Business'}`,
       `Name: ${name}`,
@@ -155,7 +154,7 @@ export function SubscriptionPricing({ onUpgradeComplete, onEnterApp, session, on
     }
     if (referral) bodyLines.push('', `Heard about us via: ${referral}`);
 
-    const mailto = `mailto:info@slayerterminal.com?subject=${encodeURIComponent('Immortal Pass enquiry')}&body=${encodeURIComponent(bodyLines.join('\n'))}`;
+    const mailto = `mailto:info@slayerterminal.com?subject=${encodeURIComponent('Lifetime Pass enquiry')}&body=${encodeURIComponent(bodyLines.join('\n'))}`;
     try {
       window.location.href = mailto;
     } catch {
@@ -207,7 +206,7 @@ export function SubscriptionPricing({ onUpgradeComplete, onEnterApp, session, on
           </div>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-5 items-stretch max-w-[340px] sm:max-w-none mx-auto">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 items-stretch max-w-[340px] sm:max-w-none lg:max-w-6xl mx-auto">
 
           {/* SQUIRE CARD */}
           <motion.div
@@ -220,13 +219,13 @@ export function SubscriptionPricing({ onUpgradeComplete, onEnterApp, session, on
             <div className="flex flex-col flex-grow">
               <div className="pb-5 border-b border-[var(--border)]">
                 <div className="flex items-center justify-between mb-3">
-                  <span className="text-[var(--text-primary)] text-sm font-semibold inline-flex items-center gap-1.5">
-                    Squire <WoodenSword />
+                  <span className="text-[var(--text-primary)] text-sm font-semibold">
+                    Discord
                   </span>
                   <span className="text-[10px] uppercase tracking-wider text-[var(--text-tertiary)] font-medium">Community</span>
                 </div>
                 <div className="flex items-baseline gap-1">
-                  <span className="text-4xl font-bold text-[var(--text-primary)] tracking-tight">{billingCycle === 'monthly' ? '$65' : '$55'}</span>
+                  <span className="text-4xl font-bold text-[var(--text-primary)] tracking-tight">{billingCycle === 'monthly' ? '$39' : '$32'}</span>
                   <span className="text-[12px] text-[var(--text-tertiary)]">/ month</span>
                 </div>
               </div>
@@ -255,7 +254,7 @@ export function SubscriptionPricing({ onUpgradeComplete, onEnterApp, session, on
             </button>
           </motion.div>
 
-          {/* ASSASSIN CARD */}
+          {/* PINPOINT GEX CARD */}
           <motion.div
             initial={{ opacity: 0, y: 24 }}
             whileInView={{ opacity: 1, y: 0 }}
@@ -266,13 +265,13 @@ export function SubscriptionPricing({ onUpgradeComplete, onEnterApp, session, on
             <div className="flex flex-col flex-grow">
               <div className="pb-5 border-b border-[var(--border)]">
                 <div className="flex items-center justify-between mb-3">
-                  <span className="text-[var(--text-primary)] text-sm font-semibold inline-flex items-center gap-1.5">
-                    Assassin <NeedleSword />
+                  <span className="text-[var(--text-primary)] text-sm font-semibold">
+                    Pinpoint GEX
                   </span>
-                  <span className="text-[10px] uppercase tracking-wider text-[var(--text-tertiary)] font-medium">Dashboard</span>
+                  <span className="text-[10px] uppercase tracking-wider text-[var(--text-tertiary)] font-medium">Dealer GEX</span>
                 </div>
                 <div className="flex items-baseline gap-1">
-                  <span className="text-4xl font-bold text-[var(--text-primary)] tracking-tight">{billingCycle === 'monthly' ? '$350' : '$290'}</span>
+                  <span className="text-4xl font-bold text-[var(--text-primary)] tracking-tight">{billingCycle === 'monthly' ? '$99' : '$82'}</span>
                   <span className="text-[12px] text-[var(--text-tertiary)]">/ month</span>
                 </div>
               </div>
@@ -280,136 +279,90 @@ export function SubscriptionPricing({ onUpgradeComplete, onEnterApp, session, on
               <ul className="space-y-3 mt-5 mb-6 flex-grow">
                 <li className="flex gap-2.5 items-start text-[13px] text-[var(--text-secondary)] leading-snug">
                   <Check className="w-4 h-4 text-[var(--success)] shrink-0 mt-0.5" />
-                  <span className="text-[var(--text-primary)] font-medium">Everything in Squire</span>
+                  <span className="text-[var(--text-primary)] font-medium">Everything in Discord</span>
                 </li>
                 <li className="flex gap-2.5 items-start text-[13px] text-[var(--text-secondary)] leading-snug">
                   <Check className="w-4 h-4 text-[var(--success)] shrink-0 mt-0.5" />
-                  <span>SkyVision decision dashboard</span>
+                  <span>Live dealer positioning (GEX, DEX, VEX)</span>
                 </li>
                 <li className="flex gap-2.5 items-start text-[13px] text-[var(--text-secondary)] leading-snug">
                   <Check className="w-4 h-4 text-[var(--success)] shrink-0 mt-0.5" />
-                  <span>Live trade health scores</span>
+                  <span>Gamma exposure by strike</span>
                 </li>
                 <li className="flex gap-2.5 items-start text-[13px] text-[var(--text-secondary)] leading-snug">
                   <Check className="w-4 h-4 text-[var(--success)] shrink-0 mt-0.5" />
-                  <span>Live volatility surface</span>
-                </li>
-              </ul>
-            </div>
-
-            <button
-              onClick={() => handleStripeCheckout('skyvision')}
-              className="w-full py-3 bg-[var(--surface-3)] text-[var(--text-primary)] hover:bg-[var(--border-strong)] font-semibold text-[13px] rounded-xl transition-colors duration-200 cursor-pointer border border-[var(--border)]"
-            >
-              Select plan
-            </button>
-          </motion.div>
-
-          {/* DRAGONSLAYER CARD - highlighted */}
-          <motion.div
-            initial={{ opacity: 0, y: 24 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            transition={{ duration: 0.5, delay: 0.15, ease: [0.16, 1, 0.3, 1] }}
-            className="group rounded-2xl p-5 pt-9 sm:p-6 sm:pt-9 flex flex-col relative bg-[var(--surface-2)] border border-[var(--success)]/40 shadow-[0_0_0_1px_rgba(74,222,128,0.15),0_20px_50px_-20px_rgba(74,222,128,0.25)] transition-colors duration-200"
-          >
-            <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-[var(--success)] text-black text-[10px] font-bold uppercase tracking-wider px-3 py-1 rounded-full whitespace-nowrap z-10">
-              Best Value
-            </div>
-
-            <div className="flex flex-col flex-grow">
-              <div className="pb-5 border-b border-[var(--border)]">
-                <div className="flex items-center justify-between mb-3">
-                  <span className="text-[var(--text-primary)] text-sm font-semibold inline-flex items-center gap-1.5">
-                    Dragonslayer <ValyrianSword />
-                  </span>
-                  <span className="text-[10px] uppercase tracking-wider text-[var(--success)] font-medium">GEX</span>
-                </div>
-                <div className="flex items-baseline gap-1">
-                  <span className="text-4xl font-bold text-[var(--text-primary)] tracking-tight">{billingCycle === 'monthly' ? '$500' : '$420'}</span>
-                  <span className="text-[12px] text-[var(--text-tertiary)]">/ month</span>
-                </div>
-              </div>
-
-              <ul className="space-y-3 mt-5 mb-6 flex-grow">
-                <li className="flex gap-2.5 items-start text-[13px] text-[var(--text-secondary)] leading-snug">
-                  <Check className="w-4 h-4 text-[var(--success)] shrink-0 mt-0.5" />
-                  <span className="text-[var(--text-primary)] font-medium">Everything in Assassin</span>
-                </li>
-                <li className="flex gap-2.5 items-start text-[13px] text-[var(--text-secondary)] leading-snug">
-                  <Check className="w-4 h-4 text-[var(--success)] shrink-0 mt-0.5" />
-                  <span>Live dealer positioning (GEX)</span>
-                </li>
-                <li className="flex gap-2.5 items-start text-[13px] text-[var(--text-secondary)] leading-snug">
-                  <Check className="w-4 h-4 text-[var(--success)] shrink-0 mt-0.5" />
-                  <span>Institutional order flow tape</span>
-                </li>
-                <li className="flex gap-2.5 items-start text-[13px] text-[var(--text-secondary)] leading-snug">
-                  <Check className="w-4 h-4 text-[var(--success)] shrink-0 mt-0.5" />
-                  <span>GEX chart by strike</span>
+                  <span>Zero-DTE levels &amp; dealer dynamics</span>
                 </li>
               </ul>
             </div>
 
             <button
               onClick={() => handleStripeCheckout('pinpoint')}
-              className="w-full py-3 bg-[var(--success)] text-black hover:bg-[var(--success)]/90 font-semibold text-[13px] rounded-xl transition-colors duration-200 cursor-pointer"
-            >
-              Select plan
-            </button>
-          </motion.div>
-
-          {/* REAPER CARD */}
-          <motion.div
-            initial={{ opacity: 0, y: 24 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            transition={{ duration: 0.5, delay: 0.2, ease: [0.16, 1, 0.3, 1] }}
-            className="group rounded-2xl p-5 sm:p-6 flex flex-col bg-[var(--surface)] border border-[var(--border)] transition-colors duration-200 hover:border-[var(--border-strong)]"
-          >
-            <div className="flex flex-col flex-grow">
-              <div className="pb-5 border-b border-[var(--border)]">
-                <div className="flex items-center justify-between mb-3">
-                  <span className="text-[var(--text-primary)] text-sm font-semibold inline-flex items-center gap-1.5">
-                    The Reaper <CuteScythe />
-                  </span>
-                  <span className="text-[10px] uppercase tracking-wider text-[var(--warning)] font-medium">Full suite</span>
-                </div>
-                <div className="flex items-baseline gap-1">
-                  <span className="text-4xl font-bold text-[var(--text-primary)] tracking-tight">{billingCycle === 'monthly' ? '$1,500' : '$1,250'}</span>
-                  <span className="text-[12px] text-[var(--text-tertiary)]">/ month</span>
-                </div>
-              </div>
-
-              <ul className="space-y-3 mt-5 mb-6 flex-grow">
-                <li className="flex gap-2.5 items-start text-[13px] text-[var(--text-secondary)] leading-snug">
-                  <Check className="w-4 h-4 text-[var(--warning)] shrink-0 mt-0.5" />
-                  <span className="text-[var(--text-primary)] font-medium">Everything in Dragonslayer</span>
-                </li>
-                <li className="flex gap-2.5 items-start text-[13px] text-[var(--text-secondary)] leading-snug">
-                  <Check className="w-4 h-4 text-[var(--warning)] shrink-0 mt-0.5" />
-                  <span className="text-[var(--text-primary)] font-medium">Full quant suite</span>
-                </li>
-                <li className="flex gap-2.5 items-start text-[13px] text-[var(--text-secondary)] leading-snug">
-                  <Check className="w-4 h-4 text-[var(--success)] shrink-0 mt-0.5" />
-                  <span>Live order-flow monitor</span>
-                </li>
-                <li className="flex gap-2.5 items-start text-[13px] text-[var(--text-secondary)] leading-snug">
-                  <Check className="w-4 h-4 text-[var(--success)] shrink-0 mt-0.5" />
-                  <span>Trade history archive</span>
-                </li>
-              </ul>
-            </div>
-
-            <button
-              onClick={() => handleStripeCheckout('quant')}
               className="w-full py-3 bg-[var(--surface-3)] text-[var(--text-primary)] hover:bg-[var(--border-strong)] font-semibold text-[13px] rounded-xl transition-colors duration-200 cursor-pointer border border-[var(--border)]"
             >
               Select plan
             </button>
           </motion.div>
 
-          {/* IMMORTAL CARD */}
+          {/* SKYVISION CARD - flagship, featured */}
+          <motion.div
+            initial={{ opacity: 0, y: 24 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.5, delay: 0.15, ease: [0.16, 1, 0.3, 1] }}
+            className="group rounded-2xl p-5 pt-9 sm:p-6 sm:pt-9 flex flex-col relative bg-[var(--surface-2)] border border-[var(--border-strong)] shadow-[0_20px_50px_-20px_rgba(0,0,0,0.55)] transition-colors duration-200"
+          >
+            <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-[var(--text-primary)] text-[var(--surface)] text-[10px] font-bold uppercase tracking-wider px-3 py-1 rounded-full whitespace-nowrap z-10">
+              Most Popular
+            </div>
+
+            <div className="flex flex-col flex-grow">
+              <div className="pb-5 border-b border-[var(--border)]">
+                <div className="flex items-center justify-between mb-3">
+                  <span className="text-[var(--text-primary)] text-sm font-semibold">
+                    SkyVision
+                  </span>
+                  <span className="text-[10px] uppercase tracking-wider text-[var(--text-tertiary)] font-medium">Flagship</span>
+                </div>
+                <div className="flex items-baseline gap-1">
+                  <span className="text-4xl font-bold text-[var(--text-primary)] tracking-tight">{billingCycle === 'monthly' ? '$499' : '$415'}</span>
+                  <span className="text-[12px] text-[var(--text-tertiary)]">/ month</span>
+                </div>
+              </div>
+
+              <ul className="space-y-3 mt-5 mb-6 flex-grow">
+                <li className="flex gap-2.5 items-start text-[13px] text-[var(--text-secondary)] leading-snug">
+                  <Check className="w-4 h-4 text-[var(--success)] shrink-0 mt-0.5" />
+                  <span className="text-[var(--text-primary)] font-medium">Everything in Pinpoint GEX</span>
+                </li>
+                <li className="flex gap-2.5 items-start text-[13px] text-[var(--text-secondary)] leading-snug">
+                  <Check className="w-4 h-4 text-[var(--success)] shrink-0 mt-0.5" />
+                  <span className="text-[var(--text-primary)] font-medium">Tells you which options to trade</span>
+                </li>
+                <li className="flex gap-2.5 items-start text-[13px] text-[var(--text-secondary)] leading-snug">
+                  <Check className="w-4 h-4 text-[var(--success)] shrink-0 mt-0.5" />
+                  <span>Live volatility surface &amp; expected P&amp;L</span>
+                </li>
+                <li className="flex gap-2.5 items-start text-[13px] text-[var(--text-secondary)] leading-snug">
+                  <Check className="w-4 h-4 text-[var(--success)] shrink-0 mt-0.5" />
+                  <span>Trade health score tracker</span>
+                </li>
+                <li className="flex gap-2.5 items-start text-[13px] text-[var(--text-secondary)] leading-snug">
+                  <Check className="w-4 h-4 text-[var(--success)] shrink-0 mt-0.5" />
+                  <span>Quant Lab — backtester, order flow &amp; momentum</span>
+                </li>
+              </ul>
+            </div>
+
+            <button
+              onClick={() => handleStripeCheckout('skyvision')}
+              className="w-full py-3 bg-[var(--text-primary)] text-[var(--surface)] hover:opacity-90 font-semibold text-[13px] rounded-xl transition-opacity duration-200 cursor-pointer"
+            >
+              Select plan
+            </button>
+          </motion.div>
+
+          {/* LIFETIME CARD */}
           <motion.div
             initial={{ opacity: 0, y: 24 }}
             whileInView={{ opacity: 1, y: 0 }}
@@ -420,8 +373,8 @@ export function SubscriptionPricing({ onUpgradeComplete, onEnterApp, session, on
             <div className="flex flex-col flex-grow">
               <div className="pb-5 border-b border-[var(--border)]">
                 <div className="flex items-center justify-between mb-3">
-                  <span className="text-[var(--text-primary)] text-sm font-semibold inline-flex items-center gap-1.5">
-                    Immortal <InfinityCrown />
+                  <span className="text-[var(--text-primary)] text-sm font-semibold">
+                    Lifetime
                   </span>
                   <span className="text-[10px] uppercase tracking-wider text-[var(--text-tertiary)] font-medium">Lifetime</span>
                 </div>
@@ -542,17 +495,15 @@ export function SubscriptionPricing({ onUpgradeComplete, onEnterApp, session, on
                     <div>
                       <span className="text-[10px] text-[var(--text-tertiary)] uppercase tracking-wider block font-medium">Your plan</span>
                       <h3 className="text-xl font-bold text-[var(--text-primary)] mt-1 tracking-tight font-sans">
-                        {selectedPlanForCheckout === 'discord' && "Squire"}
-                        {selectedPlanForCheckout === 'skyvision' && "Assassin"}
-                        {selectedPlanForCheckout === 'pinpoint' && "Dragonslayer"}
-                        {selectedPlanForCheckout === 'quant' && "The Reaper"}
-                        {selectedPlanForCheckout === 'lifetime' && "Immortal Pass"}
+                        {selectedPlanForCheckout === 'discord' && "Discord"}
+                        {selectedPlanForCheckout === 'skyvision' && "SkyVision"}
+                        {selectedPlanForCheckout === 'pinpoint' && "Pinpoint GEX"}
+                        {selectedPlanForCheckout === 'lifetime' && "Lifetime"}
                       </h3>
                       <p className="text-[11px] text-[var(--text-tertiary)] mt-1.5 leading-relaxed">
                         {selectedPlanForCheckout === 'discord' && "Live alerts & Discord community"}
-                        {selectedPlanForCheckout === 'skyvision' && "Full trade dashboard & IV surface"}
+                        {selectedPlanForCheckout === 'skyvision' && "Trade picks, GEX & Quant Lab — everything"}
                         {selectedPlanForCheckout === 'pinpoint' && "Live dealer positioning (GEX)"}
-                        {selectedPlanForCheckout === 'quant' && "Backtester, order flow & momentum gauges"}
                         {selectedPlanForCheckout === 'lifetime' && "All features, permanent access"}
                       </p>
                     </div>
@@ -562,8 +513,8 @@ export function SubscriptionPricing({ onUpgradeComplete, onEnterApp, session, on
                         {selectedPlanForCheckout === 'lifetime'
                           ? 'Custom quote'
                           : billingCycle === 'monthly'
-                            ? (selectedPlanForCheckout === 'discord' ? '$65' : selectedPlanForCheckout === 'skyvision' ? '$350' : selectedPlanForCheckout === 'pinpoint' ? '$500' : '$1,500')
-                            : (selectedPlanForCheckout === 'discord' ? '$55' : selectedPlanForCheckout === 'skyvision' ? '$290' : selectedPlanForCheckout === 'pinpoint' ? '$420' : '$1,250')
+                            ? (selectedPlanForCheckout === 'discord' ? '$39' : selectedPlanForCheckout === 'pinpoint' ? '$99' : '$499')
+                            : (selectedPlanForCheckout === 'discord' ? '$32' : selectedPlanForCheckout === 'pinpoint' ? '$82' : '$415')
                         }
                       </span>
                       {selectedPlanForCheckout !== 'lifetime' && (
@@ -599,7 +550,7 @@ export function SubscriptionPricing({ onUpgradeComplete, onEnterApp, session, on
                               Contact form
                             </div>
                             <p className="text-[11px] text-[var(--text-tertiary)] leading-relaxed">
-                              The Immortal Pass is priced individually. Send us your details and our team
+                              The Lifetime Pass is priced individually. Send us your details and our team
                               will reach out with a custom quote &mdash; no payment is taken here.
                             </p>
 
@@ -841,7 +792,7 @@ export function SubscriptionPricing({ onUpgradeComplete, onEnterApp, session, on
                     <p className="text-[12px] text-[var(--text-tertiary)] leading-relaxed max-w-sm mx-auto">
                       Your mail app should have opened with the details pre-filled. If it didn&apos;t, email
                       us directly at <a href="mailto:info@slayerterminal.com" className="underline text-[var(--text-secondary)] hover:opacity-80">info@slayerterminal.com</a> and
-                      our team will follow up with a custom Immortal Pass quote.
+                      our team will follow up with a custom Lifetime quote.
                     </p>
                   </div>
                 )}

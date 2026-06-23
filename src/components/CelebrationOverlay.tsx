@@ -244,9 +244,11 @@ export function CelebrationOverlay({ purchasedTier, isOpen, onComplete }: Celebr
               transition={{ duration: 0.4, delay: 0.15 }}
             >
               <h2 className="text-xl font-black text-[#E5E5E5] tracking-widest mb-2 uppercase">
-                {purchasedTier >= 5 ? 'Lifetime Access Active' :
-                 purchasedTier === 4 ? 'Quant Suite Unlocked' :
-                 purchasedTier === 3 ? 'Pinpoint GEX Unlocked' : 'Upgraded'}
+                {purchasedTier >= 5 ? 'Lifetime Unlocked' :
+                 purchasedTier === 4 ? 'SkyVision Unlocked' :
+                 purchasedTier === 3 ? 'SkyVision Unlocked' :
+                 purchasedTier === 2 ? 'Pinpoint GEX Unlocked' :
+                 purchasedTier === 1 ? 'Discord Unlocked' : 'Upgraded'}
               </h2>
 
               <p className="text-zinc-400 text-[10.5px] font-mono mb-6 leading-relaxed">
