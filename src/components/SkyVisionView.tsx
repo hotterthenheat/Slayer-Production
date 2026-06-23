@@ -404,16 +404,16 @@ export function SkyVisionView() {
     <div className="w-full text-[var(--text-secondary)] flex flex-col font-mono select-none antialiased space-y-6">
 
       {/* Back Button to list */}
-      <div className="w-full flex items-center justify-between pb-2 border-b border-[var(--border)]">
+      <div className="w-full flex items-center justify-between gap-2 pb-2 border-b border-[var(--border)]">
         <button
           onClick={() => {
             setSelectedStrike(null);
           }}
-          className="flex items-center gap-2 text-[10px] text-[var(--text-secondary)] hover:text-[var(--text-primary)] uppercase tracking-widest font-black py-1.5 px-3 bg-[var(--surface-2)] border border-[var(--border)] rounded hover:bg-[var(--surface-3)] transition-colors focus-visible:ring-1 focus-visible:ring-[var(--border-strong)] focus:outline-none"
+          className="flex shrink-0 items-center gap-2 text-[10px] text-[var(--text-secondary)] hover:text-[var(--text-primary)] uppercase tracking-widest font-black py-2 px-3 bg-[var(--surface-2)] border border-[var(--border)] rounded hover:bg-[var(--surface-3)] transition-colors focus-visible:ring-1 focus-visible:ring-[var(--border-strong)] focus:outline-none"
         >
           ← Back to Signals
         </button>
-        <span className="text-[10px] text-[var(--text-tertiary)] uppercase font-black tracking-wider tabular-nums">Selected: {selectedAsset.ticker} {activeStrike}{selectedOptionType}</span>
+        <span className="text-[10px] text-[var(--text-tertiary)] uppercase font-black tracking-wider tabular-nums truncate text-right">Selected: {selectedAsset.ticker} {activeStrike}{selectedOptionType}</span>
       </div>
 
       {/* Index + timeframe selector */}
@@ -423,28 +423,28 @@ export function SkyVisionView() {
           <span className="text-[10px] text-[var(--text-secondary)] uppercase tracking-widest font-black">Live Terminal</span>
         </div>
 
-        <div className="flex items-center gap-2.5 flex-wrap">
-          <div className="flex items-center bg-[var(--surface-2)] p-0.5 border border-[var(--border)] rounded-md gap-x-1">
+        <div className="flex items-center gap-2.5 flex-wrap w-full sm:w-auto">
+          <div className="flex items-center bg-[var(--surface-2)] p-0.5 border border-[var(--border)] rounded-md gap-x-1 overflow-x-auto scrollbar-none max-w-full">
             {ASSET_LIST.map(asset => (
               <button
                 key={asset.ticker}
                 type="button"
                 onClick={() => setSelectedAsset(asset)}
-                className={`flex items-center gap-2 px-3 py-1.5 text-[10px] uppercase font-black tracking-widest rounded transition-colors cursor-pointer focus-visible:ring-1 focus-visible:ring-[var(--border-strong)] focus:outline-none ${
+                className={`flex shrink-0 items-center gap-2 px-3 py-1.5 text-[10px] uppercase font-black tracking-widest rounded transition-colors cursor-pointer focus-visible:ring-1 focus-visible:ring-[var(--border-strong)] focus:outline-none ${
                   selectedAsset.ticker === asset.ticker
                     ? 'bg-[var(--surface-3)] text-[var(--text-primary)] border border-white/5'
                     : 'text-[var(--text-tertiary)] hover:text-[var(--text-primary)] border border-transparent'
                 }`}
               >
                 <span>{asset.ticker}</span>
-                <span className="opacity-80 scale-90 origin-left" style={{ filter: 'brightness(1.1)' }}>
+                <span className="hidden sm:inline opacity-80 scale-90 origin-left" style={{ filter: 'brightness(1.1)' }}>
                   <AssetSparkline ticker={asset.ticker} width={45} height={12} strokeWidth={1.25} />
                 </span>
               </button>
             ))}
           </div>
 
-          <div className="flex items-center gap-1.5 pl-2.5 border-l border-[var(--border)]">
+          <div className="flex items-center gap-1.5 pl-0 sm:pl-2.5 sm:border-l border-[var(--border)]">
             <span className="text-[10px] text-[var(--text-tertiary)] font-black uppercase tracking-wider mr-1 hidden sm:inline">Timeframe</span>
             <div className="flex items-center bg-[var(--surface-2)] p-0.5 border border-[var(--border)] rounded-md">
               {(['5m', '15m', '1h', '4h', '1D'] as const).map(tf => (
@@ -483,7 +483,7 @@ export function SkyVisionView() {
           
           {/* TRADE VERDICT CARD */}
           <div
-            className="w-full bg-[var(--surface)] border border-[var(--border)] rounded-xl p-6 flex flex-col gap-4 shadow-lg"
+            className="w-full bg-[var(--surface)] border border-[var(--border)] rounded-xl p-4 sm:p-6 flex flex-col gap-4 shadow-lg"
             style={{ minHeight: '340px' }}
           >
             {/* Header: verdict + live mid */}
@@ -657,7 +657,7 @@ export function SkyVisionView() {
           <StrikeGravityPanel />
 
           {/* ANALYSIS SUMMARY */}
-          <div className="w-full bg-[var(--surface)] border border-[var(--border)] p-5 rounded-xl text-left space-y-3">
+          <div className="w-full bg-[var(--surface)] border border-[var(--border)] p-3 sm:p-5 rounded-xl text-left space-y-3">
             <div className="flex items-center gap-2 border-b border-[var(--border)] pb-2.5">
               <FileText className="w-3.5 h-3.5 text-[var(--success)]" />
               <span className="text-[10px] font-black uppercase tracking-[0.2em] text-[var(--text-secondary)]">
@@ -699,7 +699,7 @@ export function SkyVisionView() {
         </div>
 
         {/* RIGHT COLUMN: OPTIONS CHAIN */}
-        <div className="lg:col-span-6 w-full bg-[var(--surface)] border border-[var(--border)] p-5 rounded-xl flex flex-col" style={{ minHeight: '520px' }}>
+        <div className="lg:col-span-6 w-full bg-[var(--surface)] border border-[var(--border)] p-3 sm:p-5 rounded-xl flex flex-col" style={{ minHeight: '520px' }}>
 
           <div className="border-b border-[var(--border)] pb-3 text-left">
             <span className="text-[10px] font-black uppercase tracking-[0.2em] text-[var(--text-secondary)] inline-flex items-center gap-2">
@@ -799,7 +799,7 @@ export function SkyVisionView() {
             {/* COLUMN 1: CONTRACT & STRIKE INTELLIGENCE */}
             <div className="lg:col-span-8 flex flex-col gap-4">
                {/* Largest Impact Contracts */}
-               <div className="bg-[var(--surface)] border border-[var(--border)] rounded-xl p-5">
+               <div className="bg-[var(--surface)] border border-[var(--border)] rounded-xl p-3 sm:p-5">
                   <div className="border-b border-[var(--border)] pb-2.5 mb-4 flex justify-between items-center">
                     <span className="text-[10px] text-[var(--text-secondary)] font-black uppercase tracking-widest flex items-center gap-2">
                       <Layers className="w-3.5 h-3.5 text-[var(--success)]" /> Largest Impact Contracts
@@ -870,7 +870,7 @@ export function SkyVisionView() {
                </div>
 
                {/* Strike Breakdown (Strike Intelligence) */}
-               <div className="bg-[var(--surface)] border border-[var(--border)] rounded-xl p-5">
+               <div className="bg-[var(--surface)] border border-[var(--border)] rounded-xl p-3 sm:p-5">
                   <div className="border-b border-[var(--border)] pb-2.5 mb-4">
                     <span className="text-[10px] text-[var(--text-secondary)] font-black uppercase tracking-widest flex items-center gap-2 tabular-nums">
                        <Target className="w-3.5 h-3.5 text-[var(--success)]" />
@@ -920,7 +920,7 @@ export function SkyVisionView() {
             {/* COLUMN 2: WHALE DETECTION & FLOW FEED */}
             <div className="lg:col-span-4 flex flex-col gap-4">
                {/* Live Dealer Commentary Card */}
-               <div className="bg-[var(--surface)] border border-[var(--border)] rounded-xl p-5">
+               <div className="bg-[var(--surface)] border border-[var(--border)] rounded-xl p-3 sm:p-5">
                   <div className="border-b border-[var(--border)] pb-2.5 mb-3">
                     <span className="text-[10px] text-[var(--text-secondary)] font-black uppercase tracking-widest flex items-center gap-2">
                       <FileText className="w-3.5 h-3.5 text-[var(--success)]" />
@@ -941,7 +941,7 @@ export function SkyVisionView() {
                </div>
 
                {/* Whale Detection */}
-               <div className="bg-[var(--surface)] border border-[var(--border)] rounded-xl p-5">
+               <div className="bg-[var(--surface)] border border-[var(--border)] rounded-xl p-3 sm:p-5">
                   <div className="border-b border-[var(--border)] pb-2.5 mb-3">
                     <span className="text-[10px] text-[var(--text-secondary)] font-black uppercase tracking-widest flex items-center gap-2">
                       <Activity className="w-3.5 h-3.5 text-[var(--success)]" />
@@ -949,19 +949,19 @@ export function SkyVisionView() {
                     </span>
                   </div>
                   <div className="space-y-2 text-xs font-mono">
-                    <div className="flex justify-between items-center p-2.5 bg-[var(--success)]/5 border border-[var(--success)]/20 rounded-lg">
-                      <div>
+                    <div className="flex justify-between items-center gap-2 p-2.5 bg-[var(--success)]/5 border border-[var(--success)]/20 rounded-lg">
+                      <div className="min-w-0">
                         <span className="text-[10px] text-[var(--success)] uppercase block font-black tracking-wider">Largest Bullish</span>
-                        <span className="text-[var(--text-primary)] font-bold">{serverState.deep_intelligence.whale_detection?.bullish?.contract} • {optionExpiryLabel(selectedAsset)}</span>
+                        <span className="text-[var(--text-primary)] font-bold block truncate">{serverState.deep_intelligence.whale_detection?.bullish?.contract} • {optionExpiryLabel(selectedAsset)}</span>
                       </div>
-                      <span className="font-black text-[var(--text-primary)] tabular-nums">{serverState.deep_intelligence.whale_detection?.bullish?.size}</span>
+                      <span className="font-black text-[var(--text-primary)] tabular-nums shrink-0">{serverState.deep_intelligence.whale_detection?.bullish?.size}</span>
                     </div>
-                    <div className="flex justify-between items-center p-2.5 bg-[var(--danger)]/5 border border-[var(--danger)]/20 rounded-lg">
-                      <div>
+                    <div className="flex justify-between items-center gap-2 p-2.5 bg-[var(--danger)]/5 border border-[var(--danger)]/20 rounded-lg">
+                      <div className="min-w-0">
                         <span className="text-[10px] text-[var(--danger)] uppercase block font-black tracking-wider">Largest Bearish</span>
-                        <span className="text-[var(--text-primary)] font-bold">{serverState.deep_intelligence.whale_detection?.bearish?.contract} • {optionExpiryLabel(selectedAsset)}</span>
+                        <span className="text-[var(--text-primary)] font-bold block truncate">{serverState.deep_intelligence.whale_detection?.bearish?.contract} • {optionExpiryLabel(selectedAsset)}</span>
                       </div>
-                      <span className="font-black text-[var(--text-primary)] tabular-nums">{serverState.deep_intelligence.whale_detection?.bearish?.size}</span>
+                      <span className="font-black text-[var(--text-primary)] tabular-nums shrink-0">{serverState.deep_intelligence.whale_detection?.bearish?.size}</span>
                     </div>
                     <div className="flex justify-between items-center p-2.5 bg-[var(--surface-2)] border border-[var(--border)] rounded-lg gap-3">
                       <div>
@@ -981,7 +981,7 @@ export function SkyVisionView() {
                </div>
 
                {/* Institutional Flow Feed */}
-               <div className="bg-[var(--surface)] border border-[var(--border)] rounded-xl p-5 flex-1 flex flex-col h-[300px]">
+               <div className="bg-[var(--surface)] border border-[var(--border)] rounded-xl p-3 sm:p-5 flex-1 flex flex-col h-[300px]">
                   <div className="border-b border-[var(--border)] pb-2.5 mb-3 shrink-0 flex justify-between items-center">
                     <span className="text-[10px] text-[var(--text-secondary)] font-black uppercase tracking-widest flex items-center gap-2">
                        <Activity className="w-3.5 h-3.5 text-[var(--success)]" />
@@ -991,11 +991,11 @@ export function SkyVisionView() {
                   <div className="flex flex-col gap-2 overflow-y-auto text-[10px] font-mono pr-1 flex-1">
                      {(serverState.deep_intelligence.flow_feed || []).slice(0, 10).map((f: any) => (
                        <div key={f.id} className={`flex flex-col gap-1.5 p-2.5 bg-[var(--surface-2)] border border-[var(--border)] rounded-lg transition-colors hover:bg-[var(--surface-3)] ${f.type === 'UNUSUAL' ? 'border-l-2 border-l-[var(--info)]' : ''}`}>
-                          <div className="flex justify-between">
-                             <span className={`${f.type === 'SWEEP' ? 'text-[var(--success)]' : f.type === 'BLOCK' ? 'text-[var(--danger)]' : 'text-[var(--info)]'} font-bold`}>{f.type}</span>
-                             <span className="text-[var(--text-primary)] font-bold">{f.contract}</span>
+                          <div className="flex justify-between gap-2">
+                             <span className={`${f.type === 'SWEEP' ? 'text-[var(--success)]' : f.type === 'BLOCK' ? 'text-[var(--danger)]' : 'text-[var(--info)]'} font-bold shrink-0`}>{f.type}</span>
+                             <span className="text-[var(--text-primary)] font-bold truncate text-right">{f.contract}</span>
                           </div>
-                          <span className="text-[10px] text-[var(--text-tertiary)] uppercase tracking-wider">{f.desc}</span>
+                          <span className="text-[10px] text-[var(--text-tertiary)] uppercase tracking-wider break-words">{f.desc}</span>
                        </div>
                      ))}
                      {(serverState.deep_intelligence.flow_feed?.length ?? 0) === 0 && (
@@ -1011,14 +1011,14 @@ export function SkyVisionView() {
       {/* CHART */}
       <div className="w-full mt-2">
 
-        <div className="w-full bg-[var(--surface)] border border-[var(--border)] p-5 rounded-xl space-y-3">
+        <div className="w-full bg-[var(--surface)] border border-[var(--border)] p-3 sm:p-5 rounded-xl space-y-3">
           <div className="flex justify-between items-center pb-2.5 border-b border-[var(--border)]">
             <span className="text-[10px] font-black uppercase tracking-[0.2em] text-[var(--text-secondary)] flex items-center gap-2">
               <Activity className="w-3.5 h-3.5 text-[var(--success)]" /> Live Chart
             </span>
             <button
               onClick={() => setIsChartExpanded(!isChartExpanded)}
-              className="text-[var(--text-tertiary)] hover:text-[var(--text-primary)] transition-colors focus-visible:ring-1 focus-visible:ring-[var(--border-strong)] focus:outline-none"
+              className="-m-2 p-2 inline-flex items-center justify-center text-[var(--text-tertiary)] hover:text-[var(--text-primary)] transition-colors focus-visible:ring-1 focus-visible:ring-[var(--border-strong)] focus:outline-none"
               title={isChartExpanded ? "Collapse Chart" : "Expand Chart"}
               aria-label={isChartExpanded ? "Collapse chart" : "Expand chart"}
             >

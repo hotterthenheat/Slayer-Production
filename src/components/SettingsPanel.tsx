@@ -756,7 +756,7 @@ export function SettingsPanel({ session, onUpdateSession }: SettingsPanelProps) 
                       </button>
                       <button
                         type="submit"
-                        className="px-4 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-[var(--text-primary)] rounded-lg text-xs font-bold cursor-pointer transition-colors"
+                        className="px-4 py-2 min-h-[40px] bg-indigo-600 hover:bg-indigo-500 text-[var(--text-primary)] rounded-lg text-xs font-bold cursor-pointer transition-colors"
                       >
                         Verify &amp; Save
                       </button>
@@ -779,7 +779,7 @@ export function SettingsPanel({ session, onUpdateSession }: SettingsPanelProps) 
                     <div className="flex justify-end">
                       <button
                         type="submit"
-                        className="px-4 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-[var(--text-primary)] rounded-lg text-xs font-bold cursor-pointer transition-colors"
+                        className="px-4 py-2 min-h-[40px] bg-indigo-600 hover:bg-indigo-500 text-[var(--text-primary)] rounded-lg text-xs font-bold cursor-pointer transition-colors"
                       >
                         Send Verification Code
                       </button>
@@ -837,7 +837,7 @@ export function SettingsPanel({ session, onUpdateSession }: SettingsPanelProps) 
                   <button
                     type="submit"
                     disabled={isChangingPassword}
-                    className="px-4 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-[var(--text-primary)] rounded-lg text-xs font-bold cursor-pointer transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                    className="px-4 py-2 min-h-[40px] bg-indigo-600 hover:bg-indigo-500 text-[var(--text-primary)] rounded-lg text-xs font-bold cursor-pointer transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
                   >
                     {isChangingPassword && <RefreshCw className="w-3.5 h-3.5 animate-spin" />}
                     <span>{isChangingPassword ? 'Updating…' : 'Update Password'}</span>
@@ -1540,13 +1540,13 @@ export function SettingsPanel({ session, onUpdateSession }: SettingsPanelProps) 
                     )}
                   </div>
                 </div>
-                <div className="flex gap-2">
+                <div className="flex flex-wrap gap-2">
                   <button
                     onClick={() => {
                       useContractStore.getState().setActiveTab('subscription');
                       window.scrollTo({ top: 0, behavior: 'auto' });
                     }}
-                    className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-[var(--text-primary)] font-bold text-xs uppercase tracking-widest rounded-lg transition-colors cursor-pointer"
+                    className="px-4 py-2 min-h-[40px] bg-indigo-600 hover:bg-indigo-500 text-[var(--text-primary)] font-bold text-xs uppercase tracking-widest rounded-lg transition-colors cursor-pointer"
                   >
                     View Upgrades
                   </button>
@@ -1556,7 +1556,7 @@ export function SettingsPanel({ session, onUpdateSession }: SettingsPanelProps) 
                       ref={cancelTriggerRef}
                       onClick={() => setShowCancelConfirm(true)}
                       disabled={!!session?.cancels_at_period_end}
-                      className={`px-4 py-2 font-bold text-xs uppercase tracking-widest rounded-lg transition-all cursor-pointer border ${
+                      className={`px-4 py-2 min-h-[40px] font-bold text-xs uppercase tracking-widest rounded-lg transition-all cursor-pointer border ${
                         session?.cancels_at_period_end
                           ? 'bg-[var(--surface-2)] text-[var(--text-tertiary)] cursor-not-allowed border-[var(--border)]'
                           : 'bg-[var(--surface-2)] hover:bg-[var(--danger)]/10 text-[var(--danger)] border-[var(--border)] hover:border-[var(--danger)]/30'

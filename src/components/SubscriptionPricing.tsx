@@ -172,9 +172,9 @@ export function SubscriptionPricing({ onUpgradeComplete, onEnterApp, session, on
         whileInView={{ opacity: 1, y: 0, scale: 1 }}
         viewport={{ once: true, margin: "-100px" }}
         transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
-        className="relative z-10 py-20 px-6 max-w-[1320px] mx-auto w-full"
+        className="relative z-10 py-12 sm:py-20 px-4 sm:px-6 max-w-[1320px] mx-auto w-full"
       >
-        <div className="text-center mb-12">
+        <div className="text-center mb-10 sm:mb-12">
           <span className="text-[var(--text-tertiary)] text-[11px] font-mono uppercase tracking-[0.3em] block mb-3">
             Plans &amp; Pricing
           </span>
@@ -186,11 +186,11 @@ export function SubscriptionPricing({ onUpgradeComplete, onEnterApp, session, on
           </p>
         </div>
 
-        <div className="flex justify-center mb-12 w-full">
+        <div className="flex justify-center mb-10 sm:mb-12 w-full">
           <div className="inline-flex items-center gap-1 bg-[var(--surface)] border border-[var(--border)] p-1 rounded-full">
             <button
               onClick={() => setBillingCycle('monthly')}
-              className={`px-6 py-2 rounded-full text-[12px] font-semibold tracking-wide transition-all ${
+              className={`px-5 sm:px-6 py-2 min-h-[40px] rounded-full text-[12px] font-semibold tracking-wide transition-all ${
                 billingCycle === 'monthly' ? 'bg-[var(--surface-3)] text-[var(--text-primary)]' : 'text-[var(--text-tertiary)] hover:text-[var(--text-primary)]'
               }`}
             >
@@ -198,7 +198,7 @@ export function SubscriptionPricing({ onUpgradeComplete, onEnterApp, session, on
             </button>
             <button
               onClick={() => setBillingCycle('annual')}
-              className={`px-6 py-2 rounded-full text-[12px] font-semibold tracking-wide transition-all flex items-center gap-2 ${
+              className={`px-5 sm:px-6 py-2 min-h-[40px] rounded-full text-[12px] font-semibold tracking-wide transition-all flex items-center gap-2 ${
                 billingCycle === 'annual' ? 'bg-[var(--surface-3)] text-[var(--text-primary)]' : 'text-[var(--text-tertiary)] hover:text-[var(--text-primary)]'
               }`}
             >
@@ -215,7 +215,7 @@ export function SubscriptionPricing({ onUpgradeComplete, onEnterApp, session, on
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
             transition={{ duration: 0.5, delay: 0.05, ease: [0.16, 1, 0.3, 1] }}
-            className="group rounded-2xl p-6 flex flex-col bg-[var(--surface)] border border-[var(--border)] transition-colors duration-200 hover:border-[var(--border-strong)]"
+            className="group rounded-2xl p-5 sm:p-6 flex flex-col bg-[var(--surface)] border border-[var(--border)] transition-colors duration-200 hover:border-[var(--border-strong)]"
           >
             <div className="flex flex-col flex-grow">
               <div className="pb-5 border-b border-[var(--border)]">
@@ -261,7 +261,7 @@ export function SubscriptionPricing({ onUpgradeComplete, onEnterApp, session, on
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
             transition={{ duration: 0.5, delay: 0.1, ease: [0.16, 1, 0.3, 1] }}
-            className="group rounded-2xl p-6 flex flex-col bg-[var(--surface)] border border-[var(--border)] transition-colors duration-200 hover:border-[var(--border-strong)]"
+            className="group rounded-2xl p-5 sm:p-6 flex flex-col bg-[var(--surface)] border border-[var(--border)] transition-colors duration-200 hover:border-[var(--border-strong)]"
           >
             <div className="flex flex-col flex-grow">
               <div className="pb-5 border-b border-[var(--border)]">
@@ -311,7 +311,7 @@ export function SubscriptionPricing({ onUpgradeComplete, onEnterApp, session, on
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
             transition={{ duration: 0.5, delay: 0.15, ease: [0.16, 1, 0.3, 1] }}
-            className="group rounded-2xl p-6 pt-9 flex flex-col relative bg-[var(--surface-2)] border border-[var(--success)]/40 shadow-[0_0_0_1px_rgba(74,222,128,0.15),0_20px_50px_-20px_rgba(74,222,128,0.25)] transition-colors duration-200"
+            className="group rounded-2xl p-5 pt-9 sm:p-6 sm:pt-9 flex flex-col relative bg-[var(--surface-2)] border border-[var(--success)]/40 shadow-[0_0_0_1px_rgba(74,222,128,0.15),0_20px_50px_-20px_rgba(74,222,128,0.25)] transition-colors duration-200"
           >
             <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-[var(--success)] text-black text-[10px] font-bold uppercase tracking-wider px-3 py-1 rounded-full whitespace-nowrap z-10">
               Best Value
@@ -365,7 +365,7 @@ export function SubscriptionPricing({ onUpgradeComplete, onEnterApp, session, on
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
             transition={{ duration: 0.5, delay: 0.2, ease: [0.16, 1, 0.3, 1] }}
-            className="group rounded-2xl p-6 flex flex-col bg-[var(--surface)] border border-[var(--border)] transition-colors duration-200 hover:border-[var(--border-strong)]"
+            className="group rounded-2xl p-5 sm:p-6 flex flex-col bg-[var(--surface)] border border-[var(--border)] transition-colors duration-200 hover:border-[var(--border-strong)]"
           >
             <div className="flex flex-col flex-grow">
               <div className="pb-5 border-b border-[var(--border)]">
@@ -415,7 +415,7 @@ export function SubscriptionPricing({ onUpgradeComplete, onEnterApp, session, on
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
             transition={{ duration: 0.5, delay: 0.25, ease: [0.16, 1, 0.3, 1] }}
-            className="group rounded-2xl p-6 flex flex-col bg-[var(--surface)] border border-[var(--border)] transition-colors duration-200 hover:border-[var(--border-strong)]"
+            className="group rounded-2xl p-5 sm:p-6 flex flex-col bg-[var(--surface)] border border-[var(--border)] transition-colors duration-200 hover:border-[var(--border-strong)]"
           >
             <div className="flex flex-col flex-grow">
               <div className="pb-5 border-b border-[var(--border)]">
@@ -475,7 +475,7 @@ export function SubscriptionPricing({ onUpgradeComplete, onEnterApp, session, on
         whileInView={{ opacity: 1, y: 0 }}
         viewport={{ once: true }}
         transition={{ duration: 0.5 }}
-        className="border-t border-[var(--border)] py-10 px-6 text-center mt-auto relative z-10 w-full"
+        className="border-t border-[var(--border)] py-10 px-4 sm:px-6 text-center mt-auto relative z-10 w-full"
       >
         <p className="text-[12px] text-[var(--text-tertiary)]">&copy; 2026 Slayer Terminal. All rights reserved.</p>
         <nav className="mt-3 flex items-center justify-center flex-wrap gap-x-3 gap-y-1.5 text-[11px]" aria-label="Legal">
@@ -517,7 +517,7 @@ export function SubscriptionPricing({ onUpgradeComplete, onEnterApp, session, on
               className="bg-[var(--surface)] border border-[var(--border)] rounded-2xl w-full max-w-2xl my-auto overflow-hidden shadow-2xl flex flex-col"
             >
               {/* Modal Top Ribbon Header */}
-              <div className="border-b border-[var(--border)] px-6 py-4 flex items-center justify-between">
+              <div className="border-b border-[var(--border)] px-4 sm:px-6 py-3.5 sm:py-4 flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <Mail className="w-4 h-4 text-[var(--success)]" />
                   <span className="text-[11px] uppercase font-semibold tracking-wider text-[var(--text-secondary)]">
@@ -526,7 +526,7 @@ export function SubscriptionPricing({ onUpgradeComplete, onEnterApp, session, on
                 </div>
                 <button
                   onClick={() => setSelectedPlanForCheckout(null)}
-                  className="text-[var(--text-tertiary)] hover:text-[var(--text-primary)] transition-colors cursor-pointer p-1.5 hover:bg-[var(--surface-3)] rounded-lg flex items-center justify-center"
+                  className="text-[var(--text-tertiary)] hover:text-[var(--text-primary)] transition-colors cursor-pointer p-2 -mr-1 hover:bg-[var(--surface-3)] rounded-lg flex items-center justify-center min-w-[40px] min-h-[40px]"
                   title="Close (Esc)"
                 >
                   <X className="w-4 h-4" />
@@ -534,7 +534,7 @@ export function SubscriptionPricing({ onUpgradeComplete, onEnterApp, session, on
               </div>
 
               {/* Checkout Main Scrollable Panel */}
-              <div className="flex-grow overflow-y-auto p-6 space-y-5">
+              <div className="flex-grow overflow-y-auto p-4 sm:p-6 space-y-5">
 
                 {/* 1. PLAN SUMMARY CARD */}
                 <div className="bg-[var(--surface-2)] border border-[var(--border)] p-5 rounded-xl">
@@ -650,7 +650,7 @@ export function SubscriptionPricing({ onUpgradeComplete, onEnterApp, session, on
                                   />
                                 </div>
 
-                                <div className="grid grid-cols-2 gap-2">
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                                   <div>
                                     <label className="text-[10px] text-[var(--text-tertiary)] uppercase tracking-wider font-semibold block mb-1">
                                       Email address
@@ -712,7 +712,7 @@ export function SubscriptionPricing({ onUpgradeComplete, onEnterApp, session, on
                                   />
                                 </div>
 
-                                <div className="grid grid-cols-2 gap-2">
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                                   <div>
                                     <label className="text-[10px] text-[var(--text-tertiary)] uppercase tracking-wider font-semibold block mb-1">
                                       Email address
@@ -739,7 +739,7 @@ export function SubscriptionPricing({ onUpgradeComplete, onEnterApp, session, on
                                   </div>
                                 </div>
 
-                                <div className="grid grid-cols-2 gap-2">
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                                   <div>
                                     <label className="text-[10px] text-[var(--text-tertiary)] uppercase tracking-wider font-semibold block mb-1">
                                       Company / entity
@@ -850,7 +850,7 @@ export function SubscriptionPricing({ onUpgradeComplete, onEnterApp, session, on
               </div>
 
               {/* Modal Bottom Controls */}
-              <div className="border-t border-[var(--border)] px-6 py-4 flex gap-3 justify-center items-center">
+              <div className="border-t border-[var(--border)] px-4 sm:px-6 py-3.5 sm:py-4 flex gap-3 justify-center items-center">
                 <button
                   onClick={() => setSelectedPlanForCheckout(null)}
                   className="w-full py-3 rounded-xl bg-[var(--surface)] border border-[var(--border)] hover:border-[var(--border-strong)] text-[var(--text-tertiary)] hover:text-[var(--text-primary)] font-semibold text-[12px] transition-colors cursor-pointer flex items-center justify-center gap-2"

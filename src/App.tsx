@@ -903,7 +903,7 @@ export default function App() {
             onClick={() => {
               fetch('/api/auth/logout', { method: 'POST' }).then(() => window.location.reload());
             }}
-            className="w-full bg-red-600 text-white font-bold text-center py-2 text-xs cursor-pointer hover:bg-red-700 transition-colors z-[9999]"
+            className="w-full bg-red-600 text-white font-bold text-center py-2 px-3 text-[10px] sm:text-xs leading-snug cursor-pointer hover:bg-red-700 transition-colors z-[9999]"
           >
             IMPERSONATING USER - CLICK HERE TO TERMINATE SESSION
           </div>
@@ -1092,14 +1092,14 @@ export default function App() {
 
       {/* VIEWPORT SIMULATION ACTIVE BANNER */}
       {isSimulating && (
-        <div className="fixed top-0 left-0 right-0 z-[9999] bg-rose-600 text-[var(--text-primary)] px-4 py-1.5 flex justify-between items-center font-mono text-[10px] tracking-widest font-black shadow-[0_0_20px_rgba(225,29,72,0.4)]">
-          <div className="flex items-center gap-3">
-            <span className="w-2 h-2 bg-white rounded-full animate-ping" />
-            <span><span className="font-black">Preview mode</span> · Viewing as {session?.access_tier}</span>
+        <div className="fixed top-0 left-0 right-0 z-[9999] bg-rose-600 text-[var(--text-primary)] px-3 sm:px-4 py-1.5 flex flex-wrap gap-2 justify-between items-center font-mono text-[10px] tracking-widest font-black shadow-[0_0_20px_rgba(225,29,72,0.4)]">
+          <div className="flex items-center gap-3 min-w-0">
+            <span className="w-2 h-2 bg-white rounded-full animate-ping shrink-0" />
+            <span className="truncate"><span className="font-black">Preview mode</span> · Viewing as {session?.access_tier}</span>
           </div>
           <button
             onClick={handleExitSimulation}
-            className="bg-black hover:bg-black text-[var(--text-primary)] px-4 py-1 transition-colors border border-rose-800"
+            className="bg-black hover:bg-black text-[var(--text-primary)] px-4 py-1 transition-colors border border-rose-800 shrink-0"
           >
             Exit preview
           </button>
@@ -1126,12 +1126,12 @@ export default function App() {
 
       {/* Terminal Footer Status Bar */}
       {activeTab !== 'workspace' && (
-        <footer className="mt-auto border-t border-white/5 bg-black px-6 py-3.5 flex flex-col sm:flex-row items-center justify-between text-[9px] text-[var(--text-tertiary)] font-mono tracking-widest uppercase gap-2">
+        <footer className="mt-auto border-t border-white/5 bg-black px-4 sm:px-6 py-3.5 flex flex-col sm:flex-row items-center justify-between text-[9px] text-[var(--text-tertiary)] font-mono tracking-widest uppercase gap-2">
         <div className="flex items-center gap-2">
           <span className="text-[var(--text-tertiary)]">NY</span>
           <FooterClock />
         </div>
-        <div className="flex items-center gap-x-3 flex-wrap justify-center order-last sm:order-none normal-case tracking-normal">
+        <div className="flex items-center gap-x-3 gap-y-1.5 flex-wrap justify-center order-last sm:order-none normal-case tracking-normal">
           <button onClick={() => useLegal.getState().open('terms')} className="text-[var(--text-tertiary)] hover:text-[var(--text-secondary)] transition-colors cursor-pointer">Terms</button>
           <span className="text-[var(--border-strong)]" aria-hidden="true">·</span>
           <button onClick={() => useLegal.getState().open('privacy')} className="text-[var(--text-tertiary)] hover:text-[var(--text-secondary)] transition-colors cursor-pointer">Privacy</button>

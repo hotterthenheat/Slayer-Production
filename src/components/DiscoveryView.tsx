@@ -1100,7 +1100,7 @@ export function DiscoveryView({
     <div className={`w-full flex flex-col font-mono select-none antialiased space-y-6 max-w-6xl mx-auto pt-2 pb-12 ${c_textColor}`}>
       
       {/* 1. TOP STATUS BAR */}
-      <div className={`flex flex-col md:flex-row justify-between items-stretch md:items-center p-4 rounded-xl gap-4 md:gap-2 border ${c_cardBg}`}>
+      <div className={`flex flex-col md:flex-row justify-between items-stretch md:items-center p-3 sm:p-4 rounded-xl gap-4 md:gap-2 border ${c_cardBg}`}>
 
         <div className="flex items-center gap-2.5">
           <Target className="w-4 h-4 text-[var(--success)] shrink-0" />
@@ -1450,11 +1450,11 @@ export function DiscoveryView({
               {sortedTickers.map((ticker) => {
                 const tickerContracts = groupedByTickerAndSorted[ticker];
                 return (
-                  <div key={ticker} className="space-y-3 p-4 rounded-xl text-left border bg-[var(--surface)] border-[var(--border)]">
+                  <div key={ticker} className="space-y-3 p-3 sm:p-4 rounded-xl text-left border bg-[var(--surface)] border-[var(--border)]">
 
                     {/* Ticker Section Title segment */}
-                    <div className="flex items-center justify-between border-b pb-2.5 mb-1 border-[var(--border)]">
-                      <div className="flex items-center gap-4">
+                    <div className="flex items-center justify-between gap-2 border-b pb-2.5 mb-1 border-[var(--border)] flex-wrap">
+                      <div className="flex items-center gap-2 sm:gap-4 flex-wrap">
                         <div className="flex items-center gap-2">
                           <span className={`text-xs font-black tracking-widest uppercase font-mono ${c_textWhite}`}>{ticker}</span>
                           <span className="bg-[var(--info)]/10 border border-[var(--info)]/20 text-[var(--info)] text-[8px] font-bold px-1.5 py-0.5 rounded uppercase tracking-wider">
@@ -1468,7 +1468,7 @@ export function DiscoveryView({
                           </span>
                         </div>
                       </div>
-                      <span className="text-[7.5px] text-[var(--text-tertiary)] uppercase tracking-widest font-black">
+                      <span className="text-[7.5px] text-[var(--text-tertiary)] uppercase tracking-widest font-black shrink-0">
                         Strongest → Weakest
                       </span>
                     </div>
@@ -1738,7 +1738,7 @@ export function DiscoveryView({
           </div>
 
           {/* GRID SUMMARY */}
-          <div className={`w-full rounded-xl p-5 text-left flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border ${c_cardBg}`}>
+          <div className={`w-full rounded-xl p-3 sm:p-5 text-left flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border ${c_cardBg}`}>
             <div className="space-y-1">
               <span className="text-[8.5px] text-[var(--info)] tracking-widest uppercase font-black block">How This Works</span>
               <p className="text-[10px] tracking-wide leading-relaxed font-sans font-medium text-[var(--text-secondary)]">
@@ -1763,7 +1763,7 @@ export function DiscoveryView({
         <div className="lg:col-span-4 flex flex-col gap-4 w-full">
 
           {/* A. LARGEST TRADES (derived from live tape) */}
-          <div className={`border rounded-xl p-4.5 text-left flex flex-col gap-3.5 ${c_cardBg}`}>
+          <div className={`border rounded-xl p-3 sm:p-4.5 text-left flex flex-col gap-3.5 ${c_cardBg}`}>
 
             <div className="flex items-center gap-2 border-b pb-2.5 border-[var(--border)]">
               <Flame className="w-4 h-4 text-[var(--danger)]" />
@@ -1836,7 +1836,7 @@ export function DiscoveryView({
           </div>
 
           {/* B. LIVE FLOW FEED */}
-          <div className={`border rounded-xl p-4.5 text-left flex flex-col gap-3.5 ${c_cardBg}`}>
+          <div className={`border rounded-xl p-3 sm:p-4.5 text-left flex flex-col gap-3.5 ${c_cardBg}`}>
 
             <div className="flex items-center justify-between border-b pb-2.5 border-[var(--border)]">
               <div className="flex items-center gap-2">

@@ -63,7 +63,7 @@ function NavItem({ id, label, icon: Icon, adminOnly = false, activeColor = 'text
         setActiveTab(id);
         closeMobile();
       }}
-      className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-colors border ${
+      className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-colors border ${isMobile ? 'min-h-[44px]' : ''} ${
         isActive
           ? adminOnly
             ? 'bg-rose-950/40 text-[var(--text-primary)] border-rose-500/50'

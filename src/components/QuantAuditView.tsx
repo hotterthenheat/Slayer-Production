@@ -675,13 +675,13 @@ export function QuantAuditView({
           </div>
         </button>
 
-        <div className="flex gap-2">
-          <div className="flex bg-[var(--surface)] p-1 border border-[var(--border)] rounded-lg">
+        <div className="flex flex-wrap gap-2">
+          <div className="flex flex-1 sm:flex-none overflow-x-auto scrollbar-none bg-[var(--surface)] p-1 border border-[var(--border)] rounded-lg">
             {['ALL', 'SPX', 'NDX', 'QQQ', 'SPY'].map(ticker => (
               <button
                 key={ticker}
                 onClick={() => setAssetFilter(ticker)}
-                className={`px-3 py-1.5 text-[10px] font-bold uppercase rounded transition-all cursor-pointer focus-visible:ring-1 focus-visible:ring-[var(--border-strong)] focus:outline-none ${
+                className={`shrink-0 px-3 py-1.5 text-[10px] font-bold uppercase rounded transition-all cursor-pointer focus-visible:ring-1 focus-visible:ring-[var(--border-strong)] focus:outline-none ${
                   assetFilter === ticker
                     ? 'bg-[var(--surface-3)] text-[var(--text-primary)]'
                     : 'text-[var(--text-tertiary)] hover:text-[var(--text-secondary)]'
@@ -691,12 +691,12 @@ export function QuantAuditView({
               </button>
             ))}
           </div>
-          <div className="flex bg-[var(--surface)] p-1 border border-[var(--border)] rounded-lg">
+          <div className="flex flex-1 sm:flex-none overflow-x-auto scrollbar-none bg-[var(--surface)] p-1 border border-[var(--border)] rounded-lg">
             {filterPills.map(({ key, label }) => (
               <button
                 key={key}
                 onClick={() => setOutcomeFilter(key)}
-                className={`px-3 py-1.5 text-[10px] font-bold uppercase rounded transition-all cursor-pointer focus-visible:ring-1 focus-visible:ring-[var(--border-strong)] focus:outline-none ${
+                className={`shrink-0 flex-1 sm:flex-none px-3 py-1.5 text-[10px] font-bold uppercase rounded transition-all cursor-pointer focus-visible:ring-1 focus-visible:ring-[var(--border-strong)] focus:outline-none ${
                   outcomeFilter === key
                     ? 'bg-[var(--surface-3)] text-[var(--text-primary)]'
                     : 'text-[var(--text-tertiary)] hover:text-[var(--text-secondary)]'

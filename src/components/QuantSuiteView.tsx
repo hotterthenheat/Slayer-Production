@@ -711,7 +711,7 @@ export default function QuantSuiteView() {
                 <div className="lg:col-span-2 flex flex-col gap-4">
                   <div className="bg-[var(--surface)] border border-[var(--border)] p-4 rounded-lg">
                     <SectionHeader icon={<Activity className="w-3.5 h-3.5 text-[var(--text-tertiary)]" />} label="Realized Volatility Estimators (20d)" />
-                    <div className="grid grid-cols-3 gap-3">
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                       {[
                         { l: 'Parkinson', v: volSuite.parkinson, t: 'text-[var(--danger)]', d: 'high/low range; excludes overnight gaps' },
                         { l: 'Garman-Klass', v: volSuite.garmanKlass, t: 'text-[var(--success)]', d: 'OHLC; captures intraday range' },
@@ -739,6 +739,7 @@ export default function QuantSuiteView() {
 
                 <div className="bg-[var(--surface)] border border-[var(--border)] p-4 rounded-lg flex flex-col">
                   <SectionHeader icon={<History className="w-3.5 h-3.5 text-[var(--text-tertiary)]" />} label="Vol Cone" />
+                  <div className="overflow-x-auto -mx-1 px-1">
                   <table className="w-full text-left text-[11px]">
                     <thead>
                       <tr className="border-b border-[var(--border)] text-[var(--text-tertiary)] uppercase h-7 text-[10px]">
@@ -761,6 +762,7 @@ export default function QuantSuiteView() {
                       ))}
                     </tbody>
                   </table>
+                  </div>
                 </div>
               </div>
             )}

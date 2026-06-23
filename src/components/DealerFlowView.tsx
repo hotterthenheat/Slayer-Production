@@ -156,7 +156,7 @@ function ExposureProfileChart({ profile, decimals, type }: { profile: any; decim
       <div className={`flex items-center text-[9px] font-black tracking-widest uppercase pb-1.5 border-b mb-1.5 ${
         isLight ? 'text-zinc-500 border-black' : 'text-zinc-600 border-black'
       }`}>
-        <div className="w-[72px] shrink-0">Strike</div>
+        <div className="w-[58px] sm:w-[72px] shrink-0">Strike</div>
         <div className="flex-1 flex">
           <div className={`flex-1 text-right pr-2 ${
             type === 'gex' ? 'text-[var(--danger)]/70' : type === 'dex' ? 'text-amber-400/70' : 'text-fuchsia-400/70'
@@ -166,7 +166,7 @@ function ExposureProfileChart({ profile, decimals, type }: { profile: any; decim
             type === 'gex' ? 'text-[var(--success)]/70' : type === 'dex' ? 'text-sky-400/70' : 'text-indigo-400/70'
           }`}>Call {typeUpper} →</div>
         </div>
-        <div className="w-[64px] text-right shrink-0">Net</div>
+        <div className="w-[56px] sm:w-[64px] text-right shrink-0">Net</div>
       </div>
 
       {sortedDesc.map((r: any) => {
@@ -188,7 +188,7 @@ function ExposureProfileChart({ profile, decimals, type }: { profile: any; decim
             isSpot ? (isLight ? 'bg-black' : 'bg-white/[0.03]') : ''
           }`}>
             {/* Strike column */}
-            <div className={`w-[72px] shrink-0 text-[10.5px] font-black tracking-[0.06em] font-mono pl-1 ${
+            <div className={`w-[58px] sm:w-[72px] shrink-0 text-[10.5px] font-black tracking-[0.06em] font-mono pl-1 ${
               isSpot ? (isLight ? 'text-zinc-900 font-extrabold' : 'text-[#E5E5E5]') : isLight ? 'text-zinc-550' : 'text-zinc-400'
             }`}>
               {r.strike.toFixed(0)}
@@ -295,7 +295,7 @@ function ExposureProfileChart({ profile, decimals, type }: { profile: any; decim
             </div>
 
             {/* Net Column */}
-            <div className={`w-[64px] shrink-0 text-right text-[10px] font-bold tracking-[0.06em] tabular-nums pr-1 ${
+            <div className={`w-[56px] sm:w-[64px] shrink-0 text-right text-[10px] font-bold tracking-[0.06em] tabular-nums pr-1 ${
               r.netValue >= 0 
                 ? type === 'gex' ? 'text-[var(--success)]' : type === 'dex' ? 'text-sky-400/90' : 'text-indigo-400/90' 
                 : type === 'gex' ? 'text-[var(--danger)]/90' : type === 'dex' ? 'text-amber-400/90' : 'text-fuchsia-400/90'
@@ -802,7 +802,7 @@ export function DealerFlowView() {
   return (
     <div className="w-full space-y-6 tabular-data" id="dealerflow-main-workspace-view">
       {/* ============== HEADER STRIP ============== */}
-      <div className={`${theme.cardBg} rounded-lg px-5 py-4 flex flex-col lg:flex-row lg:items-center gap-4 justify-between`} id="dealerflow-header-strip">
+      <div className={`${theme.cardBg} rounded-lg px-3 py-3 sm:px-5 sm:py-4 flex flex-col lg:flex-row lg:items-center gap-4 justify-between`} id="dealerflow-header-strip">
         <div className="flex items-center gap-3.5">
           <div className={`w-9 h-9 rounded-md flex items-center justify-center ${theme.headerIconBg}`}>
             <Waves className={`w-4.5 h-4.5 ${theme.iconColor}`} />
@@ -820,7 +820,7 @@ export function DealerFlowView() {
           </div>
         </div>
 
-        <div className="grid grid-cols-3 sm:grid-cols-6 gap-2 lg:flex lg:flex-nowrap lg:items-center">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:flex lg:flex-nowrap lg:items-center gap-2">
           {[
             { label: 'Net GEX', value: filteredProfile ? fmtBn(filteredProfile.netGex) : '—', tone: (filteredProfile?.netGex ?? 0) >= 0 ? 'var(--success)' : 'var(--danger)' },
             { label: 'Call Wall', value: filteredProfile?.callWall?.toLocaleString(undefined, { maximumFractionDigits: 0 }) ?? '—', tone: 'var(--success)' },
@@ -829,11 +829,11 @@ export function DealerFlowView() {
             { label: 'Pin Magnet', value: filteredProfile?.magnet?.toLocaleString(undefined, { maximumFractionDigits: 0 }) ?? '—', tone: 'var(--info)' },
             { label: 'Dist to Flip', value: filteredProfile?.gammaFlip ? `${Math.abs(filteredProfile.spot - filteredProfile.gammaFlip).toLocaleString(undefined, { minimumFractionDigits: 1, maximumFractionDigits: 1 })}` : '—', tone: 'var(--text-primary)' },
           ].map(card => (
-            <div key={card.label} className="bg-[var(--surface-2)] border border-[var(--border)] rounded-md px-3 py-2 min-w-[84px] shrink-0" id={`card-${card.label.toLowerCase().replace(/\s+/g, '-')}`}>
-              <div className="text-[8px] font-black tracking-widest text-[var(--text-tertiary)] uppercase">
+            <div key={card.label} className="bg-[var(--surface-2)] border border-[var(--border)] rounded-md px-3 py-2 min-w-0 lg:min-w-[84px] shrink-0" id={`card-${card.label.toLowerCase().replace(/\s+/g, '-')}`}>
+              <div className="text-[8px] font-black tracking-widest text-[var(--text-tertiary)] uppercase truncate">
                 {card.label}
               </div>
-              <div className="text-[14px] font-mono font-bold tabular-nums" style={{ color: card.tone }}>{card.value}</div>
+              <div className="text-[13px] sm:text-[14px] font-mono font-bold tabular-nums truncate" style={{ color: card.tone }}>{card.value}</div>
             </div>
           ))}
         </div>
@@ -1230,7 +1230,7 @@ export function DealerFlowView() {
           </div>
 
           {/* ============== DEALER FLOW MAP (Hero Chart) ============== */}
-          <div className="bg-[var(--surface)] border border-[var(--border)] rounded-sm p-5 shadow-sm" id="dealerflow-map-panel">
+          <div className="bg-[var(--surface)] border border-[var(--border)] rounded-sm p-3 sm:p-5 shadow-sm" id="dealerflow-map-panel">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-5 pb-3 border-b border-[var(--border)]">
               <div className="flex items-center gap-2">
                 <Layers className="w-4 h-4 text-[var(--success)] opacity-80" />
@@ -1303,7 +1303,7 @@ export function DealerFlowView() {
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-5" id="dealerflow-main-grid">
             
             {/* GEX PROFILE */}
-            <div className="bg-[var(--surface)] border border-[var(--border)] rounded-lg p-5 flex flex-col justify-between" id="gex-profile-chart-panel">
+            <div className="bg-[var(--surface)] border border-[var(--border)] rounded-lg p-3 sm:p-5 flex flex-col justify-between" id="gex-profile-chart-panel">
               <div>
                 <div className="flex items-center gap-2 text-[9px] font-black tracking-widest uppercase mb-4 text-[var(--success)]">
                   <Layers className="w-3.5 h-3.5" />
@@ -1339,7 +1339,7 @@ export function DealerFlowView() {
             </div>
 
             {/* DEX PROFILE */}
-            <div className="bg-[var(--surface)] border border-[var(--border)] rounded-lg p-5 flex flex-col justify-between" id="dex-profile-chart-panel">
+            <div className="bg-[var(--surface)] border border-[var(--border)] rounded-lg p-3 sm:p-5 flex flex-col justify-between" id="dex-profile-chart-panel">
               <div>
                 <div className="flex items-center gap-2 text-[9px] font-black tracking-widest uppercase mb-4 text-[#38BDF8]">
                   <Waves className="w-3.5 h-3.5" />
@@ -1375,7 +1375,7 @@ export function DealerFlowView() {
             </div>
 
             {/* VEX PROFILE */}
-            <div className="bg-[var(--surface)] border border-[var(--border)] rounded-lg p-5 flex flex-col justify-between" id="vex-profile-chart-panel">
+            <div className="bg-[var(--surface)] border border-[var(--border)] rounded-lg p-3 sm:p-5 flex flex-col justify-between" id="vex-profile-chart-panel">
               <div>
                 <div className="flex items-center gap-2 text-[9px] font-black tracking-widest uppercase mb-4 text-[#C084FC]">
                   <Zap className="w-3.5 h-3.5" />
@@ -1428,7 +1428,7 @@ export function DealerFlowView() {
           <DealerDynamicsPanel />
 
           {/* ============== FULL WIDTH CHART AT BOTTOM ============== */}
-          <div className="bg-[var(--surface)] border border-[var(--border)] rounded-lg p-5 flex flex-col w-full overflow-hidden" id="displacement-overlay-chart-panel" style={{ minHeight: '380px' }}>
+          <div className="bg-[var(--surface)] border border-[var(--border)] rounded-lg p-3 sm:p-5 flex flex-col w-full overflow-hidden" id="displacement-overlay-chart-panel" style={{ minHeight: '380px' }}>
             <div className="flex items-center justify-between mb-3 shrink-0">
               <div className="flex items-center gap-2 text-[9px] font-black tracking-widest text-[var(--text-secondary)] uppercase">
                 <ShieldAlert className="w-3.5 h-3.5 text-[var(--danger)]" />

@@ -367,7 +367,7 @@ export default function ArborCapital() {
                             </span>
                           </div>
                         </div>
-                        <div className="flex items-center gap-4 shrink-0">
+                        <div className="flex items-center gap-2.5 sm:gap-4 shrink-0">
                           <div className="flex flex-col items-end">
                             <span className="text-[9px] uppercase tracking-[0.12em] text-[var(--text-tertiary)]">
                               Max gain
