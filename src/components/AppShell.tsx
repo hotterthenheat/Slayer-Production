@@ -128,7 +128,7 @@ export function AppShell({ children, session, onLogout, tierInfo, onUpgradeClick
       >
         <div className="p-4 border-b border-[var(--border)] h-[73px] flex items-center overflow-hidden">
           <div className="origin-left cursor-pointer transition-transform duration-300" style={{ transform: isSidebarExpanded ? 'scale(0.9)' : 'scale(0.9) translateX(-4px)' }} onClick={() => setActiveTab('home')}>
-             <BrandHeader />
+             <BrandHeader expanded={isSidebarExpanded} />
           </div>
         </div>
         
