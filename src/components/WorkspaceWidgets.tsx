@@ -38,11 +38,11 @@ export function Pane({ title, isMaximized, onClose, onMaximize, onHeaderPointerD
           {title}
         </span>
         <div className="flex items-center gap-0.5">
-          <button onClick={onMaximize} className="w-5 h-5 flex items-center justify-center rounded-[2px] text-[var(--text-tertiary)] hover:text-[var(--text-primary)] hover:bg-[var(--surface-3)] transition-colors">
+          <button onClick={onMaximize} aria-label={isMaximized ? `Restore ${title} panel` : `Maximize ${title} panel`} className="w-5 h-5 flex items-center justify-center rounded-[2px] text-[var(--text-tertiary)] hover:text-[var(--text-primary)] hover:bg-[var(--surface-3)] transition-colors">
             {isMaximized ? <Minimize2 className="w-3 h-3" /> : <Maximize2 className="w-3 h-3" />}
           </button>
           {onClose && (
-            <button onClick={onClose} className="w-5 h-5 flex items-center justify-center rounded-[2px] text-[var(--text-tertiary)] hover:text-[var(--danger)] hover:bg-[var(--surface-3)] transition-colors">
+            <button onClick={onClose} aria-label={`Close ${title} panel`} className="w-5 h-5 flex items-center justify-center rounded-[2px] text-[var(--text-tertiary)] hover:text-[var(--danger)] hover:bg-[var(--surface-3)] transition-colors">
               <X className="w-3 h-3" />
             </button>
           )}
@@ -441,12 +441,12 @@ const SettingsWidget = React.memo(() => {
   );
 });
 
-// Admin feeds (server health / CRM / financials) have no client-side data source
-// in the store, so these render an honest empty state rather than fabricated
-// figures. Wire them to a real admin endpoint to populate.
+// Admin feeds (server health / CRM / financials) are admin-gated in the workspace
+// menu/templates and have no client-side data source in the store, so they render
+// an honest empty state rather than fabricated figures or a dev placeholder.
 const AdminWidget = React.memo(({ kind }: { kind: 'health' | 'crm' | 'fin' }) => {
   const label = kind === 'health' ? 'Server health' : kind === 'crm' ? 'Live user CRM' : 'Financials log';
-  return <Empty label={`${label} — admin feed not connected`} />;
+  return <Empty label={label} />;
 });
 
 /* ------------------------------------------------------------------ */

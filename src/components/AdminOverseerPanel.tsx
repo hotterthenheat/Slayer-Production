@@ -169,7 +169,7 @@ function OverviewTab({ overview, reload, onSimulateTier }: { overview: any; relo
       <div className={`${CARD} p-5`}>
         <SectionHeader icon={ToggleRight} title="Feature Toggles" />
         {Object.keys(flags).length === 0 ? (
-          <div className="text-[10px] text-[var(--text-tertiary)] uppercase tracking-widest py-2">No feature flags configured</div>
+          <div className="text-[10px] text-[var(--text-tertiary)] uppercase tracking-widest py-2">No feature toggles available</div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
             {Object.keys(flags).map((k) => (
@@ -204,27 +204,51 @@ function UsersTab() {
   const [cursors, setCursors] = useState<{ current: string | null; history: (string | null)[] }>({ current: null, history: [] });
   const [q, setQ] = useState('');
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+  const [actionError, setActionError] = useState('');
 
   const load = useCallback((c: string | null) => {
     setLoading(true);
-    api(`/api/admin/users?perPage=10&q=${encodeURIComponent(q)}${c ? `&cursor=${encodeURIComponent(c)}` : ''}`).then(setData).catch(() => {}).finally(() => setLoading(false));
+    setError('');
+    api(`/api/admin/users?perPage=10&q=${encodeURIComponent(q)}${c ? `&cursor=${encodeURIComponent(c)}` : ''}`)
+      .then(setData)
+      .catch((e) => setError(e.message || 'Failed to load users.'))
+      .finally(() => setLoading(false));
   }, [q]);
 
   useEffect(() => { load(cursors.current); }, [cursors.current, load]);
 
   const act = async (email: string, action: string) => {
     if (action === 'ban' && !confirm(`Permanently BAN ${email}?`)) return;
-    await api(`/api/admin/users/${encodeURIComponent(email)}/${action}`, { method: 'POST' }).catch((e) => alert(e.message));
+    setActionError('');
+    try {
+      await api(`/api/admin/users/${encodeURIComponent(email)}/${action}`, { method: 'POST' });
+    } catch (e: any) {
+      setActionError(e.message || `Failed to ${action} ${email}.`);
+      return;
+    }
     if (action === 'impersonate') { window.location.reload(); return; }
     load(cursors.current);
   };
   const impersonate = async (email: string) => {
     if (!confirm(`Impersonate ${email}? You'll view the app as this user (read-only).`)) return;
-    await api(`/api/admin/impersonate/${encodeURIComponent(email)}`, { method: 'POST' }).catch((e) => alert(e.message));
+    setActionError('');
+    try {
+      await api(`/api/admin/impersonate/${encodeURIComponent(email)}`, { method: 'POST' });
+    } catch (e: any) {
+      setActionError(e.message || `Failed to impersonate ${email}.`);
+      return;
+    }
     window.location.reload();
   };
   const changeTier = async (email: string, tier: string) => {
-    await api(`/api/admin/users/${encodeURIComponent(email)}/tier`, { method: 'PATCH', body: JSON.stringify({ access_tier: tier }) }).catch((e) => alert(e.message));
+    setActionError('');
+    try {
+      await api(`/api/admin/users/${encodeURIComponent(email)}/tier`, { method: 'PATCH', body: JSON.stringify({ access_tier: tier }) });
+    } catch (e: any) {
+      setActionError(e.message || `Failed to change tier for ${email}.`);
+      return;
+    }
     load(cursors.current);
   };
 
@@ -233,11 +257,19 @@ function UsersTab() {
       <div className="flex items-center gap-2">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-[var(--text-tertiary)]" />
-          <input value={q} onChange={(e) => { setCursors({ current: null, history: [] }); setQ(e.target.value); }} placeholder="Search by email, username, name…"
+          <label htmlFor="admin-user-search" className="sr-only">Search users</label>
+          <input id="admin-user-search" value={q} onChange={(e) => { setCursors({ current: null, history: [] }); setQ(e.target.value); }} placeholder="Search by email, username, name…"
             className={`w-full ${FIELD} pl-9 py-2.5`} />
         </div>
         <button onClick={() => load(cursors.current)} aria-label="Refresh users" className="p-2.5 bg-[var(--surface-2)] border border-[var(--border)] rounded-md text-[var(--text-tertiary)] hover:text-[var(--text-primary)] hover:border-[var(--border-strong)] transition-colors"><RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} /></button>
       </div>
+
+      {actionError && (
+        <div role="alert" className="flex items-center justify-between gap-3 bg-[var(--danger)]/10 border border-[var(--danger)]/30 rounded-md px-3 py-2 text-[10px] text-[var(--danger)] uppercase tracking-widest font-bold">
+          <span className="min-w-0 break-words">{actionError}</span>
+          <button onClick={() => setActionError('')} aria-label="Dismiss error" className="shrink-0 hover:text-[var(--text-primary)] transition-colors">Dismiss</button>
+        </div>
+      )}
 
       <div className={`${CARD} overflow-x-auto`}>
         <table className="w-full text-[10.5px]">
@@ -256,7 +288,7 @@ function UsersTab() {
                 </td>
                 <td className="p-3">
                   <div className="flex items-center gap-1">
-                    <select value={u.access_tier} onChange={(e) => changeTier(u.email, e.target.value)} className="bg-[var(--surface-2)] border border-[var(--border)] text-[var(--text-secondary)] uppercase px-2 py-1 rounded outline-none focus:border-[var(--border-strong)]">
+                    <select aria-label={`Access tier for ${u.email}`} value={u.access_tier} onChange={(e) => changeTier(u.email, e.target.value)} className="bg-[var(--surface-2)] border border-[var(--border)] text-[var(--text-secondary)] uppercase px-2 py-1 rounded outline-none focus:border-[var(--border-strong)]">
                       {['guest', 'discord', 'intraday', 'quant', 'enterprise', 'lifetime'].map(t => <option key={t} value={t}>{t}</option>)}
                     </select>
                     {u.role !== 'user' && <span className="text-[var(--warning)]" title={u.role}></span>}
@@ -272,15 +304,32 @@ function UsersTab() {
                 </td>
                 <td className="p-3">
                   <div className="flex items-center justify-end gap-1">
-                    <button title="Impersonate" onClick={() => impersonate(u.email)} className="p-1.5 rounded text-[var(--text-tertiary)] hover:text-[var(--text-primary)] hover:bg-[var(--surface-3)] transition-colors"><Eye className="w-3.5 h-3.5" /></button>
-                    <button title={u.suspended ? 'Unsuspend' : 'Suspend'} onClick={() => act(u.email, u.suspended ? 'unsuspend' : 'suspend')} className="p-1.5 rounded text-[var(--warning)] hover:bg-[var(--warning)]/15 transition-colors"><UserX className="w-3.5 h-3.5" /></button>
-                    <button title="Force Logout" onClick={() => act(u.email, 'force-logout')} className="p-1.5 rounded text-[var(--text-tertiary)] hover:text-[var(--text-primary)] hover:bg-[var(--surface-3)] transition-colors"><LogOut className="w-3.5 h-3.5" /></button>
-                    <button title={u.banned ? 'Unban' : 'Ban'} onClick={() => act(u.email, u.banned ? 'unban' : 'ban')} className="p-1.5 rounded text-[var(--danger)] hover:bg-[var(--danger)]/15 transition-colors"><Ban className="w-3.5 h-3.5" /></button>
+                    <button aria-label={`Impersonate ${u.email}`} onClick={() => impersonate(u.email)} className="p-1.5 rounded text-[var(--text-tertiary)] hover:text-[var(--text-primary)] hover:bg-[var(--surface-3)] transition-colors"><Eye className="w-3.5 h-3.5" /></button>
+                    <button aria-label={`${u.suspended ? 'Unsuspend' : 'Suspend'} ${u.email}`} onClick={() => act(u.email, u.suspended ? 'unsuspend' : 'suspend')} className="p-1.5 rounded text-[var(--warning)] hover:bg-[var(--warning)]/15 transition-colors"><UserX className="w-3.5 h-3.5" /></button>
+                    <button aria-label={`Force logout ${u.email}`} onClick={() => act(u.email, 'force-logout')} className="p-1.5 rounded text-[var(--text-tertiary)] hover:text-[var(--text-primary)] hover:bg-[var(--surface-3)] transition-colors"><LogOut className="w-3.5 h-3.5" /></button>
+                    <button aria-label={`${u.banned ? 'Unban' : 'Ban'} ${u.email}`} onClick={() => act(u.email, u.banned ? 'unban' : 'ban')} className="p-1.5 rounded text-[var(--danger)] hover:bg-[var(--danger)]/15 transition-colors"><Ban className="w-3.5 h-3.5" /></button>
                   </div>
                 </td>
               </tr>
             ))}
-            {data.rows.length === 0 && <tr><td colSpan={5} className="p-8 text-center text-[var(--text-tertiary)] uppercase tracking-widest text-[10px]">No users</td></tr>}
+            {data.rows.length === 0 && (
+              <tr>
+                <td colSpan={5} className="p-8 text-center text-[10px] uppercase tracking-widest">
+                  {error ? (
+                    <div role="alert" className="flex flex-col items-center gap-3 text-[var(--danger)]">
+                      <span>{error}</span>
+                      <button onClick={() => load(cursors.current)} className="px-3 py-1.5 bg-[var(--surface-2)] border border-[var(--border)] rounded text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:border-[var(--border-strong)] tracking-widest font-bold transition-colors">Retry</button>
+                    </div>
+                  ) : loading ? (
+                    <span className="text-[var(--text-tertiary)]">Loading…</span>
+                  ) : q.trim() ? (
+                    <span className="text-[var(--text-tertiary)]">No users match your search</span>
+                  ) : (
+                    <span className="text-[var(--text-tertiary)]">No users</span>
+                  )}
+                </td>
+              </tr>
+            )}
           </tbody>
         </table>
       </div>
@@ -288,8 +337,8 @@ function UsersTab() {
       <div className="flex items-center justify-between text-[10px] text-[var(--text-tertiary)] uppercase tracking-widest">
         <span className="tabular-nums">{data.total} users</span>
         <div className="flex gap-2">
-          <button disabled={cursors.history.length === 0} onClick={() => setCursors(prev => { const h = [...prev.history]; const c = h.pop() || null; return { history: h, current: c }; })} className="px-3 py-1.5 bg-[var(--surface-2)] border border-[var(--border)] rounded hover:border-[var(--border-strong)] disabled:opacity-40 disabled:hover:border-[var(--border)] transition-colors">Prev</button>
-          <button disabled={!data.nextCursor} onClick={() => setCursors(prev => ({ history: [...prev.history, prev.current], current: data.nextCursor }))} className="px-3 py-1.5 bg-[var(--surface-2)] border border-[var(--border)] rounded hover:border-[var(--border-strong)] disabled:opacity-40 disabled:hover:border-[var(--border)] transition-colors">Next</button>
+          <button disabled={cursors.history.length === 0} onClick={() => setCursors(prev => { const h = [...prev.history]; const c = h.pop() || null; return { history: h, current: c }; })} className="px-3 py-1.5 bg-[var(--surface-2)] border border-[var(--border)] rounded uppercase tracking-widest font-bold hover:border-[var(--border-strong)] disabled:opacity-40 disabled:hover:border-[var(--border)] transition-colors">Prev</button>
+          <button disabled={!data.nextCursor} onClick={() => setCursors(prev => ({ history: [...prev.history, prev.current], current: data.nextCursor }))} className="px-3 py-1.5 bg-[var(--surface-2)] border border-[var(--border)] rounded uppercase tracking-widest font-bold hover:border-[var(--border-strong)] disabled:opacity-40 disabled:hover:border-[var(--border)] transition-colors">Next</button>
         </div>
       </div>
     </div>
@@ -343,24 +392,24 @@ function CouponsTab() {
       <div className={`${CARD} p-5 space-y-4`}>
         <SectionHeader icon={Ticket} title="Generate Coupon" />
         <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-          <input placeholder="CODE (A-Z 0-9)" value={form.code} onChange={(e) => setForm({ ...form, code: e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '') })}
+          <input aria-label="Coupon code" placeholder="CODE (A-Z 0-9)" value={form.code} onChange={(e) => setForm({ ...form, code: e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '') })}
             className={`${FIELD} uppercase`} />
-          <select value={form.discount_type} onChange={(e) => setForm({ ...form, discount_type: e.target.value })}
+          <select aria-label="Discount type" value={form.discount_type} onChange={(e) => setForm({ ...form, discount_type: e.target.value })}
             className={FIELD}>
             <option value="PERCENT">Percent %</option><option value="FIXED">Fixed $</option>
           </select>
-          <input type="number" placeholder="Value" value={form.discount_value} onChange={(e) => setForm({ ...form, discount_value: Number(e.target.value) })}
+          <input aria-label="Discount value" type="number" placeholder="Value" value={form.discount_value} onChange={(e) => setForm({ ...form, discount_value: Number(e.target.value) })}
             className={FIELD} />
-          <input type="number" placeholder="Redemption limit" value={form.redemption_limit} onChange={(e) => setForm({ ...form, redemption_limit: Number(e.target.value) })}
+          <input aria-label="Redemption limit" type="number" placeholder="Redemption limit" value={form.redemption_limit} onChange={(e) => setForm({ ...form, redemption_limit: Number(e.target.value) })}
             className={FIELD} />
-          <input placeholder="User restriction (email, optional)" value={form.user_restriction} onChange={(e) => setForm({ ...form, user_restriction: e.target.value })}
+          <input aria-label="User restriction (email, optional)" placeholder="User restriction (email, optional)" value={form.user_restriction} onChange={(e) => setForm({ ...form, user_restriction: e.target.value })}
             className={FIELD} />
-          <input type="date" value={form.expires_at} onChange={(e) => setForm({ ...form, expires_at: e.target.value })}
+          <input aria-label="Expiry date" type="date" value={form.expires_at} onChange={(e) => setForm({ ...form, expires_at: e.target.value })}
             className={FIELD} />
         </div>
         <div className="flex items-center gap-3">
           <button onClick={create} className="px-4 py-2 bg-[var(--success)]/10 border border-[var(--success)]/30 text-[var(--success)] rounded-md text-[11px] font-bold uppercase tracking-widest hover:bg-[var(--success)]/20 transition-colors">Generate</button>
-          {msg && <span className="text-[10px] text-[var(--text-secondary)]">{msg}</span>}
+          {msg && <span role="status" className="text-[10px] text-[var(--text-secondary)]">{msg}</span>}
         </div>
       </div>
 

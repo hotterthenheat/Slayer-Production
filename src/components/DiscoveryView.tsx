@@ -760,6 +760,9 @@ export function DiscoveryView({
 
   const [optionTypeFilter, setOptionTypeFilter] = useState<'all' | 'calls' | 'puts'>('all');
   const [feedLogs, setFeedLogs] = useState(INITIAL_FEED_LOGS);
+  // True when the sample discovery SSE stream drops; surfaced as a subtle
+  // "reconnecting" chip on the tape (the browser EventSource auto-reconnects).
+  const [feedError, setFeedError] = useState(false);
   const [lastFlashingId, setLastFlashingId] = useState<string | null>(null);
   const [flashDirection, setFlashDirection] = useState<'up' | 'down'>('up');
   const [metricsPulse, setMetricsPulse] = useState(false);
@@ -836,6 +839,9 @@ export function DiscoveryView({
   const [brierScore, setBrierScore] = useState(0.042);
   const [globalGex, setGlobalGex] = useState(485.4);
   const [scanRate, setScanRate] = useState(14.8);
+  // Wall-clock of the last sample-metric tick, shown as an "as of" caption so the
+  // illustrative readouts carry a freshness cue (consistent with the SAMPLE label).
+  const [metricsAsOf, setMetricsAsOf] = useState<number>(() => Date.now());
 
   // Subscribe to the backend discovery SSE stream. NOTE: this stream currently
   // carries the SAMPLE seed rows with light server-side jitter — it does not read
@@ -845,14 +851,24 @@ export function DiscoveryView({
     const eventSource = new EventSource(url);
     const flashTimers: ReturnType<typeof setTimeout>[] = [];
 
+    eventSource.onopen = () => {
+      // A successful (re)connection clears any prior error chip.
+      setFeedError(false);
+    };
+
     eventSource.onmessage = (event) => {
       try {
+        // Any delivered message means the stream is healthy again.
+        setFeedError(false);
         const data = JSON.parse(event.data);
         if (data.contracts) setContracts(data.contracts);
         if (data.feedLogs) setFeedLogs(data.feedLogs);
         if (typeof data.brierScore === 'number') setBrierScore(data.brierScore);
         if (typeof data.globalGex === 'number') setGlobalGex(data.globalGex);
         if (typeof data.scanRate === 'number') setScanRate(data.scanRate);
+        if (typeof data.brierScore === 'number' || typeof data.globalGex === 'number' || typeof data.scanRate === 'number') {
+          setMetricsAsOf(Date.now());
+        }
         if (data.lastFlashingId) {
           setLastFlashingId(data.lastFlashingId);
           if (data.flashDirection) setFlashDirection(data.flashDirection);
@@ -868,6 +884,9 @@ export function DiscoveryView({
 
     eventSource.onerror = (err) => {
       console.error('[SkyVision Discovery Client] EventSource Error', err);
+      // Surface a subtle reconnecting state without tearing down the pipeline —
+      // EventSource reconnects on its own; onopen/onmessage will clear this.
+      setFeedError(true);
     };
 
     return () => {
@@ -1118,6 +1137,11 @@ export function DiscoveryView({
               {scanRate.toFixed(1)}/s
             </span>
           </div>
+          <div className="w-full md:w-auto md:basis-full">
+            <span className="text-[8.5px] text-[var(--text-tertiary)] uppercase tracking-wider font-bold tabular-nums">
+              Sample · as of {formatTime(metricsAsOf)}
+            </span>
+          </div>
         </div>
 
       </div>
@@ -1303,7 +1327,12 @@ export function DiscoveryView({
       {/* 2B. EXPANDABLE STRATEGY EXPLANATION */}
       <div className={`w-full p-4 rounded-xl text-left border ${c_cardBg}`}>
 
-        <div className="flex justify-between items-center cursor-pointer select-none pb-2.5 border-b border-[var(--border)]" onClick={() => setIsStrategyExpanded(!isStrategyExpanded)}>
+        <button
+          type="button"
+          onClick={() => setIsStrategyExpanded(!isStrategyExpanded)}
+          aria-expanded={isStrategyExpanded}
+          className="w-full text-left flex justify-between items-center cursor-pointer select-none pb-2.5 border-b border-[var(--border)] focus-visible:ring-1 focus-visible:ring-[var(--border-strong)] focus:outline-none"
+        >
           <div className="flex items-center gap-2">
             <Info className="w-4 h-4 text-[var(--info)]" />
             <span className="text-[11px] font-extrabold uppercase tracking-widest text-[var(--text-primary)]">
@@ -1316,7 +1345,7 @@ export function DiscoveryView({
             </span>
             {isStrategyExpanded ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
           </div>
-        </div>
+        </button>
 
         <AnimatePresence initial={false}>
           {isStrategyExpanded && (
@@ -1490,7 +1519,11 @@ export function DiscoveryView({
                             animate={{ opacity: 1, y: 0 }}
                             exit={{ opacity: 0, scale: 0.95 }}
                             transition={{ duration: 0.25 }}
-                            className={`p-4 border rounded-xl flex flex-col gap-2.5 text-left transition-colors cursor-pointer ${
+                            role="button"
+                            tabIndex={0}
+                            aria-expanded={isCardExpanded}
+                            aria-label={`${c.ticker} ${c.strike}${c.isCall ? 'C' : 'P'} — ${isCardExpanded ? 'collapse' : 'expand'} details`}
+                            className={`p-4 border rounded-xl flex flex-col gap-2.5 text-left transition-colors cursor-pointer focus-visible:ring-1 focus-visible:ring-[var(--border-strong)] focus:outline-none ${
                               isFlashing
                                 ? (flashDirection === 'up' ? 'bg-[var(--success)]/5 border-[var(--success)]/30' : 'bg-[var(--danger)]/5 border-[var(--danger)]/30')
                                 : isCardExpanded
@@ -1502,6 +1535,15 @@ export function DiscoveryView({
                                 ...prev,
                                 [c.id]: !prev[c.id]
                               }));
+                            }}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter' || e.key === ' ') {
+                                e.preventDefault();
+                                setExpandedContracts(prev => ({
+                                  ...prev,
+                                  [c.id]: !prev[c.id]
+                                }));
+                              }
                             }}
                           >
 
@@ -1803,6 +1845,16 @@ export function DiscoveryView({
                   Sample Option Flow
                 </h2>
               </div>
+              {feedError && (
+                <span
+                  className="flex items-center gap-1.5 text-[8px] font-black uppercase tracking-widest px-1.5 py-0.5 rounded border bg-[var(--warning)]/10 text-[var(--warning)] border-[var(--warning)]/30"
+                  role="status"
+                  aria-live="polite"
+                >
+                  <RefreshCw className="w-2.5 h-2.5 animate-spin" aria-hidden="true" />
+                  Reconnecting…
+                </span>
+              )}
             </div>
 
             {/* Scrolling Tape Container */}
@@ -1830,7 +1882,8 @@ export function DiscoveryView({
                             {log.side.toUpperCase()}
                           </span>
                         </div>
-                        <span className={`font-mono font-extrabold ${isBullish ? 'text-[var(--success)]' : 'text-[var(--warning)]'}`}>
+                        <span className={`font-mono font-extrabold flex items-center gap-1 ${isBullish ? 'text-[var(--success)]' : 'text-[var(--warning)]'}`}>
+                          <span aria-hidden="true">{isBullish ? '▲' : '▼'}</span>
                           {log.action}
                         </span>
                       </div>
@@ -1840,7 +1893,7 @@ export function DiscoveryView({
                           {log.ticker} {log.strike}{log.type}
                         </span>
                         <span className={isBullish ? 'text-[var(--success)]' : 'text-[var(--warning)]'}>
-                          {log.premium}
+                          <span aria-hidden="true">{isBullish ? '+' : '−'}</span>{log.premium}
                         </span>
                       </div>
 

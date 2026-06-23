@@ -22,6 +22,7 @@ import { GexReadCard } from './GexReadCard';
 import { ZeroDtePanel } from './ZeroDtePanel';
 import { LiveTerminalFlow } from './LiveTerminalFlow';
 import { DealerFlowMap } from './DealerFlowMap';
+import { PanelSkeleton } from './PanelSkeleton';
 import {
   Waves,
   Crosshair,
@@ -761,23 +762,38 @@ export function DealerFlowView() {
 
   if (!serverState || !profile || !profile.strikes || !gauge || !disp) {
     return (
-      <div className="w-full flex flex-col items-center justify-center min-h-[460px] bg-[var(--surface)] border border-[var(--border)] rounded-lg p-8 text-center space-y-4" id="dealerflow-data-pending">
-        <div className="w-12 h-12 rounded-full bg-[var(--surface-2)] border border-[var(--border)] flex items-center justify-center">
-          <Waves className="w-6 h-6 text-[var(--success)]" />
+      <div
+        className="w-full bg-[var(--surface)] border border-[var(--border)] rounded-lg p-6 space-y-5"
+        id="dealerflow-data-pending"
+        role="status"
+        aria-busy="true"
+        aria-label="Loading dealer flow data"
+      >
+        <div className="flex flex-col items-center justify-center text-center space-y-3">
+          <div className="w-12 h-12 rounded-full bg-[var(--surface-2)] border border-[var(--border)] flex items-center justify-center">
+            <Waves className="w-6 h-6 text-[var(--success)]" />
+          </div>
+          <div className="space-y-1.5">
+            <h2 className="text-[11px] font-black tracking-widest text-[var(--text-primary)] uppercase font-sans">
+              LOADING DEALER FLOW DATA
+            </h2>
+            <p className="text-[10px] text-[var(--text-tertiary)] uppercase tracking-widest leading-relaxed max-w-sm mx-auto">
+              Loading hedging profiles, order flow, and price zones. Select any strike or option type to start the feed.
+            </p>
+          </div>
+          <div className="flex items-center gap-2 justify-center">
+            <span className="w-1.5 h-1.5 rounded-full bg-[var(--warning)] inline-block animate-pulse" />
+            <span className="text-[8px] font-mono tracking-widest text-[var(--text-tertiary)] font-bold uppercase">
+              CONNECTING TO LIVE FEED...
+            </span>
+          </div>
         </div>
-        <div className="space-y-1.5">
-          <h2 className="text-[11px] font-black tracking-widest text-[var(--text-primary)] uppercase font-sans">
-            LOADING DEALER FLOW DATA
-          </h2>
-          <p className="text-[9px] text-[var(--text-tertiary)] uppercase tracking-widest leading-relaxed max-w-sm mx-auto">
-            Loading hedging profiles, order flow, and price zones. Select any strike or option type to start the feed.
-          </p>
-        </div>
-        <div className="flex items-center gap-2 justify-center">
-          <span className="w-1.5 h-1.5 rounded-full bg-[var(--warning)] inline-block animate-pulse" />
-          <span className="text-[8px] font-mono tracking-widest text-[var(--text-tertiary)] font-bold uppercase">
-            CONNECTING TO LIVE FEED...
-          </span>
+
+        {/* Skeleton mirroring the GEX / DEX / VEX 3-column profile layout */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
+          <PanelSkeleton label="Gamma Exposure (GEX)" rows={5} />
+          <PanelSkeleton label="Delta Exposure (DEX)" rows={5} />
+          <PanelSkeleton label="Vega Exposure (VEX)" rows={5} />
         </div>
       </div>
     );
@@ -828,6 +844,8 @@ export function DealerFlowView() {
         <div className="flex flex-nowrap overflow-x-auto scrollbar-none gap-2.5 justify-start items-center">
           <button
             onClick={() => setActiveEngineView('profile')}
+            aria-label="Hedging profile view"
+            aria-pressed={activeEngineView === 'profile'}
             className={`flex shrink-0 items-center gap-2 px-4 py-2.5 font-mono text-[9px] font-black uppercase tracking-wider border rounded-lg transition-colors cursor-pointer ${
               activeEngineView === 'profile'
                 ? 'bg-[var(--surface-3)] border-[#06B6D4]/50 text-[var(--text-primary)]'
@@ -839,6 +857,8 @@ export function DealerFlowView() {
           </button>
           <button
             onClick={() => setActiveEngineView('targets')}
+            aria-label="Ranked targets view"
+            aria-pressed={activeEngineView === 'targets'}
             className={`flex shrink-0 items-center gap-2 px-4 py-2.5 font-mono text-[9px] font-black uppercase tracking-wider border rounded-lg transition-colors cursor-pointer ${
               activeEngineView === 'targets'
                 ? 'bg-[var(--surface-3)] border-[var(--danger)]/50 text-[var(--text-primary)]'
@@ -850,6 +870,8 @@ export function DealerFlowView() {
           </button>
           <button
             onClick={() => setActiveEngineView('physics')}
+            aria-label="Dealer mechanics view"
+            aria-pressed={activeEngineView === 'physics'}
             className={`flex shrink-0 items-center gap-2 px-4 py-2.5 font-mono text-[9px] font-black uppercase tracking-wider border rounded-lg transition-colors cursor-pointer ${
               activeEngineView === 'physics'
                 ? 'bg-[var(--surface-3)] border-[var(--warning)]/50 text-[var(--text-primary)]'
@@ -861,6 +883,8 @@ export function DealerFlowView() {
           </button>
           <button
             onClick={() => setActiveEngineView('terminal')}
+            aria-label="Live terminal flow view"
+            aria-pressed={activeEngineView === 'terminal'}
             className={`flex shrink-0 items-center gap-2 px-4 py-2.5 font-mono text-[9px] font-black uppercase tracking-wider border rounded-lg transition-colors cursor-pointer ${
               activeEngineView === 'terminal'
                 ? 'bg-[var(--surface-3)] border-fuchsia-500/50 text-[var(--text-primary)]'
@@ -892,9 +916,11 @@ export function DealerFlowView() {
               onFocus={() => setShowSearch(true)}
             />
             {searchQuery && (
-              <button 
+              <button
                 onClick={(e) => { e.stopPropagation(); setSearchQuery(''); setShowSearch(false); }}
                 className="text-[#06B6D4]/50 hover:text-[#06B6D4] ml-2 font-mono text-[14px]"
+                aria-label="Clear search"
+                title="Clear search"
               >
                 ×
               </button>
@@ -1083,6 +1109,12 @@ export function DealerFlowView() {
                   )}
                 </span>
                 <span className="text-[11px] font-medium text-[var(--text-tertiary)]">Calendar is real; per-expiry hedging split is modeled from the aggregated chain (use ALL DATES for the live profile)</span>
+                {expiryTab !== 'aggregated' && (
+                  <span className="text-[10px] font-bold text-[var(--warning)] flex items-center gap-1">
+                    <ShieldAlert className="w-3 h-3 shrink-0" aria-hidden="true" />
+                    Model split — single-expiry breakdown is deterministic, not a per-expiration feed
+                  </span>
+                )}
               </div>
               
               {/* Dynamic Toggle Button */}
@@ -1114,13 +1146,13 @@ export function DealerFlowView() {
               </button>
             </div>
 
-            <div className="flex gap-2.5 overflow-x-auto pb-3 snap-x snap-mandatory" style={{ scrollbarWidth: 'thin', scrollbarColor: '#3f3f46 #18181b' }}>
+            <div className="flex flex-wrap sm:flex-nowrap gap-2.5 sm:overflow-x-auto pb-3 sm:snap-x sm:snap-mandatory" style={{ scrollbarWidth: 'thin', scrollbarColor: '#3f3f46 #18181b' }}>
               {!isMultiExpiry && (
                 <button
                   onClick={() => {
                     setExpiryTab('aggregated');
                   }}
-                  className={`flex shrink-0 min-w-[140px] flex-col text-left p-2.5 rounded-lg border transition-all cursor-pointer snap-start ${
+                  className={`flex w-full sm:w-auto sm:shrink-0 sm:min-w-[140px] flex-col text-left p-2.5 rounded-lg border transition-all cursor-pointer sm:snap-start ${
                     expiryTab === 'aggregated'
                       ? 'bg-emerald-500/10 border-emerald-500/30'
                       : 'bg-[var(--surface-3)] border-[var(--border)] hover:bg-[var(--surface-2)] hover:border-zinc-700'
@@ -1160,7 +1192,7 @@ export function DealerFlowView() {
                         setExpiryTab(item.id as any);
                       }
                     }}
-                    className={`flex flex-col text-left p-2.5 rounded-lg border transition-all cursor-pointer relative overflow-hidden shrink-0 min-w-[130px] snap-start ${
+                    className={`flex flex-col text-left p-2.5 rounded-lg border transition-all cursor-pointer relative overflow-hidden w-full sm:w-auto sm:shrink-0 sm:min-w-[130px] sm:snap-start ${
                       isActive
                         ? 'bg-[#06B6D4]/10 border-[#06B6D4]/40'
                         : 'bg-[var(--surface-3)] border-[var(--border)] hover:bg-[var(--surface-2)] hover:border-[var(--border-strong)]'

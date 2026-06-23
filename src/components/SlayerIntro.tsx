@@ -223,43 +223,53 @@ export default function SlayerIntro({
                 </span>
               </div>
 
-              {/* Headline contract */}
-              <div className="flex items-center justify-between gap-4">
-                <div>
-                  <span className="block text-2xl font-bold text-[var(--text-primary)] tracking-tight">
-                    {bestOpportunity.ticker}
-                  </span>
-                  <span className="block text-[11px] text-[var(--text-tertiary)] uppercase tracking-wide mt-1">
-                    {bestOpportunity.isCall ? 'Call' : 'Put'} · {activeHeroIdx}
-                  </span>
-                </div>
-                <span className={`text-[11px] font-semibold uppercase tracking-wide px-3 py-1.5 rounded-md ${
-                  bestOpportunity.isCall ? 'bg-[var(--success)]/15 text-[var(--success)]' : 'bg-[var(--danger)]/15 text-[var(--danger)]'
-                }`}>
-                  {bestOpportunity.isCall ? 'Bullish' : 'Bearish'}
-                </span>
-              </div>
+              {/* Headline contract + pricing — guarded so a partial/incomplete
+                  opportunity object can never render a blank ticker or NaN figures. */}
+              {bestOpportunity?.ticker ? (
+                <>
+                  <div className="flex items-center justify-between gap-4">
+                    <div>
+                      <span className="block text-2xl font-bold text-[var(--text-primary)] tracking-tight">
+                        {bestOpportunity.ticker}
+                      </span>
+                      <span className="block text-[11px] text-[var(--text-tertiary)] uppercase tracking-wide mt-1">
+                        {bestOpportunity.isCall ? 'Call' : 'Put'} · {activeHeroIdx}
+                      </span>
+                    </div>
+                    <span className={`text-[11px] font-semibold uppercase tracking-wide px-3 py-1.5 rounded-md ${
+                      bestOpportunity.isCall ? 'bg-[var(--success)]/15 text-[var(--success)]' : 'bg-[var(--danger)]/15 text-[var(--danger)]'
+                    }`}>
+                      {bestOpportunity.isCall ? 'Bullish' : 'Bearish'}
+                    </span>
+                  </div>
 
-              {/* Real pricing metrics */}
-              <div className="grid grid-cols-3 gap-3 p-3 rounded-xl bg-[var(--surface-2)] border border-[var(--border)]">
-                <div>
-                  <span className="block text-[10px] uppercase tracking-wide text-[var(--text-tertiary)]">Trade score</span>
-                  <span className="block text-base font-bold text-[var(--success)] mt-1 tabular-nums">{Math.round(bestOpportunity.confidence)}</span>
-                </div>
-                <div>
-                  <span className="block text-[10px] uppercase tracking-wide text-[var(--text-tertiary)]">Market</span>
-                  <span className="block text-base font-bold text-[var(--text-primary)] mt-1 tabular-nums">{bestOpportunity.currentPrice}</span>
-                </div>
-                <div>
-                  <span className="block text-[10px] uppercase tracking-wide text-[var(--text-tertiary)]">Fair value</span>
-                  <span className="block text-base font-bold text-[var(--text-primary)] mt-1 tabular-nums">{bestOpportunity.fairValue}</span>
-                </div>
-              </div>
+                  {/* Real pricing metrics */}
+                  <div className="grid grid-cols-3 gap-3 p-3 rounded-xl bg-[var(--surface-2)] border border-[var(--border)]">
+                    <div>
+                      <span className="block text-[10px] uppercase tracking-wide text-[var(--text-tertiary)]">Trade score</span>
+                      <span className="block text-base font-bold text-[var(--success)] mt-1 tabular-nums">{Number.isFinite(bestOpportunity.confidence) ? Math.round(bestOpportunity.confidence) : '—'}</span>
+                    </div>
+                    <div>
+                      <span className="block text-[10px] uppercase tracking-wide text-[var(--text-tertiary)]">Market</span>
+                      <span className="block text-base font-bold text-[var(--text-primary)] mt-1 tabular-nums">{bestOpportunity.currentPrice ?? '—'}</span>
+                    </div>
+                    <div>
+                      <span className="block text-[10px] uppercase tracking-wide text-[var(--text-tertiary)]">Fair value</span>
+                      <span className="block text-base font-bold text-[var(--text-primary)] mt-1 tabular-nums">{bestOpportunity.fairValue ?? '—'}</span>
+                    </div>
+                  </div>
 
-              <div className="flex items-center justify-between text-[11px]">
-                <span className="uppercase tracking-wide text-[var(--text-tertiary)]">Entry zone</span>
-                <span className="font-semibold text-[var(--text-secondary)] tabular-nums">{bestOpportunity.entryZone}</span>
-              </div>
+                  <div className="flex items-center justify-between text-[11px]">
+                    <span className="uppercase tracking-wide text-[var(--text-tertiary)]">Entry zone</span>
+                    <span className="font-semibold text-[var(--text-secondary)] tabular-nums">{bestOpportunity.entryZone ?? '—'}</span>
+                  </div>
+                </>
+              ) : (
+                <div className="flex flex-col items-center justify-center gap-1 p-5 rounded-xl border border-dashed border-[var(--border)] bg-[var(--surface-2)]">
+                  <span className="text-[11px] uppercase tracking-wide text-[var(--text-tertiary)]">Ranking best opportunity for {activeHeroIdx}</span>
+                  <span className="text-[10px] text-[var(--text-tertiary)]">Syncing live market data…</span>
+                </div>
+              )}
 
               {/* Dealer intelligence — only rendered when genuinely live */}
               {dealerMetrics ? (

@@ -348,18 +348,33 @@ export function SkyseyeAlertHub() {
               animate={{ opacity: 1, x: 0, scale: 1 }}
               exit={{ opacity: 0, scale: 0.9, x: 10, transition: { duration: 0.2 } }}
               layout
+              role="button"
+              tabIndex={0}
+              aria-label={
+                toast.type === 'MULTIPLE'
+                  ? `Multiple flow setups found. Open SkyVision to review`
+                  : `${toast.ticker} ${toast.strike}${toast.type} flow alert, estimated score ${toast.health} of 100. Open in analyzer`
+              }
               onClick={() => handleAlertClick(toast)}
-              className={`border transition-all duration-150 p-4 rounded-sm flex flex-col gap-3 border-l-4 ${borderLeftGlow} ${bgClass} ${glowIntensity} relative group select-none cursor-pointer hover:bg-[#111]`}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault();
+                  handleAlertClick(toast);
+                }
+              }}
+              className={`border transition-all duration-150 p-4 rounded-sm flex flex-col gap-3 border-l-4 ${borderLeftGlow} ${bgClass} ${glowIntensity} relative group select-none cursor-pointer hover:bg-[#111] focus-visible:ring-1 focus-visible:ring-[var(--border-strong)] focus:outline-none`}
             >
               {/* Close button */}
-              <button 
+              <button
                 onClick={(e) => {
                   e.stopPropagation(); // Prevent trigger navigation
                   removeToast(toast.id);
                 }}
-                className="absolute top-2 right-2 p-0.5 text-[var(--text-tertiary)] hover:text-[var(--text-primary)] rounded transition-colors opacity-0 group-hover:opacity-100 cursor-pointer focus-visible:ring-1 focus-visible:ring-[var(--border-strong)] focus:outline-none"
+                aria-label="Dismiss alert"
+                title="Dismiss alert"
+                className="absolute top-2 right-2 p-0.5 text-[var(--text-tertiary)] hover:text-[var(--text-primary)] rounded transition-colors opacity-0 group-hover:opacity-100 focus-visible:opacity-100 cursor-pointer focus-visible:ring-1 focus-visible:ring-[var(--border-strong)] focus:outline-none"
               >
-                <X className="w-3 h-3" />
+                <X className="w-3 h-3" aria-hidden="true" />
               </button>
 
               {/* Toast Badge & Topline info */}
@@ -384,8 +399,11 @@ export function SkyseyeAlertHub() {
                     <span className="text-[10px] font-black text-[var(--text-primary)]/95 uppercase tracking-widest flex items-center gap-1.5">
                       {toast.rating === 'GOOD' ? 'TRADE ALERT' : 'FLOW UPDATE'}
                     </span>
-                    <span className="text-[10px] text-[var(--text-tertiary)] tracking-wider font-mono tabular-nums">
-                      {toast.timestamp} • LIVE
+                    <span
+                      className="text-[10px] text-[var(--text-tertiary)] tracking-wider font-mono tabular-nums"
+                      title="Premium, move and health are model estimates — not a live quoted value"
+                    >
+                      {toast.timestamp} • EST.
                     </span>
                   </div>
                 </div>

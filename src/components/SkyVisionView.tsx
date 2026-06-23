@@ -300,6 +300,12 @@ export function SkyVisionView() {
       ? (selectedOptionType === 'C' ? selectedFocusedOption.callMove : selectedFocusedOption.putMove)
       : 42);
 
+  // Provenance for the confidence + expected-move readouts, mirroring the greeks
+  // treatment: 'live' only when a real server figure backs the value, else it is a
+  // model estimate and must be labelled as such (never presented as live data).
+  const isConfidenceLive = serverTradeHealth !== null;
+  const isExpectedMoveLive = serverExpectedMove !== null;
+
   // Greeks for the "Physics Grid" — honesty-first source of truth:
   //  1. REAL per-strike greeks from the server option_chain when present (the
   //     server publishes analytic delta/gamma/vega/theta). `source: 'live'` only
@@ -536,7 +542,16 @@ export function SkyVisionView() {
 
                 <div className="space-y-1.5 text-left">
                   <div className="flex justify-between items-center">
-                    <span className="text-[var(--text-tertiary)] uppercase text-[10px] font-black">Confidence</span>
+                    <span className="text-[var(--text-tertiary)] uppercase text-[10px] font-black flex items-center gap-1.5">
+                      Confidence
+                      <span className={`text-[10px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded border ${
+                        isConfidenceLive
+                          ? 'text-[var(--success)] border-[var(--success)]/30 bg-[var(--success)]/10'
+                          : 'text-[var(--text-tertiary)] border-[var(--border)] bg-[var(--surface-3)]'
+                      }`}>
+                        {isConfidenceLive ? 'Live' : 'Model Est.'}
+                      </span>
+                    </span>
                     <span className="font-black text-[var(--text-primary)] text-[10px] font-mono tabular-nums">{tradeHealthValue}%</span>
                   </div>
                   <div className="w-full bg-[var(--surface-3)] h-1.5 rounded-full overflow-hidden">
@@ -547,6 +562,11 @@ export function SkyVisionView() {
                       transition={{ duration: 0.6, ease: "easeOut" }}
                     />
                   </div>
+                  {!isConfidenceLive && (
+                    <span className="block text-[10px] text-[var(--text-tertiary)] uppercase tracking-wider leading-snug">
+                      Model estimate · not investment advice
+                    </span>
+                  )}
                 </div>
 
                 {/* Greeks 2x2 grid — labelled by provenance so a model/estimate
@@ -564,8 +584,8 @@ export function SkyVisionView() {
                 <div className="grid grid-cols-2 gap-1.5 border-t border-b border-[var(--border)] py-3 font-mono text-[10px]">
                   <div className="flex justify-between px-1.5 py-1 bg-[var(--surface-3)] border border-[var(--border)] rounded">
                     <span className="text-[var(--text-tertiary)] font-semibold tracking-wider">DELTA</span>
-                    <span className={`font-bold tabular-nums ${derivedGreeks.delta > 0 ? 'text-[var(--success)]' : 'text-[var(--danger)]'}`}>
-                      {derivedGreeks.delta > 0 ? '+' : ''}{derivedGreeks.delta}
+                    <span className={`font-bold tabular-nums ${derivedGreeks.delta > 0 ? 'text-[var(--success)]' : derivedGreeks.delta < 0 ? 'text-[var(--danger)]' : 'text-[var(--text-secondary)]'}`}>
+                      <span aria-hidden="true">{derivedGreeks.delta > 0 ? '▲ ' : derivedGreeks.delta < 0 ? '▼ ' : ''}</span>{derivedGreeks.delta > 0 ? '+' : ''}{derivedGreeks.delta}
                     </span>
                   </div>
                   <div className="flex justify-between px-1.5 py-1 bg-[var(--surface-3)] border border-[var(--border)] rounded">
@@ -578,14 +598,30 @@ export function SkyVisionView() {
                   </div>
                   <div className="flex justify-between px-1.5 py-1 bg-[var(--surface-3)] border border-[var(--border)] rounded">
                     <span className="text-[var(--text-tertiary)] font-semibold tracking-wider">VEGA</span>
-                    <span className="text-[var(--info)] font-bold tabular-nums">{derivedGreeks.vega > 0 ? '+' : ''}{derivedGreeks.vega}</span>
+                    <span className="text-[var(--info)] font-bold tabular-nums"><span aria-hidden="true">{derivedGreeks.vega > 0 ? '▲ ' : derivedGreeks.vega < 0 ? '▼ ' : ''}</span>{derivedGreeks.vega > 0 ? '+' : ''}{derivedGreeks.vega}</span>
                   </div>
                 </div>
 
                 {/* Expected move */}
-                <div className="flex justify-between items-center">
-                  <span className="text-[10px] text-[var(--text-tertiary)] tracking-widest font-black uppercase">Expected Move</span>
-                  <span className="font-black text-[var(--info)] text-sm font-mono tabular-nums">+{expectedMoveField}%</span>
+                <div className="space-y-1">
+                  <div className="flex justify-between items-center">
+                    <span className="text-[10px] text-[var(--text-tertiary)] tracking-widest font-black uppercase flex items-center gap-1.5">
+                      Expected Move
+                      <span className={`text-[10px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded border ${
+                        isExpectedMoveLive
+                          ? 'text-[var(--success)] border-[var(--success)]/30 bg-[var(--success)]/10'
+                          : 'text-[var(--text-tertiary)] border-[var(--border)] bg-[var(--surface-3)]'
+                      }`}>
+                        {isExpectedMoveLive ? 'Live' : 'Model Est.'}
+                      </span>
+                    </span>
+                    <span className="font-black text-[var(--info)] text-sm font-mono tabular-nums">+{expectedMoveField}%</span>
+                  </div>
+                  {!isExpectedMoveLive && (
+                    <span className="block text-[10px] text-[var(--text-tertiary)] uppercase tracking-wider leading-snug">
+                      Model estimate · not investment advice
+                    </span>
+                  )}
                 </div>
 
               </div>
@@ -984,6 +1020,7 @@ export function SkyVisionView() {
               onClick={() => setIsChartExpanded(!isChartExpanded)}
               className="text-[var(--text-tertiary)] hover:text-[var(--text-primary)] transition-colors focus-visible:ring-1 focus-visible:ring-[var(--border-strong)] focus:outline-none"
               title={isChartExpanded ? "Collapse Chart" : "Expand Chart"}
+              aria-label={isChartExpanded ? "Collapse chart" : "Expand chart"}
             >
               {isChartExpanded ? <Minimize2 className="w-3.5 h-3.5" /> : <Maximize2 className="w-3.5 h-3.5" />}
             </button>

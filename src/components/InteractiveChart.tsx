@@ -370,14 +370,44 @@ export const InteractiveChart = React.memo(function InteractiveChart({
 
   }, [chartData, showLiquiditySweeps, liquidityEvents, targets, showFVGs, fvgs, showDisplacementEvents, displacementZones, tape]);
 
+  // True while the contract has no candles yet (e.g. right after a new SkyVision
+  // selection resets chartData to []). The charting effect already no-ops on an
+  // empty series, so we simply overlay a non-blocking skeleton until data arrives.
+  const isLoadingCandles = candles.length === 0;
+
   return (
     <div className="w-full h-full relative bg-[var(--surface)] flex flex-col border border-[var(--border)] rounded-sm">
       {/* Chart canvas DOM */}
-      <div 
-        ref={containerRef} 
-        className="w-full flex-1 min-h-[140px]" 
+      <div
+        ref={containerRef}
+        className="w-full flex-1 min-h-[140px]"
         style={{ minHeight: '140px' }}
       />
+
+      {/* Loading skeleton — shown only while no candles have arrived, then removed.
+          Absolutely positioned over the canvas so the chart logic is untouched. */}
+      {isLoadingCandles && (
+        <div
+          className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-[var(--surface)]/80 backdrop-blur-[1px] pointer-events-none"
+          role="status"
+          aria-live="polite"
+          aria-label="Loading candles"
+        >
+          {/* Shimmer bars evoking a candlestick series while data streams in */}
+          <div className="flex items-end gap-1.5 h-12 opacity-60" aria-hidden="true">
+            {[40, 70, 55, 85, 60, 95, 50].map((h, i) => (
+              <div
+                key={i}
+                className="w-1.5 rounded-sm bg-[var(--surface-3)] animate-pulse"
+                style={{ height: `${h}%`, animationDelay: `${i * 90}ms` }}
+              />
+            ))}
+          </div>
+          <span className="text-[10px] font-black uppercase tracking-widest text-[var(--text-tertiary)] font-mono animate-pulse">
+            Loading candles…
+          </span>
+        </div>
+      )}
     </div>
   );
 });

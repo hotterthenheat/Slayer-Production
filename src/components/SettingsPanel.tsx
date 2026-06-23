@@ -90,6 +90,7 @@ function ReferralCodeBox() {
         <span className="text-[10px] text-[var(--text-tertiary)] uppercase tracking-widest font-bold">Apply a Referral Code</span>
         <div className="flex items-center gap-2 mt-1.5">
           <input
+            aria-label="Apply a referral code"
             value={applyInput}
             onChange={(e) => setApplyInput(e.target.value.toUpperCase())}
             placeholder="FRND10OFF"
@@ -97,7 +98,7 @@ function ReferralCodeBox() {
           />
           <button onClick={apply} disabled={applying} className="px-4 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-[var(--text-primary)] rounded-lg text-[10px] font-bold uppercase tracking-widest disabled:opacity-50 transition-colors">{applying ? '…' : 'Apply'}</button>
         </div>
-        {applyMsg && <p className={`text-[10px] mt-1.5 ${applyMsg.ok ? 'text-[var(--success)]' : 'text-[var(--danger)]'}`}>{applyMsg.text}</p>}
+        {applyMsg && <p role="alert" className={`text-[10px] mt-1.5 ${applyMsg.ok ? 'text-[var(--success)]' : 'text-[var(--danger)]'}`}>{applyMsg.text}</p>}
       </div>
     </div>
   );
@@ -193,6 +194,7 @@ export function SettingsPanel({ session, onUpdateSession }: SettingsPanelProps) 
   const [newPassword, setNewPassword] = useState('');
   const [pwError, setPwError] = useState('');
   const [pwSuccess, setPwSuccess] = useState('');
+  const [isChangingPassword, setIsChangingPassword] = useState(false);
   
   const [newEmail, setNewEmail] = useState('');
   const [emailOtp, setEmailOtp] = useState('');
@@ -240,6 +242,23 @@ export function SettingsPanel({ session, onUpdateSession }: SettingsPanelProps) 
   // Subscription Cancellation Flow attributes (Module 4)
   const [showCancelConfirm, setShowCancelConfirm] = useState(false);
   const [isCanceling, setIsCanceling] = useState(false);
+  const cancelDialogRef = useRef<HTMLDivElement>(null);
+  const cancelTriggerRef = useRef<HTMLButtonElement>(null);
+
+  // Cancel-subscription modal a11y: focus the dialog on open, support Escape to
+  // close, and restore focus to the trigger button on close.
+  useEffect(() => {
+    if (!showCancelConfirm) return;
+    cancelDialogRef.current?.focus();
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && !isCanceling) setShowCancelConfirm(false);
+    };
+    window.addEventListener('keydown', onKey);
+    return () => {
+      window.removeEventListener('keydown', onKey);
+      cancelTriggerRef.current?.focus();
+    };
+  }, [showCancelConfirm, isCanceling]);
 
   const handleCancelSubscription = async () => {
     setIsCanceling(true);
@@ -346,12 +365,10 @@ export function SettingsPanel({ session, onUpdateSession }: SettingsPanelProps) 
         metaTag.setAttribute('name', 'robots');
         metaTag.setAttribute('content', 'noindex, nofollow');
         document.head.appendChild(metaTag);
-        console.log('[SEO COMPLIANCE] Injected <meta name="robots" content="noindex, nofollow"> to block search indexing.');
       }
     } else {
       if (metaTag) {
         metaTag.remove();
-        console.log('[SEO COMPLIANCE] Restored search engine indexing.');
       }
     }
   }, [blockSearchIndexing]);
@@ -491,6 +508,7 @@ export function SettingsPanel({ session, onUpdateSession }: SettingsPanelProps) 
       return;
     }
 
+    setIsChangingPassword(true);
     try {
       const res = await fetch('/api/auth/change-password', {
         method: 'POST',
@@ -508,6 +526,8 @@ export function SettingsPanel({ session, onUpdateSession }: SettingsPanelProps) 
       }
     } catch (err) {
       setPwError('Server connection timeout. Please verify backend status.');
+    } finally {
+      setIsChangingPassword(false);
     }
   };
 
@@ -635,17 +655,19 @@ export function SettingsPanel({ session, onUpdateSession }: SettingsPanelProps) 
   return (
     <div id="slayer-settings-panel" className="w-full flex flex-col gap-4 text-left font-mono max-w-[860px] mx-auto">
 
-      {/* Tab Navigation — horizontal scroll on mobile, wraps on md+ */}
+      {/* Tab Navigation — horizontal scroll on mobile, wraps with comfortable tap targets on md+ */}
       <div className="w-full">
-        <div className="flex flex-nowrap overflow-x-auto gap-1 pb-1 md:flex-wrap md:overflow-x-visible scrollbar-none">
+        <div className="flex flex-nowrap overflow-x-auto gap-1.5 pb-1 md:flex-wrap md:overflow-x-visible scrollbar-none" role="tablist" aria-label="Settings sections">
           {tabs.map((tab) => {
             const Icon = tab.icon;
             const isActive = activeTab === tab.id;
             return (
               <button
                 key={tab.id}
+                role="tab"
+                aria-selected={isActive}
                 onClick={() => setActiveTab(tab.id)}
-                className={`shrink-0 flex items-center gap-2 px-4 rounded-lg text-[11px] font-mono font-bold uppercase tracking-[0.15em] transition-all cursor-pointer min-h-[36px] whitespace-nowrap ${
+                className={`shrink-0 flex items-center gap-2 px-4 rounded-lg text-[11px] font-mono font-bold uppercase tracking-[0.15em] transition-all cursor-pointer min-h-[40px] md:min-h-[40px] whitespace-nowrap ${
                   isActive
                     ? 'bg-[var(--surface-2)] text-[var(--text-primary)] border border-[var(--border-strong)]'
                     : 'text-[var(--text-tertiary)] hover:text-[var(--text-primary)] hover:bg-[var(--surface)] border border-transparent'
@@ -699,8 +721,8 @@ export function SettingsPanel({ session, onUpdateSession }: SettingsPanelProps) 
                   <div className="text-[var(--text-primary)] font-mono font-bold">{session?.email || 'N/A'}</div>
                 </div>
 
-                {emailError && <div className="text-xs font-bold text-[var(--danger)] p-2 bg-[var(--surface-2)] rounded-md border border-[var(--danger)]/30">{emailError}</div>}
-                {emailSuccess && <div className="text-xs font-bold text-[var(--success)] p-2 bg-[var(--surface-2)] rounded-md border border-[var(--success)]/30">{emailSuccess}</div>}
+                {emailError && <div role="alert" className="text-xs font-bold text-[var(--danger)] p-2 bg-[var(--surface-2)] rounded-md border border-[var(--danger)]/30">{emailError}</div>}
+                {emailSuccess && <div role="status" className="text-xs font-bold text-[var(--success)] p-2 bg-[var(--surface-2)] rounded-md border border-[var(--success)]/30">{emailSuccess}</div>}
 
                 {otpSent ? (
                   <form onSubmit={handleEmailUpdateVerify} className="space-y-3 animate-fadeIn">
@@ -712,9 +734,11 @@ export function SettingsPanel({ session, onUpdateSession }: SettingsPanelProps) 
                     </div>
 
                     <div className="space-y-1">
-                      <label className="text-[10px] text-[var(--text-tertiary)] font-bold uppercase tracking-wider">Enter Verification Code</label>
+                      <label htmlFor="settings-email-otp" className="text-[10px] text-[var(--text-tertiary)] font-bold uppercase tracking-wider">Enter Verification Code</label>
                       <input
+                        id="settings-email-otp"
                         type="text"
+                        inputMode="numeric"
                         placeholder="000000"
                         maxLength={6}
                         value={emailOtp}
@@ -741,9 +765,11 @@ export function SettingsPanel({ session, onUpdateSession }: SettingsPanelProps) 
                 ) : (
                   <form onSubmit={handleEmailUpdateRequest} className="space-y-3">
                     <div className="space-y-1">
-                      <label className="text-[10px] text-[var(--text-tertiary)] font-bold uppercase tracking-wider">New Email Address</label>
+                      <label htmlFor="settings-new-email" className="text-[10px] text-[var(--text-tertiary)] font-bold uppercase tracking-wider">New Email Address</label>
                       <input
+                        id="settings-new-email"
                         type="email"
+                        autoComplete="email"
                         placeholder="newemailaddress@trade.com"
                         value={newEmail}
                         onChange={e => setNewEmail(e.target.value)}
@@ -771,14 +797,16 @@ export function SettingsPanel({ session, onUpdateSession }: SettingsPanelProps) 
               </div>
 
               <form onSubmit={handleChangePasswordSubmit} className="space-y-4">
-                {pwError && <div className="text-xs font-bold text-[var(--danger)] p-2 bg-[var(--surface-2)] rounded-md border border-[var(--danger)]/30">{pwError}</div>}
-                {pwSuccess && <div className="text-xs font-bold text-[var(--success)] p-2 bg-[var(--surface-2)] rounded-md border border-[var(--success)]/30">{pwSuccess}</div>}
+                {pwError && <div role="alert" className="text-xs font-bold text-[var(--danger)] p-2 bg-[var(--surface-2)] rounded-md border border-[var(--danger)]/30">{pwError}</div>}
+                {pwSuccess && <div role="status" className="text-xs font-bold text-[var(--success)] p-2 bg-[var(--surface-2)] rounded-md border border-[var(--success)]/30">{pwSuccess}</div>}
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="space-y-1">
-                    <label className="text-[10px] text-[var(--text-tertiary)] font-bold uppercase tracking-wider">Current Password</label>
+                    <label htmlFor="settings-current-password" className="text-[10px] text-[var(--text-tertiary)] font-bold uppercase tracking-wider">Current Password</label>
                     <input
+                      id="settings-current-password"
                       type="password"
+                      autoComplete="current-password"
                       placeholder="••••••••••••"
                       value={currentPassword}
                       onChange={e => setCurrentPassword(e.target.value)}
@@ -786,9 +814,11 @@ export function SettingsPanel({ session, onUpdateSession }: SettingsPanelProps) 
                     />
                   </div>
                   <div className="space-y-1">
-                    <label className="text-[10px] text-[var(--text-tertiary)] font-bold uppercase tracking-wider">New Password</label>
+                    <label htmlFor="settings-new-password" className="text-[10px] text-[var(--text-tertiary)] font-bold uppercase tracking-wider">New Password</label>
                     <input
+                      id="settings-new-password"
                       type="password"
+                      autoComplete="new-password"
                       placeholder="••••••••••••"
                       value={newPassword}
                       onChange={e => setNewPassword(e.target.value)}
@@ -806,9 +836,11 @@ export function SettingsPanel({ session, onUpdateSession }: SettingsPanelProps) 
                 <div className="flex justify-end">
                   <button
                     type="submit"
-                    className="px-4 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-[var(--text-primary)] rounded-lg text-xs font-bold cursor-pointer transition-colors"
+                    disabled={isChangingPassword}
+                    className="px-4 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-[var(--text-primary)] rounded-lg text-xs font-bold cursor-pointer transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
                   >
-                    Update Password
+                    {isChangingPassword && <RefreshCw className="w-3.5 h-3.5 animate-spin" />}
+                    <span>{isChangingPassword ? 'Updating…' : 'Update Password'}</span>
                   </button>
                 </div>
               </form>
@@ -875,7 +907,7 @@ export function SettingsPanel({ session, onUpdateSession }: SettingsPanelProps) 
                 Under GDPR you can request account deletion. Your account is deactivated immediately and permanently removed after 30 days.
               </p>
 
-              {deleteError && <div className="text-xs font-bold text-[var(--danger)] p-2 bg-[var(--surface-2)] rounded-md border border-[var(--danger)]/30">{deleteError}</div>}
+              {deleteError && <div role="alert" className="text-xs font-bold text-[var(--danger)] p-2 bg-[var(--surface-2)] rounded-md border border-[var(--danger)]/30">{deleteError}</div>}
 
               {showDeleteConfirm ? (
                 <div className="p-4 bg-[var(--surface-2)] border border-[var(--danger)]/30 rounded-lg space-y-3 animate-fadeIn">
@@ -925,12 +957,12 @@ export function SettingsPanel({ session, onUpdateSession }: SettingsPanelProps) 
               </p>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div className="bg-[var(--surface-2)] p-4 rounded-xl border border-[var(--border)] flex items-center justify-between gap-3">
+                <label className="bg-[var(--surface-2)] p-4 rounded-xl border border-[var(--border)] flex items-center justify-between gap-3 cursor-pointer select-none">
                   <div>
                     <div className="text-xs font-bold text-[var(--text-primary)]">Email Alerts</div>
                     <div className="text-[10px] text-[var(--text-tertiary)]">Send alerts to your email</div>
                   </div>
-                  <label className="relative inline-flex items-center cursor-pointer select-none shrink-0">
+                  <span className="relative inline-flex items-center shrink-0">
                     <input
                       type="checkbox"
                       checked={notifPreferences.email_enabled}
@@ -943,15 +975,15 @@ export function SettingsPanel({ session, onUpdateSession }: SettingsPanelProps) 
                       className="peer sr-only"
                     />
                     <div className="w-9 h-5 bg-[var(--surface-3)] peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-[var(--text-tertiary)] after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-indigo-600 peer-checked:after:bg-white"></div>
-                  </label>
-                </div>
+                  </span>
+                </label>
 
-                <div className="bg-[var(--surface-2)] p-4 rounded-xl border border-[var(--border)] flex items-center justify-between gap-3">
+                <label className="bg-[var(--surface-2)] p-4 rounded-xl border border-[var(--border)] flex items-center justify-between gap-3 cursor-pointer select-none">
                   <div>
                     <div className="text-xs font-bold text-[var(--text-primary)]">SMS Alerts</div>
                     <div className="text-[10px] text-[var(--text-tertiary)]">Send alerts to your phone via SMS</div>
                   </div>
-                  <label className="relative inline-flex items-center cursor-pointer select-none shrink-0">
+                  <span className="relative inline-flex items-center shrink-0">
                     <input
                       type="checkbox"
                       checked={notifPreferences.sms_enabled}
@@ -964,15 +996,15 @@ export function SettingsPanel({ session, onUpdateSession }: SettingsPanelProps) 
                       className="peer sr-only"
                     />
                     <div className="w-9 h-5 bg-[var(--surface-3)] peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-[var(--text-tertiary)] after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-indigo-600 peer-checked:after:bg-white"></div>
-                  </label>
-                </div>
+                  </span>
+                </label>
 
-                <div className="bg-[var(--surface-2)] p-4 rounded-xl border border-[var(--border)] flex items-center justify-between gap-3">
+                <label className="bg-[var(--surface-2)] p-4 rounded-xl border border-[var(--border)] flex items-center justify-between gap-3 cursor-pointer select-none">
                   <div>
                     <div className="text-xs font-bold text-[var(--text-primary)]">Discord Webhook Feeds</div>
                     <div className="text-[10px] text-[var(--text-tertiary)]">Post sweeps directly to server webhooks</div>
                   </div>
-                  <label className="relative inline-flex items-center cursor-pointer select-none shrink-0">
+                  <span className="relative inline-flex items-center shrink-0">
                     <input
                       type="checkbox"
                       checked={notifPreferences.discord_enabled}
@@ -985,15 +1017,15 @@ export function SettingsPanel({ session, onUpdateSession }: SettingsPanelProps) 
                       className="peer sr-only"
                     />
                     <div className="w-9 h-5 bg-[var(--surface-3)] peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-[var(--text-tertiary)] after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-indigo-600 peer-checked:after:bg-white"></div>
-                  </label>
-                </div>
+                  </span>
+                </label>
 
-                <div className="bg-[var(--surface-2)] p-4 rounded-xl border border-[var(--border)] flex items-center justify-between gap-3">
+                <label className="bg-[var(--surface-2)] p-4 rounded-xl border border-[var(--border)] flex items-center justify-between gap-3 cursor-pointer select-none">
                   <div>
                     <div className="text-xs font-bold text-[var(--text-primary)]">Options Flow Alerts</div>
                     <div className="text-[10px] text-[var(--text-tertiary)]">Alert on large GEX deviation events</div>
                   </div>
-                  <label className="relative inline-flex items-center cursor-pointer select-none shrink-0">
+                  <span className="relative inline-flex items-center shrink-0">
                     <input
                       type="checkbox"
                       checked={notifPreferences.options_flow_alerts}
@@ -1006,8 +1038,8 @@ export function SettingsPanel({ session, onUpdateSession }: SettingsPanelProps) 
                       className="peer sr-only"
                     />
                     <div className="w-9 h-5 bg-[var(--surface-3)] peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-[var(--text-tertiary)] after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-indigo-600 peer-checked:after:bg-white"></div>
-                  </label>
-                </div>
+                  </span>
+                </label>
               </div>
             </div>
 
@@ -1115,7 +1147,7 @@ export function SettingsPanel({ session, onUpdateSession }: SettingsPanelProps) 
                   </div>
 
                   <div className="text-[11px] text-[var(--text-tertiary)] leading-normal">
-                    Expires: {exportExpiresAt ? new Date(exportExpiresAt).toLocaleString() : 'in 24 hours'}
+                    Expires: {exportExpiresAt ? formatDateTime(exportExpiresAt) : 'in 24 hours'}
                   </div>
 
                   <div className="flex flex-col sm:flex-row gap-3 pt-1">
@@ -1174,6 +1206,7 @@ export function SettingsPanel({ session, onUpdateSession }: SettingsPanelProps) 
 
                 <div className="mt-2">
                   <select
+                    aria-label="Text size"
                     value={selectedFont}
                     onChange={(e) => {
                       const newVal = e.target.value as 'STANDARD' | 'ENHANCED' | 'ENHANCED_XL';
@@ -1236,6 +1269,7 @@ export function SettingsPanel({ session, onUpdateSession }: SettingsPanelProps) 
                 </p>
                 <div className="mt-2">
                   <select
+                    aria-label="Display time zone"
                     value={timeZone}
                     onChange={(e) => setTimeZone(e.target.value as 'EST' | 'UTC' | 'LOCAL')}
                     className="w-full bg-[var(--surface-2)] border border-[var(--border)] text-[var(--text-primary)] rounded-lg p-3 text-sm focus:outline-none focus:border-indigo-500 transition-colors cursor-pointer appearance-none"
@@ -1456,8 +1490,8 @@ export function SettingsPanel({ session, onUpdateSession }: SettingsPanelProps) 
                 <div className="space-y-2">
                   <span className="text-xs text-[var(--text-tertiary)] font-bold uppercase tracking-wider block">Your Custom Referral Link</span>
                   <div className="flex flex-col sm:flex-row gap-2">
-                    <div className="flex-1 bg-[var(--surface-2)] border border-[var(--border)] text-[var(--text-secondary)] rounded-lg px-3 py-2 text-xs font-mono md:tracking-wider flex items-center whitespace-nowrap overflow-hidden">
-                      <span className="truncate pr-2">{referralLink}</span>
+                    <div className="flex-1 min-w-0 bg-[var(--surface-2)] border border-[var(--border)] text-[var(--text-secondary)] rounded-lg px-3 py-2 text-xs font-mono md:tracking-wider flex items-center">
+                      <span className="break-all">{referralLink}</span>
                     </div>
                     <button
                       onClick={copyReferralLink}
@@ -1519,6 +1553,7 @@ export function SettingsPanel({ session, onUpdateSession }: SettingsPanelProps) 
 
                   {session?.access_tier && !['guest', 'discord'].includes(session?.access_tier) && (
                     <button
+                      ref={cancelTriggerRef}
                       onClick={() => setShowCancelConfirm(true)}
                       disabled={!!session?.cancels_at_period_end}
                       className={`px-4 py-2 font-bold text-xs uppercase tracking-widest rounded-lg transition-all cursor-pointer border ${
@@ -1555,11 +1590,19 @@ export function SettingsPanel({ session, onUpdateSession }: SettingsPanelProps) 
 
               {/* Confirmation Dialog / Modal */}
               {showCancelConfirm && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fadeIn">
-                  <div className="bg-[var(--surface)] border border-[var(--border)] rounded-2xl max-w-md w-full p-6 text-left space-y-4 shadow-2xl relative">
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fadeIn" onClick={() => { if (!isCanceling) setShowCancelConfirm(false); }}>
+                  <div
+                    ref={cancelDialogRef}
+                    role="dialog"
+                    aria-modal="true"
+                    aria-labelledby="cancel-subscription-title"
+                    tabIndex={-1}
+                    onClick={(e) => e.stopPropagation()}
+                    className="bg-[var(--surface)] border border-[var(--border)] rounded-2xl max-w-md w-full p-6 text-left space-y-4 shadow-2xl relative focus:outline-none"
+                  >
                     <div className="flex items-center gap-3 text-[var(--danger)] pb-2 border-b border-[var(--border)]">
                       <svg viewBox="0 0 24 24" fill="none" className="w-6 h-6 stroke-current stroke-2"><path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
-                      <h3 className="text-base font-black uppercase tracking-wider">Are you sure?</h3>
+                      <h3 id="cancel-subscription-title" className="text-base font-black uppercase tracking-wider">Are you sure?</h3>
                     </div>
 
                     <p className="text-xs text-[var(--text-secondary)] leading-normal font-sans text-left">
