@@ -6,6 +6,7 @@ import {
   Check, X, AlertTriangle, CheckCircle2, Mail
 } from 'lucide-react';
 import { useContractStore } from '../lib/store';
+import { useLegal } from './LegalCenter';
 import { WoodenSword, NeedleSword, ValyrianSword, CuteScythe, InfinityCrown } from './TierIcons';
 
 interface SubscriptionPricingProps {
@@ -154,7 +155,7 @@ export function SubscriptionPricing({ onUpgradeComplete, onEnterApp, session, on
     }
     if (referral) bodyLines.push('', `Heard about us via: ${referral}`);
 
-    const mailto = `mailto:slayer@trade.com?subject=${encodeURIComponent('Immortal Pass enquiry')}&body=${encodeURIComponent(bodyLines.join('\n'))}`;
+    const mailto = `mailto:support@slayerterminal.com?subject=${encodeURIComponent('Immortal Pass enquiry')}&body=${encodeURIComponent(bodyLines.join('\n'))}`;
     try {
       window.location.href = mailto;
     } catch {
@@ -375,7 +376,7 @@ export function SubscriptionPricing({ onUpgradeComplete, onEnterApp, session, on
                   <span className="text-[10px] uppercase tracking-wider text-[var(--warning)] font-medium">Full suite</span>
                 </div>
                 <div className="flex items-baseline gap-1">
-                  <span className="text-4xl font-bold text-[var(--text-primary)] tracking-tight">{billingCycle === 'monthly' ? '$1500' : '$1250'}</span>
+                  <span className="text-4xl font-bold text-[var(--text-primary)] tracking-tight">{billingCycle === 'monthly' ? '$1,500' : '$1,250'}</span>
                   <span className="text-[12px] text-[var(--text-tertiary)]">/ month</span>
                 </div>
               </div>
@@ -459,6 +460,12 @@ export function SubscriptionPricing({ onUpgradeComplete, onEnterApp, session, on
           </motion.div>
 
         </div>
+
+        {/* Compact risk caption directly beneath the plans, not just in the page footer. */}
+        <p className="mt-8 mx-auto max-w-xl text-center text-[11px] leading-relaxed text-[var(--text-tertiary)]">
+          Analytics and informational tools only — not investment advice. Options involve substantial risk.{' '}
+          <button type="button" onClick={() => useLegal.getState().open('risk')} className="text-[var(--text-secondary)] hover:text-[var(--text-primary)] underline underline-offset-2 transition-colors cursor-pointer">Read the full Risk Disclosure</button>.
+        </p>
       </motion.section>
 
       {/* Footer */}
@@ -470,7 +477,21 @@ export function SubscriptionPricing({ onUpgradeComplete, onEnterApp, session, on
         className="border-t border-[var(--border)] py-10 px-6 text-center mt-auto relative z-10 w-full"
       >
         <p className="text-[12px] text-[var(--text-tertiary)]">&copy; 2026 Slayer Terminal. All rights reserved.</p>
-        <p className="mt-2 mx-auto max-w-2xl text-[11px] leading-relaxed text-[var(--text-tertiary)]">
+        <nav className="mt-3 flex items-center justify-center flex-wrap gap-x-3 gap-y-1.5 text-[11px]" aria-label="Legal">
+          {([['terms', 'Terms of Service'], ['privacy', 'Privacy Policy'], ['risk', 'Risk Disclosure'], ['refunds', 'Refund Policy'], ['cookies', 'Cookie Policy']] as const).map(([id, label], i) => (
+            <React.Fragment key={id}>
+              {i > 0 && <span className="text-[var(--border-strong)]" aria-hidden="true">·</span>}
+              <button
+                type="button"
+                onClick={() => useLegal.getState().open(id)}
+                className="text-[var(--text-tertiary)] hover:text-[var(--text-secondary)] transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[var(--border-strong)] rounded"
+              >
+                {label}
+              </button>
+            </React.Fragment>
+          ))}
+        </nav>
+        <p className="mt-3 mx-auto max-w-2xl text-[11px] leading-relaxed text-[var(--text-tertiary)]">
           Slayer Terminal provides analytics and informational tools only — not investment advice, a recommendation, or a
           solicitation to buy or sell any security. Options carry substantial risk and are not suitable for every investor.
           Modeled results and past performance do not guarantee future outcomes. All trading decisions are your own.
@@ -540,8 +561,8 @@ export function SubscriptionPricing({ onUpgradeComplete, onEnterApp, session, on
                         {selectedPlanForCheckout === 'lifetime'
                           ? 'Custom quote'
                           : billingCycle === 'monthly'
-                            ? (selectedPlanForCheckout === 'discord' ? '$65' : selectedPlanForCheckout === 'skyvision' ? '$350' : selectedPlanForCheckout === 'pinpoint' ? '$500' : '$1500')
-                            : (selectedPlanForCheckout === 'discord' ? '$55' : selectedPlanForCheckout === 'skyvision' ? '$290' : selectedPlanForCheckout === 'pinpoint' ? '$420' : '$1250')
+                            ? (selectedPlanForCheckout === 'discord' ? '$65' : selectedPlanForCheckout === 'skyvision' ? '$350' : selectedPlanForCheckout === 'pinpoint' ? '$500' : '$1,500')
+                            : (selectedPlanForCheckout === 'discord' ? '$55' : selectedPlanForCheckout === 'skyvision' ? '$290' : selectedPlanForCheckout === 'pinpoint' ? '$420' : '$1,250')
                         }
                       </span>
                       {selectedPlanForCheckout !== 'lifetime' && (
@@ -769,7 +790,7 @@ export function SubscriptionPricing({ onUpgradeComplete, onEnterApp, session, on
                                   />
                                   {lifetimeBusMessage.length >= 500 && (
                                     <div className="text-[11px] text-[var(--danger)] font-medium mt-1">
-                                      For longer requirements, email <a href="mailto:slayer@trade.com" className="underline hover:opacity-80">slayer@trade.com</a>
+                                      For longer requirements, email <a href="mailto:support@slayerterminal.com" className="underline hover:opacity-80">support@slayerterminal.com</a>
                                     </div>
                                   )}
                                 </div>
@@ -818,7 +839,7 @@ export function SubscriptionPricing({ onUpgradeComplete, onEnterApp, session, on
                     </h4>
                     <p className="text-[12px] text-[var(--text-tertiary)] leading-relaxed max-w-sm mx-auto">
                       Your mail app should have opened with the details pre-filled. If it didn&apos;t, email
-                      us directly at <a href="mailto:slayer@trade.com" className="underline text-[var(--text-secondary)] hover:opacity-80">slayer@trade.com</a> and
+                      us directly at <a href="mailto:support@slayerterminal.com" className="underline text-[var(--text-secondary)] hover:opacity-80">support@slayerterminal.com</a> and
                       our team will follow up with a custom Immortal Pass quote.
                     </p>
                   </div>

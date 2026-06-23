@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { motion } from 'motion/react';
 import { ShieldCheck, Lock, Mail, User, Info, Check, X } from 'lucide-react';
+import { useLegal } from './LegalCenter';
 
 interface ClerkGateProps {
   onSuccess: (userData: any) => void;
@@ -227,8 +228,11 @@ export function ClerkGate({ onSuccess, referralCodeFromUrl, onClose }: ClerkGate
         </form>
 
         <div className="border-t border-[#1f1f1f] pt-5 mt-6 text-center">
-          <p className="text-xs text-zinc-500 font-sans">
-            By continuing, you agree to Slayer Terminal's Terms of Service and Privacy Policy. Secure SSL connection.
+          <p className="text-xs text-[var(--text-tertiary)] font-sans leading-relaxed">
+            By continuing, you agree to Slayer Terminal's{' '}
+            <button type="button" onClick={() => useLegal.getState().open('terms')} className="text-[var(--text-secondary)] hover:text-[var(--text-primary)] underline underline-offset-2 transition-colors cursor-pointer">Terms of Service</button>
+            {' '}and{' '}
+            <button type="button" onClick={() => useLegal.getState().open('privacy')} className="text-[var(--text-secondary)] hover:text-[var(--text-primary)] underline underline-offset-2 transition-colors cursor-pointer">Privacy Policy</button>. Secure SSL connection.
           </p>
         </div>
       </motion.div>

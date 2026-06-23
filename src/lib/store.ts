@@ -308,7 +308,14 @@ export function useTierValidation() {
 }
 
 export const useContractStore = create<ContractStore>((set, get) => ({
-  activeTab: ((typeof window !== 'undefined' ? localStorage.getItem('lastActiveTab') : null) as 'home' | 'skyvision' | 'pinpoint' | 'quant' | 'auditor' | 'dealerflow' | 'community' | 'settings' | 'admin' | 'subscription' | 'workspace') || 'home',
+  activeTab: (() => {
+    // Validate the restored tab against real render targets so a corrupt/renamed
+    // localStorage value can't blank the workspace. Legacy 'dealerflow' → 'pinpoint'.
+    const VALID = ['home', 'skyvision', 'pinpoint', 'quant', 'auditor', 'community', 'settings', 'admin', 'subscription', 'workspace'];
+    const raw = typeof window !== 'undefined' ? localStorage.getItem('lastActiveTab') : null;
+    const norm = raw === 'dealerflow' ? 'pinpoint' : raw;
+    return (norm && VALID.includes(norm) ? norm : 'home') as ContractStore['activeTab'];
+  })(),
   setActiveTab: (tab, keepContract = false) => {
     // The legacy 'dealerflow' tab was consolidated into 'pinpoint' (which renders
     // DealerFlowView). Normalize so any lingering 'dealerflow' navigation resolves
