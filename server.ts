@@ -659,16 +659,16 @@ app.get('/api/auth/session', async (req, res) => {
 
 
 
+// Session validity check / keep-alive. The credential is the httpOnly session
+// cookie, validated here. This used to mint a forgeable, never-validated bearer
+// `access_token` (user_id:timestamp); that theater has been removed — clients
+// authenticate purely via the cookie sent with credentials:'same-origin'.
 app.post('/api/auth/refresh', async (req, res) => {
   const session = await getSessionFromCookies(req.headers.cookie);
   if (!session) {
-    return res.status(401).json({ error: 'No valid refresh token (session cookie) found' });
+    return res.status(401).json({ error: 'No valid session cookie found' });
   }
-  
-  // Create an ephemeral access_token
-  const access_token = session.user_id + ":" + Date.now();
-  // Provide it payload for 15 minute expiry
-  res.json({ access_token, expires_in: 900 });
+  res.json({ ok: true });
 });
 
 app.post('/api/auth/logout', async (req, res) => {
@@ -1761,13 +1761,13 @@ app.post('/api/billing/process', express.json(), async (req, res) => {
   user.payment_method_id = payment_method_id || ("pm_se_" + Math.random().toString(36).substring(2, 10));
   user.cancels_at_period_end = false;
 
-  // Set the structural target access_tier levels
-  let targetTier: 'discord' | 'intraday' | 'quant' | 'enterprise' | 'lifetime' = 'discord';
-  if (plan === 'discord') targetTier = 'discord';
-  else if (plan === 'skyvision') targetTier = 'intraday';
-  else if (plan === 'pinpoint') targetTier = 'quant';
-  else if (plan === 'quant') targetTier = 'enterprise';
-  else if (plan === 'lifetime') targetTier = 'lifetime';
+  // Map the requested plan onto its canonical access tier — single source of truth
+  // is config.ts TIER_PRICING (the same mapping the Stripe webhook writes). Unknown
+  // plans fall back to the lowest tier (fail-closed). This replaces an older hand-rolled
+  // mapping that mislabeled tiers (skyvision→intraday, pinpoint→quant) and over-granted
+  // plan='quant' to enterprise/level-3.
+  const planPricing = TIER_PRICING[plan as keyof typeof TIER_PRICING];
+  const targetTier: 'guest' | 'discord' | 'pinpoint' | 'skyvision' | 'lifetime' = planPricing ? planPricing.accessTier : 'discord';
 
   // Apply strict audit logging variables
   user.access_tier = targetTier;
@@ -2136,13 +2136,14 @@ app.post('/api/billing/sim-cron-invoice', express.json(), async (req, res) => {
     return res.status(404).json({ error: 'User lookup failed.' });
   }
 
-  // Get base rate for current subscriber plan
+  // Base referral rate keyed off the resolved access LEVEL, so it works for both
+  // the canonical (pinpoint/skyvision) names and any legacy values still in the DB.
+  const accessLevel = accessTierToLevel(user.access_tier);
   let baseRate = 0;
-  if (user.access_tier === 'discord') baseRate = 65;
-  else if (user.access_tier === 'intraday') baseRate = 350;
-  else if (user.access_tier === 'quant') baseRate = 500;
-  else if (user.access_tier === 'enterprise') baseRate = 1500;
-  else if (user.access_tier === 'lifetime') baseRate = 5000;
+  if (accessLevel >= 5) baseRate = 5000;       // lifetime
+  else if (accessLevel >= 3) baseRate = 1500;  // skyvision
+  else if (accessLevel >= 2) baseRate = 500;   // pinpoint
+  else if (accessLevel >= 1) baseRate = 65;    // discord
 
   const initialTokens = user.referral_tokens_pool || 0;
   
@@ -2654,7 +2655,8 @@ app.patch('/api/admin/users/:email/tier', requireAdmin(['owner', 'admin', 'moder
   if (!user) return res.status(404).json({ error: 'User not found' });
   // Whitelist the tier against the known enum — never write an arbitrary string
   // (which would corrupt access_tier and confuse client gating).
-  const VALID_TIERS = ['guest', 'discord', 'intraday', 'quant', 'enterprise', 'lifetime'];
+  // Canonical tiers first; legacy aliases retained so older stored values still validate.
+  const VALID_TIERS = ['guest', 'discord', 'pinpoint', 'skyvision', 'lifetime', 'intraday', 'quant', 'enterprise'];
   const requestedTier = String(req.body.access_tier || '');
   if (!VALID_TIERS.includes(requestedTier)) {
     return res.status(400).json({ error: 'Invalid access tier.' });
@@ -2871,8 +2873,10 @@ app.post('/api/ai/analyze', endpointRateLimit(10, '/api/ai/analyze'), async (req
         return res.status(401).json({ error: 'Authentication required.' });
       }
       const aiDbUser = await dbGetUser(session.email.toLowerCase().trim());
-      const AI_TIER_RANK: Record<string, number> = { guest: 0, discord: 1, intraday: 2, quant: 3, enterprise: 4, lifetime: 5 };
-      if ((AI_TIER_RANK[aiDbUser?.access_tier as string] ?? 0) < 3) {
+      // AI access requires SkyVision (level 3) or above. Resolve via the shared
+      // normalizer so canonical (skyvision) and legacy (enterprise/intraday) names agree —
+      // previously a Stripe-granted 'skyvision' user was wrongly denied here.
+      if (accessTierToLevel(aiDbUser?.access_tier) < 3) {
         return res.status(403).json({ error: 'This feature requires the Pinpoint (Tier 3) plan or higher.' });
       }
     }

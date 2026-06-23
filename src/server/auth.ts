@@ -129,7 +129,9 @@ export interface UserAccount {
   email: string;
   name: string;
   avatar: string;
-  access_tier: 'guest' | 'discord' | 'intraday' | 'quant' | 'enterprise' | 'lifetime';
+  // Canonical access tiers (config.ts TIER_PRICING) + retained legacy aliases so
+  // values already persisted in the DB still typecheck. accessTierToLevel() normalizes both.
+  access_tier: 'guest' | 'discord' | 'pinpoint' | 'skyvision' | 'lifetime' | 'intraday' | 'quant' | 'enterprise';
   referral_tokens_pool: number;
   custom_referral_code: string;
   // Email of the referrer this account was credited to — set exactly once so a

@@ -714,7 +714,7 @@ export function accessTierToLevel(accessTier?: string | null): number {
  * Minimum access level required to receive each premium payload block over the stream.
  * Value ladder: Pinpoint GEX (tier 2) is the commodity dealer-GEX tool; SkyVision
  * (tier 3) is the flagship that picks the trades and folds in the GEX tool + Quant Lab:
- *   • gex_profile / gex_summary / dealer_dynamics / zerodte → Pinpoint GEX (tier 2)
+ *   • gex_profile / gex_summary / dealer_dynamics / dealer_flow / zerodte → Pinpoint GEX (tier 2)
  *   • sky_vision / trade_plan / strike_gravity            → SkyVision (tier 3)
  *   • quant_edge / option_chain (Quant Lab, merged in)     → SkyVision (tier 3)
  * Blocks NOT listed here (deep_intelligence, system_score, candles, discovery, …) are
@@ -724,6 +724,7 @@ const PREMIUM_BLOCK_TIERS: Record<string, number> = {
   gex_profile: 2,
   gex_summary: 2,
   dealer_dynamics: 2,
+  dealer_flow: 2,
   zerodte: 2,
   sky_vision: 3,
   trade_plan: 3,
