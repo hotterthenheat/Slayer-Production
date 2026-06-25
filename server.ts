@@ -278,12 +278,15 @@ app.post('/api/auth/clerk-signup', express.json(), async (req, res) => {
     return res.status(400).json({ error: 'Email and Name are required variables.' });
   }
 
-  // Validate strong password
-  if (password) {
-    const passwordErr = validatePasswordStrength(password);
-    if (passwordErr) {
-      return res.status(400).json({ error: passwordErr });
-    }
+  // Validate strong password — REQUIRED. Self-serve signup must never create a
+  // password-less account, since such accounts could otherwise be logged into with
+  // no credential at all (anyone who knows the email).
+  if (!password || typeof password !== 'string') {
+    return res.status(400).json({ error: 'A password is required to create an account.' });
+  }
+  const passwordErr = validatePasswordStrength(password);
+  if (passwordErr) {
+    return res.status(400).json({ error: passwordErr });
   }
 
   const userEmail = email.toLowerCase().trim();
@@ -501,6 +504,15 @@ app.post('/api/auth/clerk-login', express.json(), async (req, res) => {
     if (!passwordErr) {
       user.passwordHash = bcrypt.hashSync(password, 12);
     }
+  }
+
+  // SECURITY: a matched account with no password hash must never be issued a session
+  // from the public password-login path — otherwise anyone who knows the email logs in
+  // with no credential at all. Sandbox dev (ALLOW_SANDBOX_AUTH) is exempt for local use
+  // (and may have just set a first password above). Real provisioned/password-less
+  // accounts must set a password via the authenticated reset flow before logging in here.
+  if (!user.passwordHash && process.env.ALLOW_SANDBOX_AUTH !== 'true') {
+    return res.status(401).json({ error: 'Invalid email or password.' });
   }
 
   const userSession = {
@@ -1388,6 +1400,17 @@ app.post('/api/billing/create-checkout-session', express.json(), async (req, res
     return res.status(400).json({ error: 'Unknown subscription plan.' });
   }
 
+  // SECURITY: 'lifetime' is contact-only (no self-serve price). Without this guard it
+  // checks out at $0 (no oneTime amount) and the webhook then grants permanent top-tier
+  // access for free. Block it here — and block any plan that would compute a $0 charge.
+  if (plan === 'lifetime') {
+    return res.status(400).json({ error: 'The Lifetime plan is not available for self-serve checkout — please contact us.' });
+  }
+  const computedAmount = billingCycle === 'annual' ? pricing.annual : pricing.monthly;
+  if (!computedAmount || computedAmount <= 0) {
+    return res.status(400).json({ error: 'This plan is not available for self-serve checkout.' });
+  }
+
   const email = session.email.toLowerCase().trim();
   const appUrl = process.env.APP_URL || 'http://localhost:3000';
 
@@ -1482,14 +1505,18 @@ function tierFromStripeSubscription(sub: any): { accessTier: string; plan: strin
   const item = sub?.items?.data?.[0];
   const amount = item?.price?.unit_amount;
   const interval = item?.price?.recurring?.interval; // 'month' | 'year'
-  if (typeof amount === 'number') {
+  // Never resolve a recurring subscription to a $0 line or to the contact-only
+  // 'lifetime' tier: a 100%-off coupon, $0 trial line, or misconfigured plan must not
+  // escalate to permanent top-tier access.
+  if (typeof amount === 'number' && amount > 0) {
     for (const [plan, p] of Object.entries(TIER_PRICING)) {
+      if (plan === 'lifetime') continue;
       if (interval === 'year' && p.annual === amount) return { accessTier: p.accessTier, plan };
       if (interval === 'month' && p.monthly === amount) return { accessTier: p.accessTier, plan };
     }
   }
   const metaPlan = String(sub?.metadata?.plan || '');
-  if (TIER_PRICING[metaPlan]) return { accessTier: TIER_PRICING[metaPlan].accessTier, plan: metaPlan };
+  if (metaPlan !== 'lifetime' && TIER_PRICING[metaPlan]) return { accessTier: TIER_PRICING[metaPlan].accessTier, plan: metaPlan };
   return null;
 }
 
@@ -1524,12 +1551,10 @@ app.post('/api/billing/webhook', express.raw({ type: 'application/json' }), asyn
   if (processedWebhookEvents.has(event.id) || await dbIsWebhookProcessed(event.id)) {
     return res.json({ received: true, duplicate: true });
   }
-  processedWebhookEvents.add(event.id);
-  await dbMarkWebhookProcessed(event.id);
-  if (processedWebhookEvents.size > 5000) {
-    // Bound memory: drop the oldest ~1000 ids (insertion order preserved by Set).
-    for (const id of Array.from(processedWebhookEvents).slice(0, 1000)) processedWebhookEvents.delete(id);
-  }
+  // NOTE: this event is marked processed only AFTER the handler completes successfully
+  // (see end of the try block). Marking it up-front previously meant a handler/persist
+  // failure was still recorded as "done", so Stripe's retry was short-circuited as a
+  // duplicate and a paid grant or cancellation was lost forever.
 
   try {
     switch (event.type) {
@@ -1547,6 +1572,12 @@ app.post('/api/billing/webhook', express.raw({ type: 'application/json' }), asyn
           console.warn(`[STRIPE WEBHOOK] checkout.session.completed not granting — payment_status=${checkoutSession.payment_status} for ${email}`);
           break;
         }
+        // SECURITY: never grant the permanent top tier from a $0 checkout. Self-serve
+        // lifetime is blocked at session creation; refuse it here too as defense in depth.
+        if (plan === 'lifetime' && (checkoutSession.amount_total ?? 0) <= 0) {
+          console.warn(`[STRIPE WEBHOOK] refusing $0 lifetime grant for ${email}`);
+          break;
+        }
 
         if (email && pricing) {
           const user = await dbGetUser(email);
@@ -1556,7 +1587,8 @@ app.post('/api/billing/webhook', express.raw({ type: 'application/json' }), asyn
               ? checkoutSession.customer
               : checkoutSession.customer?.id) || user.customer_id;
             user.cancels_at_period_end = false;
-            await persistUser(email, user);
+            const okGrant = await persistUser(email, user);
+            if (!okGrant) throw new Error(`persistUser failed for ${email} (checkout.completed)`);
             console.log(`[STRIPE WEBHOOK] checkout.session.completed -> ${email} upgraded to ${pricing.accessTier} (plan: ${plan})`);
           } else {
             console.warn(`[STRIPE WEBHOOK] checkout.session.completed for unknown user: ${email}`);
@@ -1572,7 +1604,8 @@ app.post('/api/billing/webhook', express.raw({ type: 'application/json' }), asyn
         const user = await findUserForSubscription(sub);
         if (user) {
           user.access_tier = 'guest';
-          await persistUser(user.email, user);
+          const okDel = await persistUser(user.email, user);
+          if (!okDel) throw new Error(`persistUser failed for ${user.email} (subscription.deleted)`);
           console.log(`[STRIPE WEBHOOK] subscription.deleted -> ${user.email} downgraded to guest`);
         } else {
           console.warn('[STRIPE WEBHOOK] subscription.deleted: no user matched by metadata.email or customer id');
@@ -1599,7 +1632,8 @@ app.post('/api/billing/webhook', express.raw({ type: 'application/json' }), asyn
             const mapped = tierFromStripeSubscription(sub);
             if (mapped) user.access_tier = mapped.accessTier;
           }
-          await persistUser(user.email, user);
+          const okUpd = await persistUser(user.email, user);
+          if (!okUpd) throw new Error(`persistUser failed for ${user.email} (subscription.updated)`);
           console.log(`[STRIPE WEBHOOK] subscription.updated -> ${user.email} status=${status} tier=${user.access_tier} cancels_at_period_end=${user.cancels_at_period_end}`);
         }
         break;
@@ -1609,10 +1643,20 @@ app.post('/api/billing/webhook', express.raw({ type: 'application/json' }), asyn
         // Unhandled event types are acknowledged so Stripe stops retrying.
         break;
     }
+
+    // Mark processed ONLY after a successful handler run. A failure below leaves the
+    // event un-recorded so Stripe's retry can re-apply the grant/cancellation.
+    processedWebhookEvents.add(event.id);
+    await dbMarkWebhookProcessed(event.id);
+    if (processedWebhookEvents.size > 5000) {
+      // Bound memory: drop the oldest ~1000 ids (insertion order preserved by Set).
+      for (const id of Array.from(processedWebhookEvents).slice(0, 1000)) processedWebhookEvents.delete(id);
+    }
   } catch (e: any) {
-    console.error('[STRIPE WEBHOOK] Handler error:', e?.message);
-    // Still acknowledge so Stripe does not hammer us with retries on a transient
-    // internal error; surface the failure via logs/alerting instead.
+    // Return 500 (not 200) so Stripe RETRIES instead of the failure being swallowed
+    // and the grant/cancellation permanently lost. The event is NOT marked processed.
+    console.error('[STRIPE WEBHOOK] Handler error — returning 500 for Stripe retry:', e?.message);
+    return res.status(500).json({ received: false, error: 'handler_failed' });
   }
 
   return res.json({ received: true });
