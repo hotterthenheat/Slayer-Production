@@ -28,3 +28,22 @@ export const processedWebhookEvents = pgTable('processed_webhook_events', {
   eventId: text('event_id').primaryKey(),
   processedAt: bigint('processed_at', { mode: 'number' }).default(0).notNull(),
 });
+
+// Self-learning loop — every model prediction is logged here and later labeled with its
+// realized outcome once the horizon elapses, so calibration (isotonic / Brier / ECE) and
+// the nearest-neighbour history train on REAL results instead of an empty array / PRNG.
+// Durable so accumulated outcomes survive restarts and can reach the calibration
+// activation threshold (the prior in-memory state reset every deploy).
+export const predictions = pgTable('predictions', {
+  id: serial('id').primaryKey(),
+  predictionId: text('prediction_id').notNull().unique(),
+  ticker: text('ticker').notNull(),
+  kind: text('kind').notNull(),                              // 'skyscore' | 'trade' | 'discovery' | ...
+  predictedProb: integer('predicted_prob').notNull(),       // 0-100 win probability the model emitted
+  features: text('features'),                               // JSON feature vector (for KNN lookup)
+  horizonMs: bigint('horizon_ms', { mode: 'number' }).notNull(),
+  createdAt: bigint('created_at', { mode: 'number' }).notNull(),
+  labeledAt: bigint('labeled_at', { mode: 'number' }),      // null until the outcome is known
+  outcomeWin: boolean('outcome_win'),                       // null until labeled
+  realizedReturn: text('realized_return'),                  // text to avoid float drift
+});
