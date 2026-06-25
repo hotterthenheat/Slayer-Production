@@ -201,7 +201,7 @@ export function SubscriptionPricing({ onUpgradeComplete, onEnterApp, session, on
                 billingCycle === 'annual' ? 'bg-[var(--surface-3)] text-[var(--text-primary)]' : 'text-[var(--text-tertiary)] hover:text-[var(--text-primary)]'
               }`}
             >
-              Annual <span className="text-[10px] bg-[var(--success)]/15 text-[var(--success)] px-2 py-0.5 rounded-full font-bold">Save 20%</span>
+              Annual <span className="text-[10px] bg-[var(--success)]/15 text-[var(--success)] px-2 py-0.5 rounded-full font-bold">Save up to 18%</span>
             </button>
           </div>
         </div>
@@ -527,7 +527,7 @@ export function SubscriptionPricing({ onUpgradeComplete, onEnterApp, session, on
                     <div className="mt-4 text-[11px] text-[var(--text-secondary)] bg-[var(--surface)] border border-[var(--border)] rounded-lg px-3 py-2 flex items-center justify-between">
                       <span className="uppercase font-medium tracking-wide text-[var(--text-tertiary)]">Billing</span>
                       <span className="font-semibold">
-                        {billingCycle === 'monthly' ? "Billed monthly" : "Billed annually (save 20%)"}
+                        {billingCycle === 'monthly' ? "Billed monthly" : "Billed annually (save up to 18%)"}
                       </span>
                     </div>
                   )}

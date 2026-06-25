@@ -6,6 +6,7 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import * as THREE from 'three';
+import { stdNormalCDF, stdNormalPDF } from '../lib/normalDist';
 import { 
   Compass, 
   Layers, 
@@ -29,16 +30,9 @@ import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Tooltip, Legend, Ca
 // MATHEMATICAL CORE (BLACK-SCHOLES-MERTON ENGINE)
 // ============================================================
 
-function normalPdf(x: number): number {
-  return Math.exp(-0.5 * x * x) / Math.sqrt(2 * Math.PI);
-}
-
-function normalCdf(x: number): number {
-  const t = 1 / (1 + 0.2316419 * Math.abs(x));
-  const d = 0.39894228 * Math.exp(-x * x / 2);
-  const p = d * t * (0.31938153 + t * (-0.356563782 + t * (1.781477937 + t * (-1.821255978 + t * 1.330274429))));
-  return x > 0 ? 1 - p : p;
-}
+// normalPdf/normalCdf are imported from ../lib/normalDist (canonical West/Hart CDF,
+// ~1e-15) instead of a local Abramowitz-Stegun approximation (~1.5e-7, asymmetric
+// tails) that made the displayed deep-OTM greeks disagree with the rest of the engine.
 
 interface BsmGreeks {
   delta: number;
@@ -62,8 +56,8 @@ function calculateBSMGreeks(
   const d1 = (Math.log(S / K) + (r - q + 0.5 * sigma * sigma) * t) / (sigma * Math.sqrt(t));
   const d2 = d1 - sigma * Math.sqrt(t);
 
-  const n_prime_d1 = normalPdf(d1);
-  const N_d1 = normalCdf(d1);
+  const n_prime_d1 = stdNormalPDF(d1);
+  const N_d1 = stdNormalCDF(d1);
 
   const delta = option_type === 'call'
     ? Math.exp(-q * t) * N_d1

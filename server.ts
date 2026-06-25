@@ -1222,6 +1222,9 @@ app.get('/api/users/profile/:username', async (req, res) => {
     }
   }
 
+  // Only the owner viewing their OWN profile sees the referral code — exposing it on
+  // every public profile let anyone scrape codes for referral abuse.
+  const isSelfProfile = !!selfEmail && selfEmail === targetUser.email.toLowerCase().trim();
   res.json({
     profile: {
       name: targetUser.name,
@@ -1229,7 +1232,7 @@ app.get('/api/users/profile/:username', async (req, res) => {
       avatar: targetUser.avatar,
       cover_photo: targetUser.cover_photo || '',
       access_tier: targetUser.access_tier,
-      custom_referral_code: targetUser.custom_referral_code,
+      ...(isSelfProfile ? { custom_referral_code: targetUser.custom_referral_code } : {}),
       block_search_indexing: !!targetUser.block_search_indexing,
       profile_visibility: targetUser.profile_visibility
     }
