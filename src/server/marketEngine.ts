@@ -6,7 +6,7 @@
  * synthetic sandbox walk), and assembles the Universal SSE payload. Importing
  * this module starts the ticker and seeds candles. No external API key required.
  */
-import { ASSET_LIST, generateInitialCandles, TIMEFRAMES, calculateFVGs, calculateLiquidityEvents, optionExpiryLabel, optionDteDays } from '../data';
+import { ASSET_LIST, generateInitialCandles, TIMEFRAMES, calculateFVGs, calculateLiquidityEvents, optionExpiryLabel, optionDteDays, hoursToSessionClose } from '../data';
 import {
   calculateSystemScoreFromCandles,
   calculateV11Metrics,
@@ -233,22 +233,11 @@ function computeContractScore(chain: ChainContract[], spot: number, step: number
   return Math.round(100 * (0.4 * spreadQ + 0.3 * oiQ + 0.3 * deltaQ));
 }
 
-/** Hours remaining until the 16:00 ET cash-equity close (full session if outside RTH). */
+/** Hours remaining until the 16:00 ET cash-equity close (full session if outside RTH).
+ *  Canonical implementation lives in data.ts so optionDteDays and the GEX/zerodte
+ *  paths share one clock. */
 function getHoursToClose(now = new Date()): number {
-  try {
-    const parts = new Intl.DateTimeFormat('en-US', {
-      timeZone: 'America/New_York', hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false,
-    }).formatToParts(now);
-    const get = (t: string) => Number(parts.find((p) => p.type === t)?.value || 0);
-    let h = get('hour'); if (h === 24) h = 0;
-    const nowSec = h * 3600 + get('minute') * 60 + get('second');
-    const openSec = 9.5 * 3600;
-    const closeSec = 16 * 3600;
-    if (nowSec >= closeSec || nowSec < openSec) return 6.5; // outside RTH → assume a full session ahead
-    return Math.max(0, (closeSec - nowSec) / 3600);
-  } catch {
-    return 6.5;
-  }
+  return hoursToSessionClose(now);
 }
 
 /**
