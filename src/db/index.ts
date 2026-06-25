@@ -80,6 +80,24 @@ export async function ensureSchema(): Promise<void> {
         processed_at bigint NOT NULL DEFAULT 0
       );
     `);
+    // Self-learning loop: durable prediction log (labeled with realized outcomes later).
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS predictions (
+        id serial PRIMARY KEY,
+        prediction_id text NOT NULL UNIQUE,
+        ticker text NOT NULL,
+        kind text NOT NULL,
+        predicted_prob integer NOT NULL,
+        features text,
+        horizon_ms bigint NOT NULL,
+        created_at bigint NOT NULL,
+        labeled_at bigint,
+        outcome_win boolean,
+        realized_return text
+      );
+    `);
+    await db.execute(sql`CREATE INDEX IF NOT EXISTS predictions_unlabeled_idx ON predictions (labeled_at, created_at);`);
+    await db.execute(sql`CREATE INDEX IF NOT EXISTS predictions_kind_idx ON predictions (kind, labeled_at);`);
     // Ensure email is UNIQUE so user upserts can conflict-on email (the business
     // key) instead of uid. Idempotent; isolated try-catch so a pre-existing dup
     // (from the old uid-based upsert) doesn't abort the rest of schema bootstrap.
@@ -155,9 +173,97 @@ export async function dbMarkWebhookProcessed(eventId: string): Promise<void> {
   if (!process.env.SQL_HOST) return;
   try {
     await db.execute(sql`INSERT INTO processed_webhook_events (event_id, processed_at) VALUES (${eventId}, ${Date.now()}) ON CONFLICT (event_id) DO NOTHING`);
-    // Opportunistic prune so the table can't grow unbounded (events older than 30d).
-    await db.execute(sql`DELETE FROM processed_webhook_events WHERE processed_at < ${Date.now() - 30 * 24 * 3600 * 1000}`);
+    // Prune opportunistically (~2% of calls), not on every event, so the idempotency
+    // hot path doesn't eat a full-table DELETE under burst traffic.
+    if (Math.random() < 0.02) {
+      await db.execute(sql`DELETE FROM processed_webhook_events WHERE processed_at < ${Date.now() - 30 * 24 * 3600 * 1000}`);
+    }
   } catch (e) {
     console.error('[db] dbMarkWebhookProcessed failed:', e);
+  }
+}
+
+// ===========================================================================
+// Self-learning loop persistence. A prediction row is inserted when the model emits a
+// score/trade; a labeling worker fills the outcome once the horizon elapses. Calibration
+// (isotonic/Brier/ECE) and the nearest-neighbour history then train on these real pairs.
+// All no-op (or empty) without SQL_HOST and never throw.
+// ===========================================================================
+export interface PredictionRow {
+  predictionId: string; ticker: string; kind: string; predictedProb: number;
+  features?: string | null; horizonMs: number; createdAt: number;
+}
+export interface CalibrationPair { prob: number; win: boolean; }
+
+export async function dbInsertPrediction(p: PredictionRow): Promise<void> {
+  if (!process.env.SQL_HOST) return;
+  try {
+    await db.execute(sql`
+      INSERT INTO predictions (prediction_id, ticker, kind, predicted_prob, features, horizon_ms, created_at)
+      VALUES (${p.predictionId}, ${p.ticker}, ${p.kind}, ${Math.round(p.predictedProb)}, ${p.features ?? null}, ${p.horizonMs}, ${p.createdAt})
+      ON CONFLICT (prediction_id) DO NOTHING
+    `);
+  } catch (e) {
+    console.error('[db] dbInsertPrediction failed:', e);
+  }
+}
+
+// Predictions whose horizon has elapsed but are not yet labeled (the worker's queue).
+export async function dbLoadDuePredictions(now: number, limit = 200): Promise<Array<PredictionRow & { id: number }>> {
+  if (!process.env.SQL_HOST) return [];
+  try {
+    const res: any = await db.execute(sql`
+      SELECT id, prediction_id, ticker, kind, predicted_prob, features, horizon_ms, created_at
+      FROM predictions
+      WHERE labeled_at IS NULL AND (created_at + horizon_ms) <= ${now}
+      ORDER BY created_at ASC LIMIT ${limit}
+    `);
+    return (res.rows || []).map((r: any) => ({
+      id: Number(r.id), predictionId: String(r.prediction_id), ticker: String(r.ticker),
+      kind: String(r.kind), predictedProb: Number(r.predicted_prob), features: r.features ?? null,
+      horizonMs: Number(r.horizon_ms), createdAt: Number(r.created_at),
+    }));
+  } catch (e) {
+    console.error('[db] dbLoadDuePredictions failed:', e);
+    return [];
+  }
+}
+
+export async function dbLabelPrediction(predictionId: string, win: boolean, realizedReturn: number): Promise<void> {
+  if (!process.env.SQL_HOST) return;
+  try {
+    await db.execute(sql`
+      UPDATE predictions SET labeled_at = ${Date.now()}, outcome_win = ${win}, realized_return = ${String(realizedReturn)}
+      WHERE prediction_id = ${predictionId} AND labeled_at IS NULL
+    `);
+  } catch (e) {
+    console.error('[db] dbLabelPrediction failed:', e);
+  }
+}
+
+// Labeled (prediction, outcome) pairs for calibration/Brier/ECE, optionally scoped to a kind.
+export async function dbLoadCalibrationPairs(kind?: string, limit = 5000): Promise<CalibrationPair[]> {
+  if (!process.env.SQL_HOST) return [];
+  try {
+    const res: any = kind
+      ? await db.execute(sql`SELECT predicted_prob, outcome_win FROM predictions WHERE labeled_at IS NOT NULL AND kind = ${kind} ORDER BY labeled_at DESC LIMIT ${limit}`)
+      : await db.execute(sql`SELECT predicted_prob, outcome_win FROM predictions WHERE labeled_at IS NOT NULL ORDER BY labeled_at DESC LIMIT ${limit}`);
+    return (res.rows || []).map((r: any) => ({ prob: Number(r.predicted_prob) / 100, win: !!r.outcome_win }));
+  } catch (e) {
+    console.error('[db] dbLoadCalibrationPairs failed:', e);
+    return [];
+  }
+}
+
+export async function dbCountLabeledPredictions(kind?: string): Promise<number> {
+  if (!process.env.SQL_HOST) return 0;
+  try {
+    const res: any = kind
+      ? await db.execute(sql`SELECT COUNT(*)::int AS n FROM predictions WHERE labeled_at IS NOT NULL AND kind = ${kind}`)
+      : await db.execute(sql`SELECT COUNT(*)::int AS n FROM predictions WHERE labeled_at IS NOT NULL`);
+    return Number((res.rows || [])[0]?.n || 0);
+  } catch (e) {
+    console.error('[db] dbCountLabeledPredictions failed:', e);
+    return 0;
   }
 }

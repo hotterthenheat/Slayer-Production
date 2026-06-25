@@ -43,7 +43,7 @@ export const FeatureMatrix: React.FC<FeatureMatrixProps> = ({ onEnterApp }) => {
     <section className="relative z-10 py-16 w-full overflow-hidden border-t border-black">
       
       {/* Decorative backdrop glows */}
-      <div className="absolute top-1/4 left-1/4 w-[400px] h-[400px] bg-indigo-500/5 rounded-full blur-[120px] pointer-events-none" />
+      <div className="absolute top-1/4 left-1/4 w-[400px] h-[400px] bg-[var(--accent-color)]/5 rounded-full blur-[120px] pointer-events-none" />
       <div className="absolute bottom-1/4 right-1/4 w-[400px] h-[400px] bg-[var(--success)] text-black/5 rounded-full blur-[120px] pointer-events-none" />
 
       <div className="max-w-5xl mx-auto px-6 space-y-32">
@@ -71,10 +71,10 @@ export const FeatureMatrix: React.FC<FeatureMatrixProps> = ({ onEnterApp }) => {
             className="lg:col-span-7 w-full"
           >
             <div className="apple-glass rounded-2xl p-5 border border-white/10 shadow-3xl relative overflow-hidden backdrop-blur-md">
-              <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-indigo-500 via-purple-500 to-indigo-500" />
+              <div className="absolute top-0 left-0 right-0 h-1 bg-[var(--accent-color)]" />
               <div className="flex justify-between items-center border-b border-black/60 pb-3 mb-4 font-mono text-[9px] text-zinc-500">
                 <span className="font-extrabold text-[var(--text-primary)] tracking-widest flex items-center gap-1.5">
-                  <span className="w-1.5 h-1.5 rounded-full bg-indigo-400" />
+                  <span className="w-1.5 h-1.5 rounded-full bg-[var(--accent-color)]" />
                   SkyVision · Trade Dashboard
                 </span>
                 <span className="uppercase text-[var(--text-tertiary)] font-bold border border-white/10 rounded px-1.5 py-0.5 text-[8px] tracking-widest">EXAMPLE</span>
@@ -111,10 +111,10 @@ export const FeatureMatrix: React.FC<FeatureMatrixProps> = ({ onEnterApp }) => {
                   </button>
                   <button 
                     onClick={() => setActiveGoalpost(2)}
-                    className={`p-2.5 rounded-lg border transition-all text-left ${activeGoalpost === 2 ? 'bg-indigo-500/5 border-indigo-500/30' : 'bg-black/80 border-black/80'}`}
+                    className={`p-2.5 rounded-lg border transition-all text-left ${activeGoalpost === 2 ? 'bg-[var(--accent-color)]/5 border-[var(--accent-color)]/30' : 'bg-black/80 border-black/80'}`}
                   >
-                    <span className="text-[7.5px] text-indigo-400 block uppercase font-black">Goalpost 2</span>
-                    <span className="text-indigo-400 font-extrabold block text-xs mt-0.5">$22.30 (+80%)</span>
+                    <span className="text-[7.5px] text-[var(--accent-color)] block uppercase font-black">Goalpost 2</span>
+                    <span className="text-[var(--accent-color)] font-extrabold block text-xs mt-0.5">$22.30 (+80%)</span>
                   </button>
                 </div>
 
@@ -122,7 +122,7 @@ export const FeatureMatrix: React.FC<FeatureMatrixProps> = ({ onEnterApp }) => {
                 <div className="bg-black/40 p-3 border border-black/40 rounded-xl space-y-2">
                   <div className="flex justify-between items-center text-[8.5px] font-mono">
                     <span className="text-[var(--text-tertiary)] uppercase font-bold">Dealer Hedge Pressure:</span>
-                    <span className="text-indigo-400 font-bold uppercase text-[8px] leading-relaxed">
+                    <span className="text-[var(--accent-color)] font-bold uppercase text-[8px] leading-relaxed">
                       {activeGoalpost === 0 && 'Stable'}
                       {activeGoalpost === 1 && 'Squeeze Underway'}
                       {activeGoalpost === 2 && 'Full Breakout Range'}
@@ -130,7 +130,7 @@ export const FeatureMatrix: React.FC<FeatureMatrixProps> = ({ onEnterApp }) => {
                   </div>
                   <div className="w-full bg-black h-1.5 rounded-full overflow-hidden">
                     <div 
-                      className="bg-gradient-to-r from-indigo-500 to-[#4ADE80] h-full transition-all duration-500" 
+                      className="bg-[var(--accent-color)] h-full transition-all duration-500"
                       style={{ width: activeGoalpost === 0 ? '45%' : activeGoalpost === 1 ? '78%' : '96%' }} 
                     />
                   </div>
@@ -155,7 +155,7 @@ export const FeatureMatrix: React.FC<FeatureMatrixProps> = ({ onEnterApp }) => {
           >
             <div className="space-y-2">
               <span className="text-[9px] font-mono tracking-[0.2em] text-[var(--text-secondary)] uppercase font-bold flex items-center gap-1.5">
-                <Sliders className="w-3 h-3 text-indigo-400" />
+                <Sliders className="w-3 h-3 text-[var(--accent-color)]" />
                 TRADE DASHBOARD
               </span>
               <h3 className="text-2xl md:text-3xl font-black text-[var(--text-primary)] tracking-tight font-sans">
@@ -273,7 +273,7 @@ export const FeatureMatrix: React.FC<FeatureMatrixProps> = ({ onEnterApp }) => {
                 <div className="space-y-2.5">
                   {[
                     { strike: '7640 [CALL WALL]', gex: '+28.4M', pct: '92%', type: 'HEAVY CEILING', color: 'border-[var(--text-secondary)]', bg: 'bg-[var(--success)]/20', txt: 'text-[var(--text-secondary)]' },
-                    { strike: '7630 [ATM SPOT AREA]', gex: '+4.5M', pct: '40%', type: 'SPOT PIN RISK', color: 'border-indigo-400', bg: 'bg-indigo-500/10', txt: 'text-[var(--text-tertiary)]' },
+                    { strike: '7630 [ATM SPOT AREA]', gex: '+4.5M', pct: '40%', type: 'SPOT PIN RISK', color: 'border-[var(--accent-color)]', bg: 'bg-[var(--accent-color)]/10', txt: 'text-[var(--text-tertiary)]' },
                     { strike: '7610 [GAMMA FLIP]', gex: '-11.8M', pct: '65%', type: 'VOL TRANSITION', color: 'border-rose-400', bg: 'bg-rose-500/10', txt: 'text-[var(--danger)]' }
                   ].map((row, idx) => (
                     <div 

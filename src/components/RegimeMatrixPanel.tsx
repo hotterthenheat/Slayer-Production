@@ -79,7 +79,7 @@ export function RegimeMatrixPanel() {
       <Section title="Volatility State" icon={<Waves className="w-3 h-3 text-[#C084FC]" />}>
         <Flag label="Volatility Compression" value={comp?.detail || '—'} active={!!comp?.active} tone={C.warning} />
         <Flag label="Volatility Expansion" value={exp?.detail || '—'} active={!!exp?.active} tone={C.danger} />
-        <Flag label="Forward Volatility Term Structure" value={fwd?.detail || '—'} active={!!fwd?.active} tone="#C084FC" />
+        <Flag label="Realized-Vol Term Structure" value={fwd?.detail || '—'} active={!!fwd?.active} tone="#C084FC" />
       </Section>
 
       <Section title="Order-Flow Analysis" icon={<Gauge className="w-3 h-3 text-[#34D399]" />}>

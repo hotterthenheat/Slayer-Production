@@ -26,11 +26,12 @@ function discretize(rets: number[]): number[] {
 
 /**
  * Plug-in (maximum-likelihood) Shannon entropy in bits, with optional
- * Miller-Madow bias correction. The plug-in estimator is POSITIVELY biased on
+ * Miller-Madow bias correction. The plug-in estimator is NEGATIVELY biased on
  * short windows by ≈ (K̂−1)/(2N) (K̂ = number of observed non-empty bins,
- * N = sample count); Miller-Madow subtracts exactly that term. We return
- * H_plugin and (K̂−1) separately so the caller can assemble the bias correction
- * with the correct sign for each entropy term of the TE decomposition.
+ * N = sample count) — it UNDERESTIMATES the true entropy; Miller-Madow ADDS
+ * exactly that term. We return H_plugin and (K̂−1) separately so the caller can
+ * assemble the bias correction with the correct sign for each entropy term of
+ * the TE decomposition.
  */
 function entropyMM(counts: Map<string, number>, total: number): { h: number; kHat: number } {
   let h = 0, kHat = 0;

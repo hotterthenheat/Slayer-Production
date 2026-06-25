@@ -29,7 +29,7 @@ const TIER_LOOKUP: Record<string, {
       "Verified trade history archive"
     ],
     accentColor: "indigo",
-    badgeBg: "bg-indigo-500/10 text-indigo-400 border-indigo-500/20"
+    badgeBg: "bg-[var(--accent-color)]/10 text-[var(--accent-color)] border-[var(--accent-color)]/20"
   },
   pinpoint: {
     badge: "Tier 2 // Pinpoint GEX",
@@ -167,7 +167,7 @@ export default function TierGuard({
           {/* Account status info & easy navigation link */}
           <div className="flex flex-col sm:flex-row items-center justify-center gap-3 max-w-md mx-auto pt-2">
             <div className="text-[9.5px] font-mono text-[var(--text-tertiary)] bg-black px-3.5 py-2 rounded-lg border border-[var(--border)] w-full sm:w-auto">
-              Current License: <span className="font-bold text-indigo-400">Discord Tier-1</span>
+              Current License: <span className="font-bold text-[var(--accent-color)]">Discord Tier-1</span>
             </div>
             
             <button
@@ -259,7 +259,7 @@ export default function TierGuard({
         {/* Locked Core Headline */}
         <div className="space-y-2">
           <h3 className="text-xl md:text-2xl font-black text-[var(--text-primary)] uppercase tracking-tight font-sans flex items-center justify-center gap-2.5">
-            <Lock className="w-5 h-5 text-indigo-400" />
+            <Lock className="w-5 h-5 text-[var(--accent-color)]" />
             <span>{tabKey.toUpperCase()} LEVEL ACCESS REQUIRED</span>
           </h3>
           <p className="text-xs text-[var(--text-tertiary)] max-w-lg leading-relaxed font-sans mt-1">
@@ -306,9 +306,9 @@ export default function TierGuard({
                 <span className="text-xs font-mono font-bold text-[var(--text-tertiary)]">{getTierLabel(purchasedTier)}</span>
               </div>
 
-              <div className="flex justify-between items-center bg-black border border-indigo-950/40 p-3 rounded-xl">
-                <span className="text-[10px] font-mono text-indigo-400 uppercase">REQUIRED LEVEL:</span>
-                <span className="text-xs font-mono font-bold text-indigo-300">{getTierLabel(requiredTier)}</span>
+              <div className="flex justify-between items-center bg-black border border-[var(--accent-color)]/20 p-3 rounded-xl">
+                <span className="text-[10px] font-mono text-[var(--accent-color)] uppercase">REQUIRED LEVEL:</span>
+                <span className="text-xs font-mono font-bold text-[var(--accent-color)]">{getTierLabel(requiredTier)}</span>
               </div>
             </div>
           </div>

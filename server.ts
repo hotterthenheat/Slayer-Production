@@ -278,12 +278,15 @@ app.post('/api/auth/clerk-signup', express.json(), async (req, res) => {
     return res.status(400).json({ error: 'Email and Name are required variables.' });
   }
 
-  // Validate strong password
-  if (password) {
-    const passwordErr = validatePasswordStrength(password);
-    if (passwordErr) {
-      return res.status(400).json({ error: passwordErr });
-    }
+  // Validate strong password — REQUIRED. Self-serve signup must never create a
+  // password-less account, since such accounts could otherwise be logged into with
+  // no credential at all (anyone who knows the email).
+  if (!password || typeof password !== 'string') {
+    return res.status(400).json({ error: 'A password is required to create an account.' });
+  }
+  const passwordErr = validatePasswordStrength(password);
+  if (passwordErr) {
+    return res.status(400).json({ error: passwordErr });
   }
 
   const userEmail = email.toLowerCase().trim();
@@ -503,6 +506,26 @@ app.post('/api/auth/clerk-login', express.json(), async (req, res) => {
     }
   }
 
+  // SECURITY: a matched account with no password hash must never be issued a session
+  // from the public password-login path — otherwise anyone who knows the email logs in
+  // with no credential at all. Sandbox dev (ALLOW_SANDBOX_AUTH) is exempt for local use
+  // (and may have just set a first password above). Real provisioned/password-less
+  // accounts must set a password via the authenticated reset flow before logging in here.
+  if (!user.passwordHash && process.env.ALLOW_SANDBOX_AUTH !== 'true') {
+    return res.status(401).json({ error: 'Invalid email or password.' });
+  }
+
+  // Two-factor: a correct password is NOT enough when 2FA is enabled. Issue a
+  // short-lived signed pre-auth token and require the TOTP code at
+  // /api/auth/verify-login-2fa before any session cookie is set. (Previously 2FA was
+  // enrolled but never checked at login, so it gave zero protection.) Sandbox dev is
+  // exempt for frictionless local testing.
+  if (user.two_factor_enabled && user.two_factor_secret && process.env.ALLOW_SANDBOX_AUTH !== 'true') {
+    clearLoginAttempts(userEmail); // password was correct — reset the password throttle
+    const preAuth = signCookieValue(JSON.stringify({ email: user.email, exp: Date.now() + 5 * 60 * 1000, stage: 'pre2fa' }));
+    return res.json({ requires_2fa: true, pre_auth_token: preAuth });
+  }
+
   const userSession = {
     authenticated: true,
     provider: 'clerk',
@@ -521,6 +544,55 @@ app.post('/api/auth/clerk-login', express.json(), async (req, res) => {
   };
 
   clearLoginAttempts(userEmail); // reset throttle on successful auth
+  await setSessionCookie(res, userSession, req);
+  res.json({ success: true, user: sanitizeUser(user) });
+});
+
+// Second stage of 2FA login: consume the signed pre-auth token from clerk-login plus a
+// TOTP code, and only then issue the real session cookie.
+app.post('/api/auth/verify-login-2fa', express.json(), async (req, res) => {
+  const { pre_auth_token, token } = req.body || {};
+  if (!pre_auth_token || !token) return res.status(400).json({ error: 'Missing authentication code.' });
+
+  const raw = verifyAndExtractCookieValue(String(pre_auth_token));
+  if (!raw) return res.status(401).json({ error: 'Invalid or expired 2FA session. Please sign in again.' });
+  let payload: any = null;
+  try { payload = JSON.parse(raw); } catch { payload = null; }
+  if (!payload || payload.stage !== 'pre2fa' || !payload.email || Date.now() > Number(payload.exp || 0)) {
+    return res.status(401).json({ error: 'Your 2FA session expired. Please sign in again.' });
+  }
+
+  const email = String(payload.email).toLowerCase().trim();
+  const lockMs = totpLockRemainingMs(email);
+  if (lockMs > 0) return res.status(429).json({ error: `Too many attempts. Try again in ${Math.ceil(lockMs / 1000)}s.` });
+
+  const user = await dbGetUser(email);
+  if (!user || user.deleted_at || !user.two_factor_enabled || !user.two_factor_secret) {
+    return res.status(401).json({ error: 'Invalid 2FA session. Please sign in again.' });
+  }
+  if (!verifyTOTP(user.two_factor_secret, String(token).trim())) {
+    registerTotpFailure(email);
+    return res.status(401).json({ error: 'Invalid authentication code.' });
+  }
+  clearTotpAttempts(email);
+
+  const userSession = {
+    authenticated: true,
+    provider: 'clerk',
+    name: user.name,
+    email: user.email,
+    avatar: user.avatar,
+    access_tier: user.access_tier,
+    referral_tokens_pool: user.referral_tokens_pool,
+    custom_referral_code: user.custom_referral_code,
+    selected_font_scale: user.selected_font_scale,
+    compact_view_enabled: user.compact_view_enabled,
+    selected_theme: user.selected_theme,
+    no_refund_policy_logged: user.no_refund_policy_logged,
+    username: user.username || generateDefaultUsername(email),
+    cover_photo: user.cover_photo || ''
+  };
+  clearLoginAttempts(email);
   await setSessionCookie(res, userSession, req);
   res.json({ success: true, user: sanitizeUser(user) });
 });
@@ -659,16 +731,16 @@ app.get('/api/auth/session', async (req, res) => {
 
 
 
+// Session validity check / keep-alive. The credential is the httpOnly session
+// cookie, validated here. This used to mint a forgeable, never-validated bearer
+// `access_token` (user_id:timestamp); that theater has been removed — clients
+// authenticate purely via the cookie sent with credentials:'same-origin'.
 app.post('/api/auth/refresh', async (req, res) => {
   const session = await getSessionFromCookies(req.headers.cookie);
   if (!session) {
-    return res.status(401).json({ error: 'No valid refresh token (session cookie) found' });
+    return res.status(401).json({ error: 'No valid session cookie found' });
   }
-  
-  // Create an ephemeral access_token
-  const access_token = session.user_id + ":" + Date.now();
-  // Provide it payload for 15 minute expiry
-  res.json({ access_token, expires_in: 900 });
+  res.json({ ok: true });
 });
 
 app.post('/api/auth/logout', async (req, res) => {
@@ -1112,6 +1184,24 @@ app.delete('/api/users/delete-account', async (req, res) => {
     return res.status(404).json({ error: 'User record not found.' });
   }
 
+  // Cancel any live Stripe subscription BEFORE the soft-delete. Otherwise the
+  // customer_id linkage is purged at the 30-day GDPR job and the subscription bills
+  // indefinitely with nothing to reconcile it against. Guarded for local/dev.
+  if (stripeClient && user.customer_id) {
+    try {
+      const subs = await stripeClient.subscriptions.list({ customer: user.customer_id, status: 'all', limit: 20 });
+      for (const sub of subs.data) {
+        if (['active', 'trialing', 'past_due', 'unpaid', 'paused'].includes(sub.status)) {
+          await stripeClient.subscriptions.cancel(sub.id);
+        }
+      }
+      console.log(`[BILLING] Cancelled live Stripe subscription(s) for deleted account, customer ${user.customer_id}`);
+    } catch (e: any) {
+      console.error('[BILLING] Stripe cancellation during account deletion failed:', e?.message);
+      return res.status(502).json({ error: 'We could not cancel your billing subscription right now, so deletion was paused to avoid leaving you charged. Please retry shortly.' });
+    }
+  }
+
   user.deleted_at = new Date();
 
   // Persist the soft-delete. Without this the mutation lives only in memory: the
@@ -1192,6 +1282,9 @@ app.get('/api/users/profile/:username', async (req, res) => {
     }
   }
 
+  // Only the owner viewing their OWN profile sees the referral code — exposing it on
+  // every public profile let anyone scrape codes for referral abuse.
+  const isSelfProfile = !!selfEmail && selfEmail === targetUser.email.toLowerCase().trim();
   res.json({
     profile: {
       name: targetUser.name,
@@ -1199,7 +1292,7 @@ app.get('/api/users/profile/:username', async (req, res) => {
       avatar: targetUser.avatar,
       cover_photo: targetUser.cover_photo || '',
       access_tier: targetUser.access_tier,
-      custom_referral_code: targetUser.custom_referral_code,
+      ...(isSelfProfile ? { custom_referral_code: targetUser.custom_referral_code } : {}),
       block_search_indexing: !!targetUser.block_search_indexing,
       profile_visibility: targetUser.profile_visibility
     }
@@ -1370,6 +1463,17 @@ app.post('/api/billing/create-checkout-session', express.json(), async (req, res
     return res.status(400).json({ error: 'Unknown subscription plan.' });
   }
 
+  // SECURITY: 'lifetime' is contact-only (no self-serve price). Without this guard it
+  // checks out at $0 (no oneTime amount) and the webhook then grants permanent top-tier
+  // access for free. Block it here — and block any plan that would compute a $0 charge.
+  if (plan === 'lifetime') {
+    return res.status(400).json({ error: 'The Lifetime plan is not available for self-serve checkout — please contact us.' });
+  }
+  const computedAmount = billingCycle === 'annual' ? pricing.annual : pricing.monthly;
+  if (!computedAmount || computedAmount <= 0) {
+    return res.status(400).json({ error: 'This plan is not available for self-serve checkout.' });
+  }
+
   const email = session.email.toLowerCase().trim();
   const appUrl = process.env.APP_URL || 'http://localhost:3000';
 
@@ -1464,14 +1568,18 @@ function tierFromStripeSubscription(sub: any): { accessTier: string; plan: strin
   const item = sub?.items?.data?.[0];
   const amount = item?.price?.unit_amount;
   const interval = item?.price?.recurring?.interval; // 'month' | 'year'
-  if (typeof amount === 'number') {
+  // Never resolve a recurring subscription to a $0 line or to the contact-only
+  // 'lifetime' tier: a 100%-off coupon, $0 trial line, or misconfigured plan must not
+  // escalate to permanent top-tier access.
+  if (typeof amount === 'number' && amount > 0) {
     for (const [plan, p] of Object.entries(TIER_PRICING)) {
+      if (plan === 'lifetime') continue;
       if (interval === 'year' && p.annual === amount) return { accessTier: p.accessTier, plan };
       if (interval === 'month' && p.monthly === amount) return { accessTier: p.accessTier, plan };
     }
   }
   const metaPlan = String(sub?.metadata?.plan || '');
-  if (TIER_PRICING[metaPlan]) return { accessTier: TIER_PRICING[metaPlan].accessTier, plan: metaPlan };
+  if (metaPlan !== 'lifetime' && TIER_PRICING[metaPlan]) return { accessTier: TIER_PRICING[metaPlan].accessTier, plan: metaPlan };
   return null;
 }
 
@@ -1506,12 +1614,10 @@ app.post('/api/billing/webhook', express.raw({ type: 'application/json' }), asyn
   if (processedWebhookEvents.has(event.id) || await dbIsWebhookProcessed(event.id)) {
     return res.json({ received: true, duplicate: true });
   }
-  processedWebhookEvents.add(event.id);
-  await dbMarkWebhookProcessed(event.id);
-  if (processedWebhookEvents.size > 5000) {
-    // Bound memory: drop the oldest ~1000 ids (insertion order preserved by Set).
-    for (const id of Array.from(processedWebhookEvents).slice(0, 1000)) processedWebhookEvents.delete(id);
-  }
+  // NOTE: this event is marked processed only AFTER the handler completes successfully
+  // (see end of the try block). Marking it up-front previously meant a handler/persist
+  // failure was still recorded as "done", so Stripe's retry was short-circuited as a
+  // duplicate and a paid grant or cancellation was lost forever.
 
   try {
     switch (event.type) {
@@ -1529,6 +1635,12 @@ app.post('/api/billing/webhook', express.raw({ type: 'application/json' }), asyn
           console.warn(`[STRIPE WEBHOOK] checkout.session.completed not granting — payment_status=${checkoutSession.payment_status} for ${email}`);
           break;
         }
+        // SECURITY: never grant the permanent top tier from a $0 checkout. Self-serve
+        // lifetime is blocked at session creation; refuse it here too as defense in depth.
+        if (plan === 'lifetime' && (checkoutSession.amount_total ?? 0) <= 0) {
+          console.warn(`[STRIPE WEBHOOK] refusing $0 lifetime grant for ${email}`);
+          break;
+        }
 
         if (email && pricing) {
           const user = await dbGetUser(email);
@@ -1538,7 +1650,8 @@ app.post('/api/billing/webhook', express.raw({ type: 'application/json' }), asyn
               ? checkoutSession.customer
               : checkoutSession.customer?.id) || user.customer_id;
             user.cancels_at_period_end = false;
-            await persistUser(email, user);
+            const okGrant = await persistUser(email, user);
+            if (!okGrant) throw new Error(`persistUser failed for ${email} (checkout.completed)`);
             console.log(`[STRIPE WEBHOOK] checkout.session.completed -> ${email} upgraded to ${pricing.accessTier} (plan: ${plan})`);
           } else {
             console.warn(`[STRIPE WEBHOOK] checkout.session.completed for unknown user: ${email}`);
@@ -1554,7 +1667,8 @@ app.post('/api/billing/webhook', express.raw({ type: 'application/json' }), asyn
         const user = await findUserForSubscription(sub);
         if (user) {
           user.access_tier = 'guest';
-          await persistUser(user.email, user);
+          const okDel = await persistUser(user.email, user);
+          if (!okDel) throw new Error(`persistUser failed for ${user.email} (subscription.deleted)`);
           console.log(`[STRIPE WEBHOOK] subscription.deleted -> ${user.email} downgraded to guest`);
         } else {
           console.warn('[STRIPE WEBHOOK] subscription.deleted: no user matched by metadata.email or customer id');
@@ -1581,7 +1695,8 @@ app.post('/api/billing/webhook', express.raw({ type: 'application/json' }), asyn
             const mapped = tierFromStripeSubscription(sub);
             if (mapped) user.access_tier = mapped.accessTier;
           }
-          await persistUser(user.email, user);
+          const okUpd = await persistUser(user.email, user);
+          if (!okUpd) throw new Error(`persistUser failed for ${user.email} (subscription.updated)`);
           console.log(`[STRIPE WEBHOOK] subscription.updated -> ${user.email} status=${status} tier=${user.access_tier} cancels_at_period_end=${user.cancels_at_period_end}`);
         }
         break;
@@ -1591,10 +1706,20 @@ app.post('/api/billing/webhook', express.raw({ type: 'application/json' }), asyn
         // Unhandled event types are acknowledged so Stripe stops retrying.
         break;
     }
+
+    // Mark processed ONLY after a successful handler run. A failure below leaves the
+    // event un-recorded so Stripe's retry can re-apply the grant/cancellation.
+    processedWebhookEvents.add(event.id);
+    await dbMarkWebhookProcessed(event.id);
+    if (processedWebhookEvents.size > 5000) {
+      // Bound memory: drop the oldest ~1000 ids (insertion order preserved by Set).
+      for (const id of Array.from(processedWebhookEvents).slice(0, 1000)) processedWebhookEvents.delete(id);
+    }
   } catch (e: any) {
-    console.error('[STRIPE WEBHOOK] Handler error:', e?.message);
-    // Still acknowledge so Stripe does not hammer us with retries on a transient
-    // internal error; surface the failure via logs/alerting instead.
+    // Return 500 (not 200) so Stripe RETRIES instead of the failure being swallowed
+    // and the grant/cancellation permanently lost. The event is NOT marked processed.
+    console.error('[STRIPE WEBHOOK] Handler error — returning 500 for Stripe retry:', e?.message);
+    return res.status(500).json({ received: false, error: 'handler_failed' });
   }
 
   return res.json({ received: true });
@@ -1612,6 +1737,23 @@ app.post('/api/billing/cancel', express.json(), async (req, res) => {
 
   if (!user) {
     return res.status(404).json({ error: 'User record not located in memory.' });
+  }
+
+  // Schedule the cancellation in Stripe FIRST (the source of truth). Without this the
+  // customer is told billing stops but their card keeps getting charged at renewal —
+  // a chargeback/consumer-protection problem, not just a bug. Guarded so local/dev
+  // (no Stripe configured) keeps the prior behaviour of recording the request only.
+  if (stripeClient && user.customer_id) {
+    try {
+      const subs = await stripeClient.subscriptions.list({ customer: user.customer_id, status: 'active', limit: 20 });
+      for (const sub of subs.data) {
+        await stripeClient.subscriptions.update(sub.id, { cancel_at_period_end: true });
+      }
+      console.log(`[BILLING] Stripe cancel-at-period-end scheduled for ${subs.data.length} subscription(s), customer ${user.customer_id}`);
+    } catch (e: any) {
+      console.error('[BILLING] Stripe cancellation failed:', e?.message);
+      return res.status(502).json({ error: 'We could not reach our payment processor to schedule the cancellation. No change was made — please retry shortly.' });
+    }
   }
 
   user.cancels_at_period_end = true;
@@ -1761,13 +1903,13 @@ app.post('/api/billing/process', express.json(), async (req, res) => {
   user.payment_method_id = payment_method_id || ("pm_se_" + Math.random().toString(36).substring(2, 10));
   user.cancels_at_period_end = false;
 
-  // Set the structural target access_tier levels
-  let targetTier: 'discord' | 'intraday' | 'quant' | 'enterprise' | 'lifetime' = 'discord';
-  if (plan === 'discord') targetTier = 'discord';
-  else if (plan === 'skyvision') targetTier = 'intraday';
-  else if (plan === 'pinpoint') targetTier = 'quant';
-  else if (plan === 'quant') targetTier = 'enterprise';
-  else if (plan === 'lifetime') targetTier = 'lifetime';
+  // Map the requested plan onto its canonical access tier — single source of truth
+  // is config.ts TIER_PRICING (the same mapping the Stripe webhook writes). Unknown
+  // plans fall back to the lowest tier (fail-closed). This replaces an older hand-rolled
+  // mapping that mislabeled tiers (skyvision→intraday, pinpoint→quant) and over-granted
+  // plan='quant' to enterprise/level-3.
+  const planPricing = TIER_PRICING[plan as keyof typeof TIER_PRICING];
+  const targetTier: 'guest' | 'discord' | 'pinpoint' | 'skyvision' | 'lifetime' = planPricing ? planPricing.accessTier : 'discord';
 
   // Apply strict audit logging variables
   user.access_tier = targetTier;
@@ -2136,13 +2278,14 @@ app.post('/api/billing/sim-cron-invoice', express.json(), async (req, res) => {
     return res.status(404).json({ error: 'User lookup failed.' });
   }
 
-  // Get base rate for current subscriber plan
+  // Base referral rate keyed off the resolved access LEVEL, so it works for both
+  // the canonical (pinpoint/skyvision) names and any legacy values still in the DB.
+  const accessLevel = accessTierToLevel(user.access_tier);
   let baseRate = 0;
-  if (user.access_tier === 'discord') baseRate = 65;
-  else if (user.access_tier === 'intraday') baseRate = 350;
-  else if (user.access_tier === 'quant') baseRate = 500;
-  else if (user.access_tier === 'enterprise') baseRate = 1500;
-  else if (user.access_tier === 'lifetime') baseRate = 5000;
+  if (accessLevel >= 5) baseRate = 5000;       // lifetime
+  else if (accessLevel >= 3) baseRate = 1500;  // skyvision
+  else if (accessLevel >= 2) baseRate = 500;   // pinpoint
+  else if (accessLevel >= 1) baseRate = 65;    // discord
 
   const initialTokens = user.referral_tokens_pool || 0;
   
@@ -2439,6 +2582,14 @@ app.get('/api/dealer-flow', endpointRateLimit(20, '/api/dealer-flow'), async (re
   const session = await getSessionFromCookies(req.headers.cookie);
   if (!session || !session.email) return res.status(401).json({ error: 'Unauthorized' });
 
+  // Tier gate: dealer_flow + gex_profile are Pinpoint-tier (level 2) premium analytics —
+  // gated identically in the live stream (gatePayloadByTier). Without this check any
+  // authenticated guest/free user could pull the paywalled data via this direct GET.
+  const dfUser = await dbGetUser(session.email.toLowerCase().trim());
+  if (accessTierToLevel(dfUser?.access_tier) < 2) {
+    return res.status(403).json({ error: 'This feature requires the Pinpoint (Tier 2) plan or higher.' });
+  }
+
   try {
     const ticker = String(req.query.ticker || 'SPX');
     const asset = ASSET_LIST.find(a => a.ticker === ticker) || ASSET_LIST[0];
@@ -2448,7 +2599,7 @@ app.get('/api/dealer-flow', endpointRateLimit(20, '/api/dealer-flow'), async (re
     const contracts = chainRes?.contracts || [];
     
     if (contracts.length > 0) {
-      const profile = buildGexProfile(contracts, liveSpot, 1 / 365, 0.06);
+      const profile = buildGexProfile(contracts, liveSpot, 1 / 365, 0.05);
       if (profile) {
         const systemScore = calculateSystemScoreFromCandles(
           db.candles[`${ticker}-5m`] || [], 
@@ -2654,13 +2805,26 @@ app.patch('/api/admin/users/:email/tier', requireAdmin(['owner', 'admin', 'moder
   if (!user) return res.status(404).json({ error: 'User not found' });
   // Whitelist the tier against the known enum — never write an arbitrary string
   // (which would corrupt access_tier and confuse client gating).
-  const VALID_TIERS = ['guest', 'discord', 'intraday', 'quant', 'enterprise', 'lifetime'];
+  // Canonical tiers first; legacy aliases retained so older stored values still validate.
+  const VALID_TIERS = ['guest', 'discord', 'pinpoint', 'skyvision', 'lifetime', 'intraday', 'quant', 'enterprise'];
   const requestedTier = String(req.body.access_tier || '');
   if (!VALID_TIERS.includes(requestedTier)) {
     return res.status(400).json({ error: 'Invalid access tier.' });
   }
+  // SECURITY: never change the tier of another privileged account (or yourself) — a
+  // moderator could otherwise self-grant 'lifetime'. Mirrors the moderation handlers.
+  if (roleForEmail(email) !== 'user') {
+    return res.status(403).json({ error: 'Cannot change the tier of a privileged account.' });
+  }
+  // Minting the top tiers is owner/admin-only; moderators cannot grant lifetime/skyvision.
+  const TOP_TIERS = ['lifetime', 'skyvision', 'enterprise', 'intraday'];
+  if (TOP_TIERS.includes(requestedTier) && !['owner', 'admin'].includes(String(req.admin?.role))) {
+    return res.status(403).json({ error: 'Only an owner or admin may grant this tier.' });
+  }
+  const oldTier = user.access_tier;
   user.access_tier = requestedTier;
-  await persistUser(email, user);
+  const okTier = await persistUser(email, user);
+  if (!okTier) return res.status(500).json({ error: 'Could not persist tier change. Please retry.' });
 
   // instant invalidate
   for (const client of sse.clients) {
@@ -2668,7 +2832,7 @@ app.patch('/api/admin/users/:email/tier', requireAdmin(['owner', 'admin', 'moder
       client.res.write(`data: ${JSON.stringify({ type: 'TIER_UPGRADE', access_tier: user.access_tier })}\n\n`);
     }
   }
-  logAudit(req, 'USER_TIER_UPDATE', email);
+  logAudit(req, `USER_TIER_UPDATE ${oldTier}->${requestedTier}`, email);
   res.json({ success: true, access_tier: user.access_tier });
 });
 
@@ -2871,8 +3035,10 @@ app.post('/api/ai/analyze', endpointRateLimit(10, '/api/ai/analyze'), async (req
         return res.status(401).json({ error: 'Authentication required.' });
       }
       const aiDbUser = await dbGetUser(session.email.toLowerCase().trim());
-      const AI_TIER_RANK: Record<string, number> = { guest: 0, discord: 1, intraday: 2, quant: 3, enterprise: 4, lifetime: 5 };
-      if ((AI_TIER_RANK[aiDbUser?.access_tier as string] ?? 0) < 3) {
+      // AI access requires SkyVision (level 3) or above. Resolve via the shared
+      // normalizer so canonical (skyvision) and legacy (enterprise/intraday) names agree —
+      // previously a Stripe-granted 'skyvision' user was wrongly denied here.
+      if (accessTierToLevel(aiDbUser?.access_tier) < 3) {
         return res.status(403).json({ error: 'This feature requires the Pinpoint (Tier 3) plan or higher.' });
       }
     }

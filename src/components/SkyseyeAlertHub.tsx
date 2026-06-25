@@ -325,15 +325,15 @@ export function SkyseyeAlertHub() {
         {toasts.map((toast) => {
           // Color schemes based on rating
           let bgClass = 'bg-[#0A0A0A] border-[#1F1F1F] shadow-zinc-950/80';
-          let borderLeftGlow = 'border-l-indigo-500';
-          let accentText = 'text-indigo-400';
+          let borderLeftGlow = 'border-l-[var(--accent-color)]';
+          let accentText = 'text-[var(--accent-color)]';
           let glowIntensity = 'shadow-[0_8px_32px_rgba(0,0,0,0.7)]';
           
           if (toast.rating === 'GOOD') {
             bgClass = 'bg-[#0A0A0A] border-[#1F1F1F]';
             borderLeftGlow = 'border-l-zinc-300';
             accentText = 'text-[var(--success)]';
-            glowIntensity = 'shadow-[0_12px_44px_rgba(34,211,238,0.12),0_8px_24px_rgba(0,0,0,0.8)]';
+            glowIntensity = 'shadow-[0_12px_44px_rgba(0,0,0,0.5),0_8px_24px_rgba(0,0,0,0.8)]';
           } else if (toast.rating === 'WEAK') {
             bgClass = 'bg-[#0A0A0A] border-[var(--danger)]/50';
             borderLeftGlow = 'border-l-rose-500';
@@ -451,7 +451,7 @@ export function SkyseyeAlertHub() {
                         ? 'bg-[var(--surface)]'
                         : toast.rating === 'WEAK'
                           ? 'bg-rose-500'
-                          : 'bg-indigo-400'
+                          : 'bg-[var(--accent-color)]'
                     }`}
                     style={{ width: `${toast.type === 'MULTIPLE' ? 100 : toast.health}%` }}
                   />

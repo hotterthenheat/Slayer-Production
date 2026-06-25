@@ -415,10 +415,48 @@ export function frontWeeklyDteDays(now: Date = new Date()): number {
   return (5 - now.getDay() + 7) % 7; // getDay: 0=Sun..6=Sat; Friday = 5
 }
 
-/** Days-to-expiry used for pricing/greeks: daily names ≈ intraday (1), weekly = front weekly. */
-export function optionDteDays(asset: AssetInfo): number {
-  if (asset.optionsStyle === 'weekly') return Math.max(1, frontWeeklyDteDays());
-  return 1;
+/**
+ * Hours remaining until the 16:00 ET cash-equity close. Outside regular trading
+ * hours returns a full session (6.5h), so overnight pricing assumes the next
+ * session ahead. ET-timezone aware (handles DST via Intl).
+ */
+export function hoursToSessionClose(now: Date = new Date()): number {
+  try {
+    const parts = new Intl.DateTimeFormat('en-US', {
+      timeZone: 'America/New_York', hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false,
+    }).formatToParts(now);
+    const get = (t: string) => Number(parts.find((p) => p.type === t)?.value || 0);
+    let h = get('hour'); if (h === 24) h = 0;
+    const nowSec = h * 3600 + get('minute') * 60 + get('second');
+    const openSec = 9.5 * 3600, closeSec = 16 * 3600;
+    if (nowSec >= closeSec || nowSec < openSec) return 6.5; // outside RTH → a full session ahead
+    return Math.max(0, (closeSec - nowSec) / 3600);
+  } catch {
+    return 6.5;
+  }
+}
+
+// Floor for time-to-expiry, ~52 min in calendar-day terms. Matches the Black-Scholes
+// T floor (max(0.0001 yr) in v11Math) so greeks and expected-move stay finite at the
+// bell instead of exploding as T → 0.
+const MIN_TTE_DAYS = 0.0365;
+
+/**
+ * Time-to-expiry in FRACTIONAL calendar days for the nearest contract — the value
+ * pricing, greeks, GEX and expected-move all annualize as T = dteDays / 365.
+ *
+ * Daily/index names ("0DTE", e.g. SPX/NDX) expire at today's 16:00 close; weekly
+ * single-stock names expire at the front-Friday close. The horizon now decays through
+ * the session via the intraday clock: an SPX 0DTE is ~0.27d at the open and floors
+ * near the bell. Previously this returned a flat 1 calendar day all day, which —
+ * because premium/vega ∝ √T and gamma/theta ∝ 1/√T — overstated premiums/vega and
+ * understated gamma/theta/charm by up to ~25× into the close, and made the headline
+ * expected move disagree with the 0DTE session band.
+ */
+export function optionDteDays(asset: AssetInfo, now: Date = new Date()): number {
+  const wholeDays = asset.optionsStyle === 'weekly' ? frontWeeklyDteDays(now) : 0;
+  const tte = wholeDays + hoursToSessionClose(now) / 24;
+  return Math.max(MIN_TTE_DAYS, tte);
 }
 
 /** Human label for a ticker's nearest expiry: '0DTE' for daily names, '{n}DTE' for the front weekly. */

@@ -61,7 +61,7 @@ export function ReportsView() {
       <div className="w-full animate-fadeIn">
         <div className="apple-glass rounded-2xl p-6 md:p-8 relative overflow-hidden shadow-2xl text-left space-y-6 border border-[var(--border)] print:border-none print:bg-white print:p-0">
 
-          <div className="absolute top-0 left-0 right-0 h-[3px] bg-gradient-to-r from-[var(--success)] via-indigo-500 to-[var(--success)] print:hidden" />
+          <div className="absolute top-0 left-0 right-0 h-[3px] bg-gradient-to-r from-[var(--success)] via-[var(--accent-color)] to-[var(--success)] print:hidden" />
 
           {/* Document Header */}
           <div className="border-b-2 border-[var(--border)] pb-4 flex flex-col sm:flex-row justify-between items-start gap-4">

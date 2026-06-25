@@ -77,7 +77,7 @@ const TickerTape = memo(() => {
   const staticTickers = [...items, ...items, ...items];
 
   return (
-    <div className="w-full bg-black/75 border-b border-black/50 backdrop-blur-xl overflow-hidden py-1.5 relative z-40 select-none">
+    <div className="w-full bg-[var(--surface)]/80 border-b border-[var(--border)] backdrop-blur-xl overflow-hidden py-1.5 relative z-40 select-none">
       <div className="animate-ticker-marquee flex whitespace-nowrap">
         {[...Array(2)].map((_, loopIdx) => (
           <div key={loopIdx} className="flex gap-14 items-center pr-14 animate-none">
@@ -815,12 +815,12 @@ export default function App() {
 
   if (sessionBlockedMessage) {
     return (
-      <div className="min-h-screen bg-black text-red-500 flex flex-col justify-center items-center font-mono p-6 text-center select-none antialiased">
+      <div className="min-h-screen bg-[var(--bg-base)] text-[var(--danger)] flex flex-col justify-center items-center font-mono p-6 text-center select-none antialiased">
         <div className="w-16 h-16 border-2 border-red-500 rounded-full flex items-center justify-center mb-6 animate-pulse">
           <span className="text-3xl font-black">!</span>
         </div>
         <h1 className="text-xl font-black tracking-widest text-[var(--text-primary)] uppercase mb-2">Session ended</h1>
-        <p className="text-xs text-red-500 max-w-md tracking-wider leading-relaxed mb-4">
+        <p className="text-xs text-[var(--danger)] max-w-md tracking-wider leading-relaxed mb-4">
           This account is active on another device. Only one live session is allowed at a time.
         </p>
         <div className="text-[10px] text-[var(--text-tertiary)] uppercase">
@@ -840,7 +840,7 @@ export default function App() {
 
   if (session === null) {
     return (
-      <div className="min-h-screen bg-black text-[var(--text-tertiary)] flex flex-col justify-center items-center font-mono select-none antialiased">
+      <div className="min-h-screen bg-[var(--bg-base)] text-[var(--text-tertiary)] flex flex-col justify-center items-center font-mono select-none antialiased">
         <div className="w-8 h-8 border-t-2 border-white rounded-full animate-spin mb-4"></div>
         <div className="tracking-widest uppercase text-xs text-[var(--text-primary)]">Connecting to your workspace…</div>
         <div className="text-[10px] text-zinc-650 mt-2 uppercase font-mono font-bold">Verifying your secure session</div>
@@ -854,7 +854,7 @@ export default function App() {
   // Safe fallback loading state and skeletal setup
   if (!serverState) {
     return (
-      <div className="min-h-screen bg-black text-[var(--text-tertiary)] flex flex-col justify-center items-center font-mono select-none antialiased">
+      <div className="min-h-screen bg-[var(--bg-base)] text-[var(--text-tertiary)] flex flex-col justify-center items-center font-mono select-none antialiased">
         <div className="w-8 h-8 border-t-2 border-white rounded-full animate-spin mb-4"></div>
         <div className="tracking-widest uppercase text-xs text-[var(--text-primary)]">Loading live market data…</div>
         <div className="text-[10px] text-zinc-650 mt-2 uppercase font-mono">Syncing the analytics engine</div>
@@ -982,7 +982,7 @@ export default function App() {
 
             {/* TAB 3: PINPOINT AI (MARKET INTELLIGENCE) */}
             {activeTab === 'pinpoint' && (
-              <div className="view-enter border border-[var(--border)] bg-black/80 rounded-md p-1 drop-shadow-2xl">
+              <div className="view-enter border border-[var(--border)] bg-[var(--surface)]/90 rounded-md p-1 drop-shadow-2xl">
                 <TierGuard requiredTier={2} tabKey="pinpoint" planKey="pinpoint" planName="Pinpoint GEX" planPrice="$99">
                   <DealerFlowView />
                 </TierGuard>
@@ -991,7 +991,7 @@ export default function App() {
 
             {/* TAB: INSTITUTIONAL QUANT LAB */}
             {activeTab === 'quant' && (
-              <div className="view-enter border border-[var(--border)] bg-black/80 rounded-md p-1 drop-shadow-2xl">
+              <div className="view-enter border border-[var(--border)] bg-[var(--surface)]/90 rounded-md p-1 drop-shadow-2xl">
                 <TierGuard requiredTier={3} tabKey="quant" planKey="skyvision" planName="SkyVision" planPrice="$499">
                   <QuantSuiteView />
                 </TierGuard>
@@ -1085,7 +1085,7 @@ export default function App() {
           </div>
           <button
             onClick={handleExitSimulation}
-            className="bg-black hover:bg-black text-[var(--text-primary)] px-4 py-1 transition-colors border border-rose-800 shrink-0"
+            className="bg-[var(--surface)] hover:bg-[var(--surface-2)] text-[var(--text-primary)] px-4 py-1 transition-colors border border-rose-800 shrink-0"
           >
             Exit preview
           </button>
@@ -1112,7 +1112,7 @@ export default function App() {
 
       {/* Terminal Footer Status Bar */}
       {activeTab !== 'workspace' && (
-        <footer className="mt-auto border-t border-white/5 bg-black px-4 sm:px-6 py-3.5 flex flex-col sm:flex-row items-center justify-between text-[9px] text-[var(--text-tertiary)] font-mono tracking-widest uppercase gap-2">
+        <footer className="mt-auto border-t border-[var(--border)] bg-[var(--surface)] px-4 sm:px-6 py-3.5 flex flex-col sm:flex-row items-center justify-between text-[9px] text-[var(--text-tertiary)] font-mono tracking-widest uppercase gap-2">
         <div className="flex items-center gap-2">
           <span className="text-[var(--text-tertiary)]">NY</span>
           <FooterClock />
@@ -1159,9 +1159,9 @@ export default function App() {
               role="dialog"
               aria-modal="true"
               aria-label="Global command menu"
-              className="w-full max-w-lg bg-black border border-[var(--border-strong)] rounded-lg shadow-2xl overflow-hidden text-left"
+              className="w-full max-w-lg bg-[var(--surface)] border border-[var(--border-strong)] rounded-lg shadow-2xl overflow-hidden text-left"
             >
-              <div className="p-4 border-b border-black/60 flex flex-col gap-3">
+              <div className="p-4 border-b border-[var(--border)] flex flex-col gap-3">
                 <div className="flex items-center gap-3">
                   <Search className="w-4 h-4 text-[var(--text-tertiary)] animate-pulse" />
                   <input 
@@ -1174,7 +1174,7 @@ export default function App() {
                     }}
                     onKeyDown={handleGlobalSearchKeyDown}
                     placeholder="Type search keyword or select computing token..."
-                    className="w-full bg-black border border-black px-3.5 py-1.5 text-[var(--text-primary)] text-xs placeholder-zinc-650 font-mono rounded-md focus:ring-1 focus:ring-zinc-300/80 focus:border-black focus:outline-none text-[11px]"
+                    className="w-full bg-[var(--surface-2)] border border-[var(--border)] px-3.5 py-1.5 text-[var(--text-primary)] text-xs placeholder-[var(--text-tertiary)] font-mono rounded-md focus-visible:ring-1 focus-visible:ring-[var(--border-strong)] focus:border-[var(--border-strong)] focus:outline-none text-[11px]"
                   />
                   <button 
                     type="button"
@@ -1193,7 +1193,7 @@ export default function App() {
                         setGlobalSearchIndex(0);
                       }}
                       className={`px-3 py-1 rounded-sm text-[9px] uppercase font-bold transition-colors cursor-pointer ${
-                        prismFilter === filter ? 'bg-black text-[var(--text-primary)]' : 'text-[var(--text-tertiary)] hover:text-[var(--success)]'
+                        prismFilter === filter ? 'bg-[var(--surface-2)] text-[var(--text-primary)]' : 'text-[var(--text-tertiary)] hover:text-[var(--text-primary)]'
                       }`}
                     >
                       {filter}
@@ -1264,13 +1264,13 @@ export default function App() {
                         }}
                         className={`w-full flex items-center justify-between text-left px-4 py-3 rounded-md transition-all border outline-none focus:outline-none cursor-pointer ${
                           isActive 
-                            ? 'bg-black border-black' 
+                            ? 'bg-[var(--surface-2)] border-[var(--border-strong)]'
                             : 'bg-transparent border-transparent'
                         }`}
                         onMouseEnter={() => setGlobalSearchIndex(idx)}
                       >
                         <div className="flex items-center gap-3.5 flex-1 min-w-0 pr-2">
-                          <span className={`text-[12px] font-black tracking-wider shrink-0 ${isActive ? 'text-[#38bdf8]' : isTkActive ? 'text-[var(--success)]' : 'text-[var(--success)]'}`}>
+                          <span className={`text-[12px] font-black tracking-wider shrink-0 ${isActive ? 'text-[var(--accent-color)]' : isTkActive ? 'text-[var(--success)]' : 'text-[var(--success)]'}`}>
                             {tickerItem.isContract ? tickerItem.contract : tickerItem.ticker}
                           </span>
                           <span className="text-[10px] text-[var(--text-tertiary)] uppercase font-medium truncate">
@@ -1294,7 +1294,7 @@ export default function App() {
                 </div>
               </div>
 
-              <div className="bg-black/40 px-4 py-2 border-t border-black flex justify-between items-center text-[7.5px] text-zinc-650 uppercase tracking-wider font-semibold font-mono">
+              <div className="bg-[var(--surface)]/40 px-4 py-2 border-t border-[var(--border)] flex justify-between items-center text-[7.5px] text-[var(--text-tertiary)] uppercase tracking-wider font-semibold font-mono">
                 <span>USE KEYBOARD ARROWS  AND ENTER</span>
                 <span>{keybinds.prismMenu?.replace('cmd', typeof window !== 'undefined' && navigator.userAgent.includes('Mac') ? '⌘' : 'Ctrl').toUpperCase()} TO TOGGLE</span>
               </div>

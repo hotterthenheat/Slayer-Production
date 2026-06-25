@@ -120,14 +120,14 @@ export function TwoFactorFlow() {
       <div className="p-4 bg-black/50 border border-[var(--border)] rounded-lg flex items-center justify-between transition-all">
         <div>
           <div className="text-sm font-bold text-[var(--text-primary)] mb-1 flex items-center gap-1.5">
-            <Shield className="w-4 h-4 text-indigo-400" />
+            <Shield className="w-4 h-4 text-[var(--accent-color)]" />
             Two-Factor Authentication (TOTP)
           </div>
           <div className="text-xs text-[var(--text-tertiary)]">Secure options records and user sessions with MFA.</div>
         </div>
         <button 
           onClick={startSetup}
-          className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-[var(--text-primary)] text-xs font-bold rounded-lg cursor-pointer transition-colors whitespace-nowrap"
+          className="px-4 py-2 bg-[var(--text-primary)] hover:opacity-90 text-[var(--bg-base)] text-xs font-bold rounded-lg cursor-pointer transition-colors whitespace-nowrap"
         >
           Enable 2FA
         </button>
@@ -136,16 +136,16 @@ export function TwoFactorFlow() {
   }
 
   return (
-    <div className="p-5 bg-black/40 border border-indigo-500/30 rounded-xl space-y-4 animate-fadeIn transition-all">
+    <div className="p-5 bg-black/40 border border-[var(--accent-color)]/30 rounded-xl space-y-4 animate-fadeIn transition-all">
       <div className="flex items-center gap-2 mb-2 pb-3 border-b border-[var(--border)]">
-        <Shield className="w-4 h-4 text-indigo-400 animate-pulse" />
+        <Shield className="w-4 h-4 text-[var(--accent-color)] animate-pulse" />
         <h3 className="text-sm font-bold text-[var(--text-primary)] uppercase tracking-wider">2FA Compliance Setup</h3>
       </div>
 
       {step === 1 && (
         <div className="space-y-4 animate-fadeIn">
           <div className="text-xs text-[var(--text-tertiary)] leading-relaxed flex items-start gap-2">
-            <Info className="w-4 h-4 text-indigo-400 shrink-0 mt-0.5" />
+            <Info className="w-4 h-4 text-[var(--accent-color)] shrink-0 mt-0.5" />
             <span>
               <strong>Confirm your password to continue.</strong> Verify your current key credential to permit Multi-Factor initialization.
             </span>
@@ -156,7 +156,7 @@ export function TwoFactorFlow() {
               placeholder="Confirm Current Password" 
               value={password}
               onChange={e => setPassword(e.target.value)}
-              className="w-full mirror-panel rounded-lg px-3 py-2 text-sm text-[var(--text-primary)] focus:outline-none focus:border-indigo-500 transition-colors"
+              className="w-full mirror-panel rounded-lg px-3 py-2 text-sm text-[var(--text-primary)] focus:outline-none focus-visible:ring-1 focus-visible:ring-[var(--border-strong)] focus:border-[var(--border-strong)] transition-colors"
             />
             {error && <div className="text-xs font-bold text-rose-500">{error}</div>}
           </div>
@@ -165,7 +165,7 @@ export function TwoFactorFlow() {
             <button 
               onClick={handlePasswordSubmit} 
               disabled={isLoading}
-              className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-[var(--text-primary)] rounded-lg text-xs font-bold transition-colors cursor-pointer disabled:opacity-50 flex items-center gap-2"
+              className="px-4 py-2 bg-[var(--text-primary)] hover:opacity-90 text-[var(--bg-base)] rounded-lg text-xs font-bold transition-colors cursor-pointer disabled:opacity-50 flex items-center gap-2"
             >
               {isLoading ? 'Processing...' : 'Verify Password'} <ChevronRight className="w-3 h-3" />
             </button>
@@ -179,7 +179,7 @@ export function TwoFactorFlow() {
             <strong>Configure Authenticator.</strong> Scan this code with Google Authenticator, Authy, or MS Authenticator.
           </div>
           <div className="flex flex-col sm:flex-row gap-4 items-center sm:items-start bg-black p-4 border border-[var(--border)] rounded-lg">
-            <div className="w-32 h-32 bg-white rounded-lg p-2 shrink-0 border-2 border-indigo-500/30 flex items-center justify-center">
+            <div className="w-32 h-32 bg-white rounded-lg p-2 shrink-0 border-2 border-[var(--accent-color)]/30 flex items-center justify-center">
               {otpauthUrl && (
                 <img 
                   src={`https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(otpauthUrl)}`} 
@@ -208,7 +208,7 @@ export function TwoFactorFlow() {
             <button onClick={() => setStep(0)} className="px-4 py-2 text-xs font-bold text-[var(--text-tertiary)] hover:text-[var(--text-primary)] transition-colors cursor-pointer">Cancel Setup</button>
             <button 
               onClick={() => setStep(3)} 
-              className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-[var(--text-primary)] rounded-lg text-xs font-bold transition-colors cursor-pointer flex items-center gap-2"
+              className="px-4 py-2 bg-[var(--text-primary)] hover:opacity-90 text-[var(--bg-base)] rounded-lg text-xs font-bold transition-colors cursor-pointer flex items-center gap-2"
             >
               Verify Code <ChevronRight className="w-3 h-3" />
             </button>
@@ -228,7 +228,7 @@ export function TwoFactorFlow() {
               maxLength={6}
               value={authCode}
               onChange={e => setAuthCode(e.target.value.replace(/\D/g, ''))}
-              className="w-full mirror-panel rounded-lg px-3 py-2 text-lg text-center font-mono tracking-[0.5em] text-[var(--text-primary)] focus:outline-none focus:border-indigo-500 transition-colors"
+              className="w-full mirror-panel rounded-lg px-3 py-2 text-lg text-center font-mono tracking-[0.5em] text-[var(--text-primary)] focus:outline-none focus-visible:ring-1 focus-visible:ring-[var(--border-strong)] focus:border-[var(--border-strong)] transition-colors"
             />
             {error && <div className="text-xs font-bold text-rose-500">{error}</div>}
           </div>
@@ -237,7 +237,7 @@ export function TwoFactorFlow() {
             <button 
               onClick={handleVerifyHandshake} 
               disabled={isLoading}
-              className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-[var(--text-primary)] rounded-lg text-xs font-bold transition-colors cursor-pointer disabled:opacity-50 flex items-center gap-2"
+              className="px-4 py-2 bg-[var(--text-primary)] hover:opacity-90 text-[var(--bg-base)] rounded-lg text-xs font-bold transition-colors cursor-pointer disabled:opacity-50 flex items-center gap-2"
             >
               {isLoading ? 'Verifying Handshake...' : 'Verify Pair Code'} <CheckCircle2 className="w-3 h-3" />
             </button>
@@ -277,9 +277,9 @@ export function TwoFactorFlow() {
               <button 
                 onClick={() => setStep(0)} 
                 disabled={!hasDownloaded}
-                className={`px-4 py-2 text-[var(--text-primary)] text-xs font-bold rounded-lg transition-colors flex items-center gap-2 ${
-                  hasDownloaded 
-                    ? 'bg-indigo-600 hover:bg-indigo-500 cursor-pointer' 
+                className={`px-4 py-2 text-[var(--bg-base)] text-xs font-bold rounded-lg transition-colors flex items-center gap-2 ${
+                  hasDownloaded
+                    ? 'bg-[var(--text-primary)] hover:opacity-90 cursor-pointer'
                     : 'bg-black text-zinc-600 border border-[var(--border)] cursor-not-allowed'
                 }`}
                 title={!hasDownloaded ? "Please download codes before proceeding" : "Setup Complete"}

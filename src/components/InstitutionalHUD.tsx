@@ -23,6 +23,10 @@ export function InstitutionalHUD() {
   const serverState = useContractStore((s) => s.serverState);
 
   const hasLiveMetrics = !!serverState?.hud_metrics;
+  // Integrity: the green "LIVE FEED" badge must reflect the REAL provider, not merely
+  // whether metrics exist. Synthetic data still populates hud_metrics, so keying the
+  // badge on hud_metrics alone would show paying users a "LIVE" indicator over sandbox prices.
+  const isLiveData = !!serverState?.data_source && serverState.data_source !== 'SANDBOX_SYNTHETIC';
 
   // Use the real SSE hud_metrics when present, else fall back to clearly-labelled DEMO copy.
   const metrics = useMemo(() => {
@@ -77,13 +81,13 @@ export function InstitutionalHUD() {
       {/* Cockpit top banner */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center border-b border-[var(--border)] pb-3.5 mb-5 gap-3">
         <div className="flex items-center gap-2">
-          <Cpu className={`w-4 h-4 ${hasLiveMetrics ? 'text-[var(--success)]' : 'text-[var(--text-tertiary)]'}`} />
+          <Cpu className={`w-4 h-4 ${isLiveData ? 'text-[var(--success)]' : 'text-[var(--text-tertiary)]'}`} />
           <span className="text-[10px] text-[var(--text-primary)] tracking-[0.25em] uppercase font-black font-sans leading-none">
             INSTITUTIONAL COCKPIT HUD / SYSTEM MATRIX
           </span>
         </div>
         <div className="flex items-center gap-4 text-[10px] font-mono text-[var(--text-tertiary)] tracking-wider">
-          {hasLiveMetrics ? (
+          {isLiveData ? (
             <div className="flex items-center gap-1.5 bg-[var(--surface-2)] px-2 py-0.5 border border-[var(--border)] rounded-xs">
               <Terminal className="w-3 h-3 text-[var(--text-tertiary)]" />
               <span className="text-[var(--success)]">STREAMING CORE: LIVE FEED</span>
@@ -91,7 +95,7 @@ export function InstitutionalHUD() {
           ) : (
             <div className="flex items-center gap-1.5 bg-[var(--surface-2)] px-2 py-0.5 border border-[var(--border)] rounded-xs">
               <Terminal className="w-3 h-3 text-[var(--text-tertiary)]" />
-              <span className="text-[var(--warning)]">DEMO — NO LIVE HUD FEED</span>
+              <span className="text-[var(--warning)]">{hasLiveMetrics ? 'SIMULATED — SANDBOX DATA' : 'DEMO — NO LIVE HUD FEED'}</span>
             </div>
           )}
         </div>

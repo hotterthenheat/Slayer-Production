@@ -9,6 +9,7 @@ import { AssetInfo, Candle } from '../src/types';
 import { buildGexProfile, computeDealerFlowGauge } from '../src/lib/gexEngine';
 import { computeDisplacementIntelligence } from '../src/lib/displacementEngine';
 import { touchProbability, medianTimeToTouch } from '../src/lib/probability';
+import { optionDteDays, hoursToSessionClose } from '../src/data';
 
 console.log('--- RUNNING QUANT MATH TEST SUITE ---');
 
@@ -264,6 +265,36 @@ try {
   console.log('=============================================\n');
 } catch (error) {
   console.error('❌ QUANT TEST RUNNER FAILED:', error);
+  throw error;
+}
+
+// --- Intraday time-to-expiry clock (the 0DTE fix) ---
+try {
+  console.log('\nTesting intraday time-to-expiry clock (0DTE fix)…');
+  const daily: any = { optionsStyle: 'daily' };
+  // Fixed instants. June = EDT (UTC-4): 13:30Z = 09:30 ET (open), 18:00Z = 14:00 ET, 19:45Z = 15:45 ET.
+  const openET = new Date('2026-06-23T13:30:00Z');
+  const midET  = new Date('2026-06-23T18:00:00Z');
+  const lateET = new Date('2026-06-23T19:45:00Z');
+  const overnight = new Date('2026-06-24T02:00:00Z'); // 22:00 ET, outside RTH
+
+  assert.ok(Math.abs(hoursToSessionClose(openET) - 6.5) < 1e-6, 'full session (6.5h) at the open');
+  assert.ok(Math.abs(hoursToSessionClose(midET) - 2.0) < 1e-6, '2h to close at 14:00 ET');
+
+  const dteOpen = optionDteDays(daily, openET);
+  const dteMid  = optionDteDays(daily, midET);
+  const dteLate = optionDteDays(daily, lateET);
+
+  // Core fix: a 0DTE name is NOT a flat 1 calendar day — it is the session fraction.
+  assert.ok(Math.abs(dteOpen - 6.5 / 24) < 1e-4, `0DTE at open ≈ 0.271d, got ${dteOpen}`);
+  assert.ok(dteOpen < 0.99, '0DTE must be well under a full calendar day');
+  assert.ok(dteMid < dteOpen, 'time-to-expiry decays through the session');
+  assert.ok(dteLate > 0 && dteLate <= 0.04, `0DTE floors near the close (finite greeks), got ${dteLate}`);
+  assert.ok(Math.abs(optionDteDays(daily, overnight) - 6.5 / 24) < 1e-4, 'overnight assumes the next full session');
+
+  console.log(`✔ intraday DTE: open=${dteOpen.toFixed(4)}d  mid=${dteMid.toFixed(4)}d  late=${dteLate.toFixed(4)}d  (was a flat 1.0000d all day)`);
+} catch (error) {
+  console.error('❌ INTRADAY DTE TEST FAILED:', error);
   throw error;
 }
 

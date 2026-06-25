@@ -6,7 +6,7 @@
  * synthetic sandbox walk), and assembles the Universal SSE payload. Importing
  * this module starts the ticker and seeds candles. No external API key required.
  */
-import { ASSET_LIST, generateInitialCandles, TIMEFRAMES, calculateFVGs, calculateLiquidityEvents, optionExpiryLabel, optionDteDays } from '../data';
+import { ASSET_LIST, generateInitialCandles, TIMEFRAMES, calculateFVGs, calculateLiquidityEvents, optionExpiryLabel, optionDteDays, hoursToSessionClose } from '../data';
 import {
   calculateSystemScoreFromCandles,
   calculateV11Metrics,
@@ -233,22 +233,11 @@ function computeContractScore(chain: ChainContract[], spot: number, step: number
   return Math.round(100 * (0.4 * spreadQ + 0.3 * oiQ + 0.3 * deltaQ));
 }
 
-/** Hours remaining until the 16:00 ET cash-equity close (full session if outside RTH). */
+/** Hours remaining until the 16:00 ET cash-equity close (full session if outside RTH).
+ *  Canonical implementation lives in data.ts so optionDteDays and the GEX/zerodte
+ *  paths share one clock. */
 function getHoursToClose(now = new Date()): number {
-  try {
-    const parts = new Intl.DateTimeFormat('en-US', {
-      timeZone: 'America/New_York', hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false,
-    }).formatToParts(now);
-    const get = (t: string) => Number(parts.find((p) => p.type === t)?.value || 0);
-    let h = get('hour'); if (h === 24) h = 0;
-    const nowSec = h * 3600 + get('minute') * 60 + get('second');
-    const openSec = 9.5 * 3600;
-    const closeSec = 16 * 3600;
-    if (nowSec >= closeSec || nowSec < openSec) return 6.5; // outside RTH → assume a full session ahead
-    return Math.max(0, (closeSec - nowSec) / 3600);
-  } catch {
-    return 6.5;
-  }
+  return hoursToSessionClose(now);
 }
 
 /**
@@ -388,8 +377,24 @@ let lastLeadLag: any = null;
 // Simulation ticks run continuously server-side
 const TICK_INTERVAL = 1000; // 1s for fast real-time telemetry but stable chart
 
-// Central async ticker queue pulling real market feeds or simulation fallbacks
+// Re-entrancy guard: setInterval fires every TICK_INTERVAL, but a cycle awaits
+// provider fetches that can take longer. Overlapping cycles would push two
+// snapshots ~0ms apart into the rolling histories, so every time-derivative
+// (gamma-velocity, vanna-trend, strike-migration, convexity) would divide by a
+// near-zero dt and spike or flatline. Skip a fire while a cycle is still running.
+let tickInFlight = false;
 export async function runTickerCycle() {
+  if (tickInFlight) return;
+  tickInFlight = true;
+  try {
+    await runTickerCycleInner();
+  } finally {
+    tickInFlight = false;
+  }
+}
+
+// Central async ticker queue pulling real market feeds or simulation fallbacks
+async function runTickerCycleInner() {
   try {
     const mode = getDataSourceType();
     db.dataSource = mode as any;
@@ -714,7 +719,7 @@ export function accessTierToLevel(accessTier?: string | null): number {
  * Minimum access level required to receive each premium payload block over the stream.
  * Value ladder: Pinpoint GEX (tier 2) is the commodity dealer-GEX tool; SkyVision
  * (tier 3) is the flagship that picks the trades and folds in the GEX tool + Quant Lab:
- *   • gex_profile / gex_summary / dealer_dynamics / zerodte → Pinpoint GEX (tier 2)
+ *   • gex_profile / gex_summary / dealer_dynamics / dealer_flow / zerodte → Pinpoint GEX (tier 2)
  *   • sky_vision / trade_plan / strike_gravity            → SkyVision (tier 3)
  *   • quant_edge / option_chain (Quant Lab, merged in)     → SkyVision (tier 3)
  * Blocks NOT listed here (deep_intelligence, system_score, candles, discovery, …) are
@@ -724,6 +729,7 @@ const PREMIUM_BLOCK_TIERS: Record<string, number> = {
   gex_profile: 2,
   gex_summary: 2,
   dealer_dynamics: 2,
+  dealer_flow: 2,
   zerodte: 2,
   sky_vision: 3,
   trade_plan: 3,
@@ -1730,7 +1736,10 @@ const buildPayload = (params: PayloadParams) => {
     ...computeContractEdge({
       spot: liveSpot,
       strike: optionStrike,
-      dteDays: RND_DTE_DAYS,
+      // The viewed contract's real (intraday) time-to-expiry, NOT the fixed 5-day RND
+      // window — so its scenario matrix, break-even and Kelly sizing decay to expiry.
+      // A flat 5 days made 0DTE P&L/sizing systematically wrong (theta never burned).
+      dteDays: optDteDays,
       iv: assetEdge.skew?.atmIv ?? asset.volatility,
       isCall,
       entryPrice: optionPremiumFloat,

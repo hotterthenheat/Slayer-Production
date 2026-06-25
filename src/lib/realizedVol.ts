@@ -218,7 +218,7 @@ export interface VRPResult {
   rv: number; // annualized realized (Yang-Zhang)
   vrp: number; // iv - rv (vol points, decimal)
   ratio: number; // iv / rv
-  richness: 'IV RICH' | 'NEUTRAL' | 'IV CHEAP';
+  richness: 'IV RICH' | 'NEUTRAL' | 'IV CHEAP' | 'N/A';
   rvPercentile: number; // where current RV sits in its own cone (0-100)
 }
 
@@ -228,12 +228,18 @@ export interface VRPResult {
  */
 export function computeVRP(iv: number, candles: Candle[], lookback = 20): VRPResult {
   const rv = yangZhangVol(candles, lookback);
-  const vrp = iv - rv;
-  const ratio = rv > 0 ? iv / rv : 0;
   const cone = volCone(candles, [lookback]);
   const rvPercentile = cone.length ? cone[0].percentile : 50;
+  // Insufficient/flat history -> yangZhangVol returns 0. Reporting vrp=iv, ratio=0,
+  // richness=NEUTRAL would mislabel a maximally IV-rich, no-data condition as neutral
+  // on exactly the thin-history symbols where a 'no signal' read matters most.
+  if (!(rv > 0)) {
+    return { iv, rv: 0, vrp: 0, ratio: 0, richness: 'N/A', rvPercentile };
+  }
+  const vrp = iv - rv;
+  const ratio = iv / rv;
   let richness: VRPResult['richness'] = 'NEUTRAL';
   if (ratio >= 1.15) richness = 'IV RICH';
-  else if (ratio > 0 && ratio <= 0.9) richness = 'IV CHEAP';
+  else if (ratio <= 0.9) richness = 'IV CHEAP';
   return { iv, rv, vrp, ratio, richness, rvPercentile };
 }

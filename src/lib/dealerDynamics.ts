@@ -159,10 +159,13 @@ export function computeDealerDynamics(
 
   // --- Charm --------------------------------------------------------------
   const recentCharm = history.slice(-20).map((h) => Math.abs(h.netCharm));
-  const maxCharm = Math.max(Math.abs(netCharm), ...(recentCharm.length ? recentCharm : [0]));
+  // Normalize against the PRIOR-window max EXCLUDING the current value, so a fresh
+  // asset (or every new high) doesn't trivially saturate to full-scale 1.0. Stay
+  // neutral (0) until a few snapshots have accrued.
+  const priorMaxCharm = recentCharm.length >= 3 ? Math.max(...recentCharm) : 0;
   const charm: CharmEngine = {
     netPerDay: netCharm,
-    intensity: maxCharm > 0 ? Math.min(1, Math.abs(netCharm) / maxCharm) : 0,
+    intensity: priorMaxCharm > 0 ? Math.min(1, Math.abs(netCharm) / priorMaxCharm) : 0,
     bias: Math.abs(netCharm) < 1e-9 ? 'NEUTRAL' : netCharm > 0 ? 'BULLISH' : 'BEARISH',
     note: 'Time-decay hedging flow dealers must execute as expiry approaches (acute for 0DTE).',
   };
