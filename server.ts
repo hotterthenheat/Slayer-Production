@@ -1112,6 +1112,24 @@ app.delete('/api/users/delete-account', async (req, res) => {
     return res.status(404).json({ error: 'User record not found.' });
   }
 
+  // Cancel any live Stripe subscription BEFORE the soft-delete. Otherwise the
+  // customer_id linkage is purged at the 30-day GDPR job and the subscription bills
+  // indefinitely with nothing to reconcile it against. Guarded for local/dev.
+  if (stripeClient && user.customer_id) {
+    try {
+      const subs = await stripeClient.subscriptions.list({ customer: user.customer_id, status: 'all', limit: 20 });
+      for (const sub of subs.data) {
+        if (['active', 'trialing', 'past_due', 'unpaid', 'paused'].includes(sub.status)) {
+          await stripeClient.subscriptions.cancel(sub.id);
+        }
+      }
+      console.log(`[BILLING] Cancelled live Stripe subscription(s) for deleted account, customer ${user.customer_id}`);
+    } catch (e: any) {
+      console.error('[BILLING] Stripe cancellation during account deletion failed:', e?.message);
+      return res.status(502).json({ error: 'We could not cancel your billing subscription right now, so deletion was paused to avoid leaving you charged. Please retry shortly.' });
+    }
+  }
+
   user.deleted_at = new Date();
 
   // Persist the soft-delete. Without this the mutation lives only in memory: the
@@ -1612,6 +1630,23 @@ app.post('/api/billing/cancel', express.json(), async (req, res) => {
 
   if (!user) {
     return res.status(404).json({ error: 'User record not located in memory.' });
+  }
+
+  // Schedule the cancellation in Stripe FIRST (the source of truth). Without this the
+  // customer is told billing stops but their card keeps getting charged at renewal —
+  // a chargeback/consumer-protection problem, not just a bug. Guarded so local/dev
+  // (no Stripe configured) keeps the prior behaviour of recording the request only.
+  if (stripeClient && user.customer_id) {
+    try {
+      const subs = await stripeClient.subscriptions.list({ customer: user.customer_id, status: 'active', limit: 20 });
+      for (const sub of subs.data) {
+        await stripeClient.subscriptions.update(sub.id, { cancel_at_period_end: true });
+      }
+      console.log(`[BILLING] Stripe cancel-at-period-end scheduled for ${subs.data.length} subscription(s), customer ${user.customer_id}`);
+    } catch (e: any) {
+      console.error('[BILLING] Stripe cancellation failed:', e?.message);
+      return res.status(502).json({ error: 'We could not reach our payment processor to schedule the cancellation. No change was made — please retry shortly.' });
+    }
   }
 
   user.cancels_at_period_end = true;
