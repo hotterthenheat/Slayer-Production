@@ -1736,7 +1736,10 @@ const buildPayload = (params: PayloadParams) => {
     ...computeContractEdge({
       spot: liveSpot,
       strike: optionStrike,
-      dteDays: RND_DTE_DAYS,
+      // The viewed contract's real (intraday) time-to-expiry, NOT the fixed 5-day RND
+      // window — so its scenario matrix, break-even and Kelly sizing decay to expiry.
+      // A flat 5 days made 0DTE P&L/sizing systematically wrong (theta never burned).
+      dteDays: optDteDays,
       iv: assetEdge.skew?.atmIv ?? asset.volatility,
       isCall,
       entryPrice: optionPremiumFloat,
