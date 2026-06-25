@@ -40,6 +40,7 @@ import { computeDisplacementIntelligence, analyzeMarketStructure } from '../lib/
 import { getLastTradierError } from '../lib/tradierProvider';
 import { db, sse } from './state';
 import { updateRedisPresence } from './auth';
+import { dbLoadCalibrationPairs } from '../db';
 
 // Initialize in-memory candles on bootstrap for all assets + timeframe parameters
 const initializeCandles = () => {
@@ -51,6 +52,24 @@ const initializeCandles = () => {
   }
 };
 initializeCandles();
+
+// Self-learning calibration history: real (prediction, outcome) pairs from the durable
+// store, cached off the hot path (calculateV11Metrics runs per-contract per tick and must
+// stay synchronous). Empty until labeled outcomes exist — calibration then stays dormant
+// via its < 200-sample cold-start guard, so scoring is unchanged until real history
+// accrues. Refreshed on boot and every 5 minutes; no-op without SQL_HOST.
+let calibrationHistoryCache: { pred: number; win: number }[] = [];
+async function refreshCalibrationHistory() {
+  try {
+    const pairs = await dbLoadCalibrationPairs(undefined, 5000);
+    calibrationHistoryCache = pairs.map(p => ({ pred: p.prob, win: p.win ? 1 : 0 }));
+  } catch (e) {
+    console.error('[learn] refreshCalibrationHistory failed:', e);
+  }
+}
+refreshCalibrationHistory();
+const _calibTimer = setInterval(refreshCalibrationHistory, 5 * 60 * 1000);
+if (typeof _calibTimer.unref === 'function') _calibTimer.unref();
 
 // Real candle seeding via background thread on startup
 const seedHistoricalCandles = async () => {
@@ -985,7 +1004,7 @@ const buildPayload = (params: PayloadParams) => {
   // Perf: V10 internally calls V11 (which builds + sorts a 1000-row KNN db). Compute
   // V11 ONCE and feed it into V10 so the heavy pipeline runs a single time per
   // (asset,contract) per tick instead of twice.
-  const metricsV11 = calculateV11Metrics(asset, isCall, systemScore, optionPremiumFloat, optionStrike, chainForMetrics, liveSpot, optDteDays);
+  const metricsV11 = calculateV11Metrics(asset, isCall, systemScore, optionPremiumFloat, optionStrike, chainForMetrics, liveSpot, optDteDays, calibrationHistoryCache);
   const metricsV10 = calculateV10Metrics(asset, isCall, systemScore, optionPremiumFloat, optionStrike, chainForMetrics, liveSpot, optDteDays, metricsV11);
 
   // Strict mapping: decision can only be: 'ENTER', 'HOLD', 'REDUCE', 'EXIT'
