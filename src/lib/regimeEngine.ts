@@ -217,18 +217,19 @@ export function volExpansion(candles: Candle[]): VolRegime {
 }
 
 /**
- * Forward-volatility matrix: where forward vol is expected to pool. Keyless proxy
- * compares near-window forward realized vol to the longer baseline (term-structure
- * inversion ⇒ forward vol clustering). With a live chain this would consume the
- * Dupire local-vol surface directly.
+ * Realized-vol term-structure ratio: near-window realized vol (10) vs the longer
+ * baseline (40). A ratio > 1 means short-horizon realized vol is RICHER than the
+ * baseline (a backward-looking term-structure inversion). NOTE: this is a trailing
+ * REALIZED-vol measure, not forward/implied vol — with a live chain it would instead
+ * consume the IV term structure / Dupire local-vol surface. (Name kept for callers.)
  */
 export function forwardVolMatrix(candles: Candle[]): VolRegime {
   if (candles.length < 50) return { active: false, score: 0, detail: 'insufficient history' };
   const rvNear = closeToCloseVol(candles, 10);
   const rvFar = closeToCloseVol(candles, 40);
-  const fwdRatio = rvFar > 0 ? rvNear / rvFar : 1;
-  // Forward vol pools when the near term is materially richer than the baseline.
-  const active = fwdRatio > 1.2;
-  const score = Math.max(0, Math.min(1, (fwdRatio - 1) * 2));
-  return { active, score: Number(score.toFixed(2)), detail: `fwd/base ${fwdRatio.toFixed(2)}× (RV ${(rvNear * 100).toFixed(0)}%)` };
+  const rvRatio = rvFar > 0 ? rvNear / rvFar : 1;
+  // "Active" when short-horizon realized vol is materially richer than the baseline.
+  const active = rvRatio > 1.2;
+  const score = Math.max(0, Math.min(1, (rvRatio - 1) * 2));
+  return { active, score: Number(score.toFixed(2)), detail: `near/base RV ${rvRatio.toFixed(2)}× (RV ${(rvNear * 100).toFixed(0)}%)` };
 }
