@@ -2,7 +2,7 @@
  * @license
  * SPDX-License-Identifier: Apache-2.0
  *
- * Plain-English Read — a per-ticker, simple-language summary of the dealer-gamma
+ * Market Summary — a per-ticker, simple-language summary of the dealer-gamma
  * posture, generated deterministically server-side from the same GEX data the
  * cards show and refreshed on the 30-minute mark (with a live countdown).
  */
@@ -39,7 +39,7 @@ export function GexReadCard() {
         <div className="flex items-center gap-2">
           <Brain className="w-4 h-4 text-[var(--info)]" />
           <h2 className="text-xs font-black tracking-widest uppercase text-[var(--text-primary)]">
-            Plain-English Read — {selectedAsset?.ticker}
+            Market Summary — {selectedAsset?.ticker}
           </h2>
         </div>
         <div
