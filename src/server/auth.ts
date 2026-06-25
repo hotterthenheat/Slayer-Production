@@ -582,8 +582,11 @@ export function registerTotpFailure(email: string): void {
   const rec = totpAttempts.get(key) || { count: 0, lockedUntil: 0 };
   rec.count += 1;
   if (rec.count >= TOTP_MAX_ATTEMPTS) {
-    rec.lockedUntil = Date.now() + TOTP_LOCK_MS;
-    rec.count = 0;
+    // Escalate the lock with repeated lockouts; do NOT reset count to 0 (that degraded
+    // this to a fixed-rate limiter handing out a fresh attempt budget each window with
+    // no backoff). A successful verify clears the counter via clearTotpAttempts.
+    const overflow = rec.count - TOTP_MAX_ATTEMPTS;
+    rec.lockedUntil = Date.now() + TOTP_LOCK_MS * Math.min(8, 1 + overflow);
   }
   totpAttempts.set(key, rec);
 }
@@ -612,8 +615,10 @@ export function registerLoginFailure(email: string): void {
   const rec = loginAttempts.get(key) || { count: 0, lockedUntil: 0 };
   rec.count += 1;
   if (rec.count >= LOGIN_MAX_ATTEMPTS) {
-    rec.lockedUntil = Date.now() + LOGIN_LOCK_MS;
-    rec.count = 0;
+    // Escalate the lock with repeated lockouts; do NOT reset count to 0 (that gave a
+    // fresh attempt budget each window with no backoff). A successful login clears it.
+    const overflow = rec.count - LOGIN_MAX_ATTEMPTS;
+    rec.lockedUntil = Date.now() + LOGIN_LOCK_MS * Math.min(8, 1 + overflow);
   }
   loginAttempts.set(key, rec);
 }

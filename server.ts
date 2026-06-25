@@ -2748,8 +2748,20 @@ app.patch('/api/admin/users/:email/tier', requireAdmin(['owner', 'admin', 'moder
   if (!VALID_TIERS.includes(requestedTier)) {
     return res.status(400).json({ error: 'Invalid access tier.' });
   }
+  // SECURITY: never change the tier of another privileged account (or yourself) — a
+  // moderator could otherwise self-grant 'lifetime'. Mirrors the moderation handlers.
+  if (roleForEmail(email) !== 'user') {
+    return res.status(403).json({ error: 'Cannot change the tier of a privileged account.' });
+  }
+  // Minting the top tiers is owner/admin-only; moderators cannot grant lifetime/skyvision.
+  const TOP_TIERS = ['lifetime', 'skyvision', 'enterprise', 'intraday'];
+  if (TOP_TIERS.includes(requestedTier) && !['owner', 'admin'].includes(String(req.admin?.role))) {
+    return res.status(403).json({ error: 'Only an owner or admin may grant this tier.' });
+  }
+  const oldTier = user.access_tier;
   user.access_tier = requestedTier;
-  await persistUser(email, user);
+  const okTier = await persistUser(email, user);
+  if (!okTier) return res.status(500).json({ error: 'Could not persist tier change. Please retry.' });
 
   // instant invalidate
   for (const client of sse.clients) {
@@ -2757,7 +2769,7 @@ app.patch('/api/admin/users/:email/tier', requireAdmin(['owner', 'admin', 'moder
       client.res.write(`data: ${JSON.stringify({ type: 'TIER_UPGRADE', access_tier: user.access_tier })}\n\n`);
     }
   }
-  logAudit(req, 'USER_TIER_UPDATE', email);
+  logAudit(req, `USER_TIER_UPDATE ${oldTier}->${requestedTier}`, email);
   res.json({ success: true, access_tier: user.access_tier });
 });
 

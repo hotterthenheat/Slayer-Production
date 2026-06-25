@@ -161,7 +161,10 @@ export async function fetchTradierSpotPrice(ticker: string): Promise<number | nu
   if (ticker === 'SPX') {
     const spyPrice = await fetchTradierSpotPrice('SPY');
     if (spyPrice) {
-      const scaledPrice = spyPrice * (7623.00 / 512.30);
+      // SPX ≈ 10 × SPY by design (SPY tracks ~1/10 of the S&P 500 index). The old
+      // 7623/512.30 = 14.88 anchor mixed mismatched-date values and inflated the proxy
+      // spot ~49%, feeding GEX/RND/strike-selection wrong numbers under a LIVE label.
+      const scaledPrice = spyPrice * 10;
       spotCache[cacheKey] = { data: scaledPrice, timestamp: now };
       return scaledPrice;
     }
@@ -348,7 +351,7 @@ export async function fetchTradierOptionChain(asset: AssetInfo, spotPrice: numbe
       if (spyAsset && spySpot) {
         const spyChainRes = await fetchTradierOptionChain(spyAsset, spySpot);
         if (spyChainRes && spyChainRes.contracts) {
-          const ratio = spySpot > 0 ? spotPrice / spySpot : 7623.00 / 512.30;
+          const ratio = spySpot > 0 ? spotPrice / spySpot : 10; // structural SPX/SPY ≈ 10 (not the old 14.88 anchor)
           const scaledContracts = scaleEtfChainToIndex(spyChainRes.contracts, asset, ratio);
           chainCache[cacheKey] = { data: scaledContracts, timestamp: now };
           return {
