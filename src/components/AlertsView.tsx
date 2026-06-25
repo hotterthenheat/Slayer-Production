@@ -104,6 +104,11 @@ export function AlertsView() {
   // (Premium-gated: deep_intelligence / flow_feed can be undefined.)
   const flowFeed = serverState?.deep_intelligence?.flow_feed;
   const hasLiveFeed = Array.isArray(flowFeed) && flowFeed.length > 0;
+  // Integrity: only claim a green "LIVE FEED" when the data is from a real provider.
+  // Synthetic mode still produces flow events, so hasLiveFeed alone would mislabel
+  // sandbox data as live. liveBadge gates the badge; hasLiveFeed still drives feed logic.
+  const isLiveData = !!serverState?.data_source && serverState.data_source !== 'SANDBOX_SYNTHETIC';
+  const liveBadge = isLiveData && hasLiveFeed;
 
   const feedAlerts = useMemo<AlertItem[]>(() => {
     if (!hasLiveFeed) return [];
@@ -177,9 +182,9 @@ export function AlertsView() {
           </span>
         </div>
         <div className="flex items-center gap-1.5 bg-[var(--surface)] p-1 px-1.5 border border-[var(--border)] rounded-lg">
-          <span className={`h-1.5 w-1.5 rounded-full ${hasLiveFeed ? 'bg-[var(--success)]' : 'bg-[var(--warning)]'}`} />
-          <span className={`text-[10px] uppercase tracking-widest px-1 font-black ${hasLiveFeed ? 'text-[var(--success)]' : 'text-[var(--warning)]'}`}>
-            {hasLiveFeed ? 'LIVE FEED CONNECTED' : 'NO LIVE FEED — DEMO ONLY'}
+          <span className={`h-1.5 w-1.5 rounded-full ${liveBadge ? 'bg-[var(--success)]' : 'bg-[var(--warning)]'}`} />
+          <span className={`text-[10px] uppercase tracking-widest px-1 font-black ${liveBadge ? 'text-[var(--success)]' : 'text-[var(--warning)]'}`}>
+            {liveBadge ? 'LIVE FEED CONNECTED' : (hasLiveFeed ? 'SIMULATED — SANDBOX DATA' : 'NO LIVE FEED — DEMO ONLY')}
           </span>
         </div>
       </div>
@@ -530,10 +535,10 @@ export function AlertsView() {
 
       {/* 6. COCKPIT DESK STATUS BAR */}
       <div className="apple-glass min-h-[30px] p-3 rounded-xl flex items-center justify-between text-[10px] text-[var(--text-tertiary)] uppercase tracking-widest pl-4 font-black shadow-md">
-        <span>{hasLiveFeed ? `LIVE FEED · ${feedAlerts.length} EVENTS` : 'NO LIVE FEED CONNECTED'}</span>
+        <span>{liveBadge ? `LIVE FEED · ${feedAlerts.length} EVENTS` : (hasLiveFeed ? `SIMULATED · ${feedAlerts.length} EVENTS` : 'NO LIVE FEED CONNECTED')}</span>
         <div className="flex items-center gap-1.5 text-[var(--text-secondary)]">
-          <span className={`h-1.5 w-1.5 rounded-full ${hasLiveFeed ? 'bg-[var(--success)]' : 'bg-[var(--warning)]'}`} />
-          <span>{hasLiveFeed ? 'FEED ACTIVE' : 'DEMO MODE'}</span>
+          <span className={`h-1.5 w-1.5 rounded-full ${liveBadge ? 'bg-[var(--success)]' : 'bg-[var(--warning)]'}`} />
+          <span>{liveBadge ? 'FEED ACTIVE' : (hasLiveFeed ? 'SIMULATED' : 'DEMO MODE')}</span>
         </div>
       </div>
 

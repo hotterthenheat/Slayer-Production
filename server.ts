@@ -2440,6 +2440,14 @@ app.get('/api/dealer-flow', endpointRateLimit(20, '/api/dealer-flow'), async (re
   const session = await getSessionFromCookies(req.headers.cookie);
   if (!session || !session.email) return res.status(401).json({ error: 'Unauthorized' });
 
+  // Tier gate: dealer_flow + gex_profile are Pinpoint-tier (level 2) premium analytics —
+  // gated identically in the live stream (gatePayloadByTier). Without this check any
+  // authenticated guest/free user could pull the paywalled data via this direct GET.
+  const dfUser = await dbGetUser(session.email.toLowerCase().trim());
+  if (accessTierToLevel(dfUser?.access_tier) < 2) {
+    return res.status(403).json({ error: 'This feature requires the Pinpoint (Tier 2) plan or higher.' });
+  }
+
   try {
     const ticker = String(req.query.ticker || 'SPX');
     const asset = ASSET_LIST.find(a => a.ticker === ticker) || ASSET_LIST[0];
