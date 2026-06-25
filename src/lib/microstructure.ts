@@ -11,6 +11,7 @@
  * synthetic feed they use the bar's close-in-range as the buy/sell proxy.
  */
 import { Candle } from '../types';
+import { stdNormalCDF } from './normalDist';
 
 const clamp01 = (x: number) => Math.max(0, Math.min(1, x));
 
@@ -29,11 +30,24 @@ export function computeVPIN(candles: Candle[], nBuckets = 20): VpinResult {
   if (totalVol <= 0 || recent.length < 6) return { vpin: 0, informedProbability: 0, toxic: false, buckets: 0 };
   const V = totalVol / nBuckets; // target bucket volume
 
+  // Bulk-Volume Classification by STANDARDIZED, DE-MEANED bar-to-bar price change
+  // (Easley–López de Prado–O'Hara). The old close-in-range proxy ignored move
+  // MAGNITUDE and direction-vs-baseline, so every up-closing bar of even the calmest
+  // steady grind scored ~100% buy volume and VPIN pinned at ~1 (max "toxicity") —
+  // exactly backwards. De-meaning by the prevailing drift and standardizing by the
+  // volatility of bar changes makes a steady trend read as BALANCED; only abnormally
+  // large, one-sided moves (genuine informed flow) skew a bucket.
+  const dP: number[] = [];
+  for (let i = 1; i < recent.length; i++) dP.push((recent[i].close ?? 0) - (recent[i - 1].close ?? 0));
+  const meanDP = dP.reduce((a, b) => a + b, 0) / (dP.length || 1);
+  const varDP = dP.reduce((a, b) => a + (b - meanDP) ** 2, 0) / (dP.length || 1);
+  const sigmaDP = Math.sqrt(varDP) || 1e-9;
+
   const imbalances: number[] = [];
   let bBuy = 0, bSell = 0, bVol = 0;
-  for (const c of recent) {
-    const range = (c.high - c.low) || 1e-9;
-    const buyFrac = clamp01((c.close - c.low) / range); // close-in-range proxy for buy pressure
+  for (let i = 1; i < recent.length; i++) {
+    const c = recent[i];
+    const buyFrac = clamp01(stdNormalCDF(((c.close ?? 0) - (recent[i - 1].close ?? 0) - meanDP) / sigmaDP));
     const v = c.volume || 0;
     bBuy += v * buyFrac;
     bSell += v * (1 - buyFrac);
