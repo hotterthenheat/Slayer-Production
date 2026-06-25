@@ -143,7 +143,10 @@ export function ttmSqueeze(candles: Candle[], length = 20, bbMult = 2, kcMult = 
   };
   const momentum = momAt(n);
   const momentumPrev = momAt(n - 1);
-  const momentumRising = Math.abs(momentum) > Math.abs(momentumPrev);
+  // Rising = momentum strengthening in its CURRENT direction. The old abs-vs-abs
+  // test wrongly flagged a sharp sign-flip reversal (e.g. +5 -> -4) as "not rising"
+  // even though a strong opposite impulse had just appeared.
+  const momentumRising = momentum > 0 ? momentum > momentumPrev : momentum < momentumPrev;
   return { squeezeOn, firing, momentum: Number(momentum.toFixed(4)), momentumRising };
 }
 

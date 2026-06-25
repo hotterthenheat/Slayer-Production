@@ -2536,7 +2536,7 @@ app.get('/api/dealer-flow', endpointRateLimit(20, '/api/dealer-flow'), async (re
     const contracts = chainRes?.contracts || [];
     
     if (contracts.length > 0) {
-      const profile = buildGexProfile(contracts, liveSpot, 1 / 365, 0.06);
+      const profile = buildGexProfile(contracts, liveSpot, 1 / 365, 0.05);
       if (profile) {
         const systemScore = calculateSystemScoreFromCandles(
           db.candles[`${ticker}-5m`] || [], 
