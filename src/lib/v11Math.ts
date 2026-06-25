@@ -1303,7 +1303,8 @@ export function calculateV11Metrics(
   optionStrike?: number,
   liveChain?: ChainContract[],
   liveSpot?: number,
-  dteDays = 1 // real days-to-expiry for the nearest contract (1 = 0DTE/daily; threaded for weeklies)
+  dteDays = 1, // real days-to-expiry for the nearest contract (1 = 0DTE/daily; threaded for weeklies)
+  calibrationHistory: { pred: number; win: number }[] = [] // real (prediction, outcome) pairs from the self-learning store; empty = cold-start
 ): V11MathResult {
   const dir = isCall ? 1 : -1;
   const spotUsed = liveSpot || asset.defaultPrice;
@@ -1346,9 +1347,10 @@ export function calculateV11Metrics(
   const matchedReturns = resolvedSimilarTrades.map(s => s.pnlMultiplier);
 
   // 3. Probability positive with calibration regression PAV
-  // Real trade historical outcomes are currently 0.
-  // This triggers standard cold-start protection (< 200 items) and calibration stays dormant.
-  const realTradesHistory: { pred: number; win: number }[] = [];
+  // Real trade historical outcomes come from the self-learning store (labeled real results).
+  // An empty array keeps calibration dormant via the < 200-sample cold-start guard, so
+  // behavior is unchanged until enough real outcomes accrue.
+  const realTradesHistory: { pred: number; win: number }[] = calibrationHistory;
 
   const rawWinRate = systemScore.total / 100;
   const calibratedP = calibrateIsotonicLoss(rawWinRate, realTradesHistory);
