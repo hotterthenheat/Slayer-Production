@@ -377,8 +377,24 @@ let lastLeadLag: any = null;
 // Simulation ticks run continuously server-side
 const TICK_INTERVAL = 1000; // 1s for fast real-time telemetry but stable chart
 
-// Central async ticker queue pulling real market feeds or simulation fallbacks
+// Re-entrancy guard: setInterval fires every TICK_INTERVAL, but a cycle awaits
+// provider fetches that can take longer. Overlapping cycles would push two
+// snapshots ~0ms apart into the rolling histories, so every time-derivative
+// (gamma-velocity, vanna-trend, strike-migration, convexity) would divide by a
+// near-zero dt and spike or flatline. Skip a fire while a cycle is still running.
+let tickInFlight = false;
 export async function runTickerCycle() {
+  if (tickInFlight) return;
+  tickInFlight = true;
+  try {
+    await runTickerCycleInner();
+  } finally {
+    tickInFlight = false;
+  }
+}
+
+// Central async ticker queue pulling real market feeds or simulation fallbacks
+async function runTickerCycleInner() {
   try {
     const mode = getDataSourceType();
     db.dataSource = mode as any;
