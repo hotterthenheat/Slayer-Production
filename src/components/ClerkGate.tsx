@@ -19,6 +19,9 @@ export function ClerkGate({ onSuccess, referralCodeFromUrl, onClose }: ClerkGate
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [showRefApplied, setShowRefApplied] = useState(!!referralCodeFromUrl);
+  const [twoFactorStage, setTwoFactorStage] = useState(false);
+  const [preAuthToken, setPreAuthToken] = useState('');
+  const [totpCode, setTotpCode] = useState('');
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -39,12 +42,44 @@ export function ClerkGate({ onSuccess, referralCodeFromUrl, onClose }: ClerkGate
 
       if (res.ok) {
         const data = await res.json();
-        // Trigger parent callback 
+        if (data.requires_2fa && data.pre_auth_token) {
+          // Password verified, but the account has 2FA — switch to the code-entry stage.
+          setPreAuthToken(data.pre_auth_token);
+          setTwoFactorStage(true);
+          setIsLoading(false);
+          return;
+        }
+        // Trigger parent callback
         onSuccess(data.user);
         window.location.reload(); // Reload immediately to secure signed httpOnly session cookies!
       } else {
         const errorData = await res.json();
         setErrorMessage(errorData.error || 'Authentication error. Please try again.');
+      }
+    } catch (err) {
+      setErrorMessage('Connection error. Please try again.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleVerify2fa = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setErrorMessage(null);
+    setIsLoading(true);
+    try {
+      const res = await fetch('/api/auth/verify-login-2fa', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ pre_auth_token: preAuthToken, token: totpCode.trim() })
+      });
+      if (res.ok) {
+        const data = await res.json();
+        onSuccess(data.user);
+        window.location.reload();
+      } else {
+        const errorData = await res.json();
+        setErrorMessage(errorData.error || 'Invalid authentication code.');
       }
     } catch (err) {
       setErrorMessage('Connection error. Please try again.');
@@ -93,6 +128,7 @@ export function ClerkGate({ onSuccess, referralCodeFromUrl, onClose }: ClerkGate
         </div>
 
         {/* Tab switcher */}
+        {!twoFactorStage && (
         <div className="grid grid-cols-2 bg-[#0a0a0a] rounded-xl p-1.5 border border-[#1f1f1f] text-xs font-bold mb-6">
           <button
             onClick={() => { setActiveMode('signin'); setErrorMessage(null); }}
@@ -107,6 +143,7 @@ export function ClerkGate({ onSuccess, referralCodeFromUrl, onClose }: ClerkGate
             Create Account
           </button>
         </div>
+        )}
 
         {errorMessage && (
           <div className="p-3.5 bg-[var(--danger)]/10 border border-[var(--danger)]/30 rounded-lg text-[10px] text-[var(--danger)] leading-relaxed font-mono uppercase" role="alert">
@@ -121,6 +158,55 @@ export function ClerkGate({ onSuccess, referralCodeFromUrl, onClose }: ClerkGate
           </div>
         )}
 
+        {twoFactorStage && (
+          <form onSubmit={handleVerify2fa} className="space-y-4 text-left">
+            <div>
+              <label className="text-[10px] text-[var(--text-tertiary)] uppercase tracking-widest font-extrabold block mb-1">
+                Two-Factor Authentication Code
+              </label>
+              <div className="relative">
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  autoFocus
+                  required
+                  value={totpCode}
+                  onChange={(e) => setTotpCode(e.target.value.replace(/[^0-9]/g, '').slice(0, 6))}
+                  placeholder="123456"
+                  className="w-full bg-[#0a0a0a] border border-[#1f1f1f] focus:border-[#4f4f4f] focus:ring-1 focus:ring-[#4f4f4f] text-[#E5E5E5] font-sans rounded-xl p-3.5 pl-11 text-sm tracking-[0.3em] focus:outline-none transition-all"
+                />
+                <ShieldCheck className="w-4 h-4 text-zinc-500 absolute left-4 top-1/2 -translate-y-1/2" />
+              </div>
+              <p className="text-[10px] text-[var(--text-tertiary)] mt-2 font-sans normal-case">Enter the 6-digit code from your authenticator app.</p>
+            </div>
+            <button
+              type="submit"
+              disabled={isLoading || totpCode.length < 6}
+              className="w-full py-4 mt-2 bg-[var(--text-primary)] hover:opacity-90 text-[var(--surface)] border-none font-bold text-sm rounded-xl shadow-lg flex items-center justify-center gap-2 transition-transform hover:scale-[1.02] cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
+            >
+              {isLoading ? (
+                <>
+                  <div className="w-4 h-4 rounded-full border-t-2 border-r-2 border-[var(--surface)] animate-spin" />
+                  <span>Verifying...</span>
+                </>
+              ) : (
+                <>
+                  <ShieldCheck className="w-4 h-4" />
+                  <span>Verify and Sign In</span>
+                </>
+              )}
+            </button>
+            <button
+              type="button"
+              onClick={() => { setTwoFactorStage(false); setTotpCode(''); setPreAuthToken(''); setErrorMessage(null); }}
+              className="w-full text-[11px] text-[var(--text-tertiary)] hover:text-[var(--text-secondary)] font-sans transition-colors cursor-pointer normal-case"
+            >
+              ← Back to sign in
+            </button>
+          </form>
+        )}
+
+        {!twoFactorStage && (
         <form onSubmit={handleSubmit} className="space-y-4 text-left">
           {activeMode === 'signup' && (
             <div>
@@ -226,6 +312,7 @@ export function ClerkGate({ onSuccess, referralCodeFromUrl, onClose }: ClerkGate
             )}
           </button>
         </form>
+        )}
 
         <div className="border-t border-[#1f1f1f] pt-5 mt-6 text-center">
           <p className="text-xs text-[var(--text-tertiary)] font-sans leading-relaxed">

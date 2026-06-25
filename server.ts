@@ -515,6 +515,17 @@ app.post('/api/auth/clerk-login', express.json(), async (req, res) => {
     return res.status(401).json({ error: 'Invalid email or password.' });
   }
 
+  // Two-factor: a correct password is NOT enough when 2FA is enabled. Issue a
+  // short-lived signed pre-auth token and require the TOTP code at
+  // /api/auth/verify-login-2fa before any session cookie is set. (Previously 2FA was
+  // enrolled but never checked at login, so it gave zero protection.) Sandbox dev is
+  // exempt for frictionless local testing.
+  if (user.two_factor_enabled && user.two_factor_secret && process.env.ALLOW_SANDBOX_AUTH !== 'true') {
+    clearLoginAttempts(userEmail); // password was correct — reset the password throttle
+    const preAuth = signCookieValue(JSON.stringify({ email: user.email, exp: Date.now() + 5 * 60 * 1000, stage: 'pre2fa' }));
+    return res.json({ requires_2fa: true, pre_auth_token: preAuth });
+  }
+
   const userSession = {
     authenticated: true,
     provider: 'clerk',
@@ -533,6 +544,55 @@ app.post('/api/auth/clerk-login', express.json(), async (req, res) => {
   };
 
   clearLoginAttempts(userEmail); // reset throttle on successful auth
+  await setSessionCookie(res, userSession, req);
+  res.json({ success: true, user: sanitizeUser(user) });
+});
+
+// Second stage of 2FA login: consume the signed pre-auth token from clerk-login plus a
+// TOTP code, and only then issue the real session cookie.
+app.post('/api/auth/verify-login-2fa', express.json(), async (req, res) => {
+  const { pre_auth_token, token } = req.body || {};
+  if (!pre_auth_token || !token) return res.status(400).json({ error: 'Missing authentication code.' });
+
+  const raw = verifyAndExtractCookieValue(String(pre_auth_token));
+  if (!raw) return res.status(401).json({ error: 'Invalid or expired 2FA session. Please sign in again.' });
+  let payload: any = null;
+  try { payload = JSON.parse(raw); } catch { payload = null; }
+  if (!payload || payload.stage !== 'pre2fa' || !payload.email || Date.now() > Number(payload.exp || 0)) {
+    return res.status(401).json({ error: 'Your 2FA session expired. Please sign in again.' });
+  }
+
+  const email = String(payload.email).toLowerCase().trim();
+  const lockMs = totpLockRemainingMs(email);
+  if (lockMs > 0) return res.status(429).json({ error: `Too many attempts. Try again in ${Math.ceil(lockMs / 1000)}s.` });
+
+  const user = await dbGetUser(email);
+  if (!user || user.deleted_at || !user.two_factor_enabled || !user.two_factor_secret) {
+    return res.status(401).json({ error: 'Invalid 2FA session. Please sign in again.' });
+  }
+  if (!verifyTOTP(user.two_factor_secret, String(token).trim())) {
+    registerTotpFailure(email);
+    return res.status(401).json({ error: 'Invalid authentication code.' });
+  }
+  clearTotpAttempts(email);
+
+  const userSession = {
+    authenticated: true,
+    provider: 'clerk',
+    name: user.name,
+    email: user.email,
+    avatar: user.avatar,
+    access_tier: user.access_tier,
+    referral_tokens_pool: user.referral_tokens_pool,
+    custom_referral_code: user.custom_referral_code,
+    selected_font_scale: user.selected_font_scale,
+    compact_view_enabled: user.compact_view_enabled,
+    selected_theme: user.selected_theme,
+    no_refund_policy_logged: user.no_refund_policy_logged,
+    username: user.username || generateDefaultUsername(email),
+    cover_photo: user.cover_photo || ''
+  };
+  clearLoginAttempts(email);
   await setSessionCookie(res, userSession, req);
   res.json({ success: true, user: sanitizeUser(user) });
 });
