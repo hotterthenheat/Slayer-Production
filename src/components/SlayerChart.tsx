@@ -363,6 +363,10 @@ export const SlayerChart = memo(function SlayerChartImpl({ profile, decimals, ca
   const drawRef = useRef<() => void>(() => {});
   const geomRef = useRef<{ plotL: number; plotR: number; barW: number; start: number; end: number; n: number; priceTop: number; priceAreaH: number; lo: number; hi: number } | null>(null);
   const themeRef = useRef<ReturnType<typeof readTheme> | null>(null);
+  // Smooth auto-scale: the displayed price range eases toward its target so the candles AND the
+  // side level tags glide together when the user scales/zooms, instead of snapping each frame.
+  const dispRangeRef = useRef<{ lo: number; hi: number } | null>(null);
+  const scheduleRef = useRef<() => void>(() => {});
 
   const ohlcv = useMemo<OHLCV>(() => ({ o: candles.map(c => c.open), h: candles.map(c => c.high), l: candles.map(c => c.low), c: candles.map(c => c.close), v: candles.map(c => c.volume) }), [candles]);
   const atr = useMemo(() => TI.atr(ohlcv.h, ohlcv.l, ohlcv.c, 14), [ohlcv]);
@@ -470,6 +474,16 @@ export const SlayerChart = memo(function SlayerChartImpl({ profile, decimals, ca
     // Manual vertical scale (drag the price axis): scale the auto range about its center + shift.
     const pv = priceViewRef.current;
     if (pv) { const center = (lo + hi) / 2, half = Math.max(1e-6, ((hi - lo) / 2) * pv.factor); lo = center - half + pv.offset; hi = center + half + pv.offset; }
+    // Glide the displayed range toward the target (lo/hi) each frame; re-schedule until it settles.
+    const disp = dispRangeRef.current;
+    if (!disp) { dispRangeRef.current = { lo, hi }; }
+    else {
+      const span = (hi - lo) || 1, k = 0.3;
+      disp.lo += (lo - disp.lo) * k; disp.hi += (hi - disp.hi) * k;
+      if (Math.abs(disp.lo - lo) + Math.abs(disp.hi - hi) < span * 0.0015) { disp.lo = lo; disp.hi = hi; }
+      else scheduleRef.current();
+      lo = disp.lo; hi = disp.hi;
+    }
     const volBandH = showVolume ? priceH * 0.13 : 0, priceAreaH = priceH - volBandH;
     const yP = (p: number) => priceTop + priceAreaH - ((p - lo) / (hi - lo)) * priceAreaH;
     const pOfY = (y: number) => lo + (1 - (y - priceTop) / priceAreaH) * (hi - lo);
@@ -788,6 +802,7 @@ export const SlayerChart = memo(function SlayerChartImpl({ profile, decimals, ca
     const canvas = canvasRef.current, container = containerRef.current; if (!canvas || !container) return;
     let rafPending = false;
     const schedule = () => { if (rafPending) return; rafPending = true; requestAnimationFrame(() => { rafPending = false; drawRef.current(); }); };
+    scheduleRef.current = schedule; // let drawRef re-schedule itself while the auto-scale eases
     themeRef.current = readTheme();
     drawRef.current();
     const ro = new ResizeObserver(() => schedule()); ro.observe(container);
@@ -798,6 +813,14 @@ export const SlayerChart = memo(function SlayerChartImpl({ profile, decimals, ca
     const onWheel = (e: WheelEvent) => {
       e.preventDefault();
       if (tweenRef.current) { cancelAnimationFrame(tweenRef.current); tweenRef.current = 0; }
+      // Scrolling over the price axis scales the VERTICAL (price) scale — the eased range makes the
+      // candles + side level tags glide bigger/smaller together. Inside the plot, scroll zooms time.
+      const gw = geomRef.current, rw = canvas.getBoundingClientRect(), mxw = e.clientX - rw.left;
+      if (gw && mxw >= gw.plotR) {
+        const f = e.deltaY > 0 ? 1.1 : 0.9;
+        setPriceView(prev => { const cur = prev ?? { factor: 1, offset: 0 }; return { factor: Math.max(0.2, Math.min(6, cur.factor * f)), offset: cur.offset }; });
+        return;
+      }
       const n = candlesRef.current.length || 300, factor = e.deltaY > 0 ? 1.15 : 0.87;
       const cur = viewRef.current, next = Math.max(20, Math.min(n, Math.round(cur.bars * factor)));
       if (next === cur.bars) return;
