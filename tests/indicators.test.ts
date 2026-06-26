@@ -105,8 +105,77 @@ function testInvariants() {
   }
 }
 
+function testExtended() {
+  console.log('Testing extended set (HMA/VWMA/Aroon/StochRSI/TSI/UO/AO/LinReg/Fisher/Pivots/Fib/…)...');
+
+  // VWMA: equal volume collapses to SMA; weighted case is hand-computable
+  assert.deepStrictEqual(I.vwma([1, 2, 3], [1, 1, 1], 3), [null, null, 2], 'vwma==sma when flat volume');
+  assert(approx(I.vwma([1, 2, 3], [1, 2, 3], 3)[2] as number, 14 / 6), 'vwma weighted');
+
+  // Volume ROC mirrors price ROC math
+  const vr = I.vroc([10, 11, 12], 1);
+  assert(vr[0] === null && approx(vr[1] as number, 10) && approx(vr[2] as number, 100 / 11), 'vroc');
+
+  // Aroon on a strictly rising series: newest bar is the high → Up=100, Down=0
+  const incH = Array.from({ length: 8 }, (_, i) => i + 1);
+  const ar = I.aroon(incH, incH, 5);
+  assert(ar.up[7] === 100 && ar.down[7] === 0 && ar.oscillator[7] === 100, 'aroon rising');
+
+  // Linear regression of a perfect line y=2x+1 → slope 2, endpoint = last y
+  const lr = I.linearRegression([1, 3, 5, 7, 9], 5);
+  assert(approx(lr.slope[4] as number, 2) && approx(lr.value[4] as number, 9), 'linreg perfect line');
+  // Standard error bands collapse onto the line when residuals are zero
+  const seb = I.standardErrorBands([1, 3, 5, 7, 9], 5, 2);
+  assert(approx(seb.upper[4] as number, 9) && approx(seb.lower[4] as number, 9), 'std-error bands zero residual');
+
+  // Pivot points — classic hand case
+  const pp = I.pivotPoints(110, 90, 100);
+  assert(pp.p === 100 && pp.r1 === 110 && pp.s1 === 90 && pp.r2 === 120 && pp.s2 === 80 && pp.r3 === 130 && pp.s3 === 70, 'pivots');
+
+  // Fibonacci retracement endpoints + midpoint
+  const fib = I.fibonacciRetracement(100, 0);
+  assert(fib[0].price === 100 && fib[6].price === 0 && approx(fib[3].price, 50) && approx(fib[1].price, 76.4), 'fib levels');
+
+  // NVI/PVI only move on the matching volume direction
+  const nv = I.nvi([100, 110, 121], [50, 40, 60]); // bar1 vol↓ → +10%; bar2 vol↑ → unchanged
+  assert(approx(nv[0] as number, 1000) && approx(nv[1] as number, 1100) && approx(nv[2] as number, 1100), 'nvi');
+  const pv = I.pvi([100, 110, 121], [50, 60, 40]); // bar1 vol↑ → +10%; bar2 vol↓ → unchanged
+  assert(approx(pv[0] as number, 1000) && approx(pv[1] as number, 1100) && approx(pv[2] as number, 1100), 'pvi');
+
+  // Historical volatility of a constant series is exactly 0
+  I.historicalVolatility([100, 100, 100, 100, 100], 3).forEach(x => { if (x != null) assert(x === 0, 'hv flat=0'); });
+
+  // Invariants / bounded ranges on a 120-bar OHLCV series
+  const n = 120;
+  const open: number[] = [], high: number[] = [], low: number[] = [], close: number[] = [], volume: number[] = [];
+  let p = 100;
+  for (let i = 0; i < n; i++) {
+    const c = 100 + Math.sin(i / 6) * 7 + i * 0.04 + (((i * 29) % 7) - 3) * 0.25;
+    const o = p, hi = Math.max(o, c) + 1.2, lo = Math.min(o, c) - 1.2;
+    p = c; open.push(o); high.push(hi); low.push(lo); close.push(c); volume.push(1000 + ((i * 71) % 500));
+  }
+  const fin = (v: I.Num[], name: string) => { assert(v.length === n, `${name} length`); v.forEach(x => { if (x != null) assert(Number.isFinite(x), `${name} non-finite`); }); };
+  const bounded = (v: I.Num[], lo: number, hi: number, name: string) => v.forEach(x => { if (x != null) assert(x >= lo - 1e-9 && x <= hi + 1e-9, `${name} out of [${lo},${hi}]`); });
+
+  fin(I.hma(close, 16), 'hma'); fin(I.vwma(close, volume, 20), 'vwma'); fin(I.mcginleyDynamic(close, 14), 'mcginley');
+  const arr = I.aroon(high, low, 25); fin(arr.up, 'aroonUp'); bounded(arr.up, 0, 100, 'aroonUp'); bounded(arr.down, 0, 100, 'aroonDown'); bounded(arr.oscillator, -100, 100, 'aroonOsc');
+  const sr = I.stochRsi(close); fin(sr.k, 'stochRsiK'); bounded(sr.k, 0, 100, 'stochRsiK'); bounded(sr.d, 0, 100, 'stochRsiD');
+  const ts = I.tsi(close); fin(ts.tsi, 'tsi'); bounded(ts.tsi, -100, 100, 'tsi');
+  bounded(I.ultimateOscillator(high, low, close), 0, 100, 'uo'); fin(I.ultimateOscillator(high, low, close), 'uo');
+  fin(I.awesomeOscillator(high, low), 'ao'); fin(I.dpo(close, 20), 'dpo');
+  I.historicalVolatility(close, 20).forEach(x => { if (x != null) assert(x >= 0, 'hv>=0'); });
+  fin(I.chaikinVolatility(high, low, 10), 'chaikinVol'); fin(I.easeOfMovement(high, low, volume, 14), 'evm');
+  fin(I.nvi(close, volume), 'nvi'); fin(I.pvi(close, volume), 'pvi'); fin(I.vroc(volume, 14), 'vroc');
+  const ft = I.fisherTransform(high, low, 9); fin(ft.fisher, 'fisher'); fin(ft.trigger, 'fisherTrigger');
+  const sebb = I.standardErrorBands(close, 20, 2);
+  for (let i = 0; i < n; i++) if (sebb.lower[i] != null) assert((sebb.lower[i] as number) <= (sebb.upper[i] as number) + 1e-9, 'std-error band ordering');
+  const sq = I.ttmSqueeze(high, low, close, 20); assert(sq.squeezeOn.length === n, 'ttm squeeze length'); fin(sq.momentum, 'ttm momentum');
+  assert(I.hma(close, 16).filter(x => x != null).length > 0, 'hma produces values');
+}
+
 testKnownValues();
 testConstructedOHLC();
 testMACD();
 testInvariants();
+testExtended();
 console.log('🎉 ALL INDICATOR TESTS PASSED! 🎉');
