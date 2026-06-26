@@ -18,6 +18,7 @@ interface InteractiveChartProps {
   showDisplacementEvents?: boolean;
   watermarkText?: string;
   gexLevels?: { callWall?: number; putWall?: number; gammaFlip?: number; magnet?: number };
+  gexProfile?: { strikes?: { strike: number; netGex: number }[]; expectedMovePct?: number; netGex?: number; dealerBias?: string; aboveFlip?: boolean; spot?: number };
   onPlaceAuditTrade?: (direction: 'BULLISH' | 'BEARISH', entry: number, target: number, stop: number) => void;
   triggerInvalidation?: boolean;
 }
@@ -37,6 +38,7 @@ export const InteractiveChart = React.memo(function InteractiveChart({
   showDisplacementEvents = true,
   watermarkText,
   gexLevels,
+  gexProfile,
   onPlaceAuditTrade,
   triggerInvalidation
 }: InteractiveChartProps) {
@@ -52,12 +54,15 @@ export const InteractiveChart = React.memo(function InteractiveChart({
   const bbLowerRef = useRef<any>(null);
   const volumeRef = useRef<any>(null);
   const gexLinesRef = useRef<any[]>([]);
+  const gexSvgRef = useRef<SVGSVGElement>(null);
+  const drawGexProfileRef = useRef<() => void>(() => {});
 
-  // Indicator visibility toggles (VWAP, Bollinger Bands(20), Volume, GEX strike levels).
+  // Indicator visibility toggles (VWAP, Bollinger Bands(20), Volume, GEX strike levels, γ-profile).
   const [showVwap, setShowVwap] = useState(true);
   const [showBb, setShowBb] = useState(true);
   const [showVolume, setShowVolume] = useState(true);
   const [showGex, setShowGex] = useState(true);
+  const [showGexProfile, setShowGexProfile] = useState(true);
 
   const themeMode = useContractStore(s => s.themeMode);
   const isLight = themeMode === 'light';
@@ -224,12 +229,18 @@ export const InteractiveChart = React.memo(function InteractiveChart({
         if (chartRef.current) {
           const { width, height } = entries[0].contentRect;
           chartRef.current.resize(width, height || 200);
+          drawGexProfileRef.current();
         }
       });
     });
     resizeObserver.observe(containerRef.current);
 
+    // Keep the GEX profile overlay synced to the price axis (which autoscales as candles
+    // stream) with a light redraw tick.
+    const gexProfileTimer = setInterval(() => drawGexProfileRef.current(), 250);
+
     return () => {
+      clearInterval(gexProfileTimer);
       resizeObserver.disconnect();
       try {
         if (markersRef.current) {
@@ -252,6 +263,7 @@ export const InteractiveChart = React.memo(function InteractiveChart({
       bbLowerRef.current = null;
       volumeRef.current = null;
       gexLinesRef.current = [];
+      if (gexSvgRef.current) gexSvgRef.current.innerHTML = '';
     };
   }, []);
 
@@ -286,6 +298,7 @@ export const InteractiveChart = React.memo(function InteractiveChart({
   useEffect(() => {
     if (seriesRef.current && chartData.length > 0) {
       seriesRef.current.setData(chartData);
+      drawGexProfileRef.current();
     }
   }, [chartData]);
 
@@ -305,20 +318,32 @@ export const InteractiveChart = React.memo(function InteractiveChart({
   }, [showBb]);
   useEffect(() => { if (volumeRef.current) volumeRef.current.applyOptions({ visible: showVolume }); }, [showVolume]);
 
-  // GEX strike-level overlays: horizontal price lines for the key gamma strikes, drawn on
-  // the price axis like the dealer levels they represent (call wall, put wall, γ-flip, magnet).
+  // GEX strike-level overlays + expected-move envelope: price lines for the key gamma strikes
+  // (call/put wall, γ-flip, magnet) plus the dealer-implied expected move, on the price axis.
   useEffect(() => {
     const series = seriesRef.current;
     if (!series) return;
     gexLinesRef.current.forEach(l => { try { series.removePriceLine(l); } catch (e) {} });
     gexLinesRef.current = [];
-    if (!showGex || !gexLevels) return;
-    const defs = [
-      { price: gexLevels.callWall, color: '#22c55e', title: 'Call Wall' },
-      { price: gexLevels.putWall, color: '#ef4444', title: 'Put Wall' },
-      { price: gexLevels.gammaFlip, color: '#eab308', title: 'γ Flip' },
-      { price: gexLevels.magnet, color: '#a855f7', title: 'Magnet' },
-    ];
+    if (!showGex) return;
+    const defs: { price: any; color: string; title: string }[] = [];
+    if (gexLevels) {
+      defs.push(
+        { price: gexLevels.callWall, color: '#22c55e', title: 'Call Wall' },
+        { price: gexLevels.putWall, color: '#ef4444', title: 'Put Wall' },
+        { price: gexLevels.gammaFlip, color: '#eab308', title: 'γ Flip' },
+        { price: gexLevels.magnet, color: '#a855f7', title: 'Magnet' },
+      );
+    }
+    // Expected-move envelope from the dealer model (unique: the move dealers are positioned
+    // for, not just a raw IV band).
+    if (gexProfile?.spot && gexProfile.expectedMovePct) {
+      const em = gexProfile.expectedMovePct;
+      defs.push(
+        { price: gexProfile.spot * (1 + em), color: 'rgba(96,165,250,0.85)', title: 'EM +' },
+        { price: gexProfile.spot * (1 - em), color: 'rgba(96,165,250,0.85)', title: 'EM −' },
+      );
+    }
     defs.forEach(d => {
       if (typeof d.price === 'number' && isFinite(d.price) && d.price > 0) {
         const line = series.createPriceLine({
@@ -332,7 +357,10 @@ export const InteractiveChart = React.memo(function InteractiveChart({
         gexLinesRef.current.push(line);
       }
     });
-  }, [gexLevels, showGex]);
+  }, [gexLevels, gexProfile, showGex]);
+
+  // Redraw the GEX-by-strike profile overlay when its data or visibility changes.
+  useEffect(() => { drawGexProfileRef.current(); }, [gexProfile, showGexProfile]);
 
   // Handle markers and overlay updates smoothly
   useEffect(() => {
@@ -502,6 +530,28 @@ export const InteractiveChart = React.memo(function InteractiveChart({
   // empty series, so we simply overlay a non-blocking skeleton until data arrives.
   const isLoadingCandles = candles.length === 0;
 
+  // Draw the GEX-by-strike profile overlay (the signature dealer-gamma landscape): a
+  // horizontal histogram of net gamma at each strike, pinned to the price axis so it tracks
+  // the candles as they autoscale. Green = positive (long) gamma, red = negative (short).
+  drawGexProfileRef.current = () => {
+    const svg = gexSvgRef.current, series = seriesRef.current, container = containerRef.current;
+    if (!svg || !series || !container) return;
+    if (!showGexProfile || !gexProfile?.strikes?.length) { svg.innerHTML = ''; return; }
+    const w = container.clientWidth, h = container.clientHeight;
+    const axisPad = 56, maxW = Math.min(110, w * 0.26);
+    const maxAbs = Math.max(...gexProfile.strikes.map(s => Math.abs(s.netGex || 0)), 1e-9);
+    let pos = '', neg = '';
+    for (const s of gexProfile.strikes) {
+      const y = series.priceToCoordinate(s.strike);
+      if (y == null || y < 2 || y > h - 2) continue;
+      const len = Math.max(1.5, (Math.abs(s.netGex || 0) / maxAbs) * maxW);
+      const x = w - axisPad - len;
+      const seg = `M${x.toFixed(1)} ${(y - 1).toFixed(1)}h${len.toFixed(1)}v2.4h-${len.toFixed(1)}Z`;
+      if ((s.netGex || 0) >= 0) pos += seg; else neg += seg;
+    }
+    svg.innerHTML = `<path d="${pos}" fill="rgba(34,197,94,0.5)"/><path d="${neg}" fill="rgba(239,68,68,0.5)"/>`;
+  };
+
   return (
     <div className="w-full h-full relative bg-[var(--surface)] flex flex-col border border-[var(--border)] rounded-sm">
       {/* Chart canvas DOM */}
@@ -511,6 +561,16 @@ export const InteractiveChart = React.memo(function InteractiveChart({
         style={{ minHeight: '140px' }}
       />
 
+      {/* Signature GEX-by-strike profile overlay (dealer gamma landscape). */}
+      <svg ref={gexSvgRef} className="absolute inset-0 w-full h-full pointer-events-none z-[4]" aria-hidden="true" />
+
+      {/* Dealer-regime badge — positive (long) vs negative (short) gamma. */}
+      {gexProfile?.dealerBias && (
+        <div className={`absolute top-1.5 left-1/2 -translate-x-1/2 z-10 px-1.5 py-0.5 rounded-sm text-[9px] font-mono font-bold uppercase tracking-wide border ${gexProfile.dealerBias === 'LONG GAMMA' ? 'bg-[var(--success)]/10 border-[var(--success)]/40 text-[var(--success)]' : 'bg-[var(--danger)]/10 border-[var(--danger)]/40 text-[var(--danger)]'}`} title="Net dealer gamma regime">
+          {gexProfile.dealerBias === 'LONG GAMMA' ? 'LONG γ' : 'SHORT γ'}
+        </div>
+      )}
+
       {/* Indicator legend / toggles — click a chip to show/hide that overlay. */}
       {candles.length > 0 && (
         <div className="absolute top-1.5 left-1.5 z-10 flex flex-wrap items-center gap-1 select-none">
@@ -519,6 +579,7 @@ export const InteractiveChart = React.memo(function InteractiveChart({
             { on: showBb, set: setShowBb, label: 'BB 20', dot: '#63a0ff' },
             { on: showVolume, set: setShowVolume, label: 'VOL', dot: '#9ca3af' },
             ...(gexLevels ? [{ on: showGex, set: setShowGex, label: 'GEX', dot: '#a855f7' }] : []),
+            ...(gexProfile?.strikes?.length ? [{ on: showGexProfile, set: setShowGexProfile, label: 'γ-MAP', dot: '#22c55e' }] : []),
           ].map((it, i) => (
             <button
               key={i}

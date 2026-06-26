@@ -12,6 +12,7 @@ interface PanelData {
   decimals: number;
   candles: Candle[];
   gexLevels?: { callWall?: number; putWall?: number; gammaFlip?: number; magnet?: number };
+  gexProfile?: any;
   last: number;
   changePct: number;
 }
@@ -107,6 +108,7 @@ export function MultiChartGrid() {
                 selectedTicker={panel.ticker}
                 priceDecimals={panel.decimals ?? 2}
                 gexLevels={panel.gexLevels}
+                gexProfile={panel.gexProfile}
                 showFVGs={false}
                 showLiquiditySweeps={false}
                 showDisplacementEvents={false}

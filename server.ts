@@ -2582,7 +2582,7 @@ app.get('/api/history', endpointRateLimit(20, '/api/history'), async (req, res) 
 // as the main chart). Candles are open to any authed user; the GEX levels are Pinpoint-tier
 // (level 2), gated identically to the rest of the dealer analytics. A short per-ticker GEX
 // cache keeps the option-chain build off the hot path when several panels poll together.
-const multiChartGexCache = new Map<string, { ts: number; levels: any }>();
+const multiChartGexCache = new Map<string, { ts: number; data: any }>();
 app.get('/api/multi-chart', endpointRateLimit(40, '/api/multi-chart'), async (req, res) => {
   const session = await getSessionFromCookies(req.headers.cookie);
   if (!session || !session.email) return res.status(401).json({ error: 'Unauthorized' });
@@ -2600,10 +2600,11 @@ app.get('/api/multi-chart', endpointRateLimit(40, '/api/multi-chart'), async (re
     const liveSpot = db.liveSpotPrices[ticker] || asset.defaultPrice;
 
     let gexLevels: any = undefined;
+    let gexProfile: any = undefined;
     if (canSeeGex) {
       const cached = multiChartGexCache.get(ticker);
       if (cached && Date.now() - cached.ts < 20000) {
-        gexLevels = cached.levels;
+        gexLevels = cached.data.levels; gexProfile = cached.data.profile;
       } else {
         try {
           const chainRes = await getUnifiedOptionChain(asset, liveSpot);
@@ -2612,17 +2613,25 @@ app.get('/api/multi-chart', endpointRateLimit(40, '/api/multi-chart'), async (re
             const profile = buildGexProfile(contracts, liveSpot, 1 / 365, 0.05);
             if (profile) {
               gexLevels = { callWall: profile.callWall, putWall: profile.putWall, gammaFlip: profile.gammaFlip, magnet: profile.magnet };
-              multiChartGexCache.set(ticker, { ts: Date.now(), levels: gexLevels });
+              gexProfile = {
+                strikes: (profile.strikes || []).map((s: any) => ({ strike: s.strike, netGex: s.netGex })),
+                expectedMovePct: profile.expectedMovePct,
+                netGex: profile.netGex,
+                dealerBias: profile.dealerBias,
+                aboveFlip: profile.aboveFlip,
+                spot: profile.spot,
+              };
+              multiChartGexCache.set(ticker, { ts: Date.now(), data: { levels: gexLevels, profile: gexProfile } });
             }
           }
-        } catch (e) { /* leave gexLevels undefined — the panel just renders without GEX lines */ }
+        } catch (e) { /* leave GEX undefined — the panel renders without overlays */ }
       }
     }
 
     const last = candles.length ? candles[candles.length - 1].close : liveSpot;
     const first = candles.length ? candles[0].close : liveSpot;
     const changePct = first ? ((last - first) / first) * 100 : 0;
-    return { ticker, name: asset.name, decimals: asset.decimals, candles, gexLevels, last, changePct };
+    return { ticker, name: asset.name, decimals: asset.decimals, candles, gexLevels, gexProfile, last, changePct };
   }));
 
   res.json({ success: true, tf, charts: charts.filter(Boolean) });
