@@ -74,6 +74,7 @@ const hexA = (hex: string, a: number) => {
   if (h.length < 3) return `rgba(255,255,255,${a})`;
   const n = h.length === 3 ? h.split('').map(c => c + c).join('') : h.slice(0, 6);
   const v = parseInt(n, 16);
+  if (Number.isNaN(v)) return `rgba(148,148,148,${a})`; // non-hex token (e.g. hsl/var) → neutral fallback
   return `rgba(${(v >> 16) & 255}, ${(v >> 8) & 255}, ${v & 255}, ${a})`;
 };
 // Read the live Slayer theme tokens so the canvas matches whatever theme is active.

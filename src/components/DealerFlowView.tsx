@@ -184,7 +184,7 @@ function ExposureProfileChart({ profile, decimals, type }: { profile: any; decim
         const flipBetween = nextRow && profile.gammaFlip > nextRow.strike && profile.gammaFlip <= r.strike;
 
         return (
-          <div key={r.strike} className={`flex items-center text-[9.5px] tabular-nums tracking-widest h-6 border-b border-black/10 dark:border-black/30 ${
+          <div key={r.strike} className={`flex items-center text-[9.5px] tabular-nums tracking-widest h-6 border-b border-[var(--border)] ${
             isSpot ? (isLight ? 'bg-black' : 'bg-white/[0.03]') : ''
           }`}>
             {/* Strike column */}
