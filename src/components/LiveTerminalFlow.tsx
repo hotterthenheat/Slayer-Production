@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react';
 import { GexProfileData } from '../types';
 import { useContractStore } from '../lib/store';
 import { SlayerChart } from './SlayerChart';
-import { Activity, Shield, Zap, Layers, Target, Crosshair, ChevronDown } from 'lucide-react';
+import { Activity, Shield, Zap, Layers, Target, ChevronDown } from 'lucide-react';
 import { ASSET_LIST, TIMEFRAMES } from '../data';
 
 interface LiveTerminalFlowProps {
@@ -10,6 +10,10 @@ interface LiveTerminalFlowProps {
   ticker: string;
   decimals: number;
 }
+
+// Panel-scoped high-contrast palette (brighter than the muted global tokens so tabular
+// red/green stay legible against true black during fast sessions — does NOT touch the theme).
+const K = { up: '#2ee68a', down: '#ff5d6c', flip: '#f5c518', mag: '#b07cff', info: '#5b9cff', dim: '#94a0b0' };
 
 const fmtBig = (v: number) => {
   const a = Math.abs(v);
@@ -23,6 +27,7 @@ export function LiveTerminalFlow({ profile, ticker, decimals }: LiveTerminalFlow
   const themeMode = useContractStore(s => s.themeMode);
   const isLight = themeMode === 'light';
   const [activeLadder, setActiveLadder] = useState<'30' | 'ALL'>('30');
+  const [metric, setMetric] = useState<'GEX' | 'DEX'>('GEX');
 
   // Symbol + timeframe live off the global store — changing them re-opens the SSE stream
   // (App.tsx) so candles AND the dealer GEX profile refresh for the new selection.
@@ -38,17 +43,17 @@ export function LiveTerminalFlow({ profile, ticker, decimals }: LiveTerminalFlow
   const longGamma = netGex >= 0;
   const flip = profile.gammaFlip;
   const aboveFlip = flip && spot ? spot >= flip : null;
-  const accent = longGamma ? 'var(--success)' : 'var(--danger)';
+  const accent = longGamma ? K.up : K.down;
   const dist = (lvl?: number) => (lvl && spot ? ((lvl - spot) / spot) * 100 : null);
   const distLabel = (lvl?: number) => { const d = dist(lvl); return d == null ? '—' : `${d >= 0 ? '+' : ''}${d.toFixed(2)}%`; };
 
   // Dealer-structure spectrum: spot's position across the key levels.
   const structure = useMemo(() => {
     const pts = ([
-      { p: profile.putWall, c: 'var(--danger)', l: 'PW' },
-      { p: profile.gammaFlip, c: 'var(--warning)', l: 'γF' },
-      { p: profile.magnet, c: '#a855f7', l: 'MAG' },
-      { p: profile.callWall, c: 'var(--success)', l: 'CW' },
+      { p: profile.putWall, c: K.down, l: 'PW' },
+      { p: profile.gammaFlip, c: K.flip, l: 'γF' },
+      { p: profile.magnet, c: K.mag, l: 'MAG' },
+      { p: profile.callWall, c: K.up, l: 'CW' },
     ] as { p?: number; c: string; l: string }[]).filter(x => typeof x.p === 'number' && (x.p as number) > 0);
     const all = [...pts.map(x => x.p as number), spot].filter(v => v > 0);
     if (all.length < 2) return null;
@@ -58,17 +63,26 @@ export function LiveTerminalFlow({ profile, ticker, decimals }: LiveTerminalFlow
     return { pts: pts.map(pt => ({ ...pt, x: pos(pt.p as number) })), spotPos: pos(spot) };
   }, [profile, spot]);
 
-  const insight = longGamma
-    ? `Long-gamma — dealers fade extension. ${aboveFlip ? 'Holding above' : 'Pinned below'} γ-flip ${flip ? flip.toFixed(0) : '—'}${profile.magnet ? `; magnet ${profile.magnet.toFixed(0)} draws price` : ''}.`
-    : `Short-gamma — dealers amplify moves; expect trend & vol. Reclaiming ${flip ? flip.toFixed(0) : 'the flip'} restores stability.`;
+  // Binary dealer-state read — strict state markers, no ambiguous prose. Each level resolves
+  // to a single deterministic state with a colour, so it's legible at a glance under pressure.
+  const within = (lvl?: number, pct = 0.3) => { const d = dist(lvl); return d != null && Math.abs(d) <= pct; };
+  const states = [
+    { l: 'γ-FLIP', n: flip, v: aboveFlip == null ? '—' : aboveFlip ? 'ABOVE' : 'BELOW', c: aboveFlip ? K.up : K.down },
+    { l: 'MAGNET', n: profile.magnet, v: profile.magnet ? (within(profile.magnet, 0.3) ? 'ACTIVE' : 'INACTIVE') : '—', c: within(profile.magnet, 0.3) ? K.mag : K.dim },
+    { l: 'CALL WALL', n: profile.callWall, v: profile.callWall ? (spot < profile.callWall ? 'INTACT' : 'BROKEN') : '—', c: profile.callWall && spot < profile.callWall ? K.up : K.down },
+    { l: 'PUT WALL', n: profile.putWall, v: profile.putWall ? (spot > profile.putWall ? 'INTACT' : 'BROKEN') : '—', c: profile.putWall && spot > profile.putWall ? K.up : K.down },
+  ];
 
   const ladderData = useMemo(() => {
     let strikes = profile?.strikes || [];
     if (activeLadder === '30' && profile.spot) {
       strikes = [...strikes].sort((a, b) => Math.abs(a.strike - (profile.spot || 0)) - Math.abs(b.strike - (profile.spot || 0))).slice(0, 30);
     }
+    const useDex = metric === 'DEX';
+    const cMetric = (s: typeof strikes[number]) => (useDex ? (s.callDex ?? 0) : (s.callGex ?? 0));
+    const pMetric = (s: typeof strikes[number]) => (useDex ? (s.putDex ?? 0) : (s.putGex ?? 0));
     const maxVol = Math.max(...strikes.map(s => (s.callVolume || 0) + (s.putVolume || 0)), 1);
-    const maxGex = Math.max(...strikes.map(s => Math.max(Math.abs(s.callGex || 0), Math.abs(s.putGex || 0))), 1);
+    const maxM = Math.max(...strikes.map(s => Math.max(Math.abs(cMetric(s)), Math.abs(pMetric(s)))), 1);
     return strikes.sort((a, b) => b.strike - a.strike).map(s => ({
       strike: s.strike,
       isSpot: Math.abs(s.strike - (profile.spot || 0)) < 0.001,
@@ -77,16 +91,19 @@ export function LiveTerminalFlow({ profile, ticker, decimals }: LiveTerminalFlow
       isPutWall: s.strike === profile.putWall,
       callVolPct: ((s.callVolume || 0) / maxVol) * 100,
       putVolPct: ((s.putVolume || 0) / maxVol) * 100,
-      callGexPct: ((s.callGex || 0) / maxGex) * 100,
-      putGexPct: (Math.abs(s.putGex || 0) / maxGex) * 100,
+      callMPct: (Math.abs(cMetric(s)) / maxM) * 100,
+      putMPct: (Math.abs(pMetric(s)) / maxM) * 100,
     }));
-  }, [profile, activeLadder]);
+  }, [profile, activeLadder, metric]);
 
+  const hasDex = useMemo(() => (profile.strikes || []).some(s => s.callDex != null || s.putDex != null || s.netDex != null), [profile]);
+
+  // Baseline-aligned metric tile: fixed height + reserved sub row so values lock to one grid line.
   const Tile = ({ label, value, sub, color }: { label: string; value: string; sub?: string; color?: string }) => (
-    <div className="border border-[var(--border)] rounded-md px-2.5 py-2 bg-white/[0.015] hover:bg-white/[0.03] transition-colors">
+    <div className="border border-[var(--border)] rounded-md px-2.5 h-[58px] flex flex-col justify-center bg-white/[0.015] hover:bg-white/[0.03] transition-colors">
       <div className="text-[9px] font-mono font-bold uppercase tracking-[0.15em] text-[var(--text-tertiary)]">{label}</div>
-      <div className="text-[15px] font-black tabular-nums leading-tight mt-1" style={{ color: color || 'var(--text-primary)' }}>{value}</div>
-      {sub && <div className="text-[9px] font-mono text-[var(--text-tertiary)] mt-0.5 tabular-nums">{sub}</div>}
+      <div className="text-[15px] font-black tabular-nums leading-tight mt-0.5 antialiased" style={{ color: color || 'var(--text-primary)' }}>{value}</div>
+      <div className="text-[9px] font-mono font-medium text-[var(--text-tertiary)] tabular-nums h-[11px] leading-[11px]">{sub ?? ''}</div>
     </div>
   );
 
@@ -115,7 +132,7 @@ export function LiveTerminalFlow({ profile, ticker, decimals }: LiveTerminalFlow
   };
 
   return (
-    <div className={`w-full flex flex-col h-auto ${isLight ? 'bg-zinc-100 text-zinc-900' : 'bg-black text-[var(--text-secondary)]'}`} style={{ minHeight: '780px' }}>
+    <div className={`w-full flex flex-col h-auto antialiased ${isLight ? 'bg-zinc-100 text-zinc-900' : 'bg-black text-[var(--text-secondary)]'}`} style={{ minHeight: '780px' }}>
       {/* ── Header ── */}
       <div className="flex items-center justify-between px-4 h-12 border-b border-[var(--border)] bg-black shrink-0">
         <div className="flex items-center gap-2.5">
@@ -150,7 +167,7 @@ export function LiveTerminalFlow({ profile, ticker, decimals }: LiveTerminalFlow
           </div>
         </div>
         <div className="flex items-center gap-3">
-          <span className={`flex items-center gap-1.5 px-2.5 py-1 rounded border text-[10px] font-mono font-black uppercase tracking-widest ${longGamma ? 'bg-[var(--success)]/10 border-[var(--success)]/40 text-[var(--success)]' : 'bg-[var(--danger)]/10 border-[var(--danger)]/40 text-[var(--danger)]'}`}>
+          <span className="flex items-center gap-1.5 px-2.5 py-1 rounded border text-[10px] font-mono font-black uppercase tracking-widest" style={{ background: longGamma ? 'rgba(46,230,138,0.12)' : 'rgba(255,93,108,0.12)', borderColor: longGamma ? 'rgba(46,230,138,0.4)' : 'rgba(255,93,108,0.4)', color: accent }}>
             {longGamma ? <Shield className="w-3 h-3" /> : <Zap className="w-3 h-3 fill-current" />}{longGamma ? 'Long γ' : 'Short γ'}
           </span>
           <div className="text-right">
@@ -176,7 +193,7 @@ export function LiveTerminalFlow({ profile, ticker, decimals }: LiveTerminalFlow
             </div>
 
             {/* Hero: gamma-pressure gauge + net gamma */}
-            <div className="flex items-center gap-3 rounded-lg px-3 py-3 mb-3 border relative overflow-hidden" style={{ borderColor: longGamma ? 'rgba(34,197,94,0.35)' : 'rgba(239,68,68,0.35)', background: longGamma ? 'linear-gradient(135deg, rgba(34,197,94,0.12), rgba(34,197,94,0.02))' : 'linear-gradient(135deg, rgba(239,68,68,0.12), rgba(239,68,68,0.02))' }}>
+            <div className="flex items-center gap-3 rounded-lg px-3 py-3 mb-3 border relative overflow-hidden" style={{ borderColor: longGamma ? 'rgba(46,230,138,0.35)' : 'rgba(255,93,108,0.35)', background: longGamma ? 'linear-gradient(135deg, rgba(46,230,138,0.12), rgba(46,230,138,0.02))' : 'linear-gradient(135deg, rgba(255,93,108,0.12), rgba(255,93,108,0.02))' }}>
               <div className="relative w-[74px] h-[74px] shrink-0">
                 <Gauge value={pressure} color={accent} />
                 <div className="absolute inset-0 flex flex-col items-center justify-center">
@@ -187,7 +204,7 @@ export function LiveTerminalFlow({ profile, ticker, decimals }: LiveTerminalFlow
               <div className="flex-1 min-w-0">
                 <div className="text-[9px] font-mono font-bold uppercase tracking-[0.15em] text-[var(--text-tertiary)]">Net Gamma Exposure</div>
                 <div className="text-[24px] font-black tabular-nums leading-tight" style={{ color: accent }}>{netGex >= 0 ? '+' : '−'}{fmtBig(Math.abs(netGex))}</div>
-                <span className="inline-flex items-center gap-1.5 mt-1 px-2 py-0.5 rounded text-[10px] font-mono font-black uppercase tracking-widest" style={{ background: longGamma ? 'rgba(34,197,94,0.14)' : 'rgba(239,68,68,0.14)', color: accent }}>
+                <span className="inline-flex items-center gap-1.5 mt-1 px-2 py-0.5 rounded text-[10px] font-mono font-black uppercase tracking-widest" style={{ background: longGamma ? 'rgba(46,230,138,0.14)' : 'rgba(255,93,108,0.14)', color: accent }}>
                   {longGamma ? <Shield className="w-3 h-3" /> : <Zap className="w-3 h-3 fill-current" />}{pressureLabel}
                 </span>
               </div>
@@ -197,7 +214,7 @@ export function LiveTerminalFlow({ profile, ticker, decimals }: LiveTerminalFlow
             {structure && (
               <div className="mb-3">
                 <div className="text-[9px] font-mono font-bold uppercase tracking-[0.15em] text-[var(--text-tertiary)] mb-3">Dealer Structure</div>
-                <div className="relative h-1.5 rounded-full" style={{ background: 'linear-gradient(90deg, rgba(239,68,68,0.45), rgba(120,120,130,0.22), rgba(34,197,94,0.45))' }}>
+                <div className="relative h-1.5 rounded-full" style={{ background: 'linear-gradient(90deg, rgba(255,93,108,0.5), rgba(120,120,130,0.22), rgba(46,230,138,0.5))' }}>
                   {structure.pts.map((pt, i) => (
                     <div key={i} className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 w-[3px] h-3 rounded-full" style={{ left: `${pt.x}%`, background: pt.c }} title={pt.l} />
                   ))}
@@ -216,19 +233,29 @@ export function LiveTerminalFlow({ profile, ticker, decimals }: LiveTerminalFlow
               </div>
             )}
 
-            {/* Auto-read */}
-            <div className="flex items-start gap-1.5 px-2.5 py-2 mb-3 rounded-md border border-[var(--border)] bg-white/[0.02]">
-              <Crosshair className="w-3 h-3 mt-0.5 shrink-0" style={{ color: accent }} />
-              <p className="text-[10px] font-mono leading-relaxed text-[var(--text-secondary)]">{insight}</p>
+            {/* Binary dealer-state strip (replaces prose narrative) */}
+            <div className="mb-3">
+              <div className="flex items-center justify-between mb-1.5">
+                <span className="text-[9px] font-mono font-bold uppercase tracking-[0.15em] text-[var(--text-tertiary)]">Dealer State</span>
+                <span className="text-[9px] font-mono font-black uppercase tracking-widest" style={{ color: accent }}>{longGamma ? 'LONG γ · FADE' : 'SHORT γ · CHASE'}</span>
+              </div>
+              <div className="grid grid-cols-2 gap-1.5">
+                {states.map(s => (
+                  <div key={s.l} className="flex items-center justify-between px-2 py-1.5 rounded border border-[var(--border)] bg-white/[0.02]">
+                    <span className="text-[8.5px] font-mono font-bold uppercase tracking-wider text-[var(--text-tertiary)] truncate">{s.l}{s.n ? <span className="text-[var(--text-secondary)]"> {s.n.toFixed(0)}</span> : ''}</span>
+                    <span className="text-[10px] font-mono font-black tracking-wider tabular-nums ml-1.5 shrink-0" style={{ color: s.c }}>{s.v}</span>
+                  </div>
+                ))}
+              </div>
             </div>
 
             {/* Metric grid */}
             <div className="grid grid-cols-3 gap-2">
-              <Tile label="γ Flip" value={flip ? flip.toFixed(decimals) : '—'} sub={aboveFlip == null ? undefined : aboveFlip ? 'above' : 'below'} color="var(--warning)" />
-              <Tile label="Magnet" value={profile.magnet ? profile.magnet.toFixed(decimals) : '—'} sub={distLabel(profile.magnet)} color="#a855f7" />
-              <Tile label="Exp Move" value={profile.expectedMovePct != null ? `±${(profile.expectedMovePct * 100).toFixed(2)}%` : '—'} color="var(--info)" />
-              <Tile label="Call Wall" value={profile.callWall ? profile.callWall.toFixed(decimals) : '—'} sub={distLabel(profile.callWall)} color="var(--success)" />
-              <Tile label="Put Wall" value={profile.putWall ? profile.putWall.toFixed(decimals) : '—'} sub={distLabel(profile.putWall)} color="var(--danger)" />
+              <Tile label="γ Flip" value={flip ? flip.toFixed(decimals) : '—'} sub={aboveFlip == null ? undefined : aboveFlip ? 'above' : 'below'} color={K.flip} />
+              <Tile label="Magnet" value={profile.magnet ? profile.magnet.toFixed(decimals) : '—'} sub={distLabel(profile.magnet)} color={K.mag} />
+              <Tile label="Exp Move" value={profile.expectedMovePct != null ? `±${(profile.expectedMovePct * 100).toFixed(2)}%` : '—'} color={K.info} />
+              <Tile label="Call Wall" value={profile.callWall ? profile.callWall.toFixed(decimals) : '—'} sub={distLabel(profile.callWall)} color={K.up} />
+              <Tile label="Put Wall" value={profile.putWall ? profile.putWall.toFixed(decimals) : '—'} sub={distLabel(profile.putWall)} color={K.down} />
               <Tile label="C/P OI" value={profile.callPutOiRatio || (profile.totalCallOi && profile.totalPutOi ? (profile.totalCallOi / Math.max(1, profile.totalPutOi)).toFixed(2) : '—')} sub="bias" />
             </div>
           </div>
@@ -236,27 +263,35 @@ export function LiveTerminalFlow({ profile, ticker, decimals }: LiveTerminalFlow
           {/* Exposure ladder */}
           <div className="px-3 py-2 border-b border-[var(--border)] flex justify-between items-center shrink-0">
             <span className="flex items-center gap-1.5 text-[11px] font-mono font-black uppercase tracking-[0.2em] text-[var(--text-secondary)]"><Layers className="w-3.5 h-3.5 text-[var(--accent-color)]" /> Exposure Ladder</span>
-            <div className="flex border border-[var(--border)] rounded p-[2px]">
-              {(['30', 'ALL'] as const).map(m => (
-                <button key={m} onClick={() => setActiveLadder(m)} className={`px-2.5 py-0.5 text-[10px] font-black tracking-widest rounded transition-colors ${activeLadder === m ? 'bg-[var(--surface-3)] text-[var(--text-primary)]' : 'text-[var(--text-tertiary)] hover:text-[var(--text-secondary)]'}`}>{m === '30' ? '30±' : 'ALL'}</button>
-              ))}
+            <div className="flex items-center gap-1.5">
+              {/* GEX / DEX exposure metric toggle */}
+              <div className="flex border border-[var(--border)] rounded p-[2px]">
+                {(['GEX', 'DEX'] as const).map(m => (
+                  <button key={m} onClick={() => setMetric(m)} disabled={m === 'DEX' && !hasDex} className={`px-2 py-0.5 text-[10px] font-black tracking-widest rounded transition-colors ${metric === m ? 'bg-[var(--surface-3)] text-[var(--text-primary)]' : `text-[var(--text-tertiary)] ${m === 'DEX' && !hasDex ? 'opacity-30 cursor-not-allowed' : 'hover:text-[var(--text-secondary)]'}`}`} title={m === 'DEX' && !hasDex ? 'No delta-exposure data in this feed' : `Show ${m} per strike`}>{m}</button>
+                ))}
+              </div>
+              <div className="flex border border-[var(--border)] rounded p-[2px]">
+                {(['30', 'ALL'] as const).map(m => (
+                  <button key={m} onClick={() => setActiveLadder(m)} className={`px-2 py-0.5 text-[10px] font-black tracking-widest rounded transition-colors ${activeLadder === m ? 'bg-[var(--surface-3)] text-[var(--text-primary)]' : 'text-[var(--text-tertiary)] hover:text-[var(--text-secondary)]'}`}>{m === '30' ? '30±' : 'ALL'}</button>
+                ))}
+              </div>
             </div>
           </div>
-          <div className="grid grid-cols-[64px_1fr_1.3fr] gap-2 px-3 py-1.5 border-b border-[var(--border)] text-[10px] font-black font-mono tracking-widest text-[var(--text-tertiary)] shrink-0 uppercase">
+          <div className="grid grid-cols-[64px_1fr_1.3fr] gap-2 px-3 py-1.5 border-b-2 border-[var(--border-strong)] text-[10px] font-black font-mono tracking-widest text-[var(--text-tertiary)] shrink-0 uppercase">
             <div className="text-right pr-2 border-r border-[var(--border)]">Strike</div>
             <div className="flex justify-between"><span>Vol P</span><span className="text-[var(--text-secondary)]">Vol C</span></div>
-            <div className="flex justify-between border-l border-[var(--border)] pl-2"><span className="text-[var(--danger)]">GEX P</span><span className="text-[var(--success)]">GEX C</span></div>
+            <div className="flex justify-between border-l border-[var(--border)] pl-2"><span style={{ color: K.down }}>{metric} P</span><span style={{ color: K.up }}>{metric} C</span></div>
           </div>
 
-          <div className="flex-1 overflow-y-auto python-scrollbar">
+          <div className="flex-1 overflow-y-auto">
             <div className="flex flex-col py-1 min-h-full pb-8">
               {ladderData.map(row => (
-                <div key={row.strike} className={`grid grid-cols-[64px_1fr_1.3fr] gap-2 px-3 h-[24px] items-center text-[11px] tabular-nums font-mono relative group ${row.isSpot ? 'bg-[var(--accent-color)]/10 border-y border-[var(--accent-color)]/30' : 'hover:bg-white/[0.03]'}`}>
+                <div key={row.strike} className={`grid grid-cols-[64px_1fr_1.3fr] gap-2 px-3 h-[24px] items-center text-[11px] tabular-nums font-mono font-medium relative group ${row.isSpot ? 'bg-[var(--accent-color)]/10 border-y border-[var(--accent-color)]/30' : 'hover:bg-white/[0.03]'}`}>
                   {row.isSpot && <div className="absolute left-0 top-0 bottom-0 w-[2px] bg-[var(--accent-color)]" />}
                   <div className="text-right pr-2 border-r border-[var(--border)] flex items-center justify-end gap-1">
-                    {row.isCallWall && <span className="w-1.5 h-1.5 rounded-full bg-[var(--success)]" title="Call Wall" />}
-                    {row.isPutWall && <span className="w-1.5 h-1.5 rounded-full bg-[var(--danger)]" title="Put Wall" />}
-                    {row.isFlip && <span className="w-1.5 h-1.5 rounded-sm bg-[var(--warning)]" title="Gamma Flip" />}
+                    {row.isCallWall && <span className="w-1.5 h-1.5 rounded-full" style={{ background: K.up }} title="Call Wall" />}
+                    {row.isPutWall && <span className="w-1.5 h-1.5 rounded-full" style={{ background: K.down }} title="Put Wall" />}
+                    {row.isFlip && <span className="w-1.5 h-1.5 rounded-sm" style={{ background: K.flip }} title="Gamma Flip" />}
                     <span className={`font-black tracking-wider ${row.isSpot ? 'text-[var(--accent-color)]' : 'text-[var(--text-secondary)] group-hover:text-[var(--text-primary)]'}`}>{row.strike.toFixed(decimals)}</span>
                   </div>
                   <div className="flex items-center h-full relative border-r border-[var(--border)] pr-2">
@@ -264,8 +299,8 @@ export function LiveTerminalFlow({ profile, ticker, decimals }: LiveTerminalFlow
                     <div className="w-1/2 h-full flex justify-start items-center pl-0.5"><div className="h-[9px] rounded-sm bg-[var(--text-secondary)]" style={{ width: `${Math.min(100, Math.max(0, row.callVolPct))}%` }} /></div>
                   </div>
                   <div className="flex items-center h-full relative pl-2">
-                    <div className="w-1/2 h-full flex justify-end items-center pr-0.5 border-r border-dotted border-[var(--border)]"><div className="h-[9px] rounded-sm bg-[var(--danger)]" style={{ width: `${Math.min(100, Math.max(0, row.putGexPct))}%` }} /></div>
-                    <div className="w-1/2 h-full flex justify-start items-center pl-0.5"><div className="h-[9px] rounded-sm bg-[var(--success)]" style={{ width: `${Math.min(100, Math.max(0, row.callGexPct))}%` }} /></div>
+                    <div className="w-1/2 h-full flex justify-end items-center pr-0.5 border-r border-dotted border-[var(--border)]"><div className="h-[9px] rounded-sm" style={{ width: `${Math.min(100, Math.max(0, row.putMPct))}%`, background: K.down }} /></div>
+                    <div className="w-1/2 h-full flex justify-start items-center pl-0.5"><div className="h-[9px] rounded-sm" style={{ width: `${Math.min(100, Math.max(0, row.callMPct))}%`, background: K.up }} /></div>
                   </div>
                 </div>
               ))}
