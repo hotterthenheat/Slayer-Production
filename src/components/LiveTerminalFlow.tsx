@@ -28,12 +28,23 @@ export function LiveTerminalFlow({ profile, ticker, decimals }: LiveTerminalFlow
   const setSelectedTimeframe = useContractStore(s => s.setSelectedTimeframe);
   const candles = useContractStore(s => s.activeContract?.chartData) ?? [];
   const orderFlow = useContractStore(s => (s as { orderFlowData?: OrderFlowData | null }).orderFlowData) ?? null;
+  // Server truth: the dealer-DYNAMICS block (time-derivative mechanics) + which feed this
+  // tick actually came from. We surface real provider/model status and live dealer motion —
+  // never a hardcoded "LIVE".
+  const serverState = useContractStore(s => s.serverState);
+  const dyn = serverState?.dealer_dynamics ?? null;
   const [tickerOpen, setTickerOpen] = useState(false);
   const [leftTab, setLeftTab] = useState<'levels' | 'flow'>('levels');
   const [scope, setScope] = useState<'0DTE' | 'ALL'>('0DTE');
   const [ladderMetric, setLadderMetric] = useState<'GAMMA' | 'DELTA' | 'VANNA'>('GAMMA');
   const [now, setNow] = useState(() => new Date());
   useEffect(() => { const t = setInterval(() => setNow(new Date()), 1000); return () => clearInterval(t); }, []);
+  // Feed heartbeat — stamp every SSE frame; if the stream goes quiet the UI must SAY so
+  // rather than show a frozen price as if it were live.
+  const lastTickRef = useRef(Date.now());
+  useEffect(() => { lastTickRef.current = Date.now(); }, [serverState]);
+  const staleSecs = Math.max(0, Math.floor((now.getTime() - lastTickRef.current) / 1000));
+  const isStale = staleSecs >= 6;
   const TF = TIMEFRAMES.filter(t => ['1m', '5m', '15m', '30m', '1h', '1D'].includes(t.val));
 
   const spot = profile.spot || 0;
@@ -45,6 +56,34 @@ export function LiveTerminalFlow({ profile, ticker, decimals }: LiveTerminalFlow
   const dist = (lvl?: number) => (lvl && spot ? ((lvl - spot) / spot) * 100 : null);
   const distLabel = (lvl?: number) => { const d = dist(lvl); return d == null ? '' : `${d >= 0 ? '+' : ''}${d.toFixed(2)}%`; };
   const trend = longGamma ? 'var(--success)' : 'var(--danger)';
+
+  // Honest feed status from the server's own source label — provider when the options chain
+  // is live, MODEL on synthetic data, STALE if the heartbeat stalls. Never a hardcoded "LIVE".
+  const feedRaw = (profile.feed || serverState?.data_source || '').toUpperCase();
+  const feedProvider = feedRaw.includes('THETA') ? 'THETADATA' : feedRaw.includes('TRADIER') ? 'TRADIER' : feedRaw.includes('POLYGON') ? 'POLYGON' : null;
+  const liveFeed = !isStale && (feedRaw.startsWith('LIVE') || (!!feedProvider && !feedRaw.includes('DETERMINISTIC') && !feedRaw.includes('SANDBOX') && !feedRaw.includes('MODEL')));
+  const feedColor = isStale ? 'var(--danger)' : liveFeed ? 'var(--success)' : 'var(--warning)';
+  const feedLabel = isStale ? `STALE ${staleSecs}s` : liveFeed ? (feedProvider ? `LIVE · ${feedProvider}` : 'LIVE') : 'MODEL';
+  // Level confidence — the engine flags when a flip/wall is statistically thin. Undefined ⇒
+  // treat as confident (don't cry wolf on older payloads); only an explicit false marks it.
+  const flipConfident = profile.gammaFlipConfident !== false;
+  const wallsConfident = profile.wallsConfident !== false;
+
+  // ── Dealer MOTION — the time-derivatives the server computes every tick and the page
+  //    used to discard. These show HOW the book is changing, not just its static snapshot. ──
+  const gammaState = dyn?.gamma.state ?? null;        // ADDING_HEDGES | REMOVING_HEDGES | STABLE
+  const vannaFlow = dyn?.vanna.hedgeFlow ?? null;     // SUPPORTIVE | PRESSURING | NEUTRAL
+  const migration = dyn?.migration ?? null;           // gamma center-of-mass drift
+  const charm = dyn?.charm ?? null;                   // time-decay hedging intensity 0..1 + bias
+  const wallRes = dyn?.walls.resistance ?? null;      // strongest strike above spot {strike, score}
+  const wallSup = dyn?.walls.support ?? null;         // strongest strike below spot {strike, score}
+  const vacAbove = dyn?.vacuums.nearestAbove ?? null; // nearest liquidity "air pocket" above
+  const vacBelow = dyn?.vacuums.nearestBelow ?? null;
+  const gammaMotion = gammaState === 'ADDING_HEDGES'
+    ? { label: 'Adding hedges', sub: 'vol-suppressing', color: 'var(--success)' }
+    : gammaState === 'REMOVING_HEDGES'
+      ? { label: 'Pulling hedges', sub: 'vol-releasing', color: 'var(--danger)' }
+      : gammaState ? { label: 'Hedges stable', sub: 'no net change', color: 'var(--text-tertiary)' } : null;
 
   const dayOpen = candles.length ? candles[0].open : spot;
   const dayChg = spot && dayOpen ? ((spot - dayOpen) / dayOpen) * 100 : 0;
@@ -181,6 +220,14 @@ export function LiveTerminalFlow({ profile, ticker, decimals }: LiveTerminalFlow
           </div>
         </div>
         <div className="flex items-center gap-2">
+          {/* Honest feed status — provider name when the chain is live, MODEL on synthetic data,
+              STALE if the SSE heartbeat stalls. Replaces the old hardcoded "LIVE". */}
+          <span className="flex items-center gap-1.5 px-2 py-1 rounded-md border text-[10px] font-mono font-black uppercase tracking-widest shrink-0" title={liveFeed ? `Live options feed (${feedProvider}) · updated ${staleSecs}s ago` : isStale ? `Feed stalled — last update ${staleSecs}s ago` : 'Synthetic model data — connect a provider API key for a live feed'} style={{ borderColor: `color-mix(in srgb, ${feedColor} 42%, transparent)`, background: `color-mix(in srgb, ${feedColor} 10%, transparent)`, color: feedColor }}>
+            {liveFeed
+              ? <span className="relative flex h-1.5 w-1.5"><span className="animate-ping absolute inline-flex h-full w-full rounded-full opacity-60" style={{ background: feedColor }} /><span className="relative inline-flex rounded-full h-1.5 w-1.5" style={{ background: feedColor }} /></span>
+              : <span className="w-1.5 h-1.5 rounded-full" style={{ background: feedColor }} />}
+            {feedLabel}
+          </span>
           <div className="hidden md:block">{segToggle(TF.map(t => t.val), selectedTimeframe, setSelectedTimeframe)}</div>
           {segToggle(['0DTE', 'ALL'], scope, v => setScope(v as '0DTE' | 'ALL'), true)}
           <span className="flex items-center gap-1.5 px-2.5 py-1 rounded-md border text-[10px] font-mono font-black uppercase tracking-widest" style={{ borderColor: longGamma ? 'color-mix(in srgb, var(--success) 40%, transparent)' : 'color-mix(in srgb, var(--danger) 40%, transparent)', background: longGamma ? 'color-mix(in srgb, var(--success) 10%, transparent)' : 'color-mix(in srgb, var(--danger) 10%, transparent)', color: trend, boxShadow: `0 0 16px ${longGamma ? 'color-mix(in srgb, var(--success) 18%, transparent)' : 'color-mix(in srgb, var(--danger) 18%, transparent)'}` }}>
@@ -217,6 +264,22 @@ export function LiveTerminalFlow({ profile, ticker, decimals }: LiveTerminalFlow
           <span className="text-[9px] font-black tracking-widest uppercase text-[var(--text-tertiary)]">Implied Range</span>
           <span className="text-[16px] font-mono font-black tabular-nums leading-tight mt-0.5" style={{ color: 'var(--info)' }}>{emPct != null ? `±${(emPct * 100).toFixed(2)}%` : '—'}</span>
         </div>
+        {/* Dealer MOTION — how the book is CHANGING right now: gamma hedging state, vanna
+            hedge-flow, and which way the gamma center-of-mass (the pin) is drifting. */}
+        {dyn && (
+          <div className="flex flex-col justify-center px-4 border-r border-[var(--border)] shrink-0 w-[188px]">
+            <div className="flex items-center justify-between">
+              <span className="text-[9px] font-black tracking-widest uppercase text-[var(--text-tertiary)]">Dealer Motion</span>
+              {migration && migration.direction !== 'STABLE' && (
+                <span className="flex items-center gap-0.5 text-[9px] font-mono font-black" style={{ color: migration.direction === 'BULLISH' ? 'var(--success)' : 'var(--danger)' }} title={`Gamma center-of-mass drifting ${migration.direction.toLowerCase()}${migration.comCurrent ? ` toward ${fmtNum(migration.comCurrent)}` : ''}`}>
+                  {migration.direction === 'BULLISH' ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}PIN
+                </span>
+              )}
+            </div>
+            <span className="text-[13px] font-mono font-black leading-tight mt-0.5" style={{ color: gammaMotion ? gammaMotion.color : 'var(--text-tertiary)' }}>{gammaMotion ? gammaMotion.label : '—'}</span>
+            <span className="text-[9px] font-mono tracking-wide text-[var(--text-tertiary)] truncate">{gammaMotion?.sub ?? 'awaiting dynamics'}{vannaFlow && vannaFlow !== 'NEUTRAL' ? ` · vanna ${vannaFlow.toLowerCase()}` : ''}</span>
+          </div>
+        )}
         {/* Live observation tape — what's happening, never what to do */}
         <div className="flex-1 min-w-0 flex items-center gap-2 px-4 overflow-hidden">
           <span className="flex items-center gap-1 text-[9px] font-black tracking-widest uppercase shrink-0" style={{ color: 'var(--accent-color)' }}><Radio className="w-3 h-3" /> Tape</span>
@@ -266,6 +329,24 @@ export function LiveTerminalFlow({ profile, ticker, decimals }: LiveTerminalFlow
                     <span className="px-1.5 py-0.5 rounded text-[9px] font-mono font-black uppercase tracking-widest" style={{ background: `color-mix(in srgb, ${trend} 14%, transparent)`, color: trend }}>{aboveFlip == null ? 'No Flip' : aboveFlip ? 'Above Flip' : 'Below Flip'}</span>
                     <span className="text-[9px] font-mono text-[var(--text-tertiary)]">{read.regimeLabel}</span>
                   </div>
+                  {/* Wall strength (0–100) — not all walls are equal; the engine blends gamma, OI
+                      and volume so a trader can tell a concrete wall from a paper one. */}
+                  {(wallRes || wallSup) && (
+                    <div className="mt-2 pt-2 border-t" style={{ borderColor: 'color-mix(in srgb, var(--border) 80%, transparent)' }}>
+                      <div className="text-[8.5px] font-mono uppercase tracking-widest text-[var(--text-tertiary)] mb-1">Wall Strength · 0–100</div>
+                      <div className="grid grid-cols-2 gap-2">
+                        {[{ w: wallRes, lbl: 'Resistance', col: 'var(--danger)' }, { w: wallSup, lbl: 'Support', col: 'var(--success)' }].map(({ w, lbl, col }) => (
+                          <div key={lbl} className="min-w-0" title={w ? `${lbl} ${fmtNum(w.strike)} — strength ${w.score}/100 (gamma · OI · volume)` : `no ${lbl.toLowerCase()} wall`}>
+                            <div className="flex items-center justify-between">
+                              <span className="text-[9px] font-mono font-bold tabular-nums text-[var(--text-secondary)]">{lbl === 'Resistance' ? '▲ ' : '▼ '}{w ? fmtNum(w.strike) : '—'}</span>
+                              <span className="text-[10px] font-mono font-black tabular-nums" style={{ color: w ? col : 'var(--text-tertiary)' }}>{w ? w.score : '—'}</span>
+                            </div>
+                            <div className="h-1 rounded-full bg-[var(--surface-3)] overflow-hidden mt-0.5"><div className="h-full rounded-full" style={{ width: `${w ? Math.min(100, w.score) : 0}%`, background: col }} /></div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
 
                 {/* Dealer Forces — each mechanic's lean, shown so the trader reads it themselves */}
@@ -291,7 +372,14 @@ export function LiveTerminalFlow({ profile, ticker, decimals }: LiveTerminalFlow
                 {/* dealer-structure spectrum */}
                 {structure && (
                   <div className="bg-[var(--surface-2)] border border-[var(--border)] rounded-md px-3 py-3">
-                    <div className="text-[9px] font-black tracking-widest uppercase text-[var(--text-tertiary)] mb-3">Dealer Structure</div>
+                    <div className="flex items-center justify-between mb-3">
+                      <span className="text-[9px] font-black tracking-widest uppercase text-[var(--text-tertiary)]">Dealer Structure</span>
+                      {migration && migration.direction !== 'STABLE' && (
+                        <span className="flex items-center gap-0.5 text-[8.5px] font-mono font-black uppercase tracking-wide tabular-nums" style={{ color: migration.direction === 'BULLISH' ? 'var(--success)' : 'var(--danger)' }} title={`Gamma center-of-mass migrating ${migration.direction.toLowerCase()} — the dealer pin is drifting toward ${fmtNum(migration.comCurrent)}`}>
+                          {migration.direction === 'BULLISH' ? <TrendingUp className="w-2.5 h-2.5" /> : <TrendingDown className="w-2.5 h-2.5" />} CoM {fmtNum(migration.comCurrent)}
+                        </span>
+                      )}
+                    </div>
                     <div className="relative h-1.5 rounded-full" style={{ background: 'linear-gradient(90deg, color-mix(in srgb, var(--danger) 45%, transparent), color-mix(in srgb, var(--text-tertiary) 25%, transparent), color-mix(in srgb, var(--success) 45%, transparent))' }}>
                       {structure.pts.map((pt, i) => (<div key={i} className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 w-[3px] h-3 rounded-full" style={{ left: `${pt.x}%`, background: pt.c }} title={pt.l} />))}
                       <motion.div className="absolute -top-[5px] -translate-x-1/2 z-10" animate={{ left: `${structure.spotPos}%` }} transition={{ type: 'spring', stiffness: 90, damping: 18 }}>
@@ -311,7 +399,7 @@ export function LiveTerminalFlow({ profile, ticker, decimals }: LiveTerminalFlow
                     {levels.map((l, i) => (
                       <div key={l.n} className="flex items-center gap-2 px-3 h-[26px] hover:bg-[var(--surface-3)] transition-colors" style={{ borderTop: i ? '1px solid var(--border)' : undefined }}>
                         <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ background: l.c }} />
-                        <span className="text-[11px] font-mono font-bold flex-1 truncate text-[var(--text-secondary)]">{l.n}</span>
+                        <span className="text-[11px] font-mono font-bold flex-1 truncate text-[var(--text-secondary)] flex items-center gap-1">{l.n}{((l.n === 'GEX Flip' && !flipConfident) || ((l.n === 'Call Wall' || l.n === 'Put Wall') && !wallsConfident)) && <span className="px-1 rounded-sm text-[8px] font-black tracking-wide uppercase shrink-0" style={{ background: 'color-mix(in srgb, var(--warning) 16%, transparent)', color: 'var(--warning)' }} title="Statistically thin — the engine flags this level as a low-confidence estimate">est</span>}</span>
                         <span className="text-[11px] font-mono font-black tabular-nums" style={{ color: l.c }}>{fmtNum(l.v as number)}</span>
                         <span className="text-[10px] font-mono tabular-nums w-[42px] text-right text-[var(--text-tertiary)]">{distLabel(l.v)}</span>
                       </div>
@@ -320,9 +408,13 @@ export function LiveTerminalFlow({ profile, ticker, decimals }: LiveTerminalFlow
                 </div>
 
                 <div className="grid grid-cols-2 gap-2">
-                  <Tile label="Vanna · VEX" value={read.netVex != null ? fmtBig(read.netVex) : '—'} sub={read.netVex != null ? (longGamma ? 'Stabilizing' : 'Destabilizing') : 'no feed'} color="var(--info)" />
+                  <Tile label="Vanna · VEX" value={read.netVex != null ? fmtBig(read.netVex) : '—'}
+                    sub={vannaFlow ? `${vannaFlow === 'SUPPORTIVE' ? 'Supportive' : vannaFlow === 'PRESSURING' ? 'Pressuring' : 'Neutral'}${dyn && dyn.vanna.trend !== 'FLAT' ? ' · ' + dyn.vanna.trend.toLowerCase() : ''}` : (read.netVex != null ? (longGamma ? 'Stabilizing' : 'Destabilizing') : 'no feed')}
+                    color={vannaFlow === 'SUPPORTIVE' ? 'var(--success)' : vannaFlow === 'PRESSURING' ? 'var(--danger)' : 'var(--info)'} />
                   <Tile label="Net Delta · DEX" value={fmtBig(profile.netDex ?? 0)} sub={(profile.netDex ?? 0) >= 0 ? 'Long delta' : 'Short delta'} color={(profile.netDex ?? 0) >= 0 ? 'var(--success)' : 'var(--danger)'} />
-                  <Tile label="Exp Move" value={emPct != null ? `±${(emPct * 100).toFixed(2)}%` : '—'} color="var(--text-primary)" />
+                  <Tile label="Charm · 0DTE" value={charm ? `${Math.round(charm.intensity * 100)}%` : '—'}
+                    sub={charm ? `${charm.bias === 'BULLISH' ? 'Bullish' : charm.bias === 'BEARISH' ? 'Bearish' : 'Neutral'} · into close` : 'time-decay flow'}
+                    color={charm ? (charm.bias === 'BULLISH' ? 'var(--success)' : charm.bias === 'BEARISH' ? 'var(--danger)' : 'var(--info)') : 'var(--text-primary)'} />
                   <Tile label="Call / Put OI" value={profile.callPutOiRatio || (callOi && putOi ? (callOi / putOi).toFixed(2) : '—')} sub="bias" color="var(--accent-color)" />
                 </div>
               </div>
@@ -337,7 +429,7 @@ export function LiveTerminalFlow({ profile, ticker, decimals }: LiveTerminalFlow
                   <span className="flex items-center gap-1" style={{ color: 'var(--accent-color)' }}><Activity className="w-3 h-3" /> Flow</span>
                   <span className="text-[var(--text-primary)]">{selectedAsset.ticker}</span>
                   <span className="px-1.5 py-0.5 rounded text-[10px]" style={{ background: 'color-mix(in srgb, var(--accent-color) 14%, transparent)', color: 'var(--accent-color)' }}>{scope}</span>
-                  <span className="hidden sm:inline text-[var(--text-tertiary)]">· {selectedTimeframe} · LIVE</span>
+                  <span className="hidden sm:inline" style={{ color: isStale ? 'var(--danger)' : 'var(--text-tertiary)' }}>· {selectedTimeframe} · {liveFeed ? 'LIVE' : isStale ? `STALE ${staleSecs}s` : 'MODEL'}</span>
                 </div>
                 <div className="flex items-center gap-2 text-[9px] font-mono font-black tabular-nums shrink-0">
                   <span style={{ color: 'var(--success)' }}>BULL {bullPct.toFixed(0)}%</span>
@@ -375,14 +467,24 @@ export function LiveTerminalFlow({ profile, ticker, decimals }: LiveTerminalFlow
                 <button key={m} disabled={dis} onClick={() => setLadderMetric(m)} title={dis ? `No ${m.toLowerCase()} data in this feed` : `Show per-strike ${m.toLowerCase()}`} className="px-2 py-0.5 text-[9px] font-mono font-black tracking-wider rounded transition-colors" style={ladderMetric === m ? { background: 'var(--surface-3)', color: 'var(--text-primary)' } : { color: dis ? 'color-mix(in srgb, var(--text-tertiary) 40%, transparent)' : 'var(--text-tertiary)', cursor: dis ? 'not-allowed' : 'pointer' }}>{m}</button>
               ); })}
             </div>
+            {(vacAbove || vacBelow) && (
+              <div className="flex items-center gap-2 px-3 py-1 border-b border-[var(--border)] shrink-0 text-[9px] font-mono" style={{ background: 'color-mix(in srgb, var(--warning) 6%, transparent)' }} title="Liquidity vacuums — strike bands with little dealer gamma / OI / volume, where price tends to travel fast">
+                <span className="font-black tracking-widest uppercase shrink-0" style={{ color: 'var(--warning)' }}>Air Pockets</span>
+                {vacAbove && <span className="tabular-nums shrink-0" style={{ color: 'var(--text-secondary)' }}>▲ {fmtNum(vacAbove.lo)}–{fmtNum(vacAbove.hi)}</span>}
+                {vacBelow && <span className="tabular-nums shrink-0" style={{ color: 'var(--text-secondary)' }}>▼ {fmtNum(vacBelow.lo)}–{fmtNum(vacBelow.hi)}</span>}
+                <span className="ml-auto text-[var(--text-tertiary)] shrink-0 hidden sm:inline">fast-move zones</span>
+              </div>
+            )}
             <div className="grid grid-cols-[52px_1fr_64px] gap-2 px-3 py-1.5 border-b border-[var(--border)] shrink-0 text-[9px] font-mono font-black uppercase tracking-widest text-[var(--text-tertiary)]">
               <div className="text-right">Strike</div>
               <div className="flex justify-between"><span style={{ color: 'var(--danger)' }}>◄ Put {ladderMetric === 'GAMMA' ? 'γ' : ladderMetric === 'DELTA' ? 'Δ' : 'V'}</span><span style={{ color: 'var(--success)' }}>{ladderMetric === 'GAMMA' ? 'γ' : ladderMetric === 'DELTA' ? 'Δ' : 'V'} Call ►</span></div>
               <div className="text-right">Net</div>
             </div>
             <div className="flex-1 overflow-y-auto">
-              {ladder.map(r => (
-                <div key={r.strike} className="grid grid-cols-[52px_1fr_64px] gap-2 px-3 h-[24px] items-center text-[10px] font-mono tabular-nums hover:bg-[var(--surface-2)]" style={r.isSpot ? { background: 'color-mix(in srgb, var(--accent-color) 12%, transparent)', boxShadow: 'inset 2px 0 0 var(--accent-color)' } : undefined}>
+              {ladder.map(r => {
+                const inVac = !!((vacAbove && r.strike >= vacAbove.lo && r.strike <= vacAbove.hi) || (vacBelow && r.strike >= vacBelow.lo && r.strike <= vacBelow.hi));
+                return (
+                <div key={r.strike} className="grid grid-cols-[52px_1fr_64px] gap-2 px-3 h-[24px] items-center text-[10px] font-mono tabular-nums hover:bg-[var(--surface-2)]" style={r.isSpot ? { background: 'color-mix(in srgb, var(--accent-color) 12%, transparent)', boxShadow: 'inset 2px 0 0 var(--accent-color)' } : inVac ? { background: 'color-mix(in srgb, var(--warning) 6%, transparent)' } : undefined}>
                   <div className="text-right flex items-center justify-end gap-1">
                     {r.isCW && <span className="w-1.5 h-1.5 rounded-full" style={{ background: 'var(--success)' }} title="Call Wall" />}
                     {r.isPW && <span className="w-1.5 h-1.5 rounded-full" style={{ background: 'var(--danger)' }} title="Put Wall" />}
@@ -395,7 +497,7 @@ export function LiveTerminalFlow({ profile, ticker, decimals }: LiveTerminalFlow
                   </div>
                   <div className="text-right font-black" style={{ color: r.net >= 0 ? 'var(--success)' : 'var(--danger)' }}>{fmtBig(r.net)}</div>
                 </div>
-              ))}
+              ); })}
               {ladder.length === 0 && <div className="flex items-center justify-center py-12 text-[11px] font-mono text-[var(--text-tertiary)]">Awaiting dealer chain…</div>}
             </div>
             <div className="px-3 py-2 border-t border-[var(--border)] shrink-0 flex items-center justify-between bg-[var(--surface)]">
