@@ -250,6 +250,8 @@ export const SlayerChart = memo(function SlayerChartImpl({ profile, decimals, ca
   const [showGex, setShowGex] = useState<boolean>(gexMapV2 ? (initialPrefs.showGex ?? false) : false);
   const [showDisp, setShowDisp] = useState<boolean>(initialPrefs.showDisp ?? false);
   const [showHeat, setShowHeat] = useState<boolean>(gexMapV2 ? (initialPrefs.showHeat ?? true) : true);
+  // ORBS — focal gamma-concentration orbs in the right gutter (a clean alternative to the Γ-MAP diamonds). Opt-in.
+  const [showOrbs, setShowOrbs] = useState<boolean>(gexMapV2 ? (initialPrefs.showOrbs ?? false) : false);
   const [chartType, setChartType] = useState<ChartType>(initialPrefs.chartType || 'candles');
   const [colors, setColors] = useState<{ up?: string; down?: string; line?: string; wick?: string; bg?: string; grid?: string }>(initialPrefs.colors || {});
   const [showGrid, setShowGrid] = useState<boolean>(initialPrefs.showGrid ?? true);
@@ -386,8 +388,8 @@ export const SlayerChart = memo(function SlayerChartImpl({ profile, decimals, ca
   // Persist chart prefs (type, colors, indicator selection, GEX/disp toggles) so a user's
   // setup survives a reload. Saving the initial (already-stored) values once is harmless.
   useEffect(() => {
-    try { localStorage.setItem('slayerchart.prefs.v1' + keySuffix, JSON.stringify({ chartType, colors, ovOn, paneOn, showGex, showDisp, showHeat, showGrid, showVolume, showWatermark, candleBorders, gexMapV2: true, ...(panelId ? { ticker: panelTicker, timeframe: localTf, channel, expiry } : {}) })); } catch { /* storage unavailable */ }
-  }, [chartType, colors, ovOn, paneOn, showGex, showDisp, showHeat, showGrid, showVolume, showWatermark, candleBorders, panelId, panelTicker, localTf, channel, expiry]);
+    try { localStorage.setItem('slayerchart.prefs.v1' + keySuffix, JSON.stringify({ chartType, colors, ovOn, paneOn, showGex, showDisp, showHeat, showOrbs, showGrid, showVolume, showWatermark, candleBorders, gexMapV2: true, ...(panelId ? { ticker: panelTicker, timeframe: localTf, channel, expiry } : {}) })); } catch { /* storage unavailable */ }
+  }, [chartType, colors, ovOn, paneOn, showGex, showDisp, showHeat, showOrbs, showGrid, showVolume, showWatermark, candleBorders, panelId, panelTicker, localTf, channel, expiry]);
 
   // Only enabled indicators are computed, and only when the selection or candles change
   // (NOT on pan/hover) — keeps interaction cheap.
@@ -443,8 +445,9 @@ export const SlayerChart = memo(function SlayerChartImpl({ profile, decimals, ca
     const axisW = 60, topPad = 6, xAxisH = 22;
     const laneOn = !!(showGex && profile.strikes && profile.strikes.length);
     const heatOn = !!(showHeat && profile.strikes && profile.strikes.length);
-    // Reserve a right gutter for the γ-lane (wide) or, failing that, the Γ-MAP strike diamonds (thin).
-    const gammaW = laneOn ? 46 : heatOn ? 16 : 0;
+    const orbsOn = !!(showOrbs && profile.strikes && profile.strikes.length);
+    // Reserve a right gutter for the γ-lane (wide), the ORBS focal column (medium), or the Γ-MAP diamonds (thin).
+    const gammaW = laneOn ? 46 : orbsOn ? 22 : heatOn ? 16 : 0;
     const plotL = 2, plotR = W - axisW - gammaW, plotW = plotR - plotL, gammaR = plotR + gammaW;
     const availH = H - topPad - xAxisH;
     const subH = paneSeries.length ? Math.min(86, (availH * 0.42) / paneSeries.length) : 0;
@@ -545,7 +548,7 @@ export const SlayerChart = memo(function SlayerChartImpl({ profile, decimals, ca
           ctx.lineWidth = isWall ? 2.4 : 0.85 + mag * 1.5; ctx.setLineDash(isWall ? [] : [2, 5]);
           ctx.beginPath(); ctx.moveTo(plotL, px(y) - 0.5); ctx.lineTo(plotR, px(y) - 0.5); ctx.stroke();
           // gutter strike-diamond, sized by |γ| (walls largest + outlined)
-          if (gammaW) {
+          if (gammaW && !orbsOn) {
             const dm = isWall ? 5.5 : 2.3 + mag * 3.4;
             ctx.setLineDash([]); ctx.fillStyle = hexA(col, isWall ? 0.98 : 0.42 + mag * 0.5);
             ctx.beginPath(); ctx.moveTo(dxc, y - dm); ctx.lineTo(dxc + dm, y); ctx.lineTo(dxc, y + dm); ctx.lineTo(dxc - dm, y); ctx.closePath(); ctx.fill();
@@ -553,6 +556,29 @@ export const SlayerChart = memo(function SlayerChartImpl({ profile, decimals, ca
           }
         }
         ctx.setLineDash([]); ctx.lineWidth = 1;
+      }
+    }
+
+    // ORBS — focal gamma-concentration orbs in the right gutter: radius ∝ |net γ|, gold (call-dominant) /
+    // violet (put-dominant), walls largest + ringed, each with a soft radial glow. A clean, Skylit-style
+    // alternative to the Γ-MAP diamonds (which it replaces in the gutter when active).
+    if (orbsOn) {
+      const inR = profile.strikes!.filter(s => { const y = yP(s.strike); return y >= priceTop + 2 && y <= priceBottom - 2 && Math.abs(s.netGex || 0) > 0; });
+      if (inR.length) {
+        const maxG = Math.max(...inR.map(s => Math.abs(s.netGex || 0)), 1e-9);
+        const top = [...inR].sort((a, b) => Math.abs(b.netGex || 0) - Math.abs(a.netGex || 0)).slice(0, 24);
+        const cx = plotR + gammaW / 2;
+        for (const s of top) {
+          const y = yP(s.strike), mag = Math.abs(s.netGex || 0) / maxG, pos = (s.netGex || 0) >= 0;
+          const isWall = s.strike === profile.callWall || s.strike === profile.putWall;
+          const col = pos ? HEAT_POS : HEAT_NEG, r = isWall ? 8 : 2.5 + mag * 5;
+          const g = ctx.createRadialGradient(cx, y, 0, cx, y, r * 1.8);
+          g.addColorStop(0, hexA(col, isWall ? 0.5 : 0.18 + mag * 0.3)); g.addColorStop(1, hexA(col, 0));
+          ctx.fillStyle = g; ctx.beginPath(); ctx.arc(cx, y, r * 1.8, 0, Math.PI * 2); ctx.fill();
+          ctx.fillStyle = hexA(col, isWall ? 0.95 : 0.5 + mag * 0.4); ctx.beginPath(); ctx.arc(cx, y, r, 0, Math.PI * 2); ctx.fill();
+          if (isWall) { ctx.strokeStyle = hexA(col, 0.95); ctx.lineWidth = 1.2; ctx.stroke(); }
+        }
+        ctx.lineWidth = 1;
       }
     }
 
@@ -969,7 +995,7 @@ export const SlayerChart = memo(function SlayerChartImpl({ profile, decimals, ca
   useEffect(() => {
     if (redrawRafRef.current) return;
     redrawRafRef.current = requestAnimationFrame(() => { redrawRafRef.current = 0; drawRef.current(); });
-  }, [candles, overlaySeries, paneSeries, displacements, showGex, showDisp, showHeat, chartType, colors, ha, view, priceView, drawings, tool, selectedId, showGrid, showVolume, showWatermark, candleBorders, profile, decimals, tfKey, tickKey]);
+  }, [candles, overlaySeries, paneSeries, displacements, showGex, showDisp, showHeat, showOrbs, chartType, colors, ha, view, priceView, drawings, tool, selectedId, showGrid, showVolume, showWatermark, candleBorders, profile, decimals, tfKey, tickKey]);
   // Cancel any frame still queued when the panel unmounts (closing a grid panel mid-redraw):
   // an unmount-only cleanup, so it never disturbs the per-change coalescing above. Without it a
   // pending rAF fires on a torn-down panel and calls drawRef on detached refs → crash on churn.
@@ -1184,6 +1210,7 @@ export const SlayerChart = memo(function SlayerChartImpl({ profile, decimals, ca
             )}
           </div>
           {specChip(showHeat, 'Γ-MAP', () => setShowHeat(v => !v))}
+          {specChip(showOrbs, '◉ ORBS', () => setShowOrbs(v => !v))}
           {specChip(showGex, 'γ-LANE', () => setShowGex(v => !v))}
           {specChip(showDisp, '⚡ DISP', () => setShowDisp(v => !v), 'warn')}
           <button onClick={resetView} title="Reset view — smoothly refit zoom, pan and price scale (or double-click the chart)" className="px-1.5 py-0.5 rounded-sm text-[10px] font-mono font-bold uppercase tracking-wide border border-[var(--border)] bg-[var(--surface-2)] text-[var(--text-secondary)] hover:border-[var(--border-strong)] hover:text-[var(--text-primary)] transition-colors">⟲ RESET</button>
