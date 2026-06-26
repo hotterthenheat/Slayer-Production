@@ -511,11 +511,29 @@ export const SlayerChart = memo(function SlayerChartImpl({ profile, decimals, ca
     const pOfY = (y: number) => lo + (1 - (y - priceTop) / priceAreaH) * (hi - lo);
     geomRef.current = { plotL, plotR, barW, start, end, n, priceTop, priceAreaH, lo, hi };
 
-    // faint ticker · timeframe watermark (lower third, dim)
-    if (tickKey && showWatermark) {
-      ctx.save(); ctx.textAlign = 'center'; ctx.fillStyle = 'rgba(255,255,255,0.026)';
-      ctx.font = '600 44px ui-sans-serif, system-ui, sans-serif';
-      ctx.fillText(`${tickKey}${tfKey ? '  ·  ' + tfKey : ''}`, plotL + plotW / 2, priceTop + priceAreaH * 0.74);
+    // Slayer Terminal brand watermark — the ">slayer_terminal▌" logo lockup over the ticker · timeframe,
+    // faint in the lower third behind the candles (the chart's own mark, à la a TradingView chart logo).
+    // Authentic monospace brand font + glow caret block; theme-aware alpha so it also reads on light themes.
+    if (showWatermark) {
+      ctx.save();
+      const wmX = plotL + plotW / 2, wmY = priceTop + priceAreaH * 0.7;
+      const fs = Math.max(15, Math.min(40, plotW / 15));
+      ctx.font = `800 ${fs}px "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace`;
+      ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic';
+      const prompt = '>', word = 'slayer_terminal';
+      const pW = ctx.measureText(prompt).width, wW = ctx.measureText(word).width;
+      const promptGap = fs * 0.06, caretGap = fs * 0.16, caretW = fs * 0.46;
+      const totalW = pW + promptGap + wW + caretGap + caretW;
+      let x = wmX - totalW / 2;
+      ctx.fillStyle = hexA(T.text, 0.055); ctx.fillText(prompt, x, wmY); x += pW + promptGap;   // ">" prompt
+      ctx.fillStyle = hexA(T.text, 0.08); ctx.fillText(word, x, wmY); x += wW + caretGap;        // wordmark
+      ctx.fillStyle = hexA(T.text, 0.12); ctx.fillRect(x, wmY - fs * 0.72, caretW, fs * 0.82);   // caret block
+      if (tickKey) {
+        ctx.textAlign = 'center';
+        ctx.font = `600 ${fs * 0.5}px ui-sans-serif, system-ui, sans-serif`;
+        ctx.fillStyle = hexA(T.text, 0.05);
+        ctx.fillText(`${tickKey}${tfKey ? '  ·  ' + tfKey : ''}`, wmX, wmY + fs * 0.72);
+      }
       ctx.restore(); ctx.font = '11px ui-monospace, monospace';
     }
 
