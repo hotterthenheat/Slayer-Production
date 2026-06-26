@@ -1,4 +1,4 @@
-import { useMemo, useState, useRef, useEffect } from 'react';
+import { useMemo, useState, useRef, useEffect, CSSProperties } from 'react';
 import { motion } from 'motion/react';
 import { GexProfileData, OrderFlowData } from '../types';
 import { useContractStore } from '../lib/store';
@@ -8,6 +8,7 @@ import { fmtNum } from '../lib/format';
 import { SlayerChart } from './SlayerChart';
 import { ChartPanelGrid } from './ChartPanelGrid';
 import { OrderFlow } from './OrderFlow';
+import { CROSSHAIR_EVENT, CrosshairDetail } from '../lib/chartSync';
 import { Crosshair, Activity, Zap, Layers, ChevronDown, Gauge as GaugeIcon, Radio, TrendingUp, TrendingDown, Minus, Clock } from 'lucide-react';
 import { ASSET_LIST, TIMEFRAMES } from '../data';
 
@@ -99,6 +100,60 @@ export function LiveTerminalFlow({ profile, ticker, decimals }: LiveTerminalFlow
     const t = setTimeout(() => setFlash(null), 800); return () => clearTimeout(t);
   }, [spot]);
 
+  // ── TASK 3 — Crosshair bridge ────────────────────────────────────────────────
+  // The chart broadcasts the hovered price via a native window event (no mouse coords in React
+  // state). We listen here and highlight the matching strike on the detached Exposure Ladder by
+  // toggling an inline outline straight on the DOM node — rAF-throttled, zero re-renders.
+  const ladderScrollRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    let raf = 0;
+    let pendingPrice: number | null = null;
+    let lit: HTMLElement | null = null;
+    const clearLit = () => { if (lit) { lit.style.outline = ''; lit.style.outlineOffset = ''; lit = null; } };
+    const apply = () => {
+      raf = 0;
+      const box = ladderScrollRef.current;
+      if (!box) return;
+      if (pendingPrice == null) { clearLit(); return; }
+      let best: HTMLElement | null = null, bestD = Infinity;
+      box.querySelectorAll<HTMLElement>('[data-strike]').forEach(el => {
+        const k = parseFloat(el.dataset.strike || '');
+        if (!isFinite(k)) return;
+        const d = Math.abs(k - (pendingPrice as number));
+        if (d < bestD) { bestD = d; best = el; }
+      });
+      if (best !== lit) {
+        clearLit();
+        if (best) { (best as HTMLElement).style.outline = '1px solid var(--accent-color)'; (best as HTMLElement).style.outlineOffset = '-1px'; lit = best; }
+      }
+    };
+    const onXhair = (e: Event) => {
+      const det = (e as CustomEvent<CrosshairDetail>).detail;
+      pendingPrice = det && typeof det.price === 'number' ? det.price : null;
+      if (!raf) raf = requestAnimationFrame(apply);
+    };
+    window.addEventListener(CROSSHAIR_EVENT, onXhair as EventListener);
+    return () => { window.removeEventListener(CROSSHAIR_EVENT, onXhair as EventListener); if (raf) cancelAnimationFrame(raf); clearLit(); };
+  }, []);
+
+  // ── TASK 4 — GEX regime theming ──────────────────────────────────────────────
+  // Net-GEX sign is the regime. On a FLIP only, pulse the ambient frame harder for ~1.4s so the
+  // change is felt peripherally; it then settles to a faint cool (long-gamma) / warning
+  // (short-gamma) wash + inset ring. Binary, transition-driven, no per-tick churn.
+  const prevRegime = useRef(longGamma);
+  const [regimePulse, setRegimePulse] = useState(false);
+  useEffect(() => {
+    if (prevRegime.current === longGamma) return;
+    prevRegime.current = longGamma;
+    setRegimePulse(true);
+    const t = setTimeout(() => setRegimePulse(false), 1400);
+    return () => clearTimeout(t);
+  }, [longGamma]);
+  const regimeTint = longGamma ? 'var(--info)' : 'var(--warning)';
+  const ambientWash = regimePulse ? 13 : 5;
+  const ambientRing = regimePulse ? 44 : 20;
+  const ambientGlow = regimePulse ? 17 : 6;
+
   const hvl = useMemo(() => { const ss = profile.strikes || []; if (!ss.length) return undefined; return ss.reduce((a, b) => ((b.callOi || 0) + (b.putOi || 0)) > ((a.callOi || 0) + (a.putOi || 0)) ? b : a).strike; }, [profile]);
   const callOi = profile.totalCallOi || 0, putOi = profile.totalPutOi || 0;
   // Clamp to [0,100] so a malformed (negative) OI can never overflow the BULL/BEAR bar width.
@@ -185,7 +240,19 @@ export function LiveTerminalFlow({ profile, ticker, decimals }: LiveTerminalFlow
   );
 
   return (
-    <div className="w-full flex flex-col animate-fadeIn" style={{ minHeight: '820px', background: 'var(--bg-base)', color: 'var(--text-secondary)' }}>
+    <div
+      className="w-full flex flex-col animate-fadeIn"
+      data-gex-regime={longGamma ? 'long' : 'short'}
+      style={{
+        minHeight: '820px',
+        backgroundColor: 'var(--bg-base)',
+        backgroundImage: `radial-gradient(150% 70% at 50% 0%, color-mix(in srgb, ${regimeTint} ${ambientWash}%, transparent), transparent 72%)`,
+        color: 'var(--text-secondary)',
+        boxShadow: `inset 0 0 0 1px color-mix(in srgb, ${regimeTint} ${ambientRing}%, transparent), inset 0 0 90px color-mix(in srgb, ${regimeTint} ${ambientGlow}%, transparent)`,
+        transition: 'background-image 1200ms ease, box-shadow 1200ms ease',
+        ['--gex-regime-tint' as string]: regimeTint,
+      } as CSSProperties}
+    >
       {/* ── Top bar ── */}
       <div className="flex items-center justify-between px-3 sm:px-4 h-12 border-b border-[var(--border)] shrink-0 bg-[var(--surface)]">
         <div className="flex items-center gap-2.5 min-w-0">
@@ -512,11 +579,11 @@ export function LiveTerminalFlow({ profile, ticker, decimals }: LiveTerminalFlow
               <div className="flex justify-between"><span style={{ color: 'var(--danger)' }}>◄ Put {ladderMetric === 'GAMMA' ? 'γ' : ladderMetric === 'DELTA' ? 'Δ' : 'V'}</span><span style={{ color: 'var(--success)' }}>{ladderMetric === 'GAMMA' ? 'γ' : ladderMetric === 'DELTA' ? 'Δ' : 'V'} Call ►</span></div>
               <div className="text-right">Net</div>
             </div>
-            <div className="flex-1 overflow-y-auto">
+            <div ref={ladderScrollRef} className="flex-1 overflow-y-auto">
               {ladder.map(r => {
                 const inVac = !!((vacAbove && r.strike >= vacAbove.lo && r.strike <= vacAbove.hi) || (vacBelow && r.strike >= vacBelow.lo && r.strike <= vacBelow.hi));
                 return (
-                <div key={r.strike} className="grid grid-cols-[52px_1fr_64px] gap-2 px-3 h-[24px] items-center text-[10px] font-mono tabular-nums hover:bg-[var(--surface-2)]" style={r.isSpot ? { background: 'color-mix(in srgb, var(--accent-color) 12%, transparent)', boxShadow: 'inset 2px 0 0 var(--accent-color)' } : inVac ? { background: 'color-mix(in srgb, var(--warning) 6%, transparent)' } : undefined}>
+                <div key={r.strike} data-strike={r.strike} className="grid grid-cols-[52px_1fr_64px] gap-2 px-3 h-[24px] items-center text-[10px] font-mono tabular-nums hover:bg-[var(--surface-2)]" style={r.isSpot ? { background: 'color-mix(in srgb, var(--accent-color) 12%, transparent)', boxShadow: 'inset 2px 0 0 var(--accent-color)' } : inVac ? { background: 'color-mix(in srgb, var(--warning) 6%, transparent)' } : undefined}>
                   <div className="text-right flex items-center justify-end gap-1">
                     {r.isCW && <span className="w-1.5 h-1.5 rounded-full" style={{ background: 'var(--success)' }} title="Call Wall" />}
                     {r.isPW && <span className="w-1.5 h-1.5 rounded-full" style={{ background: 'var(--danger)' }} title="Put Wall" />}

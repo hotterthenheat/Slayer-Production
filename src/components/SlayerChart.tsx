@@ -1,18 +1,21 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState, memo } from 'react';
 import { Candle, GexProfileData, TimeframeVal } from '../types';
 import { useContractStore } from '../lib/store';
 import * as TI from '../lib/indicators';
+import { SyncChannel, CHANNEL_CYCLE, CHANNEL_COLORS, subscribeChannel, publishChannel, broadcastCrosshair } from '../lib/chartSync';
 
 interface SlayerChartProps {
   profile: GexProfileData;
   decimals: number;
   candles?: Candle[]; // optional override; falls back to the live store stream
-  // Multi-chart panel mode: when panelId is set the instance owns its OWN timeframe and its
-  // OWN persisted prefs/drawings (keys suffixed by panelId), independent of the global store.
-  // When absent, every code path stays byte-for-byte identical to the single main chart.
+  // Multi-chart panel mode: when panelId is set the instance owns its OWN timeframe / ticker /
+  // sync-channel / expiry and its OWN persisted prefs/drawings (keys suffixed by panelId),
+  // fully decoupled from the global store. When absent, every code path stays byte-for-byte
+  // identical to the single main chart.
   panelId?: string;
   initialTimeframe?: TimeframeVal;
-  title?: string; // ticker label shown for a panel
+  title?: string;                 // initial ticker for a panel
+  initialChannel?: SyncChannel;   // initial sync channel for a panel
 }
 
 type OHLCV = { o: number[]; h: number[]; l: number[]; c: number[]; v: number[] };
@@ -220,12 +223,15 @@ const fmtOsc = (v: number) => Math.abs(v) >= 1e6 ? (v / 1e6).toFixed(2) + 'M' : 
  * bursts that gold-ring on a dealer level. ~40 of the 48 unit-tested indicators are exposed
  * through a grouped/searchable menu; everything is opt-in. Redraws are rAF-throttled.
  */
-export function SlayerChart({ profile, decimals, candles: propCandles, panelId, initialTimeframe, title }: SlayerChartProps) {
-  const storeChart = useContractStore(s => s.activeContract?.chartData);
+// Memoized: in the multi-chart grid, a drag re-renders the grid every pointer frame — memo keeps
+// panels whose props are unchanged from re-rendering (only the dragged panel's wrapper moves).
+export const SlayerChart = memo(function SlayerChartImpl({ profile, decimals, candles: propCandles, panelId, initialTimeframe, title, initialChannel }: SlayerChartProps) {
+  // Panels do NOT subscribe to the global candle slice — returning a constant when panelId is
+  // set means a global SSE tick (or another panel's keystroke) never re-renders this instance.
+  const storeChart = useContractStore(s => (panelId ? undefined : s.activeContract?.chartData));
   // localStorage key suffix — panels namespace their prefs/drawings; the main chart (no panelId)
   // keeps the exact original keys so existing saved setups are untouched.
   const keySuffix = panelId ? '.' + panelId : '';
-  const candles = propCandles ?? storeChart ?? EMPTY;
   const containerRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
@@ -249,6 +255,8 @@ export function SlayerChart({ profile, decimals, candles: propCandles, panelId, 
   const [tfOpen, setTfOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [tickerEditing, setTickerEditing] = useState(false);
+  const [tickerDraft, setTickerDraft] = useState('');
   const [query, setQuery] = useState('');
   const [view, setView] = useState<{ bars: number; off: number }>({ bars: 110, off: 0 });
   // Vertical price scale: null = auto-fit (default). Manual = the user dragged the price axis;
@@ -259,13 +267,49 @@ export function SlayerChart({ profile, decimals, candles: propCandles, panelId, 
   const [tool, setTool] = useState<DrawTool>('cursor');
   const [selectedId, setSelectedId] = useState<string | null>(null);
 
-  const storeTf = useContractStore(s => s.selectedTimeframe);
-  const storeTick = useContractStore(s => s.selectedAsset?.ticker);
-  const [localTf, setLocalTf] = useState<TimeframeVal>(initialTimeframe ?? '5m');
-  // Panel mode owns its own timeframe + ticker label; the main chart follows the global store.
+  const storeTf = useContractStore(s => (panelId ? '5m' : s.selectedTimeframe));
+  const storeTick = useContractStore(s => (panelId ? undefined : s.selectedAsset?.ticker));
+  // Panel-owned state (seeded from persisted prefs → props): timeframe / ticker / sync-channel /
+  // expiry. The main chart leaves these unused and follows the global store.
+  const [localTf, setLocalTf] = useState<TimeframeVal>(initialPrefs.timeframe || initialTimeframe || '5m');
+  const [panelTicker, setPanelTicker] = useState<string>(initialPrefs.ticker || title || 'SPX');
+  const [channel, setChannel] = useState<SyncChannel>(initialPrefs.channel || initialChannel || 'NONE');
+  const [expiry, setExpiry] = useState<'0DTE' | '1DTE+' | 'ALL'>(initialPrefs.expiry || '0DTE');
+  const [fetched, setFetched] = useState<Candle[] | null>(null);
   const tfKey = panelId ? localTf : storeTf;
-  const tickKey = panelId ? (title ?? storeTick) : storeTick;
-  const applyTf = (tf: TimeframeVal) => { if (panelId) setLocalTf(tf); else setSelectedTimeframe(tf); };
+  const tickKey = panelId ? panelTicker : storeTick;
+  // Per-panel candle data — fetch this panel's ticker/timeframe from the history API; fall back to
+  // the candles handed down so it renders with no backend (preview). Production: real per-symbol data.
+  useEffect(() => {
+    if (!panelId) return;
+    const ac = new AbortController();
+    fetch(`/api/history?ticker=${encodeURIComponent(panelTicker)}&timeframe=${encodeURIComponent(localTf)}&count=300`, { credentials: 'same-origin', signal: ac.signal })
+      .then(r => (r.ok ? r.json() : null))
+      .then(d => { if (d && Array.isArray(d.candles) && d.candles.length) setFetched(d.candles); })
+      .catch(() => { /* offline / preview → keep the handed-down candles */ });
+    return () => ac.abort();
+  }, [panelId, panelTicker, localTf]);
+  const candles = panelId ? (fetched ?? propCandles ?? EMPTY) : (propCandles ?? storeChart ?? EMPTY);
+
+  // ── Sync channels — same-channel panels mirror ticker/timeframe via the pub/sub bus. No parent
+  //    re-render: a published event flips only the subscribing panels' own local state. ──
+  const applyTf = (tf: TimeframeVal) => {
+    if (panelId) { setLocalTf(tf); if (channel !== 'NONE') publishChannel(channel, { source: panelId, timeframe: tf }); }
+    else setSelectedTimeframe(tf);
+  };
+  const commitTicker = (t: string) => {
+    const tk = t.trim().toUpperCase(); if (!tk || !panelId) return;
+    setPanelTicker(tk); if (channel !== 'NONE') publishChannel(channel, { source: panelId, ticker: tk });
+  };
+  const cycleChannel = () => { if (!panelId) return; setChannel(c => CHANNEL_CYCLE[(CHANNEL_CYCLE.indexOf(c) + 1) % CHANNEL_CYCLE.length]); };
+  useEffect(() => {
+    if (!panelId || channel === 'NONE') return;
+    return subscribeChannel(channel, (p) => {
+      if (p.source === panelId) return;
+      if (p.ticker) setPanelTicker(p.ticker);
+      if (p.timeframe) setLocalTf(p.timeframe as TimeframeVal);
+    });
+  }, [panelId, channel]);
   // A range button can request a specific bar count for the new timeframe; the reset consumes it.
   const pendingBarsRef = useRef<number | null>(null);
   useEffect(() => {
@@ -314,8 +358,8 @@ export function SlayerChart({ profile, decimals, candles: propCandles, panelId, 
   // Persist chart prefs (type, colors, indicator selection, GEX/disp toggles) so a user's
   // setup survives a reload. Saving the initial (already-stored) values once is harmless.
   useEffect(() => {
-    try { localStorage.setItem('slayerchart.prefs.v1' + keySuffix, JSON.stringify({ chartType, colors, ovOn, paneOn, showGex, showDisp, showHeat, showGrid, showVolume, showWatermark, candleBorders })); } catch { /* storage unavailable */ }
-  }, [chartType, colors, ovOn, paneOn, showGex, showDisp, showHeat, showGrid, showVolume, showWatermark, candleBorders]);
+    try { localStorage.setItem('slayerchart.prefs.v1' + keySuffix, JSON.stringify({ chartType, colors, ovOn, paneOn, showGex, showDisp, showHeat, showGrid, showVolume, showWatermark, candleBorders, ...(panelId ? { ticker: panelTicker, timeframe: localTf, channel, expiry } : {}) })); } catch { /* storage unavailable */ }
+  }, [chartType, colors, ovOn, paneOn, showGex, showDisp, showHeat, showGrid, showVolume, showWatermark, candleBorders, panelId, panelTicker, localTf, channel, expiry]);
 
   // Only enabled indicators are computed, and only when the selection or candles change
   // (NOT on pan/hover) — keeps interaction cheap.
@@ -761,6 +805,11 @@ export function SlayerChart({ profile, decimals, candles: propCandles, panelId, 
         const nextOff = Math.max(-Math.round(viewRef.current.bars * 0.5), Math.min(Math.max(0, n - 10), drag.off + Math.round((e.clientX - drag.x) / barW)));
         if (nextOff !== viewRef.current.off) { setView(v => ({ ...v, off: nextOff })); return; }
       }
+      // Crosshair bridge: broadcast the hovered price (no React state) so the detached Exposure
+      // Ladder can highlight the matching strike in lockstep with the canvas crosshair.
+      if (g && hoverRef.current.x >= g.plotL && hoverRef.current.x <= g.plotR && hoverRef.current.y >= g.priceTop && hoverRef.current.y <= g.priceTop + g.priceAreaH) {
+        broadcastCrosshair(priceAtY(hoverRef.current.y, g), panelId ?? 'main');
+      } else broadcastCrosshair(null, panelId ?? 'main');
       // Cursor hint: scale over the gutter, pointer over a selectable drawing, crosshair otherwise.
       if (!dragRef.current && !priceDragRef.current) {
         const tl = toolRef.current, hx = hoverRef.current.x, hy = hoverRef.current.y;
@@ -770,7 +819,7 @@ export function SlayerChart({ profile, decimals, candles: propCandles, panelId, 
       schedule();
     };
     const onUp = () => { dragRef.current = null; priceDragRef.current = null; measureDragRef.current = false; canvas.style.cursor = 'crosshair'; };
-    const onLeave = () => { hoverRef.current = null; schedule(); };
+    const onLeave = () => { hoverRef.current = null; broadcastCrosshair(null, panelId ?? 'main'); schedule(); };
     // Double-click (cursor mode): price gutter → auto-fit; elsewhere → snap back to the live edge.
     const onDbl = (e: MouseEvent) => { if (toolRef.current !== 'cursor') return; const r = canvas.getBoundingClientRect(), mx = e.clientX - r.left, g = geomRef.current; if (g && mx >= g.plotR) setPriceView(null); else setView({ bars: 110, off: 0 }); };
     const onKey = (e: KeyboardEvent) => {
@@ -826,8 +875,37 @@ export function SlayerChart({ profile, decimals, candles: propCandles, panelId, 
   };
 
   return (
-    <div className="w-full h-full flex flex-col" style={{ width: '100%', height: '100%', display: 'flex', flexDirection: 'column', background: 'var(--bg-base)' }}>
+    <div className="w-full h-full flex flex-col outline-none" tabIndex={panelId ? 0 : undefined}
+      onKeyDown={panelId ? (e) => {
+        const tgt = e.target as HTMLElement;
+        if (tgt && (tgt.tagName === 'INPUT' || tgt.tagName === 'TEXTAREA')) return;
+        // Bonus: a focused panel + a letter keystroke jumps straight into the symbol input.
+        if (!tickerEditing && /^[a-zA-Z]$/.test(e.key)) { setTickerDraft(e.key.toUpperCase()); setTickerEditing(true); }
+      } : undefined}
+      style={{ width: '100%', height: '100%', display: 'flex', flexDirection: 'column', background: 'var(--bg-base)' }}>
       <div className="flex flex-wrap items-center gap-1.5 px-2 py-1.5 border-b border-[var(--border)] shrink-0 relative">
+        {/* ── Command palette (panel mode): symbol input · sync channel · expiry ── */}
+        {panelId && (
+          <>
+            {tickerEditing ? (
+              <input autoFocus value={tickerDraft} onChange={e => setTickerDraft(e.target.value.toUpperCase())}
+                onKeyDown={e => { if (e.key === 'Enter') { commitTicker(tickerDraft); setTickerEditing(false); } else if (e.key === 'Escape') { setTickerEditing(false); } }}
+                onBlur={() => setTickerEditing(false)} placeholder={panelTicker}
+                className="w-16 px-1.5 py-1 rounded text-[11px] font-mono font-black uppercase tracking-wider bg-black/50 border border-[var(--accent-color)] text-[var(--text-primary)] outline-none" />
+            ) : (
+              <button onClick={() => { setTickerDraft(''); setTickerEditing(true); }} title="Click or type to change symbol — Enter submits, Esc cancels" className="px-2 py-1 rounded text-[11px] font-mono font-black uppercase tracking-wider border border-[var(--border)] bg-[var(--surface-2)] text-[var(--text-primary)] hover:border-[var(--border-strong)] transition-colors">{panelTicker}</button>
+            )}
+            <button onClick={cycleChannel} title={`Sync channel: ${channel === 'NONE' ? 'off' : channel} (click to cycle)`} className="flex items-center justify-center w-6 h-6 rounded-sm border border-[var(--border)] bg-[var(--surface-2)] hover:border-[var(--border-strong)] transition-colors shrink-0">
+              <span className="w-2.5 h-2.5 rounded-full transition-all" style={{ background: CHANNEL_COLORS[channel], boxShadow: channel !== 'NONE' ? `0 0 6px ${CHANNEL_COLORS[channel]}` : 'none' }} />
+            </button>
+            <div className="flex items-center rounded-sm overflow-hidden border border-[var(--border)] shrink-0">
+              {(['0DTE', '1DTE+', 'ALL'] as const).map(x => (
+                <button key={x} onClick={() => setExpiry(x)} className={`px-1.5 py-1 text-[9px] font-mono font-black uppercase tracking-wide transition-colors ${expiry === x ? 'text-black' : 'text-[var(--text-tertiary)] opacity-50 hover:opacity-100'}`} style={expiry === x ? { background: 'var(--accent-color)' } : undefined}>{x}</button>
+              ))}
+            </div>
+            <span className="w-px h-4 bg-[var(--border)] mx-0.5" />
+          </>
+        )}
         {/* Chart type */}
         <div className="relative">
           <button onClick={() => setTypeOpen(o => !o)} className="flex items-center gap-1.5 px-2 py-1 rounded text-[10px] font-mono font-bold uppercase tracking-wide border border-[var(--border)] bg-[var(--surface-2)] text-[var(--text-secondary)] hover:border-[var(--border-strong)] transition-colors">
@@ -987,4 +1065,4 @@ export function SlayerChart({ profile, decimals, candles: propCandles, panelId, 
       </div>
     </div>
   );
-}
+});

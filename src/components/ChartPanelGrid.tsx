@@ -87,7 +87,7 @@ export function ChartPanelGrid({ profile, decimals, candles, baseTicker, timefra
               <div key={p.id} style={style}>
                 <div className="w-full h-full flex flex-col border border-[var(--border)] rounded-md overflow-hidden bg-[var(--surface)]">
                   <div onPointerDown={(e) => startInteraction(p.id, 'move', e)} className="flex items-center justify-between px-2 h-6 shrink-0 bg-[var(--surface-2)] border-b border-[var(--border)] cursor-move" style={{ touchAction: 'none' }}>
-                    <span className="text-[10px] font-mono font-black tracking-wider text-[var(--text-primary)]">{p.ticker}<span className="text-[var(--text-tertiary)] ml-1">· drag</span></span>
+                    <span className="text-[9px] font-mono font-black uppercase tracking-[0.25em] text-[var(--text-tertiary)] select-none">⠿ drag</span>
                     <button onClick={() => closePanel(p.id)} onPointerDown={(e) => e.stopPropagation()} title="Close panel" className="text-[var(--text-tertiary)] hover:text-[var(--danger)] transition-colors"><X className="w-3 h-3" /></button>
                   </div>
                   <div className="flex-1 min-h-0 relative">
