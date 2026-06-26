@@ -202,6 +202,13 @@ export function SlayerChart({ profile, decimals, candles: propCandles }: SlayerC
       if (prev && !sameDay(prev.timestamp, c.timestamp)) { const x = xOf(gi); ctx.strokeStyle = 'rgba(255,255,255,0.10)'; ctx.beginPath(); ctx.moveTo(px(x - barW / 2), priceTop); ctx.lineTo(px(x - barW / 2), priceBottom); ctx.stroke(); lastDayTickX = x; }
     }
 
+    // Expected-move ±1σ channel — shade the band between EM+ and EM- (dealer-implied day range).
+    if (profile.spot && profile.expectedMovePct) {
+      const emHi = yP(profile.spot * (1 + profile.expectedMovePct)), emLo = yP(profile.spot * (1 - profile.expectedMovePct));
+      const top = Math.max(priceTop, Math.min(emHi, emLo)), h = Math.min(priceBottom, Math.max(emHi, emLo)) - top;
+      if (h > 0) { ctx.fillStyle = 'rgba(91,156,255,0.05)'; ctx.fillRect(plotL, top, plotW, h); }
+    }
+
     // Volume strip — opacity scales with price velocity (|Δ| vs ATR) so impulse bars read louder.
     let maxVol = 0; for (const c of vis) maxVol = Math.max(maxVol, c.volume || 0);
     const volBase = priceBottom;

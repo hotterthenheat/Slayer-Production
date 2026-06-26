@@ -1,7 +1,8 @@
 import { useMemo, useState } from 'react';
-import { GexProfileData } from '../types';
+import { GexProfileData, OrderFlowData } from '../types';
 import { useContractStore } from '../lib/store';
 import { SlayerChart } from './SlayerChart';
+import { OrderFlow } from './OrderFlow';
 import { Activity, Shield, Zap, Layers, Target, ChevronDown } from 'lucide-react';
 import { ASSET_LIST, TIMEFRAMES } from '../data';
 
@@ -37,6 +38,9 @@ export function LiveTerminalFlow({ profile, ticker, decimals }: LiveTerminalFlow
   const setSelectedTimeframe = useContractStore(s => s.setSelectedTimeframe);
   const [tickerOpen, setTickerOpen] = useState(false);
   const TF = TIMEFRAMES.filter(t => ['1m', '5m', '15m', '30m', '1h', '1D'].includes(t.val));
+  // L2 order flow — present once the depth-of-market stream is connected, else the rail
+  // shows its "awaiting feed" state.
+  const orderFlow = useContractStore(s => (s as { orderFlowData?: OrderFlowData | null }).orderFlowData) ?? null;
 
   const spot = profile.spot || 0;
   const netGex = profile.netGex || 0;
@@ -177,14 +181,22 @@ export function LiveTerminalFlow({ profile, ticker, decimals }: LiveTerminalFlow
         </div>
       </div>
 
-      <div className="flex flex-col lg:flex-row flex-1 h-full w-full overflow-hidden">
-        {/* ── Chart pane ── */}
-        <div className="flex-1 relative flex flex-col border-r border-[var(--border)] min-h-[420px] bg-black">
+      {/* Centered cluster — order-flow rail, chart, and GEX panel stay near screen-centre on
+          ultrawide instead of stretching the dealer telemetry to the far edges. */}
+      <div className="flex-1 w-full overflow-hidden flex justify-center">
+       <div className="flex flex-col xl:flex-row w-full max-w-[2200px] h-full overflow-hidden">
+        {/* ── Left rail: L2 Order Flow ── */}
+        <div className="order-2 xl:order-1 w-full xl:w-[300px] shrink-0 border-r border-[var(--border)] min-h-[340px] xl:min-h-0 bg-black">
+          <OrderFlow data={orderFlow} decimals={decimals} />
+        </div>
+
+        {/* ── Center: chart ── */}
+        <div className="order-1 xl:order-2 flex-1 min-w-0 relative flex flex-col border-r border-[var(--border)] min-h-[420px] bg-black">
           <SlayerChart profile={profile} decimals={decimals} />
         </div>
 
         {/* ── Right column: Dealer GEX panel + ladder ── */}
-        <div className="w-full lg:w-[430px] shrink-0 bg-black flex flex-col overflow-hidden">
+        <div className="order-3 w-full xl:w-[430px] shrink-0 bg-black flex flex-col overflow-hidden">
           <div className="p-3 border-b border-[var(--border)] shrink-0">
             <div className="flex items-center gap-1.5 mb-2.5">
               <Activity className="w-3.5 h-3.5 text-[var(--accent-color)]" />
@@ -308,6 +320,7 @@ export function LiveTerminalFlow({ profile, ticker, decimals }: LiveTerminalFlow
             </div>
           </div>
         </div>
+       </div>
       </div>
     </div>
   );
