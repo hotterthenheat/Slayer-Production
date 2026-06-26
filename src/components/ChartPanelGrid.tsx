@@ -60,7 +60,16 @@ export function ChartPanelGrid({ profile, decimals, candles, baseTicker, timefra
   useEffect(() => () => { window.removeEventListener('pointermove', onPointerMove); window.removeEventListener('pointerup', endInteraction); }, [onPointerMove, endInteraction]);
 
   const addPanel = () => { if (panels.length >= MAX_PANELS) return; const maxY = panels.reduce((m, p) => Math.max(m, p.y + p.h), 0); commit([...panels, makePanel(baseTicker, timeframe, maxY)]); };
-  const closePanel = (id: string) => commit(panels.filter(p => p.id !== id));
+  // Close a panel AND sweep its persisted state so closed panels don't accumulate dead
+  // localStorage keys across reloads: one prefs blob + one drawings blob per ticker it visited.
+  const closePanel = (id: string) => {
+    try {
+      localStorage.removeItem('slayerchart.prefs.v1.' + id);
+      const drawPrefix = 'slayerchart.draw.' + id + '.';
+      for (let i = localStorage.length - 1; i >= 0; i--) { const k = localStorage.key(i); if (k && k.startsWith(drawPrefix)) localStorage.removeItem(k); }
+    } catch { /* storage unavailable */ }
+    commit(panels.filter(p => p.id !== id));
+  };
 
   const maxRow = panels.reduce((m, p) => Math.max(m, p.y + p.h), 0);
   const gridHeight = Math.max(8, maxRow) * (ROW_HEIGHT + GAP) + GAP;

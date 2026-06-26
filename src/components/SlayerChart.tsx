@@ -3,6 +3,7 @@ import { Candle, GexProfileData, TimeframeVal } from '../types';
 import { useContractStore } from '../lib/store';
 import * as TI from '../lib/indicators';
 import { SyncChannel, CHANNEL_CYCLE, CHANNEL_COLORS, subscribeChannel, publishChannel, broadcastCrosshair } from '../lib/chartSync';
+import { fetchHistory } from '../lib/historyCache';
 
 interface SlayerChartProps {
   profile: GexProfileData;
@@ -278,16 +279,15 @@ export const SlayerChart = memo(function SlayerChartImpl({ profile, decimals, ca
   const [fetched, setFetched] = useState<Candle[] | null>(null);
   const tfKey = panelId ? localTf : storeTf;
   const tickKey = panelId ? panelTicker : storeTick;
-  // Per-panel candle data — fetch this panel's ticker/timeframe from the history API; fall back to
-  // the candles handed down so it renders with no backend (preview). Production: real per-symbol data.
+  // Per-panel candle data — backfill this panel's ticker/timeframe via the coalescing history
+  // cache so N panels on the same symbol share ONE request (and a freshly-added panel on an
+  // already-loaded symbol paints instantly). Falls back to the handed-down candles offline/preview.
+  // The shared fetch isn't abortable per-caller, so we just drop a late result after unmount.
   useEffect(() => {
     if (!panelId) return;
-    const ac = new AbortController();
-    fetch(`/api/history?ticker=${encodeURIComponent(panelTicker)}&timeframe=${encodeURIComponent(localTf)}&count=300`, { credentials: 'same-origin', signal: ac.signal })
-      .then(r => (r.ok ? r.json() : null))
-      .then(d => { if (d && Array.isArray(d.candles) && d.candles.length) setFetched(d.candles); })
-      .catch(() => { /* offline / preview → keep the handed-down candles */ });
-    return () => ac.abort();
+    let cancelled = false;
+    fetchHistory(panelTicker, localTf, 300).then(c => { if (!cancelled && c && c.length) setFetched(c); });
+    return () => { cancelled = true; };
   }, [panelId, panelTicker, localTf]);
   const candles = panelId ? (fetched ?? propCandles ?? EMPTY) : (propCandles ?? storeChart ?? EMPTY);
 
@@ -844,6 +844,10 @@ export const SlayerChart = memo(function SlayerChartImpl({ profile, decimals, ca
     if (redrawRafRef.current) return;
     redrawRafRef.current = requestAnimationFrame(() => { redrawRafRef.current = 0; drawRef.current(); });
   }, [candles, overlaySeries, paneSeries, displacements, showGex, showDisp, showHeat, chartType, colors, ha, view, priceView, drawings, tool, selectedId, showGrid, showVolume, showWatermark, candleBorders, profile, decimals, tfKey, tickKey]);
+  // Cancel any frame still queued when the panel unmounts (closing a grid panel mid-redraw):
+  // an unmount-only cleanup, so it never disturbs the per-change coalescing above. Without it a
+  // pending rAF fires on a torn-down panel and calls drawRef on detached refs → crash on churn.
+  useEffect(() => () => { if (redrawRafRef.current) { cancelAnimationFrame(redrawRafRef.current); redrawRafRef.current = 0; } }, []);
 
   // Keep a scrolled-back view anchored to the same bars when a new candle prints (a normal
   // 1–3 bar growth). A wholesale ticker/timeframe switch is handled by the reset effect above.

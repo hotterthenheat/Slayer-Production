@@ -33,7 +33,9 @@ export function subscribeChannel(ch: SyncChannel, cb: SyncCb): () => void {
   let set = buses.get(ch);
   if (!set) { set = new Set(); buses.set(ch, set); }
   set.add(cb);
-  return () => { set!.delete(cb); };
+  // Drop the channel's Set once its last subscriber leaves so closed panels don't leave empty
+  // buckets behind (bounded to A/B/C, but no reason to retain dead entries across panel churn).
+  return () => { set!.delete(cb); if (set!.size === 0) buses.delete(ch); };
 }
 
 /** Publish to every subscriber on a channel. Subscribers ignore their own source. */
