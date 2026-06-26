@@ -1,5 +1,5 @@
-import React, { useEffect, useRef, useMemo } from 'react';
-import { createChart, CandlestickSeries, LineSeries, createSeriesMarkers, createTextWatermark, ColorType } from 'lightweight-charts';
+import React, { useEffect, useRef, useMemo, useState } from 'react';
+import { createChart, CandlestickSeries, LineSeries, HistogramSeries, createSeriesMarkers, createTextWatermark, ColorType, LineStyle } from 'lightweight-charts';
 import { Candle, TargetLevel } from '../types';
 import { useContractStore } from '../lib/store';
 
@@ -17,6 +17,7 @@ interface InteractiveChartProps {
   showLiquiditySweeps?: boolean;
   showDisplacementEvents?: boolean;
   watermarkText?: string;
+  gexLevels?: { callWall?: number; putWall?: number; gammaFlip?: number; magnet?: number };
   onPlaceAuditTrade?: (direction: 'BULLISH' | 'BEARISH', entry: number, target: number, stop: number) => void;
   triggerInvalidation?: boolean;
 }
@@ -35,6 +36,7 @@ export const InteractiveChart = React.memo(function InteractiveChart({
   showLiquiditySweeps = true,
   showDisplacementEvents = true,
   watermarkText,
+  gexLevels,
   onPlaceAuditTrade,
   triggerInvalidation
 }: InteractiveChartProps) {
@@ -44,6 +46,18 @@ export const InteractiveChart = React.memo(function InteractiveChart({
   const markersRef = useRef<any>(null);
   const fvgSeriesRefs = useRef<any[]>([]);
   const tapeSeriesRefs = useRef<any[]>([]);
+  const vwapRef = useRef<any>(null);
+  const bbUpperRef = useRef<any>(null);
+  const bbMidRef = useRef<any>(null);
+  const bbLowerRef = useRef<any>(null);
+  const volumeRef = useRef<any>(null);
+  const gexLinesRef = useRef<any[]>([]);
+
+  // Indicator visibility toggles (VWAP, Bollinger Bands(20), Volume, GEX strike levels).
+  const [showVwap, setShowVwap] = useState(true);
+  const [showBb, setShowBb] = useState(true);
+  const [showVolume, setShowVolume] = useState(true);
+  const [showGex, setShowGex] = useState(true);
 
   const themeMode = useContractStore(s => s.themeMode);
   const isLight = themeMode === 'light';
@@ -61,6 +75,45 @@ export const InteractiveChart = React.memo(function InteractiveChart({
         close: c.close
       };
     }).sort((a, b) => (a.time as number) - (b.time as number));
+  }, [candles]);
+
+  // Indicator series derived from the same candles the price plot uses:
+  //  • VWAP — session-cumulative (resets each calendar day)
+  //  • Bollinger Bands(20, 2σ) over close
+  //  • Volume — tinted by candle direction
+  const { vwapData, bbUpper, bbMid, bbLower, volumeData } = useMemo(() => {
+    const sorted = [...candles].sort((a, b) => a.timestamp - b.timestamp);
+    const vwap: { time: number; value: number }[] = [];
+    const up: { time: number; value: number }[] = [];
+    const mid: { time: number; value: number }[] = [];
+    const low: { time: number; value: number }[] = [];
+    const vol: { time: number; value: number; color: string }[] = [];
+    let cumPV = 0, cumV = 0, dayKey = '';
+    const closes: number[] = [];
+    for (let i = 0; i < sorted.length; i++) {
+      const c = sorted[i];
+      const t = Math.floor(c.timestamp / 1000);
+      // VWAP resets when the calendar day rolls over (standard session VWAP behaviour).
+      const dk = new Date(c.timestamp).toISOString().slice(0, 10);
+      if (dk !== dayKey) { cumPV = 0; cumV = 0; dayKey = dk; }
+      const typical = (c.high + c.low + c.close) / 3;
+      const v = c.volume || 0;
+      cumPV += typical * v; cumV += v;
+      vwap.push({ time: t, value: cumV > 0 ? cumPV / cumV : c.close });
+      // Bollinger Bands over a trailing 20-close window.
+      closes.push(c.close);
+      if (closes.length >= 20) {
+        const win = closes.slice(-20);
+        const m = win.reduce((a, b) => a + b, 0) / 20;
+        const variance = win.reduce((a, b) => a + (b - m) * (b - m), 0) / 20;
+        const sd = Math.sqrt(variance);
+        up.push({ time: t, value: m + 2 * sd });
+        mid.push({ time: t, value: m });
+        low.push({ time: t, value: m - 2 * sd });
+      }
+      vol.push({ time: t, value: v, color: c.close >= c.open ? 'rgba(74, 222, 128, 0.35)' : 'rgba(255, 69, 69, 0.35)' });
+    }
+    return { vwapData: vwap, bbUpper: up, bbMid: mid, bbLower: low, volumeData: vol };
   }, [candles]);
 
   useEffect(() => {
@@ -136,6 +189,29 @@ export const InteractiveChart = React.memo(function InteractiveChart({
     chartRef.current = chart;
     seriesRef.current = candlestickSeries;
 
+    // Volume histogram on its own overlay scale, pinned to the bottom ~18% of the pane.
+    const volumeSeries = chart.addSeries(HistogramSeries, {
+      priceFormat: { type: 'volume' },
+      priceScaleId: 'volume',
+      lastValueVisible: false,
+      priceLineVisible: false,
+    });
+    volumeSeries.priceScale().applyOptions({ scaleMargins: { top: 0.82, bottom: 0 } });
+    volumeRef.current = volumeSeries;
+
+    // Leave headroom on the price scale so candles don't overlap the volume bars.
+    chart.priceScale('right').applyOptions({ scaleMargins: { top: 0.08, bottom: 0.22 } });
+
+    // VWAP (gold) + Bollinger Bands(20) (subtle blue band) overlays on the price scale.
+    const vwapSeries = chart.addSeries(LineSeries, { color: '#f5b300', lineWidth: 2, priceLineVisible: false, lastValueVisible: false, crosshairMarkerVisible: false });
+    vwapRef.current = vwapSeries;
+    const bbUpperSeries = chart.addSeries(LineSeries, { color: 'rgba(99, 160, 255, 0.55)', lineWidth: 1, priceLineVisible: false, lastValueVisible: false, crosshairMarkerVisible: false });
+    const bbMidSeries = chart.addSeries(LineSeries, { color: 'rgba(99, 160, 255, 0.35)', lineWidth: 1, lineStyle: LineStyle.Dashed, priceLineVisible: false, lastValueVisible: false, crosshairMarkerVisible: false });
+    const bbLowerSeries = chart.addSeries(LineSeries, { color: 'rgba(99, 160, 255, 0.55)', lineWidth: 1, priceLineVisible: false, lastValueVisible: false, crosshairMarkerVisible: false });
+    bbUpperRef.current = bbUpperSeries;
+    bbMidRef.current = bbMidSeries;
+    bbLowerRef.current = bbLowerSeries;
+
     // Initialize series markers plugin once
     const seriesMarkers = createSeriesMarkers(candlestickSeries, []);
     markersRef.current = seriesMarkers;
@@ -170,6 +246,12 @@ export const InteractiveChart = React.memo(function InteractiveChart({
       chartRef.current = null;
       seriesRef.current = null;
       markersRef.current = null;
+      vwapRef.current = null;
+      bbUpperRef.current = null;
+      bbMidRef.current = null;
+      bbLowerRef.current = null;
+      volumeRef.current = null;
+      gexLinesRef.current = [];
     };
   }, []);
 
@@ -206,6 +288,51 @@ export const InteractiveChart = React.memo(function InteractiveChart({
       seriesRef.current.setData(chartData);
     }
   }, [chartData]);
+
+  // Push indicator data whenever the candle-derived series change.
+  useEffect(() => { if (vwapRef.current) vwapRef.current.setData(vwapData); }, [vwapData]);
+  useEffect(() => {
+    if (bbUpperRef.current) bbUpperRef.current.setData(bbUpper);
+    if (bbMidRef.current) bbMidRef.current.setData(bbMid);
+    if (bbLowerRef.current) bbLowerRef.current.setData(bbLower);
+  }, [bbUpper, bbMid, bbLower]);
+  useEffect(() => { if (volumeRef.current) volumeRef.current.setData(volumeData); }, [volumeData]);
+
+  // Toggle indicator visibility from the legend chips.
+  useEffect(() => { if (vwapRef.current) vwapRef.current.applyOptions({ visible: showVwap }); }, [showVwap]);
+  useEffect(() => {
+    [bbUpperRef, bbMidRef, bbLowerRef].forEach(r => r.current && r.current.applyOptions({ visible: showBb }));
+  }, [showBb]);
+  useEffect(() => { if (volumeRef.current) volumeRef.current.applyOptions({ visible: showVolume }); }, [showVolume]);
+
+  // GEX strike-level overlays: horizontal price lines for the key gamma strikes, drawn on
+  // the price axis like the dealer levels they represent (call wall, put wall, γ-flip, magnet).
+  useEffect(() => {
+    const series = seriesRef.current;
+    if (!series) return;
+    gexLinesRef.current.forEach(l => { try { series.removePriceLine(l); } catch (e) {} });
+    gexLinesRef.current = [];
+    if (!showGex || !gexLevels) return;
+    const defs = [
+      { price: gexLevels.callWall, color: '#22c55e', title: 'Call Wall' },
+      { price: gexLevels.putWall, color: '#ef4444', title: 'Put Wall' },
+      { price: gexLevels.gammaFlip, color: '#eab308', title: 'γ Flip' },
+      { price: gexLevels.magnet, color: '#a855f7', title: 'Magnet' },
+    ];
+    defs.forEach(d => {
+      if (typeof d.price === 'number' && isFinite(d.price) && d.price > 0) {
+        const line = series.createPriceLine({
+          price: d.price,
+          color: d.color,
+          lineWidth: 1,
+          lineStyle: LineStyle.Dashed,
+          axisLabelVisible: true,
+          title: d.title,
+        });
+        gexLinesRef.current.push(line);
+      }
+    });
+  }, [gexLevels, showGex]);
 
   // Handle markers and overlay updates smoothly
   useEffect(() => {
@@ -383,6 +510,28 @@ export const InteractiveChart = React.memo(function InteractiveChart({
         className="w-full flex-1 min-h-[140px]"
         style={{ minHeight: '140px' }}
       />
+
+      {/* Indicator legend / toggles — click a chip to show/hide that overlay. */}
+      {candles.length > 0 && (
+        <div className="absolute top-1.5 left-1.5 z-10 flex flex-wrap items-center gap-1 select-none">
+          {[
+            { on: showVwap, set: setShowVwap, label: 'VWAP', dot: '#f5b300' },
+            { on: showBb, set: setShowBb, label: 'BB 20', dot: '#63a0ff' },
+            { on: showVolume, set: setShowVolume, label: 'VOL', dot: '#9ca3af' },
+            ...(gexLevels ? [{ on: showGex, set: setShowGex, label: 'GEX', dot: '#a855f7' }] : []),
+          ].map((it, i) => (
+            <button
+              key={i}
+              onClick={() => it.set(v => !v)}
+              className={`flex items-center gap-1 px-1.5 py-0.5 rounded-sm text-[9px] font-mono font-bold uppercase tracking-wide border transition-colors cursor-pointer ${it.on ? 'bg-[var(--surface-2)] border-[var(--border)] text-[var(--text-secondary)]' : 'bg-transparent border-transparent text-[var(--text-tertiary)] opacity-50'}`}
+              title={`Toggle ${it.label}`}
+            >
+              <span className="w-1.5 h-1.5 rounded-full" style={{ background: it.dot, opacity: it.on ? 1 : 0.4 }} />
+              {it.label}
+            </button>
+          ))}
+        </div>
+      )}
 
       {/* Loading skeleton — shown only while no candles have arrived, then removed.
           Absolutely positioned over the canvas so the chart logic is untouched. */}
