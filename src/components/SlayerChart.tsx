@@ -203,6 +203,7 @@ function readTheme() {
     up: g('--success', '#4ADE80'), down: g('--danger', '#F87171'), accent: g('--accent-color', '#FAFAFA'),
     info: g('--info', '#60A5FA'), warning: g('--warning', '#FBBF24'),
     text: g('--text-primary', '#E5E5E5'), dim: g('--text-tertiary', '#A3A3A3'), bgBase: g('--bg-base', '#0A0A0A'),
+    surf: g('--surface-3', '#262626'),
   };
 }
 
@@ -773,15 +774,23 @@ export const SlayerChart = memo(function SlayerChartImpl({ profile, decimals, ca
     if (hv && hv.x >= plotL && hv.x <= plotR) {
       const gi = Math.max(start, Math.min(Math.min(end - 1, n - 1), start + Math.round((hv.x - plotL - barW / 2) / barW)));
       const cx = xOf(gi);
-      ctx.strokeStyle = 'rgba(255,255,255,0.22)'; ctx.setLineDash([3, 3]);
+      ctx.strokeStyle = hexA(T.text, 0.26); ctx.setLineDash([3, 3]);
       ctx.beginPath(); ctx.moveTo(px(cx), priceTop); ctx.lineTo(px(cx), H - xAxisH); ctx.stroke();
       if (hv.y > priceTop && hv.y < H - xAxisH) { ctx.beginPath(); ctx.moveTo(plotL, px(hv.y)); ctx.lineTo(plotR, px(hv.y)); ctx.stroke(); }
       ctx.setLineDash([]);
+      // Theme-aware rounded axis bubbles. The price bubble is bordered up/down vs the last close,
+      // so you instantly see whether the cursor sits above or below current price.
+      const bubble = (bx: number, by: number, bw: number, bh: number, border: string, label: string, align: CanvasTextAlign, tx: number) => {
+        ctx.beginPath(); (ctx as any).roundRect ? (ctx as any).roundRect(bx, by, bw, bh, 3) : ctx.rect(bx, by, bw, bh);
+        ctx.fillStyle = T.surf; ctx.fill(); ctx.strokeStyle = border; ctx.lineWidth = 1; ctx.stroke();
+        ctx.fillStyle = T.text; ctx.textAlign = align; ctx.fillText(label, tx, by + bh / 2);
+      };
       if (hv.y >= priceTop && hv.y <= priceBottom - volBandH) {
         const pr = pOfY(hv.y);
-        ctx.fillStyle = '#252b36'; (ctx as any).roundRect ? (ctx.beginPath(), (ctx as any).roundRect(plotR + 1, hv.y - 8, axisW + gammaW - 1, 16, 3), ctx.fill()) : ctx.fillRect(plotR + 1, hv.y - 8, axisW + gammaW - 1, 16); ctx.fillStyle = '#e5e7eb'; ctx.textAlign = 'left'; ctx.fillText(nf(pr), plotR + 6, hv.y);
+        bubble(plotR + 1, hv.y - 9, axisW + gammaW - 2, 18, hexA(pr >= last ? COL.up : COL.down, 0.9), nf(pr), 'left', plotR + 6);
       }
-      const c = candles[gi]; ctx.fillStyle = '#252b36'; ctx.textAlign = 'center'; const tw = 40; ctx.fillRect(cx - tw / 2, H - xAxisH, tw, xAxisH); ctx.fillStyle = '#e5e7eb'; ctx.fillText(fmtTime(c.timestamp), cx, H - xAxisH + 11);
+      const c = candles[gi]; const tlbl = fmtTime(c.timestamp), tbw = ctx.measureText(tlbl).width + 14;
+      bubble(cx - tbw / 2, H - xAxisH + 1, tbw, xAxisH - 2, hexA(T.accent, 0.55), tlbl, 'center', cx);
       const up = c.close >= c.open, dC = c.close - c.open, dPct = c.open ? (dC / c.open) * 100 : 0;
       const txt = `O ${nf(c.open)}   H ${nf(c.high)}   L ${nf(c.low)}   C ${nf(c.close)}   ${dC >= 0 ? '+' : ''}${dPct.toFixed(2)}%   V ${(c.volume || 0) >= 1e6 ? ((c.volume || 0) / 1e6).toFixed(2) + 'M' : (c.volume || 0).toLocaleString("en-US")}`;
       ctx.font = '11px ui-monospace, monospace'; ctx.textAlign = 'left'; const wTxt = ctx.measureText(txt).width + 14;
