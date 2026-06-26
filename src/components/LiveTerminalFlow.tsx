@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { GexProfileData } from '../types';
 import { useContractStore } from '../lib/store';
-import { InteractiveChart } from './InteractiveChart';
+import { SlayerChart } from './SlayerChart';
 import { Activity, LayoutGrid, Maximize2, Shield, Zap } from 'lucide-react';
 
 interface LiveTerminalFlowProps {
@@ -92,22 +92,10 @@ export function LiveTerminalFlow({ profile, ticker, decimals }: LiveTerminalFlow
           </div>
           
           <div className="w-full h-full min-h-[500px]">
-            {/*
-              Price-action chart placeholder. This pane does not receive a candle
-              stream in props, so it renders a clearly-labeled placeholder rather
-              than a fabricated chart. The live, data-driven panel is the GEX/VOL
-              ladder on the right (fed by the real `profile.strikes`).
-            */}
-            <div className="w-full h-full relative" style={{ backgroundImage: 'radial-gradient(circle at center, rgba(30,30,40,0.5) 0%, transparent 70%)'}}>
-               {/* Terminal Grid Background */}
-               <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI0MCIgaGVpZ2h0PSI0MCI+PHBhdGggZD0iTTAgMGg0MHY0MEgwem0zOSAzOVYxaC0zOHYzOHoiIGZpbGw9Im5vbmUiIHN0cm9rZT0icmdiYSgyNTUsIDI1NSwgMjU1LCAwLjA0KSIvPjwvc3ZnPg==')] opacity-60" />
-
-               <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-                 <Shield className="w-16 h-16 text-[var(--text-tertiary)]/40 mb-4" />
-                 <span className="text-[11px] font-mono font-bold tracking-widest text-[var(--text-tertiary)]">PRICE ACTION OVERLAY</span>
-                 <span className="text-[10px] font-mono text-[var(--text-tertiary)] mt-2">CHART STREAM NOT WIRED TO THIS PANE</span>
-               </div>
-            </div>
+            {/* Custom canvas candle chart (no third-party charting lib): our own candles from
+                the live store stream, tested indicators, and GEX dealer levels aligned to the
+                ladder on the right — with displacement bursts flagged when they hit a level. */}
+            <SlayerChart profile={profile} decimals={decimals} />
           </div>
         </div>
 
