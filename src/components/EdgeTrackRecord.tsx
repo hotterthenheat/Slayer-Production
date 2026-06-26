@@ -72,6 +72,16 @@ export function EdgeTrackRecord({ profile, ticker, candles, provenance }: Props)
     ? { t: 'LIVE', c: 'var(--success)' }
     : { t: 'MODEL', c: 'var(--warning)' };
 
+  // Calibration chip — how reads in the LIVE read's confidence band have ACTUALLY resolved, so the
+  // trader knows whether to trust this confidence number instead of taking it on faith. Verdict:
+  // realized within ±12 of stated = CALIBRATED; well below = OVERCONFIDENT; well above = under.
+  const band = rec.calibration.find(b => b.label === (outlook.confidence < 40 ? '0–40' : outlook.confidence < 60 ? '40–60' : outlook.confidence < 80 ? '60–80' : '80–100'));
+  const calib = band && band.n >= 5 ? (() => {
+    const gap = band.realized - outlook.confidence;
+    if (Math.abs(gap) <= 12) return { t: 'CALIBRATED', c: 'var(--success)' };
+    return gap < 0 ? { t: 'OVERCONF', c: 'var(--danger)' } : { t: 'UNDERCONF', c: 'var(--info)' };
+  })() : null;
+
   return (
     <div className="rounded-lg border border-[var(--border)] bg-[var(--surface)] overflow-hidden">
       <div className="flex items-center gap-2 px-3 h-8 border-b border-[var(--border)]">
@@ -94,6 +104,15 @@ export function EdgeTrackRecord({ profile, ticker, candles, provenance }: Props)
               : <span className="text-[10px] font-mono text-[var(--text-tertiary)]">building sample…</span>}
           </div>
           <div className="text-[9px] font-mono text-[var(--text-tertiary)] mt-0.5">{here ? `n=${here.n} resolved` : 'no prior reads in this regime yet'}</div>
+
+          {/* Calibration of the LIVE read's own confidence: trust the number, or not */}
+          {calib && band && (
+            <div className="mt-2 flex items-center gap-1.5 text-[9px] font-mono tabular-nums" title={`Reads stated at ~${outlook.confidence}% confidence have actually resolved ${Math.round(band.realized)}% of the time (n=${band.n})`}>
+              <span className="px-1 py-0.5 rounded text-[8px] font-black uppercase tracking-wider shrink-0" style={{ color: calib.c, background: `color-mix(in srgb, ${calib.c} 14%, transparent)` }}>{calib.t}</span>
+              <span className="text-[var(--text-secondary)]">{outlook.confidence}%<span className="text-[var(--text-tertiary)]"> stated → </span>{Math.round(band.realized)}%<span className="text-[var(--text-tertiary)]"> real</span></span>
+              <span className="ml-auto text-[var(--text-tertiary)] shrink-0">n{band.n}</span>
+            </div>
+          )}
 
           {/* Overall + calibration */}
           <div className="flex items-center gap-2 mt-2.5 pt-2 border-t border-[var(--border)] text-[9px] font-mono tabular-nums">
