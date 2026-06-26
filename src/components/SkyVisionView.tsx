@@ -1042,6 +1042,12 @@ export function SkyVisionView() {
               showLiquiditySweeps={true}
               showDisplacementEvents={true}
               watermarkText="LIVE CHART"
+              gexLevels={serverState?.deep_intelligence?.dealer_metrics ? {
+                callWall: serverState.deep_intelligence.dealer_metrics.callWall,
+                putWall: serverState.deep_intelligence.dealer_metrics.putWall,
+                gammaFlip: serverState.deep_intelligence.dealer_metrics.flipLevel,
+                magnet: serverState.deep_intelligence.dealer_metrics.magnetStrike,
+              } : undefined}
             />
           </motion.div>
         </div>

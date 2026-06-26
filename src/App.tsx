@@ -25,6 +25,7 @@ import { SubscriptionPricing } from './components/SubscriptionPricing';
 const SkyVisionView = lazy(() => import('./components/SkyVisionView').then(m => ({ default: m.SkyVisionView })));
 const QuantAuditView = lazy(() => import('./components/QuantAuditView').then(m => ({ default: m.QuantAuditView })));
 const DealerFlowView = lazy(() => import('./components/DealerFlowView').then(m => ({ default: m.DealerFlowView })));
+const MultiChartGrid = lazy(() => import('./components/MultiChartGrid').then(m => ({ default: m.MultiChartGrid })));
 const ArborCapital = lazy(() => import('./components/ArborCapital'));
 const SettingsPanel = lazy(() => import('./components/SettingsPanel').then(m => ({ default: m.SettingsPanel })));
 const AdminOverseerPanel = lazy(() => import('./components/AdminOverseerPanel').then(m => ({ default: m.AdminOverseerPanel })));
@@ -372,6 +373,7 @@ export default function App() {
     const navItems = [
       { id: 'nav-home', name: 'Home Workspace', ticker: 'HOME', pnl: 'Workspace', isNav: true, targetTab: 'home' },
       { id: 'nav-skyvision', name: 'SkyVision Cockpit', ticker: 'SKYV', pnl: 'Workspace', isNav: true, targetTab: 'skyvision' },
+      { id: 'nav-multichart', name: 'Multi-Chart Grid', ticker: 'GRID', pnl: 'Workspace', isNav: true, targetTab: 'multichart' },
       { id: 'nav-pinpoint', name: 'Pinpoint GEX', ticker: 'PINP', pnl: 'Workspace', isNav: true, targetTab: 'pinpoint' },
       { id: 'nav-auditor', name: 'Trade History', ticker: 'AUDIT', pnl: 'Workspace', isNav: true, targetTab: 'auditor' },
       { id: 'nav-dealerflow', name: 'Dealer Flow', ticker: 'FLOW', pnl: 'Workspace', isNav: true, targetTab: 'dealerflow' },
@@ -914,6 +916,7 @@ export default function App() {
                 activeTab === 'home' ? 'Home' :
                 activeTab === 'subscription' ? 'Subscriptions' :
                 activeTab === 'skyvision' ? 'SkyVision Cockpit' :
+                activeTab === 'multichart' ? 'Multi-Chart Grid' :
                 activeTab === 'pinpoint' ? 'Pinpoint GEX' :
                 activeTab === 'quant' ? 'Quant Lab' :
                 activeTab === 'auditor' ? 'Trust Registry' :
@@ -977,6 +980,15 @@ export default function App() {
                 <TierGuard requiredTier={3} tabKey="skyvision" planKey="skyvision" planName="SkyVision" planPrice="$499">
                   <SkyVisionView />
                 </TierGuard>
+              </div>
+            )}
+
+            {/* MULTI-CHART GRID — several tickers side by side, GEX overlays per panel.
+                Open at the view level (GEX levels are gated server-side at Tier 2); wrap in
+                a TierGuard here if this should be a paid-only view. */}
+            {activeTab === 'multichart' && (
+              <div className="view-enter h-full">
+                <MultiChartGrid />
               </div>
             )}
 
@@ -1045,7 +1057,7 @@ export default function App() {
             )}
 
             {/* Defensive fallback: an unknown tab (e.g. corrupt persisted value) never blanks the workspace. */}
-            {!['home', 'subscription', 'skyvision', 'pinpoint', 'quant', 'auditor', 'community', 'settings', 'workspace', 'admin'].includes(activeTab) && (
+            {!['home', 'subscription', 'skyvision', 'pinpoint', 'quant', 'auditor', 'community', 'settings', 'workspace', 'admin', 'multichart'].includes(activeTab) && (
               <div className="w-full flex-1 flex flex-col items-center justify-center text-center py-24 px-6 select-none">
                 <div className="text-[var(--text-tertiary)] font-mono text-[11px] uppercase tracking-widest mb-3">View not found</div>
                 <p className="text-[var(--text-secondary)] text-sm max-w-sm mb-6 leading-relaxed">This workspace view isn’t available. Let’s get you back to the home cockpit.</p>
