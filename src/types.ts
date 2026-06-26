@@ -235,6 +235,22 @@ export interface GexProfileData {
   strikes?: GexStrikeDetail[];
 }
 
+// ── Level-2 order-flow (depth-of-market) ──────────────────────────────────────
+// Populated from the L2 feed when connected; the OrderFlow module renders an
+// "awaiting feed" state until then. All sizes are in contracts/shares.
+export interface OrderBookLevel { price: number; bidSize: number; askSize: number; }
+export interface OrderFlowPrint { price: number; buyVol: number; sellVol: number; }
+export interface OrderFlowData {
+  imbalance: number;          // -1 (ask/sell-heavy) … +1 (bid/buy-heavy)
+  bidDepth: number;
+  askDepth: number;
+  cumulativeDelta: number[];  // recent cumulative (buy−sell) series, oldest→newest
+  footprint?: OrderFlowPrint[]; // aggressive buy/sell volume by price (top = highest price)
+  book?: OrderBookLevel[];    // resting depth by price
+  spread?: number;
+  feed?: string;
+}
+
 export interface DealerComponent {
   name: string;
   detail: string;

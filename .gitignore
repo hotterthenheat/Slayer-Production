@@ -3,6 +3,11 @@ build/
 dist/
 coverage/
 .DS_Store
+
+# Local-only preview/scratch entry files (regenerable; never committed)
+_*.tsx
+_*.mjs
+_*.cjs
 *.log
 .env*
 !.env.example
