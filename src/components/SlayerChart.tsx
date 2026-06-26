@@ -49,8 +49,10 @@ export function SlayerChart({ profile, decimals, candles: propCandles }: SlayerC
   const containerRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
-  const [on, setOn] = useState<Record<string, boolean>>({ vwap: true, ema20: true, ema50: false, sma200: false, bb: true, donchian: false, keltner: false, psar: false, supertrend: false, gexmap: true });
-  const [panes, setPanes] = useState<Record<string, boolean>>({ rsi: true, macd: true, stoch: false });
+  // Nothing auto-on except the dealer gamma-map (this is a dealer chart, not a TA chart) —
+  // every technical indicator is opt-in via the toolbar.
+  const [on, setOn] = useState<Record<string, boolean>>({ vwap: false, ema20: false, ema50: false, sma200: false, bb: false, donchian: false, keltner: false, psar: false, supertrend: false, gexmap: true });
+  const [panes, setPanes] = useState<Record<string, boolean>>({ rsi: false, macd: false, stoch: false });
   const [showDisp, setShowDisp] = useState(true);
   const [view, setView] = useState<{ bars: number; off: number }>({ bars: 110, off: 0 });
 
