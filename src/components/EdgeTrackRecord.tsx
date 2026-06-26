@@ -17,7 +17,8 @@ import { computeGexOutlook } from '../lib/terminalRead';
 import { recordRead, resolveReads, getLedger } from '../lib/edgeLedger';
 import { summarize, ScoredRead } from '../lib/edgeTracker';
 import { Candle } from '../types';
-import { Target } from 'lucide-react';
+import { Target, ChevronDown } from 'lucide-react';
+import { CalibrationCurve } from './CalibrationCurve';
 
 interface Props {
   profile: GexProfileData;
@@ -34,6 +35,7 @@ const rateColor = (r: number) => (r >= 60 ? 'var(--success)' : r >= 45 ? 'var(--
 
 export function EdgeTrackRecord({ profile, ticker, candles, provenance }: Props) {
   const [version, setVersion] = useState(0);
+  const [expanded, setExpanded] = useState(false);
   const lastRec = useRef<{ ts: number; regime: string } | null>(null);
 
   const outlook = useMemo(() => computeGexOutlook(profile, candles.slice(-12).map(c => c.close)), [profile, candles]);
@@ -86,8 +88,13 @@ export function EdgeTrackRecord({ profile, ticker, candles, provenance }: Props)
     <div className="rounded-lg border border-[var(--border)] bg-[var(--surface)] overflow-hidden">
       <div className="flex items-center gap-2 px-3 h-8 border-b border-[var(--border)]">
         <Target className="w-3.5 h-3.5" style={{ color: 'var(--accent-color)' }} />
-        <span className="text-[10px] font-black tracking-widest uppercase text-[var(--text-primary)]">Edge · Track Record</span>
+        <span className="text-[10px] font-black tracking-wider uppercase text-[var(--text-primary)] min-w-0 truncate">Edge · Track Record</span>
         <span className="ml-auto px-1.5 py-0.5 rounded text-[8px] font-mono font-black uppercase tracking-widest border" style={{ color: badge.c, borderColor: `color-mix(in srgb, ${badge.c} 40%, transparent)` }} title={provenance === 'model' ? 'Track record on simulated data — not a live record' : 'Track record on live data'}>{badge.t}</span>
+        {scopedN > 0 && (
+          <button onClick={() => setExpanded(e => !e)} className="text-[var(--text-tertiary)] hover:text-[var(--text-primary)] transition-colors shrink-0" title={expanded ? 'Hide calibration curve' : 'Show calibration curve'} aria-label="Toggle calibration curve">
+            <ChevronDown className={`w-3.5 h-3.5 transition-transform ${expanded ? 'rotate-180' : ''}`} />
+          </button>
+        )}
       </div>
 
       {scopedN === 0 ? (
@@ -134,6 +141,20 @@ export function EdgeTrackRecord({ profile, ticker, candles, provenance }: Props)
                   <span className="text-[8px] font-mono tabular-nums w-[44px] text-right" style={{ color: rateColor(b.hitRate) }}>{Math.round(b.hitRate)}% · {b.n}</span>
                 </div>
               ))}
+            </div>
+          )}
+
+          {/* Expanded: the reliability curve — stated confidence vs realized hit-rate */}
+          {expanded && (
+            <div className="mt-2.5 pt-2 border-t border-[var(--border)]">
+              <div className="flex items-center justify-between text-[8px] font-mono uppercase tracking-widest text-[var(--text-tertiary)] mb-1">
+                <span>Calibration · realized ↑ vs stated →</span>
+                <span title="Mean gap between stated confidence and realized hit-rate (lower is better)">err ±{Math.round(rec.calibrationError)}</span>
+              </div>
+              {rec.calibration.length >= 2
+                ? <CalibrationCurve buckets={rec.calibration} />
+                : <div className="py-3 text-[9px] font-mono text-[var(--text-tertiary)]">Need reads across ≥2 confidence bands to plot — {rec.calibration.length} so far.</div>}
+              <div className="text-[8px] font-mono text-[var(--text-tertiary)] mt-1 leading-snug">Dashed = perfect calibration. Dots above = under-claimed; below = over-confident. Size = sample.</div>
             </div>
           )}
         </div>
