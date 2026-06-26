@@ -14,6 +14,7 @@ import {
 import { useContractStore } from '../lib/store';
 import { ASSET_LIST } from '../data';
 import { AssetInfo, SystemScore, V8TradeRecord } from '../types';
+import { fmtNum } from '../lib/format';
 
 interface QuantAuditViewProps {
   selectedAsset: AssetInfo;
@@ -237,7 +238,7 @@ export function QuantAuditView({
           <div className="bg-[var(--surface)] p-2.5 border border-[var(--border)] rounded-lg">
             <span className={`${sectionLabel} block`}>ENTRY</span>
             <span className="text-[var(--text-primary)] font-bold text-[12px] block mt-1 tabular-nums">
-              ${t.entryPrice.toFixed(2)}
+              ${fmtNum(t.entryPrice, 2)}
             </span>
           </div>
           <div className="bg-[var(--surface)] p-2.5 border border-[var(--border)] rounded-lg">
@@ -362,7 +363,7 @@ export function QuantAuditView({
                   )}
                 </div>
                 <span className="text-[var(--text-primary)] font-bold text-[11px] block mt-1.5 tabular-nums">
-                  ${price.toFixed(2)}
+                  ${fmtNum(price, 2)}
                 </span>
                 <span className="text-[10px] text-[var(--text-tertiary)] uppercase font-semibold block mt-0.5">
                   {hit && typeof hitTime === 'number' ? `hit @ ${hitTime}m` : 'pending'}
@@ -383,7 +384,7 @@ export function QuantAuditView({
                 )}
               </div>
               <span className="text-[var(--text-primary)] font-bold text-[11px] block mt-1.5 tabular-nums">
-                ${t.stopLoss.toFixed(2)}
+                ${fmtNum(t.stopLoss, 2)}
               </span>
               <span className="text-[10px] text-[var(--text-tertiary)] uppercase font-semibold block mt-0.5">
                 {state === 'loss' ? 'hit' : isActive ? 'live' : 'held'}

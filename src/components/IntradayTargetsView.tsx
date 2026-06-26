@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { GexProfileData, GexStrikeDetail } from '../types';
+import { fmtNum } from '../lib/format';
 import { 
   Target, 
   Activity, 
@@ -314,7 +315,7 @@ export function IntradayTargetsView({ profile, ticker, decimals }: IntradayTarge
               <Activity className="w-3.5 h-3.5 text-[var(--accent-color)]" /> ACTIVE SPOT:
             </span>
             <span className="text-[12px] font-mono font-black text-[var(--text-primary)] flex items-center gap-1.5 tabular-nums">
-              ${spot.toFixed(decimals)}
+              ${fmtNum(spot, decimals)}
               <span className="w-1.5 h-1.5 bg-[var(--accent-color)] rounded-full" />
             </span>
           </div>
@@ -326,7 +327,7 @@ export function IntradayTargetsView({ profile, ticker, decimals }: IntradayTarge
                 <Sparkles className="w-3.5 h-3.5 text-[var(--warning)]" /> HEAVYWEIGHT:
               </span>
               <span className="text-[11px] font-mono font-black text-[var(--warning)] tabular-nums">
-                ${highestScoreObj.strike.toFixed(decimals)}
+                ${fmtNum(highestScoreObj.strike, decimals)}
               </span>
               <span className="text-[10px] bg-[var(--warning)]/10 text-[var(--warning)] border border-[var(--warning)]/20 px-1 rounded font-black tabular-nums">
                 {highestScoreObj.strikeScore} Score
@@ -481,7 +482,7 @@ export function IntradayTargetsView({ profile, ticker, decimals }: IntradayTarge
                         {score >= 70 && <div className={`absolute left-0 top-0 bottom-0 w-[2px] ${score >= 90 ? 'bg-[var(--danger)]' : 'bg-[var(--warning)]'}`} />}
 
                         <div className="flex flex-col gap-0.5">
-                          <span className="text-sm font-mono font-black text-[var(--text-primary)] tabular-nums">${s.strike.toFixed(decimals)}</span>
+                          <span className="text-sm font-mono font-black text-[var(--text-primary)] tabular-nums">${fmtNum(s.strike, decimals)}</span>
                           <span className="text-[10px] font-mono font-bold text-[var(--text-tertiary)] tabular-nums">[{score}/100]</span>
                         </div>
 
@@ -578,7 +579,7 @@ export function IntradayTargetsView({ profile, ticker, decimals }: IntradayTarge
                           </div>
                         )}
                         <h3 className={`${titleSize} font-mono font-black text-[var(--text-primary)] leading-tight flex items-center gap-1 tabular-nums`}>
-                          ${s.strike.toFixed(decimals)}
+                          ${fmtNum(s.strike, decimals)}
                         </h3>
                         <div className="text-[10px] font-black uppercase tracking-widest text-[var(--text-tertiary)] mt-0.5 flex items-center gap-1 font-mono tabular-nums">
                           <Compass className="w-3 h-3" />

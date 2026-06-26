@@ -30,6 +30,17 @@ export function toFixedSafe(value: number | string | null | undefined, digits = 
 }
 
 /**
+ * Thousands-separated number for prices / strikes / OI / volume / $ amounts.
+ * Use this anywhere a bare integer ≥ 1,000 would otherwise render (e.g. 6850 → 6,850).
+ * NOT for percentages, ratios, years, ids, or small counts.
+ */
+export function fmtNum(value: number | string | null | undefined, decimals = 0): string {
+  const v = typeof value === 'string' ? parseFloat(value) : value ?? 0;
+  if (!isFinite(v as number)) return (0).toLocaleString('en-US', { minimumFractionDigits: decimals, maximumFractionDigits: decimals });
+  return (v as number).toLocaleString('en-US', { minimumFractionDigits: decimals, maximumFractionDigits: decimals });
+}
+
+/**
  * Appends a cache-busting query param so a freshly uploaded avatar isn't served
  * from the browser/S3 cache behind an unchanged URL. Pass a stable `version`
  * (e.g. memoized on the avatar value) to avoid re-fetching on every render.

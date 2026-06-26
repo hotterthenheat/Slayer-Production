@@ -181,6 +181,9 @@ export function SlayerChart({ profile, decimals, candles: propCandles }: SlayerC
       callWall: T.up, putWall: T.down, flip: T.warning, magnet: T.accent, em: T.info,
     };
 
+    // Thousands-separated price formatter for every axis / level / readout label.
+    const nf = (v: number) => v.toLocaleString('en-US', { minimumFractionDigits: decimals, maximumFractionDigits: decimals });
+
     if (candles.length === 0) { ctx.fillStyle = T.dim; ctx.textAlign = 'center'; ctx.fillText('Awaiting candle stream…', W / 2, H / 2); return; }
 
     const axisW = 60, topPad = 6, xAxisH = 22;
@@ -226,7 +229,7 @@ export function SlayerChart({ profile, decimals, candles: propCandles }: SlayerC
     for (let g = Math.ceil(lo / step) * step; g <= hi; g += step) {
       const y = yP(g); if (y < priceTop + 4 || y > priceBottom - 2) continue;
       ctx.strokeStyle = COL.grid; ctx.beginPath(); ctx.moveTo(plotL, px(y) - 0.5); ctx.lineTo(plotR, px(y) - 0.5); ctx.stroke();
-      gridYs.push({ y, label: g.toFixed(decimals) });
+      gridYs.push({ y, label: nf(g) });
     }
 
     let lastDayTickX = -1e9;
@@ -327,7 +330,7 @@ export function SlayerChart({ profile, decimals, candles: propCandles }: SlayerC
       ctx.fillStyle = L.color; ctx.beginPath(); (ctx as any).roundRect?.(gx + 1, L.y - pillH / 2, axisW - 2, pillH, 3); if ((ctx as any).roundRect) ctx.fill(); else ctx.fillRect(gx + 1, L.y - pillH / 2, axisW - 2, pillH);
       ctx.fillStyle = '#06090d'; ctx.textAlign = 'left'; ctx.font = '700 9px ui-monospace, monospace';
       ctx.fillText(L.off ? `${L.dir < 0 ? '↑' : '↓'}${L.label}` : L.label, gx + 4, L.y);
-      if (L.off) { ctx.textAlign = 'right'; ctx.fillText(L.price >= 100 ? L.price.toFixed(0) : L.price.toFixed(decimals), W - 3, L.y); }
+      if (L.off) { ctx.textAlign = 'right'; ctx.fillText(nf(L.price), W - 3, L.y); }
       ctx.font = '11px ui-monospace, monospace';
     }
 
@@ -352,7 +355,7 @@ export function SlayerChart({ profile, decimals, candles: propCandles }: SlayerC
       ctx.strokeStyle = lastUp ? hexA(COL.up, 0.55) : hexA(COL.down, 0.55); ctx.setLineDash([2, 3]); ctx.beginPath(); ctx.moveTo(plotL, px(lastY) - 0.5); ctx.lineTo(plotR, px(lastY) - 0.5); ctx.stroke(); ctx.setLineDash([]);
       ctx.fillStyle = lastUp ? COL.up : COL.down; const tagW = axisW + gammaW - 1;
       (ctx as any).roundRect ? (ctx.beginPath(), (ctx as any).roundRect(plotR + 1, lastY - 8, tagW, 16, 3), ctx.fill()) : ctx.fillRect(plotR + 1, lastY - 8, tagW, 16);
-      ctx.fillStyle = '#06090d'; ctx.textAlign = 'left'; ctx.font = '700 11px ui-monospace, monospace'; ctx.fillText(last.toFixed(decimals), plotR + 6, lastY); ctx.font = '11px ui-monospace, monospace';
+      ctx.fillStyle = '#06090d'; ctx.textAlign = 'left'; ctx.font = '700 11px ui-monospace, monospace'; ctx.fillText(nf(last), plotR + 6, lastY); ctx.font = '11px ui-monospace, monospace';
     }
 
     // ── Sub-panes (registry-driven) ──
@@ -398,11 +401,11 @@ export function SlayerChart({ profile, decimals, candles: propCandles }: SlayerC
       ctx.setLineDash([]);
       if (hv.y >= priceTop && hv.y <= priceBottom - volBandH) {
         const pr = pOfY(hv.y);
-        ctx.fillStyle = '#252b36'; (ctx as any).roundRect ? (ctx.beginPath(), (ctx as any).roundRect(plotR + 1, hv.y - 8, axisW + gammaW - 1, 16, 3), ctx.fill()) : ctx.fillRect(plotR + 1, hv.y - 8, axisW + gammaW - 1, 16); ctx.fillStyle = '#e5e7eb'; ctx.textAlign = 'left'; ctx.fillText(pr.toFixed(decimals), plotR + 6, hv.y);
+        ctx.fillStyle = '#252b36'; (ctx as any).roundRect ? (ctx.beginPath(), (ctx as any).roundRect(plotR + 1, hv.y - 8, axisW + gammaW - 1, 16, 3), ctx.fill()) : ctx.fillRect(plotR + 1, hv.y - 8, axisW + gammaW - 1, 16); ctx.fillStyle = '#e5e7eb'; ctx.textAlign = 'left'; ctx.fillText(nf(pr), plotR + 6, hv.y);
       }
       const c = candles[gi]; ctx.fillStyle = '#252b36'; ctx.textAlign = 'center'; const tw = 40; ctx.fillRect(cx - tw / 2, H - xAxisH, tw, xAxisH); ctx.fillStyle = '#e5e7eb'; ctx.fillText(fmtTime(c.timestamp), cx, H - xAxisH + 11);
       const up = c.close >= c.open, dC = c.close - c.open, dPct = c.open ? (dC / c.open) * 100 : 0;
-      const txt = `O ${c.open.toFixed(decimals)}   H ${c.high.toFixed(decimals)}   L ${c.low.toFixed(decimals)}   C ${c.close.toFixed(decimals)}   ${dC >= 0 ? '+' : ''}${dPct.toFixed(2)}%   V ${(c.volume || 0) >= 1e6 ? ((c.volume || 0) / 1e6).toFixed(2) + 'M' : (c.volume || 0).toFixed(0)}`;
+      const txt = `O ${nf(c.open)}   H ${nf(c.high)}   L ${nf(c.low)}   C ${nf(c.close)}   ${dC >= 0 ? '+' : ''}${dPct.toFixed(2)}%   V ${(c.volume || 0) >= 1e6 ? ((c.volume || 0) / 1e6).toFixed(2) + 'M' : (c.volume || 0).toLocaleString("en-US")}`;
       ctx.font = '11px ui-monospace, monospace'; ctx.textAlign = 'left'; const wTxt = ctx.measureText(txt).width + 14;
       ctx.fillStyle = 'rgba(8,10,14,0.82)'; ctx.fillRect(plotL + 2, priceTop + 2, wTxt, 16); ctx.fillStyle = up ? COL.up : COL.down; ctx.fillText(txt, plotL + 9, priceTop + 10);
     } else {
@@ -410,8 +413,8 @@ export function SlayerChart({ profile, decimals, candles: propCandles }: SlayerC
       const segs: { t: string; c: string }[] = [];
       const dC = n > 1 ? candles[n - 1].close - candles[n - 2].close : 0, dPct = n > 1 && candles[n - 2].close ? (dC / candles[n - 2].close) * 100 : 0;
       segs.push({ t: `${tickKey || ''}${tfKey ? ' · ' + tfKey : ''}`, c: T.text });
-      segs.push({ t: `${last.toFixed(decimals)}  ${dC >= 0 ? '+' : ''}${dPct.toFixed(2)}%`, c: lastUp ? COL.up : COL.down });
-      for (const d of OVERLAY_DEFS) { if (!ovOn[d.key] || !overlaySeries[d.key]) continue; const v = overlaySeries[d.key][0]?.vals[n - 1]; if (v != null) segs.push({ t: `${d.label} ${(v as number).toFixed(decimals)}`, c: overlaySeries[d.key][0].color }); }
+      segs.push({ t: `${nf(last)}  ${dC >= 0 ? '+' : ''}${dPct.toFixed(2)}%`, c: lastUp ? COL.up : COL.down });
+      for (const d of OVERLAY_DEFS) { if (!ovOn[d.key] || !overlaySeries[d.key]) continue; const v = overlaySeries[d.key][0]?.vals[n - 1]; if (v != null) segs.push({ t: `${d.label} ${nf(v as number)}`, c: overlaySeries[d.key][0].color }); }
       let lx = plotL + 8; const ly = priceTop + 11;
       for (const sg of segs) { ctx.fillStyle = sg.c; ctx.fillText(sg.t, lx, ly); lx += ctx.measureText(sg.t).width + 16; }
     }
