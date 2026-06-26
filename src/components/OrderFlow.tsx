@@ -1,8 +1,9 @@
 import { OrderFlowData } from '../types';
 import { Network, Activity, BarChart3 } from 'lucide-react';
 
-// High-contrast, panel-scoped palette (matches the Dealer GEX panel).
-const K = { up: '#2ee68a', down: '#ff5d6c', dim: '#94a0b0' };
+// Theme tokens — follows the active Slayer theme like the rest of the terminal.
+const K = { up: 'var(--success)', down: 'var(--danger)', dim: 'var(--text-tertiary)' };
+const mix = (token: string, pct: number) => `color-mix(in srgb, ${token} ${pct}%, transparent)`;
 const fmtVol = (v: number) => { const a = Math.abs(v); return a >= 1e6 ? (v / 1e6).toFixed(2) + 'M' : a >= 1e3 ? (v / 1e3).toFixed(1) + 'K' : v.toFixed(0); };
 
 /**
@@ -23,12 +24,12 @@ export function OrderFlow({ data, decimals }: { data?: OrderFlowData | null; dec
   const maxFoot = Math.max(...foot.map(f => Math.max(f.buyVol, f.sellVol)), 1);
 
   return (
-    <div className="w-full h-full flex flex-col bg-black overflow-hidden">
+    <div className="w-full h-full flex flex-col overflow-hidden" style={{ background: 'var(--surface)' }}>
       {/* Header */}
-      <div className="flex items-center gap-1.5 px-3 h-12 border-b border-[var(--border)] shrink-0">
+      <div className="flex items-center gap-1.5 px-3 h-9 border-b border-[var(--border)] shrink-0">
         <Network className="w-3.5 h-3.5 text-[var(--accent-color)]" />
-        <span className="text-[11px] font-mono font-black uppercase tracking-[0.2em] text-[var(--text-secondary)]">Order Flow</span>
-        <span className="ml-auto flex items-center gap-1 px-1.5 py-0.5 rounded text-[8.5px] font-mono font-black uppercase tracking-widest border" style={{ borderColor: data ? 'rgba(46,230,138,0.4)' : 'var(--border)', color: data ? K.up : 'var(--text-tertiary)' }}>
+        <span className="text-[10px] font-sans font-black uppercase tracking-[0.2em] text-[var(--text-secondary)]">Order Flow</span>
+        <span className="ml-auto flex items-center gap-1 px-1.5 py-0.5 rounded text-[8.5px] font-mono font-black uppercase tracking-widest border" style={{ borderColor: data ? mix('var(--success)', 40) : 'var(--border)', color: data ? K.up : 'var(--text-tertiary)' }}>
           <span className="w-1.5 h-1.5 rounded-full" style={{ background: data ? K.up : 'var(--text-tertiary)' }} />L2 {data ? (data.feed || 'live') : 'idle'}
         </span>
       </div>
@@ -48,8 +49,8 @@ export function OrderFlow({ data, decimals }: { data?: OrderFlowData | null; dec
               <span className="text-[11px] font-mono font-black tabular-nums" style={{ color: imb >= 0 ? K.up : K.down }}>{imb >= 0 ? '+' : ''}{(imb * 100).toFixed(0)}%</span>
             </div>
             <div className="relative h-3 rounded-sm overflow-hidden flex bg-white/[0.03]">
-              <div className="h-full" style={{ width: `${buyPct}%`, background: 'linear-gradient(90deg, rgba(46,230,138,0.25), rgba(46,230,138,0.7))' }} />
-              <div className="h-full flex-1" style={{ background: 'linear-gradient(90deg, rgba(255,93,108,0.7), rgba(255,93,108,0.25))' }} />
+              <div className="h-full" style={{ width: `${buyPct}%`, background: `linear-gradient(90deg, ${mix('var(--success)', 25)}, ${mix('var(--success)', 70)})` }} />
+              <div className="h-full flex-1" style={{ background: `linear-gradient(90deg, ${mix('var(--danger)', 70)}, ${mix('var(--danger)', 25)})` }} />
               <div className="absolute top-0 bottom-0 w-px bg-white/40" style={{ left: '50%' }} />
             </div>
             <div className="flex items-center justify-between mt-1.5 text-[9px] font-mono font-bold tabular-nums">
@@ -82,9 +83,9 @@ export function OrderFlow({ data, decimals }: { data?: OrderFlowData | null; dec
               const net = f.buyVol - f.sellVol;
               return (
                 <div key={i} className="grid grid-cols-[1fr_58px_1fr] items-center gap-1 px-3 h-[22px] text-[10px] font-mono font-medium tabular-nums hover:bg-white/[0.03]">
-                  <div className="flex justify-end items-center gap-1"><span className="text-[9px]" style={{ color: K.down }}>{fmtVol(f.sellVol)}</span><div className="h-[8px] rounded-sm" style={{ width: `${(f.sellVol / maxFoot) * 100}%`, maxWidth: '100%', background: 'rgba(255,93,108,0.55)' }} /></div>
+                  <div className="flex justify-end items-center gap-1"><span className="text-[9px]" style={{ color: K.down }}>{fmtVol(f.sellVol)}</span><div className="h-[8px] rounded-sm" style={{ width: `${(f.sellVol / maxFoot) * 100}%`, maxWidth: '100%', background: mix('var(--danger)', 55) }} /></div>
                   <div className="text-center font-black tracking-wider" style={{ color: net >= 0 ? K.up : K.down }}>{f.price.toFixed(decimals)}</div>
-                  <div className="flex justify-start items-center gap-1"><div className="h-[8px] rounded-sm" style={{ width: `${(f.buyVol / maxFoot) * 100}%`, maxWidth: '100%', background: 'rgba(46,230,138,0.55)' }} /><span className="text-[9px]" style={{ color: K.up }}>{fmtVol(f.buyVol)}</span></div>
+                  <div className="flex justify-start items-center gap-1"><div className="h-[8px] rounded-sm" style={{ width: `${(f.buyVol / maxFoot) * 100}%`, maxWidth: '100%', background: mix('var(--success)', 55) }} /><span className="text-[9px]" style={{ color: K.up }}>{fmtVol(f.buyVol)}</span></div>
                 </div>
               );
             })}

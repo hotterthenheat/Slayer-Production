@@ -68,11 +68,24 @@ const CHART_TYPES: { k: ChartType; l: string }[] = [
   { k: 'candles', l: 'Candles' }, { k: 'hollow', l: 'Hollow' }, { k: 'bars', l: 'Bars' }, { k: 'line', l: 'Line' }, { k: 'area', l: 'Area' },
 ];
 
-const COL = {
-  up: '#26d07c', down: '#ff4d5e', upVol: 'rgba(38,208,124,0.30)', downVol: 'rgba(255,77,94,0.30)',
-  grid: 'rgba(255,255,255,0.05)', axis: '#7d8694', axisDim: '#565e6b',
-  callWall: '#26d07c', putWall: '#ff4d5e', flip: '#f5c518', magnet: '#b070ff', em: '#5b9cff',
+// Convert a #hex (3/6-digit) to rgba() at the given alpha — lets us tint the live theme tokens.
+const hexA = (hex: string, a: number) => {
+  const h = (hex || '').trim().replace('#', '');
+  if (h.length < 3) return `rgba(255,255,255,${a})`;
+  const n = h.length === 3 ? h.split('').map(c => c + c).join('') : h.slice(0, 6);
+  const v = parseInt(n, 16);
+  return `rgba(${(v >> 16) & 255}, ${(v >> 8) & 255}, ${v & 255}, ${a})`;
 };
+// Read the live Slayer theme tokens so the canvas matches whatever theme is active.
+function readTheme() {
+  const cs = getComputedStyle(document.documentElement);
+  const g = (name: string, fb: string) => { const v = cs.getPropertyValue(name).trim(); return v || fb; };
+  return {
+    up: g('--success', '#4ADE80'), down: g('--danger', '#F87171'), accent: g('--accent-color', '#FAFAFA'),
+    info: g('--info', '#60A5FA'), warning: g('--warning', '#FBBF24'),
+    text: g('--text-primary', '#E5E5E5'), dim: g('--text-tertiary', '#A3A3A3'), bgBase: g('--bg-base', '#0A0A0A'),
+  };
+}
 
 const EMPTY: Candle[] = [];
 const niceStep = (raw: number) => {
@@ -153,9 +166,17 @@ export function SlayerChart({ profile, decimals, candles: propCandles }: SlayerC
     canvas.style.width = W + 'px'; canvas.style.height = H + 'px';
     const ctx = canvas.getContext('2d'); if (!ctx) return;
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0); ctx.clearRect(0, 0, W, H);
-    ctx.font = '11px ui-monospace, monospace'; ctx.textBaseline = 'middle';
+    ctx.font = '11px var(--font-mono, ui-monospace), monospace'; ctx.textBaseline = 'middle';
 
-    if (candles.length === 0) { ctx.fillStyle = '#6b7280'; ctx.textAlign = 'center'; ctx.fillText('Awaiting candle stream…', W / 2, H / 2); return; }
+    // Theme-driven palette — candles / levels / volume / gamma all follow the active theme.
+    const T = readTheme();
+    const COL = {
+      up: T.up, down: T.down, upVol: hexA(T.up, 0.3), downVol: hexA(T.down, 0.3),
+      grid: 'rgba(255,255,255,0.05)', axis: T.dim, axisDim: hexA(T.dim, 0.7),
+      callWall: T.up, putWall: T.down, flip: T.warning, magnet: T.accent, em: T.info,
+    };
+
+    if (candles.length === 0) { ctx.fillStyle = T.dim; ctx.textAlign = 'center'; ctx.fillText('Awaiting candle stream…', W / 2, H / 2); return; }
 
     const axisW = 60, topPad = 6, xAxisH = 22;
     const gammaW = (showGex && profile.strikes && profile.strikes.length) ? 46 : 0;
@@ -214,7 +235,7 @@ export function SlayerChart({ profile, decimals, candles: propCandles }: SlayerC
     if (profile.spot && profile.expectedMovePct) {
       const emHi = yP(profile.spot * (1 + profile.expectedMovePct)), emLo = yP(profile.spot * (1 - profile.expectedMovePct));
       const top = Math.max(priceTop, Math.min(emHi, emLo)), h = Math.min(priceBottom, Math.max(emHi, emLo)) - top;
-      if (h > 0) { ctx.fillStyle = 'rgba(91,156,255,0.05)'; ctx.fillRect(plotL, top, plotW, h); }
+      if (h > 0) { ctx.fillStyle = hexA(COL.em, 0.06); ctx.fillRect(plotL, top, plotW, h); }
     }
 
     // Volume strip — opacity scales with price velocity (|Δ| vs ATR) so impulse bars read louder.
@@ -225,7 +246,7 @@ export function SlayerChart({ profile, decimals, candles: propCandles }: SlayerC
       const gi = start + i, c = vis[i], vh = maxVol ? ((c.volume || 0) / maxVol) * (volBandH - 2) : 0;
       const a = atr[gi], vel = a && a > 0 ? Math.min(1, Math.abs(c.close - c.open) / (1.6 * a)) : 0.4;
       const alpha = 0.2 + vel * 0.45;
-      ctx.fillStyle = (c.close >= c.open ? `rgba(38,208,124,${alpha.toFixed(3)})` : `rgba(255,77,94,${alpha.toFixed(3)})`);
+      ctx.fillStyle = c.close >= c.open ? hexA(COL.up, alpha) : hexA(COL.down, alpha);
       ctx.fillRect(xOf(gi) - barW * 0.34, volBase - vh, barW * 0.68, vh);
     }
 
@@ -238,7 +259,7 @@ export function SlayerChart({ profile, decimals, candles: propCandles }: SlayerC
       if (inView.length > 1) { const span = Math.abs(yP(inView[0].strike) - yP(inView[inView.length - 1].strike)); thick = Math.max(2, Math.min(11, (span / (inView.length - 1)) * 0.82)); }
       for (const r of inView) {
         const y = yP(r.strike), len = Math.max(1, (Math.abs(r.netGex || 0) / maxAbs) * (gammaW - 5)), isWall = r.strike === profile.callWall || r.strike === profile.putWall;
-        ctx.fillStyle = (r.netGex || 0) >= 0 ? (isWall ? 'rgba(38,208,124,0.95)' : 'rgba(38,208,124,0.6)') : (isWall ? 'rgba(255,77,94,0.95)' : 'rgba(255,77,94,0.6)');
+        ctx.fillStyle = (r.netGex || 0) >= 0 ? hexA(COL.up, isWall ? 0.95 : 0.6) : hexA(COL.down, isWall ? 0.95 : 0.6);
         ctx.fillRect(plotR + 2, y - thick / 2, len, thick);
       }
       ctx.fillStyle = COL.axisDim; ctx.textAlign = 'left'; ctx.font = '8px ui-monospace, monospace'; ctx.fillText('γ', plotR + 3, priceTop + 7); ctx.font = '11px ui-monospace, monospace';
@@ -315,15 +336,15 @@ export function SlayerChart({ profile, decimals, candles: propCandles }: SlayerC
     if (showDisp) for (const d of displacements) {
       if (d.i < start || d.i >= end) continue; const c = candles[d.i], x = xOf(d.i);
       const y = d.dir > 0 ? yP(c.low) + 10 : yP(c.high) - 10, z = 4;
-      ctx.fillStyle = d.onLevel ? '#f5c518' : (d.dir > 0 ? COL.up : COL.down);
+      ctx.fillStyle = d.onLevel ? COL.flip : (d.dir > 0 ? COL.up : COL.down);
       ctx.beginPath();
       if (d.dir > 0) { ctx.moveTo(x, y - z); ctx.lineTo(x - z, y + z); ctx.lineTo(x + z, y + z); } else { ctx.moveTo(x, y + z); ctx.lineTo(x - z, y - z); ctx.lineTo(x + z, y - z); }
       ctx.closePath(); ctx.fill();
-      if (d.onLevel) { ctx.strokeStyle = '#f5c518'; ctx.lineWidth = 1.4; ctx.beginPath(); ctx.arc(x, y, 7.5, 0, Math.PI * 2); ctx.stroke(); ctx.lineWidth = 1; }
+      if (d.onLevel) { ctx.strokeStyle = COL.flip; ctx.lineWidth = 1.4; ctx.beginPath(); ctx.arc(x, y, 7.5, 0, Math.PI * 2); ctx.stroke(); ctx.lineWidth = 1; }
     }
 
     if (lastY >= priceTop && lastY <= priceBottom) {
-      ctx.strokeStyle = lastUp ? 'rgba(38,208,124,0.55)' : 'rgba(255,77,94,0.55)'; ctx.setLineDash([2, 3]); ctx.beginPath(); ctx.moveTo(plotL, px(lastY) - 0.5); ctx.lineTo(plotR, px(lastY) - 0.5); ctx.stroke(); ctx.setLineDash([]);
+      ctx.strokeStyle = lastUp ? hexA(COL.up, 0.55) : hexA(COL.down, 0.55); ctx.setLineDash([2, 3]); ctx.beginPath(); ctx.moveTo(plotL, px(lastY) - 0.5); ctx.lineTo(plotR, px(lastY) - 0.5); ctx.stroke(); ctx.setLineDash([]);
       ctx.fillStyle = lastUp ? COL.up : COL.down; const tagW = axisW + gammaW - 1;
       (ctx as any).roundRect ? (ctx.beginPath(), (ctx as any).roundRect(plotR + 1, lastY - 8, tagW, 16, 3), ctx.fill()) : ctx.fillRect(plotR + 1, lastY - 8, tagW, 16);
       ctx.fillStyle = '#06090d'; ctx.textAlign = 'left'; ctx.font = '700 11px ui-monospace, monospace'; ctx.fillText(last.toFixed(decimals), plotR + 6, lastY); ctx.font = '11px ui-monospace, monospace';
@@ -345,14 +366,14 @@ export function SlayerChart({ profile, decimals, candles: propCandles }: SlayerC
       }
       const yS = (v: number) => bot - ((v - plo) / ((phi - plo) || 1)) * h;
       if (data.guides) for (const g of data.guides) { const y = yS(g.v); ctx.strokeStyle = g.strong ? 'rgba(255,255,255,0.06)' : 'rgba(255,255,255,0.09)'; ctx.setLineDash(g.strong ? [] : [3, 3]); ctx.beginPath(); ctx.moveTo(plotL, px(y)); ctx.lineTo(plotR, px(y)); ctx.stroke(); ctx.setLineDash([]); }
-      if (data.hist) { const z = yS(0); for (let i = 0; i < vis.length; i++) { const v = data.hist.vals[start + i]; if (v == null) continue; const x = xOf(start + i), y = yS(v as number); ctx.fillStyle = (v as number) >= 0 ? 'rgba(38,208,124,0.55)' : 'rgba(255,77,94,0.55)'; ctx.fillRect(x - barW * 0.3, Math.min(y, z), barW * 0.6, Math.max(1, Math.abs(y - z))); } }
+      if (data.hist) { const z = yS(0); for (let i = 0; i < vis.length; i++) { const v = data.hist.vals[start + i]; if (v == null) continue; const x = xOf(start + i), y = yS(v as number); ctx.fillStyle = (v as number) >= 0 ? hexA(COL.up, 0.55) : hexA(COL.down, 0.55); ctx.fillRect(x - barW * 0.3, Math.min(y, z), barW * 0.6, Math.max(1, Math.abs(y - z))); } }
       for (const ln of data.lines) {
         ctx.strokeStyle = ln.color; ctx.lineWidth = 1.3; ctx.beginPath(); let stt = false;
         for (let i = 0; i < vis.length; i++) { const val = ln.vals[start + i]; if (val == null) { stt = false; continue; } const x = xOf(start + i), y = yS(val); if (!stt) { ctx.moveTo(x, y); stt = true; } else ctx.lineTo(x, y); }
         ctx.stroke(); ctx.lineWidth = 1;
       }
       const lastV = (data.lines[0]?.vals[n - 1] ?? data.hist?.vals[n - 1]);
-      ctx.fillStyle = '#9ca3af'; ctx.textAlign = 'left'; ctx.font = '700 9px ui-monospace, monospace';
+      ctx.fillStyle = T.dim; ctx.textAlign = 'left'; ctx.font = '700 9px ui-monospace, monospace';
       ctx.fillText(`${data.readout}${lastV != null ? '  ' + fmtOsc(lastV as number) : ''}`, plotL + 4, top + 9);
       ctx.font = '11px ui-monospace, monospace';
     };
@@ -383,7 +404,7 @@ export function SlayerChart({ profile, decimals, candles: propCandles }: SlayerC
       ctx.textAlign = 'left'; ctx.font = '11px ui-monospace, monospace';
       const segs: { t: string; c: string }[] = [];
       const dC = n > 1 ? candles[n - 1].close - candles[n - 2].close : 0, dPct = n > 1 && candles[n - 2].close ? (dC / candles[n - 2].close) * 100 : 0;
-      segs.push({ t: `${tickKey || ''}${tfKey ? ' · ' + tfKey : ''}`, c: '#cbd5e1' });
+      segs.push({ t: `${tickKey || ''}${tfKey ? ' · ' + tfKey : ''}`, c: T.text });
       segs.push({ t: `${last.toFixed(decimals)}  ${dC >= 0 ? '+' : ''}${dPct.toFixed(2)}%`, c: lastUp ? COL.up : COL.down });
       for (const d of OVERLAY_DEFS) { if (!ovOn[d.key] || !overlaySeries[d.key]) continue; const v = overlaySeries[d.key][0]?.vals[n - 1]; if (v != null) segs.push({ t: `${d.label} ${(v as number).toFixed(decimals)}`, c: overlaySeries[d.key][0].color }); }
       let lx = plotL + 8; const ly = priceTop + 11;
@@ -447,7 +468,7 @@ export function SlayerChart({ profile, decimals, candles: propCandles }: SlayerC
   );
 
   return (
-    <div className="w-full h-full flex flex-col bg-black" style={{ width: '100%', height: '100%', display: 'flex', flexDirection: 'column', background: '#000' }}>
+    <div className="w-full h-full flex flex-col" style={{ width: '100%', height: '100%', display: 'flex', flexDirection: 'column', background: 'var(--bg-base)' }}>
       <div className="flex flex-wrap items-center gap-1.5 px-2 py-1.5 border-b border-[var(--border)] shrink-0 relative">
         {/* Chart type */}
         <div className="relative">
