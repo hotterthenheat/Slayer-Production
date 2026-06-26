@@ -80,6 +80,30 @@ export function LiveTerminalFlow({ profile, ticker, decimals }: LiveTerminalFlow
     </div>
   );
 
+  // Gamma pressure — transparent heuristic for how strongly dealer-gamma forces cage price
+  // at spot (regime + proximity to magnet/walls + caged between the walls). Magnitude = force;
+  // colour + label convey direction (green pin vs red instability).
+  const pressure = (() => {
+    let s = longGamma ? 45 : 18;
+    const dMag = Math.abs(dist(profile.magnet) ?? 99);
+    if (dMag < 0.15) s += 25; else if (dMag < 0.4) s += 15; else if (dMag < 0.8) s += 7;
+    if (profile.putWall && profile.callWall && spot >= profile.putWall && spot <= profile.callWall) s += 18;
+    const dWall = Math.min(Math.abs(dist(profile.callWall) ?? 99), Math.abs(dist(profile.putWall) ?? 99));
+    if (dWall < 0.2) s += 12;
+    return Math.max(3, Math.min(100, Math.round(s)));
+  })();
+  const pressureLabel = pressure >= 70 ? (longGamma ? 'Strong Pin' : 'Unstable') : pressure >= 45 ? 'Moderate' : 'Loose';
+
+  const Gauge = ({ value, color }: { value: number; color: string }) => {
+    const r = 26, c = 2 * Math.PI * r, dash = c * 0.75, filled = dash * (Math.max(0, Math.min(100, value)) / 100);
+    return (
+      <svg width="74" height="74" viewBox="0 0 72 72" style={{ transform: 'rotate(135deg)' }}>
+        <circle cx="36" cy="36" r={r} fill="none" stroke="rgba(255,255,255,0.08)" strokeWidth="6" strokeDasharray={`${dash} ${c}`} strokeLinecap="round" />
+        <circle cx="36" cy="36" r={r} fill="none" stroke={color} strokeWidth="6" strokeDasharray={`${filled} ${c}`} strokeLinecap="round" />
+      </svg>
+    );
+  };
+
   return (
     <div className={`w-full flex flex-col h-auto ${isLight ? 'bg-zinc-100 text-zinc-900' : 'bg-black text-[var(--text-secondary)]'}`} style={{ minHeight: '780px' }}>
       {/* ── Header ── */}
@@ -115,15 +139,20 @@ export function LiveTerminalFlow({ profile, ticker, decimals }: LiveTerminalFlow
               <span className="ml-auto text-[9px] font-mono uppercase tracking-widest text-[var(--text-tertiary)]">{profile.feed || 'live'}</span>
             </div>
 
-            {/* Net GEX hero */}
-            <div className="rounded-lg px-3 py-2.5 mb-3 border relative overflow-hidden" style={{ borderColor: longGamma ? 'rgba(34,197,94,0.35)' : 'rgba(239,68,68,0.35)', background: longGamma ? 'linear-gradient(135deg, rgba(34,197,94,0.12), rgba(34,197,94,0.02))' : 'linear-gradient(135deg, rgba(239,68,68,0.12), rgba(239,68,68,0.02))' }}>
-              <div className="flex items-center justify-between">
-                <div>
-                  <div className="text-[9px] font-mono font-bold uppercase tracking-[0.15em] text-[var(--text-tertiary)]">Net Gamma Exposure</div>
-                  <div className="text-[24px] font-black tabular-nums leading-tight" style={{ color: accent }}>{netGex >= 0 ? '+' : '−'}{fmtBig(Math.abs(netGex))}</div>
+            {/* Hero: gamma-pressure gauge + net gamma */}
+            <div className="flex items-center gap-3 rounded-lg px-3 py-3 mb-3 border relative overflow-hidden" style={{ borderColor: longGamma ? 'rgba(34,197,94,0.35)' : 'rgba(239,68,68,0.35)', background: longGamma ? 'linear-gradient(135deg, rgba(34,197,94,0.12), rgba(34,197,94,0.02))' : 'linear-gradient(135deg, rgba(239,68,68,0.12), rgba(239,68,68,0.02))' }}>
+              <div className="relative w-[74px] h-[74px] shrink-0">
+                <Gauge value={pressure} color={accent} />
+                <div className="absolute inset-0 flex flex-col items-center justify-center">
+                  <div className="text-[19px] font-black tabular-nums leading-none" style={{ color: accent }}>{pressure}</div>
+                  <div className="text-[7px] font-mono uppercase tracking-[0.15em] text-[var(--text-tertiary)] mt-0.5">γ force</div>
                 </div>
-                <span className="flex items-center gap-1.5 px-2 py-1 rounded text-[10px] font-mono font-black uppercase tracking-widest" style={{ background: longGamma ? 'rgba(34,197,94,0.14)' : 'rgba(239,68,68,0.14)', color: accent }}>
-                  {longGamma ? <Shield className="w-3 h-3" /> : <Zap className="w-3 h-3 fill-current" />}{longGamma ? 'Long γ' : 'Short γ'}
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="text-[9px] font-mono font-bold uppercase tracking-[0.15em] text-[var(--text-tertiary)]">Net Gamma Exposure</div>
+                <div className="text-[24px] font-black tabular-nums leading-tight" style={{ color: accent }}>{netGex >= 0 ? '+' : '−'}{fmtBig(Math.abs(netGex))}</div>
+                <span className="inline-flex items-center gap-1.5 mt-1 px-2 py-0.5 rounded text-[10px] font-mono font-black uppercase tracking-widest" style={{ background: longGamma ? 'rgba(34,197,94,0.14)' : 'rgba(239,68,68,0.14)', color: accent }}>
+                  {longGamma ? <Shield className="w-3 h-3" /> : <Zap className="w-3 h-3 fill-current" />}{pressureLabel}
                 </span>
               </div>
             </div>
