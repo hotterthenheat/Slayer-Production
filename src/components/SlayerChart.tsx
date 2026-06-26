@@ -458,7 +458,13 @@ export const SlayerChart = memo(function SlayerChartImpl({ profile, decimals, ca
     const maxOff = Math.max(0, n - 10), minOff = -Math.round(bars * 0.5);
     const off = Math.max(minOff, Math.min(maxOff, viewRef.current.off));
     const end = n - off, start = Math.max(0, end - bars);
-    const barW = plotW / bars;
+    // Forward "Dealer Walls" projection (Skylit-style): reserve a few FUTURE slots on the right so
+    // the candles stop short of the axis and the dealer-wall lines extend into that whitespace —
+    // showing where price is heading into the walls. Only when there are walls to project.
+    const hasWalls = !!(profile.callWall || profile.putWall || profile.magnet);
+    const projBars = hasWalls ? Math.max(6, Math.min(22, Math.round(bars * 0.13))) : 0;
+    const barW = plotW / (bars + projBars);
+    const nowX = plotL + bars * barW; // right edge of the candle zone; nowX..plotR is the projection
     const xOf = (gi: number) => plotL + (gi - start) * barW + barW / 2;
     const src = chartType === 'heikin' ? ha : candles;
     const vis = src.slice(start, end);
@@ -716,10 +722,23 @@ export const SlayerChart = memo(function SlayerChartImpl({ profile, decimals, ca
       if (bd > price * 0.0015) return null; // only when the level genuinely sits on a strike
       return Math.round((Math.abs(best.netGex || 0) / totalAbsGex) * 100);
     };
+    // Forward-projection "now" divider + a faint future-zone wash, drawn once.
+    if (projBars) {
+      ctx.fillStyle = hexA(T.text, 0.018); ctx.fillRect(nowX, priceTop, plotR - nowX, priceBottom - priceTop);
+      ctx.strokeStyle = hexA(T.text, 0.16); ctx.setLineDash([2, 4]); ctx.beginPath(); ctx.moveTo(px(nowX), priceTop); ctx.lineTo(px(nowX), priceBottom); ctx.stroke(); ctx.setLineDash([]);
+    }
     for (const L of placed) {
       const name = NAMES[L.label] || L.label, isWall = L.label === 'CW' || L.label === 'PW';
       // level line at the true price — skip walls when the Γ-MAP band already draws them (no double line)
       if (!L.off && !(heatOn && isWall)) { ctx.strokeStyle = L.color; ctx.globalAlpha = 0.5; ctx.setLineDash([5, 4]); ctx.beginPath(); ctx.moveTo(plotL, px(L.rawY) - 0.5); ctx.lineTo(plotR, px(L.rawY) - 0.5); ctx.stroke(); ctx.setLineDash([]); ctx.globalAlpha = 1; }
+      // Forward projection: brighten this wall's segment in the future zone + a soft glow toward the
+      // axis, so the dealer walls visibly extend to where price is heading. (EM± stay plain.)
+      if (!L.off && projBars && L.label !== 'EM+' && L.label !== 'EM-') {
+        const gy = px(L.rawY) - 0.5, grad = ctx.createLinearGradient(nowX, 0, plotR, 0);
+        grad.addColorStop(0, hexA(L.color, 0)); grad.addColorStop(1, hexA(L.color, 0.18));
+        ctx.fillStyle = grad; ctx.fillRect(nowX, px(L.rawY) - 4, plotR - nowX, 8);
+        ctx.strokeStyle = hexA(L.color, 0.92); ctx.lineWidth = 1.6; ctx.beginPath(); ctx.moveTo(nowX, gy); ctx.lineTo(plotR, gy); ctx.stroke(); ctx.lineWidth = 1;
+      }
       // Name + (for walls/magnet) the gamma-concentration %, so you read strength at a glance.
       const pct = (isWall || L.label === 'MAG') ? gexPctAt(L.price) : null;
       const nameLbl = (L.off ? (L.dir < 0 ? '↑ ' : '↓ ') : '') + name, pctLbl = pct != null ? `  ${pct}%` : '';
