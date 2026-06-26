@@ -37,7 +37,7 @@ function Stat({ label, value, tone, big }: { label: string; value: React.ReactNo
   );
 }
 
-export function SkyVisionV2Panel() {
+export function SkyVisionV2Panel({ compact = false }: { compact?: boolean }) {
   const serverState = useContractStore((s) => s.serverState);
   const sv = serverState?.sky_vision as any | undefined;
 
@@ -78,7 +78,7 @@ export function SkyVisionV2Panel() {
       style={{ borderColor: 'rgba(74,222,128,0.22)', borderLeftColor: 'rgba(74,222,128,0.9)', borderLeftWidth: '3px' }}
     >
       {/* Header strip: identity + verdict cluster (mirrors the scanner stat row below) */}
-      <div className="flex flex-wrap items-center justify-between gap-x-2 gap-y-3 px-4 py-3 border-b border-[var(--border)] bg-[var(--surface-2)]">
+      <div className={`${compact ? 'flex flex-col items-stretch' : 'flex flex-wrap items-center justify-between'} gap-x-2 gap-y-3 px-4 py-3 border-b border-[var(--border)] bg-[var(--surface-2)]`}>
         <div className="flex items-center gap-2 shrink-0">
           <Crosshair className="w-4 h-4 text-[var(--success)]" />
           <span className="text-[11px] font-black tracking-widest uppercase text-[var(--text-primary)]">Sky Vision</span>
@@ -96,7 +96,7 @@ export function SkyVisionV2Panel() {
             {isLiveChain ? 'LIVE CHAIN' : 'MODEL'}
           </span>
         </div>
-        <div className="flex items-center divide-x divide-[var(--border)]">
+        <div className={compact ? 'flex flex-wrap items-center gap-x-1 gap-y-1' : 'flex items-center divide-x divide-[var(--border)]'}>
           <Stat
             label="Direction"
             tone={dirTone}
@@ -114,8 +114,8 @@ export function SkyVisionV2Panel() {
         </div>
       </div>
 
-      {/* Body: three balanced columns separated by hairline dividers */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-px bg-[var(--border)]">
+      {/* Body: three balanced columns (stacked in compact/rail mode) separated by hairlines */}
+      <div className={`grid ${compact ? 'grid-cols-1' : 'grid-cols-1 lg:grid-cols-3'} gap-px bg-[var(--border)]`}>
         {/* Strongest contract */}
         <div className="bg-[var(--surface)] p-4 flex flex-col">
           <div className="flex items-center gap-1.5 text-[9px] uppercase tracking-widest text-[var(--text-secondary)] mb-2.5">
@@ -183,8 +183,8 @@ export function SkyVisionV2Panel() {
         </div>
       </div>
 
-      {/* Footer: slim master-score component strip */}
-      <div className="grid grid-cols-4 sm:grid-cols-7 gap-x-4 gap-y-2 px-4 py-2.5 border-t border-[var(--border)] bg-[var(--surface-2)]">
+      {/* Footer: slim master-score component strip (2-up in compact/rail mode) */}
+      <div className={`grid ${compact ? 'grid-cols-2' : 'grid-cols-4 sm:grid-cols-7'} gap-x-4 gap-y-2 px-4 py-2.5 border-t border-[var(--border)] bg-[var(--surface-2)]`}>
         {components.map((c) => {
           const v = master.components?.[c.key] ?? 0;
           return (

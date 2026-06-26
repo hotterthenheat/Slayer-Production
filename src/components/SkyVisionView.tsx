@@ -385,17 +385,23 @@ export function SkyVisionView() {
 
   if (!isExpanded) {
     return (
-      <div className="w-full text-[var(--text-secondary)] flex flex-col font-mono select-none antialiased pt-2 relative">
-        <SkyVisionV2Panel />
-        <DiscoveryView
-          systemScore={serverState?.system_score}
-          discovery={serverState?.discovery}
-          onSelectContract={(asset, strike, isCall) => {
-            setSelectedAsset(asset);
-            setSelectedStrike(strike);
-            setSelectedOptionType(isCall ? 'C' : 'P');
-          }}
-        />
+      <div className="w-full text-[var(--text-secondary)] font-mono select-none antialiased pt-2 relative flex flex-col xl:flex-row xl:items-start gap-4">
+        {/* Main: the opportunity scanner. Sky Vision moves to a sticky side rail (right on wide
+            screens, top on mobile) so its dense intel reads as a vertical card, not a wide strip. */}
+        <div className="flex-1 min-w-0 order-2 xl:order-1">
+          <DiscoveryView
+            systemScore={serverState?.system_score}
+            discovery={serverState?.discovery}
+            onSelectContract={(asset, strike, isCall) => {
+              setSelectedAsset(asset);
+              setSelectedStrike(strike);
+              setSelectedOptionType(isCall ? 'C' : 'P');
+            }}
+          />
+        </div>
+        <aside className="w-full xl:w-[380px] shrink-0 order-1 xl:order-2 xl:sticky xl:top-2 xl:self-start">
+          <SkyVisionV2Panel compact />
+        </aside>
       </div>
     );
   }
