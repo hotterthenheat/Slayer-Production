@@ -2577,6 +2577,57 @@ app.get('/api/history', endpointRateLimit(20, '/api/history'), async (req, res) 
   }
 });
 
+// Multi-chart grid feed: candles + GEX strike levels for several tickers at once so the
+// grid view can render side-by-side panels (each with the same VWAP/BB/volume/GEX overlays
+// as the main chart). Candles are open to any authed user; the GEX levels are Pinpoint-tier
+// (level 2), gated identically to the rest of the dealer analytics. A short per-ticker GEX
+// cache keeps the option-chain build off the hot path when several panels poll together.
+const multiChartGexCache = new Map<string, { ts: number; levels: any }>();
+app.get('/api/multi-chart', endpointRateLimit(40, '/api/multi-chart'), async (req, res) => {
+  const session = await getSessionFromCookies(req.headers.cookie);
+  if (!session || !session.email) return res.status(401).json({ error: 'Unauthorized' });
+  const user = await dbGetUser(session.email.toLowerCase().trim());
+  const canSeeGex = accessTierToLevel(user?.access_tier) >= 2;
+
+  const tf = String(req.query.tf || '5m');
+  const requested = String(req.query.tickers || 'SPX,QQQ,NVDA,IWM')
+    .split(',').map(t => t.trim().toUpperCase()).filter(Boolean).slice(0, 6);
+
+  const charts = await Promise.all(requested.map(async (ticker) => {
+    const asset = ASSET_LIST.find(a => a.ticker === ticker);
+    if (!asset) return null;
+    const candles = db.candles[`${ticker}-${tf}`] || db.candles[`${ticker}-5m`] || [];
+    const liveSpot = db.liveSpotPrices[ticker] || asset.defaultPrice;
+
+    let gexLevels: any = undefined;
+    if (canSeeGex) {
+      const cached = multiChartGexCache.get(ticker);
+      if (cached && Date.now() - cached.ts < 20000) {
+        gexLevels = cached.levels;
+      } else {
+        try {
+          const chainRes = await getUnifiedOptionChain(asset, liveSpot);
+          const contracts = chainRes?.contracts || [];
+          if (contracts.length > 0) {
+            const profile = buildGexProfile(contracts, liveSpot, 1 / 365, 0.05);
+            if (profile) {
+              gexLevels = { callWall: profile.callWall, putWall: profile.putWall, gammaFlip: profile.gammaFlip, magnet: profile.magnet };
+              multiChartGexCache.set(ticker, { ts: Date.now(), levels: gexLevels });
+            }
+          }
+        } catch (e) { /* leave gexLevels undefined — the panel just renders without GEX lines */ }
+      }
+    }
+
+    const last = candles.length ? candles[candles.length - 1].close : liveSpot;
+    const first = candles.length ? candles[0].close : liveSpot;
+    const changePct = first ? ((last - first) / first) * 100 : 0;
+    return { ticker, name: asset.name, decimals: asset.decimals, candles, gexLevels, last, changePct };
+  }));
+
+  res.json({ success: true, tf, charts: charts.filter(Boolean) });
+});
+
 // GET Real-time option GEX-profile and dealer buying pressure gauge
 app.get('/api/dealer-flow', endpointRateLimit(20, '/api/dealer-flow'), async (req, res) => {
   const session = await getSessionFromCookies(req.headers.cookie);
