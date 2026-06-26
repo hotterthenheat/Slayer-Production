@@ -2,6 +2,7 @@ import React, { useEffect } from 'react';
 import { create } from 'zustand';
 import { AssetInfo, Candle, V8TradeRecord, TimeframeVal, ServerStatePayload } from '../types';
 import { ASSET_LIST } from '../data';
+import { validateSsePayload } from './dataIntegrity';
 
 // Make the store import-safe in non-browser contexts (tests, SSR, tooling) where
 // `localStorage` is undefined. The store reads persisted prefs at init, so without
@@ -549,6 +550,15 @@ export const useContractStore = create<ContractStore>((set, get) => ({
     }
     if (currentStrike !== null && payloadStrike !== currentStrike) {
       console.warn(`[SSE Race Condition Guard] Ignored stale payload for strike ${payloadStrike} (active: ${currentStrike})`);
+      return;
+    }
+
+    // 2. Content integrity guard: the race guard only checks WHICH contract this is, never that its
+    // VALUES are sane. Drop frames with a non-positive spot, an out-of-range health, or a malformed
+    // candle so corrupt data can't quietly poison the read — last-good state stays, next frame heals.
+    const integrity = validateSsePayload(payload);
+    if (!integrity.ok) {
+      console.warn(`[SSE Integrity Guard] Dropped frame: ${integrity.reason}`);
       return;
     }
 

@@ -38,6 +38,7 @@ import { pcaResidualZScores } from '../lib/crossAsset';
 import { marketLeader } from '../lib/infoTheory';
 import { computeDisplacementIntelligence, analyzeMarketStructure } from '../lib/displacementEngine';
 import { getLastTradierError } from '../lib/tradierProvider';
+import { sanitizeChain } from '../lib/dataIntegrity';
 import { db, sse } from './state';
 import { updateRedisPresence } from './auth';
 import { dbLoadCalibrationPairs } from '../db';
@@ -284,7 +285,7 @@ function windowChainAroundSpot(chain: ChainContract[], spot: number, perSide = 2
 }
 
 function liveChainToContracts(live: any[], fallbackIv: number, spot?: number, dteDays?: number): ChainContract[] {
-  return live.map((c: any) => {
+  const mapped = live.map((c: any) => {
     const type: 'call' | 'put' = (c.type === 'C' || c.type === 'call') ? 'call' : 'put';
     const strike = c.strike;
     const iv = c.impliedVolatility || c.iv || fallbackIv;
@@ -315,6 +316,11 @@ function liveChainToContracts(live: any[], fallbackIv: number, spot?: number, dt
       volume: c.volume ?? c.vol ?? c.day?.volume ?? 0,
     };
   });
+  // Drop clearly-corrupt provider rows (negative OI, crossed book, NaN / out-of-bounds greeks)
+  // before they aggregate into a GEX wall that never existed. Log the count for ops visibility.
+  const { clean, invalidCount } = sanitizeChain(mapped);
+  if (invalidCount > 0) console.warn(`[Chain Integrity] dropped ${invalidCount}/${mapped.length} invalid contracts from live chain`);
+  return clean;
 }
 
 // Cross-asset analytics are O(n²) (transfer-entropy market leader + PCA residuals).

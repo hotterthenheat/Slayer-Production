@@ -9,6 +9,7 @@ import { SlayerChart } from './SlayerChart';
 import { ChartPanelGrid } from './ChartPanelGrid';
 import { OrderFlow } from './OrderFlow';
 import { CROSSHAIR_EVENT, CrosshairDetail } from '../lib/chartSync';
+import { EdgeTrackRecord } from './EdgeTrackRecord';
 import { Crosshair, Activity, Zap, Layers, ChevronDown, Gauge as GaugeIcon, Radio, TrendingUp, TrendingDown, Minus, Clock } from 'lucide-react';
 import { ASSET_LIST, TIMEFRAMES } from '../data';
 
@@ -415,6 +416,9 @@ export function LiveTerminalFlow({ profile, ticker, decimals }: LiveTerminalFlow
                     </div>
                   )}
                 </div>
+                {/* PROVEN EDGE — the GEX outlook above, scored against what price actually did.
+                    Turns the regime call from an assertion into a measured, falsifiable hit-rate. */}
+                <EdgeTrackRecord profile={profile} ticker={selectedAsset.ticker} candles={candles} provenance={liveFeed ? 'live' : 'model'} />
                 {/* Net gamma hero */}
                 <div className="rounded-lg border px-3 py-2.5 relative overflow-hidden" style={{ borderColor: longGamma ? 'color-mix(in srgb, var(--success) 32%, transparent)' : 'color-mix(in srgb, var(--danger) 32%, transparent)', background: `linear-gradient(135deg, color-mix(in srgb, ${longGamma ? 'var(--success)' : 'var(--danger)'} 9%, transparent), transparent)` }}>
                   <div className="flex items-center gap-1.5 text-[9px] font-black tracking-widest uppercase text-[var(--text-tertiary)]"><GaugeIcon className="w-3 h-3" /> Net Gamma Exposure</div>
