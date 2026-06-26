@@ -68,6 +68,41 @@ const CHART_TYPES: { k: ChartType; l: string }[] = [
   { k: 'candles', l: 'Candles' }, { k: 'hollow', l: 'Hollow' }, { k: 'heikin', l: 'Heikin Ashi' }, { k: 'bars', l: 'Bars' }, { k: 'line', l: 'Line' }, { k: 'area', l: 'Area' }, { k: 'baseline', l: 'Baseline' },
 ];
 
+// ── Drawing tools ──────────────────────────────────────────────────────────────
+type DrawTool = 'cursor' | 'trend' | 'ray' | 'hline' | 'measure';
+type Anchor = { t: number; price: number }; // timestamp + price, so a mark stays glued on pan/zoom
+type Drawing =
+  | { id: string; kind: 'hline'; price: number; color: string }
+  | { id: string; kind: 'trend' | 'ray'; a: Anchor; b: Anchor; color: string };
+const DRAW_COLOR = '#38bdf8';
+const DRAW_TOOLS: { k: Exclude<DrawTool, 'cursor'>; g: string; l: string }[] = [
+  { k: 'trend', g: '╱', l: 'Trend line' }, { k: 'ray', g: '➚', l: 'Ray' }, { k: 'hline', g: '─', l: 'Horizontal line' }, { k: 'measure', g: '⊡', l: 'Measure' },
+];
+const newId = () => 'd' + Math.random().toString(36).slice(2, 9);
+// Fractional bar index for a timestamp (interpolates inside the data, extrapolates at the bar
+// cadence beyond either end) — the inverse, timeOfIdx, lets a screen click resolve to a time.
+function idxOfTime(cs: Candle[], t: number): number {
+  const n = cs.length; if (!n) return 0;
+  const t0 = cs[0].timestamp, tf = n > 1 ? (cs[n - 1].timestamp - t0) / (n - 1) || 6e4 : 6e4;
+  if (t <= t0) return (t - t0) / tf;
+  if (t >= cs[n - 1].timestamp) return (n - 1) + (t - cs[n - 1].timestamp) / tf;
+  let lo = 0, hi = n - 1; while (hi - lo > 1) { const m = (lo + hi) >> 1; if (cs[m].timestamp <= t) lo = m; else hi = m; }
+  return lo + (t - cs[lo].timestamp) / ((cs[hi].timestamp - cs[lo].timestamp) || 1);
+}
+function timeOfIdx(cs: Candle[], idx: number): number {
+  const n = cs.length; if (!n) return 0;
+  const t0 = cs[0].timestamp, tf = n > 1 ? (cs[n - 1].timestamp - t0) / (n - 1) || 6e4 : 6e4;
+  if (idx <= 0) return t0 + idx * tf;
+  if (idx >= n - 1) return cs[n - 1].timestamp + (idx - (n - 1)) * tf;
+  const i = Math.floor(idx); return cs[i].timestamp + (idx - i) * ((cs[i + 1].timestamp - cs[i].timestamp) || tf);
+}
+// Distance from point P to segment AB — for click-to-select hit testing.
+function distToSeg(px2: number, py: number, ax: number, ay: number, bx: number, by: number): number {
+  const dx = bx - ax, dy = by - ay, len2 = dx * dx + dy * dy;
+  let tt = len2 ? ((px2 - ax) * dx + (py - ay) * dy) / len2 : 0; tt = Math.max(0, Math.min(1, tt));
+  const cx = ax + tt * dx, cy = ay + tt * dy; return Math.hypot(px2 - cx, py - cy);
+}
+
 // Convert a #hex (3/6-digit) to rgba() at the given alpha — lets us tint the live theme tokens.
 const hexA = (hex: string, a: number) => {
   const h = (hex || '').trim().replace('#', '');
@@ -131,19 +166,35 @@ export function SlayerChart({ profile, decimals, candles: propCandles }: SlayerC
   // Vertical price scale: null = auto-fit (default). Manual = the user dragged the price axis;
   // `factor` scales the auto range (1 = auto, <1 zoom in, >1 zoom out), `offset` shifts it.
   const [priceView, setPriceView] = useState<{ factor: number; offset: number } | null>(null);
+  // Drawing tools — marks the trader places on the chart (timestamp-anchored, persisted per ticker).
+  const [drawings, setDrawings] = useState<Drawing[]>([]);
+  const [tool, setTool] = useState<DrawTool>('cursor');
+  const [selectedId, setSelectedId] = useState<string | null>(null);
 
   const tfKey = useContractStore(s => s.selectedTimeframe);
   const tickKey = useContractStore(s => s.selectedAsset?.ticker);
   useEffect(() => { setView({ bars: 110, off: 0 }); setPriceView(null); }, [tfKey, tickKey]);
+  // Load this ticker's saved drawings (and reset transient drawing state) on symbol change.
+  useEffect(() => {
+    try { const raw = localStorage.getItem('slayerchart.draw.' + (tickKey || '_')); setDrawings(raw ? JSON.parse(raw) : []); } catch { setDrawings([]); }
+    setSelectedId(null); draftRef.current = null; measureRef.current = null; measureDragRef.current = false;
+  }, [tickKey]);
+  useEffect(() => { try { localStorage.setItem('slayerchart.draw.' + (tickKey || '_'), JSON.stringify(drawings)); } catch { /* storage unavailable */ } }, [drawings, tickKey]);
 
   const hoverRef = useRef<{ x: number; y: number } | null>(null);
   const dragRef = useRef<{ x: number; off: number } | null>(null);
   const priceDragRef = useRef<{ y: number; factor: number; offset: number } | null>(null);
+  const draftRef = useRef<Anchor | null>(null);          // first point of a 2-point drawing
+  const measureRef = useRef<{ a: Anchor; b: Anchor } | null>(null);
+  const measureDragRef = useRef(false);
   const viewRef = useRef(view); viewRef.current = view;
   const priceViewRef = useRef(priceView); priceViewRef.current = priceView;
   const candlesRef = useRef(candles); candlesRef.current = candles;
+  const toolRef = useRef(tool); toolRef.current = tool;
+  const drawingsRef = useRef(drawings); drawingsRef.current = drawings;
+  const selectedRef = useRef(selectedId); selectedRef.current = selectedId;
   const drawRef = useRef<() => void>(() => {});
-  const geomRef = useRef<{ plotL: number; plotR: number; barW: number; start: number; end: number; n: number } | null>(null);
+  const geomRef = useRef<{ plotL: number; plotR: number; barW: number; start: number; end: number; n: number; priceTop: number; priceAreaH: number; lo: number; hi: number } | null>(null);
   const themeRef = useRef<ReturnType<typeof readTheme> | null>(null);
 
   const ohlcv = useMemo<OHLCV>(() => ({ o: candles.map(c => c.open), h: candles.map(c => c.high), l: candles.map(c => c.low), c: candles.map(c => c.close), v: candles.map(c => c.volume) }), [candles]);
@@ -250,7 +301,7 @@ export function SlayerChart({ profile, decimals, candles: propCandles }: SlayerC
     const volBandH = priceH * 0.13, priceAreaH = priceH - volBandH;
     const yP = (p: number) => priceTop + priceAreaH - ((p - lo) / (hi - lo)) * priceAreaH;
     const pOfY = (y: number) => lo + (1 - (y - priceTop) / priceAreaH) * (hi - lo);
-    geomRef.current = { plotL, plotR, barW, start, end, n };
+    geomRef.current = { plotL, plotR, barW, start, end, n, priceTop, priceAreaH, lo, hi };
 
     // faint ticker · timeframe watermark (lower third, dim)
     if (tickKey) {
@@ -356,6 +407,44 @@ export function SlayerChart({ profile, decimals, candles: propCandles }: SlayerC
       ctx.stroke(); ctx.lineWidth = 1;
     };
     for (const key of Object.keys(overlaySeries)) for (const ser of overlaySeries[key]) drawSeries(ser);
+
+    // ── User drawings (trend / ray / hline) + draft preview + measure — timestamp-anchored ──
+    const xOfT = (t: number) => xOf(idxOfTime(candles, t));
+    for (const d of drawingsRef.current) {
+      const sel = d.id === selectedRef.current;
+      ctx.strokeStyle = d.color; ctx.lineWidth = sel ? 2.4 : 1.5; ctx.setLineDash([]);
+      if (d.kind === 'hline') {
+        const y = yP(d.price);
+        ctx.beginPath(); ctx.moveTo(plotL, px(y) - 0.5); ctx.lineTo(plotR, px(y) - 0.5); ctx.stroke();
+        ctx.fillStyle = d.color; const tw = axisW + gammaW - 1;
+        (ctx as any).roundRect ? (ctx.beginPath(), (ctx as any).roundRect(plotR + 1, y - 8, tw, 16, 3), ctx.fill()) : ctx.fillRect(plotR + 1, y - 8, tw, 16);
+        ctx.fillStyle = '#06090d'; ctx.textAlign = 'left'; ctx.font = '700 10px ui-monospace, monospace'; ctx.fillText(nf(d.price), plotR + 6, y); ctx.font = '11px ui-monospace, monospace';
+        if (sel) { ctx.fillStyle = d.color; ctx.beginPath(); ctx.arc(plotL + 7, y, 3.2, 0, Math.PI * 2); ctx.fill(); ctx.beginPath(); ctx.arc(plotR - 7, y, 3.2, 0, Math.PI * 2); ctx.fill(); }
+      } else {
+        const x1 = xOfT(d.a.t), y1 = yP(d.a.price); let x2 = xOfT(d.b.t), y2 = yP(d.b.price);
+        if (d.kind === 'ray') { const dx = x2 - x1; if (Math.abs(dx) > 0.01) { const m = (y2 - y1) / dx, ex = dx >= 0 ? plotR : plotL; y2 = y1 + m * (ex - x1); x2 = ex; } }
+        ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke();
+        if (sel) { ctx.fillStyle = d.color; ctx.beginPath(); ctx.arc(xOfT(d.a.t), yP(d.a.price), 3.4, 0, Math.PI * 2); ctx.fill(); ctx.beginPath(); ctx.arc(xOfT(d.b.t), yP(d.b.price), 3.4, 0, Math.PI * 2); ctx.fill(); }
+      }
+    }
+    ctx.lineWidth = 1;
+    const draft = draftRef.current, hov = hoverRef.current;
+    if (draft && hov && (toolRef.current === 'trend' || toolRef.current === 'ray')) {
+      ctx.strokeStyle = hexA(T.accent, 0.85); ctx.lineWidth = 1.4; ctx.setLineDash([4, 3]);
+      ctx.beginPath(); ctx.moveTo(xOfT(draft.t), yP(draft.price)); ctx.lineTo(hov.x, hov.y); ctx.stroke(); ctx.setLineDash([]); ctx.lineWidth = 1;
+    }
+    const ms = measureRef.current;
+    if (ms) {
+      const x1 = xOfT(ms.a.t), y1 = yP(ms.a.price), x2 = xOfT(ms.b.t), y2 = yP(ms.b.price);
+      const up = ms.b.price >= ms.a.price, mc = up ? COL.up : COL.down;
+      ctx.fillStyle = hexA(mc, 0.12); ctx.fillRect(Math.min(x1, x2), Math.min(y1, y2), Math.abs(x2 - x1), Math.abs(y2 - y1));
+      ctx.strokeStyle = hexA(mc, 0.85); ctx.setLineDash([4, 3]); ctx.strokeRect(Math.min(x1, x2), Math.min(y1, y2), Math.abs(x2 - x1), Math.abs(y2 - y1)); ctx.setLineDash([]);
+      const dP = ms.b.price - ms.a.price, dPct = ms.a.price ? (dP / ms.a.price) * 100 : 0, nb = Math.abs(idxOfTime(candles, ms.b.t) - idxOfTime(candles, ms.a.t));
+      const label = `${dP >= 0 ? '+' : ''}${nf(dP)}  ${dP >= 0 ? '+' : ''}${dPct.toFixed(2)}%  ${nb.toFixed(0)} bars`;
+      ctx.font = '700 10px ui-monospace, monospace'; const lw = ctx.measureText(label).width + 12, lx = (x1 + x2) / 2, ly = Math.min(y1, y2) - 9;
+      ctx.fillStyle = mc; (ctx as any).roundRect ? (ctx.beginPath(), (ctx as any).roundRect(lx - lw / 2, ly - 9, lw, 16, 3), ctx.fill()) : ctx.fillRect(lx - lw / 2, ly - 9, lw, 16);
+      ctx.fillStyle = '#06090d'; ctx.textAlign = 'center'; ctx.fillText(label, lx, ly); ctx.font = '11px ui-monospace, monospace';
+    }
 
     // dealer levels: dashed line + collision-free gutter pills
     const last = candles[n - 1].close, lastUp = candles[n - 1].close >= candles[n - 1].open, lastY = yP(last);
@@ -485,38 +574,77 @@ export function SlayerChart({ profile, decimals, candles: propCandles }: SlayerC
         setView({ bars: next, off: newOff });
       } else setView(v => ({ ...v, bars: next }));
     };
+    type Geom = NonNullable<typeof geomRef.current>;
+    const tAtX = (mx: number, g: Geom) => timeOfIdx(candlesRef.current, g.start + (mx - g.plotL) / g.barW);
+    const priceAtY = (my: number, g: Geom) => g.lo + (1 - (my - g.priceTop) / g.priceAreaH) * (g.hi - g.lo);
+    const hitTest = (mx: number, my: number, g: Geom): string | null => {
+      const yOfP = (p: number) => g.priceTop + g.priceAreaH - ((p - g.lo) / (g.hi - g.lo)) * g.priceAreaH;
+      const xOfT = (t: number) => g.plotL + (idxOfTime(candlesRef.current, t) - g.start) * g.barW + g.barW / 2;
+      let best: string | null = null, bestD = 7;
+      for (const d of drawingsRef.current) {
+        let dist: number;
+        if (d.kind === 'hline') dist = (mx >= g.plotL && mx <= g.plotR) ? Math.abs(my - yOfP(d.price)) : 999;
+        else { const x1 = xOfT(d.a.t), y1 = yOfP(d.a.price); let x2 = xOfT(d.b.t), y2 = yOfP(d.b.price); if (d.kind === 'ray') { const dx = x2 - x1; if (Math.abs(dx) > 0.01) { const m = (y2 - y1) / dx, ex = dx >= 0 ? g.plotR : g.plotL; y2 = y1 + m * (ex - x1); x2 = ex; } } dist = distToSeg(mx, my, x1, y1, x2, y2); }
+        if (dist < bestD) { bestD = dist; best = d.id; }
+      }
+      return best;
+    };
     const onDown = (e: MouseEvent) => {
-      const r = canvas.getBoundingClientRect(), mx = e.clientX - r.left, g = geomRef.current;
-      if (g && mx >= g.plotR) { // right gutter (price axis) → vertical-scale drag
-        const cur = priceViewRef.current; priceDragRef.current = { y: e.clientY, factor: cur?.factor ?? 1, offset: cur?.offset ?? 0 }; canvas.style.cursor = 'ns-resize';
-      } else { dragRef.current = { x: e.clientX, off: viewRef.current.off }; canvas.style.cursor = 'grabbing'; }
+      const r = canvas.getBoundingClientRect(), mx = e.clientX - r.left, my = e.clientY - r.top, g = geomRef.current, tl = toolRef.current;
+      if (!g) return;
+      if (tl === 'cursor') {
+        if (mx >= g.plotR) { const cur = priceViewRef.current; priceDragRef.current = { y: e.clientY, factor: cur?.factor ?? 1, offset: cur?.offset ?? 0 }; canvas.style.cursor = 'ns-resize'; return; }
+        const hit = hitTest(mx, my, g);
+        if (hit) { setSelectedId(hit); schedule(); return; }
+        if (selectedRef.current) setSelectedId(null);
+        dragRef.current = { x: e.clientX, off: viewRef.current.off }; canvas.style.cursor = 'grabbing'; return;
+      }
+      if (mx >= g.plotR) return; // drawing tools act only inside the plot
+      const t = tAtX(mx, g), price = priceAtY(my, g);
+      if (tl === 'hline') { setDrawings(a => [...a, { id: newId(), kind: 'hline', price, color: DRAW_COLOR }]); setTool('cursor'); return; }
+      if (tl === 'measure') { measureRef.current = { a: { t, price }, b: { t, price } }; measureDragRef.current = true; schedule(); return; }
+      if (tl === 'trend' || tl === 'ray') {
+        if (!draftRef.current) { draftRef.current = { t, price }; schedule(); }
+        else { const a = draftRef.current!; setDrawings(arr => [...arr, { id: newId(), kind: tl, a, b: { t, price }, color: DRAW_COLOR }]); draftRef.current = null; setTool('cursor'); }
+      }
     };
     const onMove = (e: MouseEvent) => {
       const r = canvas.getBoundingClientRect(); hoverRef.current = { x: e.clientX - r.left, y: e.clientY - r.top };
+      const g = geomRef.current;
+      if (measureDragRef.current && g && measureRef.current) { measureRef.current.b = { t: tAtX(hoverRef.current.x, g), price: priceAtY(hoverRef.current.y, g) }; schedule(); return; }
       const pd = priceDragRef.current;
       if (pd) { const dy = e.clientY - pd.y; const factor = Math.max(0.2, Math.min(6, pd.factor * Math.exp(dy / 240))); setPriceView({ factor, offset: pd.offset }); return; }
       const drag = dragRef.current;
-      if (drag && geomRef.current) {
-        const n = candlesRef.current.length, barW = geomRef.current.barW;
-        // Clamp the same way the renderer does — allows panning into right-side whitespace.
+      if (drag && g) {
+        const n = candlesRef.current.length, barW = g.barW;
         const nextOff = Math.max(-Math.round(viewRef.current.bars * 0.5), Math.min(Math.max(0, n - 10), drag.off + Math.round((e.clientX - drag.x) / barW)));
         if (nextOff !== viewRef.current.off) { setView(v => ({ ...v, off: nextOff })); return; }
       }
-      // Cursor hint: vertical-scale over the price gutter, crosshair over the plot.
-      if (!dragRef.current && !priceDragRef.current) { const g = geomRef.current; canvas.style.cursor = (g && (e.clientX - r.left) >= g.plotR) ? 'ns-resize' : 'crosshair'; }
+      // Cursor hint: scale over the gutter, pointer over a selectable drawing, crosshair otherwise.
+      if (!dragRef.current && !priceDragRef.current) {
+        const tl = toolRef.current, hx = hoverRef.current.x, hy = hoverRef.current.y;
+        if (tl !== 'cursor') canvas.style.cursor = 'crosshair';
+        else if (g) canvas.style.cursor = hx >= g.plotR ? 'ns-resize' : (hitTest(hx, hy, g) ? 'pointer' : 'crosshair');
+      }
       schedule();
     };
-    const onUp = () => { dragRef.current = null; priceDragRef.current = null; canvas.style.cursor = 'crosshair'; };
+    const onUp = () => { dragRef.current = null; priceDragRef.current = null; measureDragRef.current = false; canvas.style.cursor = 'crosshair'; };
     const onLeave = () => { hoverRef.current = null; schedule(); };
-    // Double-click the price gutter → reset price to auto-fit; elsewhere → snap back to live edge.
-    const onDbl = (e: MouseEvent) => { const r = canvas.getBoundingClientRect(), mx = e.clientX - r.left, g = geomRef.current; if (g && mx >= g.plotR) setPriceView(null); else setView({ bars: 110, off: 0 }); };
+    // Double-click (cursor mode): price gutter → auto-fit; elsewhere → snap back to the live edge.
+    const onDbl = (e: MouseEvent) => { if (toolRef.current !== 'cursor') return; const r = canvas.getBoundingClientRect(), mx = e.clientX - r.left, g = geomRef.current; if (g && mx >= g.plotR) setPriceView(null); else setView({ bars: 110, off: 0 }); };
+    const onKey = (e: KeyboardEvent) => {
+      const tgt = e.target as HTMLElement | null; if (tgt && (tgt.tagName === 'INPUT' || tgt.tagName === 'TEXTAREA')) return;
+      if (e.key === 'Delete' && selectedRef.current) { const id = selectedRef.current; setDrawings(a => a.filter(d => d.id !== id)); setSelectedId(null); }
+      else if (e.key === 'Escape') { draftRef.current = null; measureRef.current = null; measureDragRef.current = false; if (toolRef.current !== 'cursor') setTool('cursor'); if (selectedRef.current) setSelectedId(null); schedule(); }
+    };
     canvas.addEventListener('wheel', onWheel, { passive: false });
     canvas.addEventListener('mousedown', onDown);
     window.addEventListener('mousemove', onMove);
     window.addEventListener('mouseup', onUp);
     canvas.addEventListener('mouseleave', onLeave);
     canvas.addEventListener('dblclick', onDbl);
-    return () => { ro.disconnect(); mo.disconnect(); canvas.removeEventListener('wheel', onWheel); canvas.removeEventListener('mousedown', onDown); window.removeEventListener('mousemove', onMove); window.removeEventListener('mouseup', onUp); canvas.removeEventListener('mouseleave', onLeave); canvas.removeEventListener('dblclick', onDbl); };
+    window.addEventListener('keydown', onKey);
+    return () => { ro.disconnect(); mo.disconnect(); canvas.removeEventListener('wheel', onWheel); canvas.removeEventListener('mousedown', onDown); window.removeEventListener('mousemove', onMove); window.removeEventListener('mouseup', onUp); canvas.removeEventListener('mouseleave', onLeave); canvas.removeEventListener('dblclick', onDbl); window.removeEventListener('keydown', onKey); };
   }, []);
 
   // Data/view-driven repaints are rAF-coalesced and do NOT re-read the theme (the MutationObserver
@@ -525,7 +653,7 @@ export function SlayerChart({ profile, decimals, candles: propCandles }: SlayerC
   useEffect(() => {
     if (redrawRafRef.current) return;
     redrawRafRef.current = requestAnimationFrame(() => { redrawRafRef.current = 0; drawRef.current(); });
-  }, [candles, overlaySeries, paneSeries, displacements, showGex, showDisp, chartType, colors, ha, view, priceView, profile, decimals, tfKey, tickKey]);
+  }, [candles, overlaySeries, paneSeries, displacements, showGex, showDisp, chartType, colors, ha, view, priceView, drawings, tool, selectedId, profile, decimals, tfKey, tickKey]);
 
   // Keep a scrolled-back view anchored to the same bars when a new candle prints (a normal
   // 1–3 bar growth). A wholesale ticker/timeframe switch is handled by the reset effect above.
@@ -548,6 +676,7 @@ export function SlayerChart({ profile, decimals, candles: propCandles }: SlayerC
   const specChip = (active: boolean, label: string, onClick: () => void, tone = 'default') => (
     <button onClick={onClick} className={`flex items-center gap-1 px-1.5 py-0.5 rounded-sm text-[10px] font-mono font-bold uppercase tracking-wide border transition-colors ${active ? (tone === 'warn' ? 'bg-[var(--warning)]/15 border-[var(--warning)]/40 text-[var(--warning)]' : 'bg-[var(--surface-2)] border-[var(--border)] text-[var(--text-secondary)]') : 'bg-transparent border-transparent text-[var(--text-tertiary)] opacity-50'}`}>{label}</button>
   );
+  const pickTool = (k: DrawTool) => { setTool(t => (t === k ? 'cursor' : k)); draftRef.current = null; measureRef.current = null; measureDragRef.current = false; };
 
   return (
     <div className="w-full h-full flex flex-col" style={{ width: '100%', height: '100%', display: 'flex', flexDirection: 'column', background: 'var(--bg-base)' }}>
@@ -619,6 +748,16 @@ export function SlayerChart({ profile, decimals, candles: propCandles }: SlayerC
               </div>
             </>
           )}
+        </div>
+
+        <span className="w-px h-4 bg-[var(--border)] mx-0.5" />
+        {/* Drawing tools — trend / ray / horizontal line / measure (timestamp-anchored, persisted per ticker) */}
+        <div className="flex items-center gap-1">
+          {DRAW_TOOLS.map(d => (
+            <button key={d.k} onClick={() => pickTool(d.k)} title={d.l} className={`flex items-center justify-center w-6 h-6 rounded-sm text-[12px] leading-none border transition-colors ${tool === d.k ? 'border-[var(--accent-color)] text-black' : 'border-[var(--border)] bg-[var(--surface-2)] text-[var(--text-secondary)] hover:border-[var(--border-strong)]'}`} style={tool === d.k ? { background: 'var(--accent-color)' } : undefined}>{d.g}</button>
+          ))}
+          {selectedId && <button onClick={() => { const id = selectedId; setDrawings(a => a.filter(x => x.id !== id)); setSelectedId(null); }} title="Delete selected (Del)" className="flex items-center justify-center w-6 h-6 rounded-sm text-[11px] border border-[var(--danger)]/40 bg-[var(--danger)]/10 text-[var(--danger)] hover:bg-[var(--danger)]/20 transition-colors">✕</button>}
+          {drawings.length > 0 && <button onClick={() => { setDrawings([]); setSelectedId(null); }} title="Clear all drawings" className="flex items-center justify-center w-6 h-6 rounded-sm text-[11px] border border-[var(--border)] bg-[var(--surface-2)] text-[var(--text-tertiary)] hover:text-[var(--danger)] hover:border-[var(--danger)]/40 transition-colors">🗑</button>}
         </div>
 
         <span className="w-px h-4 bg-[var(--border)] mx-0.5" />
