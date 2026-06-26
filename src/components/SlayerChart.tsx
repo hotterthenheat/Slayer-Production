@@ -467,22 +467,33 @@ export const SlayerChart = memo(function SlayerChartImpl({ profile, decimals, ca
     for (const c of vis) { lo = Math.min(lo, c.low); hi = Math.max(hi, c.high); }
     if (!isFinite(lo) || !isFinite(hi)) return;
     const cRange = (hi - lo) || (hi || 1) * 0.01;
-    const capLo = lo - cRange * 0.85, capHi = hi + cRange * 0.85;
+    // Keep the candles dominant: only pull a dealer level into the auto-scale if it sits within
+    // ~30% of the candle range beyond the price action. Farther levels (e.g. EM±, a distant wall)
+    // stay off-screen and are surfaced by their ↑/↓ tags — otherwise they squash price into a thin
+    // band of whitespace. (Manual price-scale drag/scroll still overrides this.)
+    const capLo = lo - cRange * 0.30, capHi = hi + cRange * 0.30;
     const levelPrices = [profile.spot, profile.callWall, profile.putWall, profile.gammaFlip, profile.magnet];
     if (profile.spot && profile.expectedMovePct) levelPrices.push(profile.spot * (1 + profile.expectedMovePct), profile.spot * (1 - profile.expectedMovePct));
     for (const p of levelPrices) { if (typeof p === 'number' && p > 0 && p >= capLo && p <= capHi) { lo = Math.min(lo, p); hi = Math.max(hi, p); } }
-    const pad = ((hi - lo) || 1) * 0.08; lo -= pad; hi += pad;
+    const pad = ((hi - lo) || 1) * 0.07; lo -= pad; hi += pad;
     // Manual vertical scale (drag the price axis): scale the auto range about its center + shift.
     const pv = priceViewRef.current;
     if (pv) { const center = (lo + hi) / 2, half = Math.max(1e-6, ((hi - lo) / 2) * pv.factor); lo = center - half + pv.offset; hi = center + half + pv.offset; }
-    // Glide the displayed range toward the target (lo/hi) each frame; re-schedule until it settles.
+    // Glide the displayed range toward the target each frame, but SNAP (no animation) on a big jump
+    // — a ticker/timeframe switch to a totally different price band — and on tiny per-tick noise, so
+    // a live feed doesn't visibly "breathe". Only meaningful changes (zoom/scale/reset) ease.
     const disp = dispRangeRef.current;
     if (!disp) { dispRangeRef.current = { lo, hi }; }
     else {
-      const span = (hi - lo) || 1, k = 0.3;
-      disp.lo += (lo - disp.lo) * k; disp.hi += (hi - disp.hi) * k;
-      if (Math.abs(disp.lo - lo) + Math.abs(disp.hi - hi) < span * 0.0015) { disp.lo = lo; disp.hi = hi; }
-      else scheduleRef.current();
+      const span = (hi - lo) || 1, diff = Math.abs(disp.lo - lo) + Math.abs(disp.hi - hi);
+      const bigJump = Math.abs((lo + hi) / 2 - (disp.lo + disp.hi) / 2) > Math.max(hi - lo, disp.hi - disp.lo) * 0.6;
+      if (bigJump || diff < span * 0.02) { disp.lo = lo; disp.hi = hi; }
+      else {
+        const k = 0.32;
+        disp.lo += (lo - disp.lo) * k; disp.hi += (hi - disp.hi) * k;
+        if (Math.abs(disp.lo - lo) + Math.abs(disp.hi - hi) < span * 0.003) { disp.lo = lo; disp.hi = hi; }
+        else scheduleRef.current();
+      }
       lo = disp.lo; hi = disp.hi;
     }
     const volBandH = showVolume ? priceH * 0.13 : 0, priceAreaH = priceH - volBandH;
