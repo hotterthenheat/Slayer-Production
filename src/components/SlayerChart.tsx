@@ -133,6 +133,7 @@ export function SlayerChart({ profile, decimals, candles: propCandles }: SlayerC
   const candlesRef = useRef(candles); candlesRef.current = candles;
   const drawRef = useRef<() => void>(() => {});
   const geomRef = useRef<{ plotL: number; plotR: number; barW: number; start: number; end: number; n: number } | null>(null);
+  const themeRef = useRef<ReturnType<typeof readTheme> | null>(null);
 
   const ohlcv = useMemo<OHLCV>(() => ({ o: candles.map(c => c.open), h: candles.map(c => c.high), l: candles.map(c => c.low), c: candles.map(c => c.close), v: candles.map(c => c.volume) }), [candles]);
   const atr = useMemo(() => TI.atr(ohlcv.h, ohlcv.l, ohlcv.c, 14), [ohlcv]);
@@ -162,14 +163,17 @@ export function SlayerChart({ profile, decimals, candles: propCandles }: SlayerC
     const dpr = window.devicePixelRatio || 1;
     const W = container.clientWidth, H = container.clientHeight;
     if (W <= 0 || H <= 0) return;
-    canvas.width = Math.floor(W * dpr); canvas.height = Math.floor(H * dpr);
-    canvas.style.width = W + 'px'; canvas.style.height = H + 'px';
+    // Only resize the backing store when it actually changes — reassigning width/height
+    // reallocates the GPU surface and resets the context, which is ruinous on every
+    // hover/pan frame at high DPR.
+    const nw = Math.floor(W * dpr), nh = Math.floor(H * dpr);
+    if (canvas.width !== nw || canvas.height !== nh) { canvas.width = nw; canvas.height = nh; canvas.style.width = W + 'px'; canvas.style.height = H + 'px'; }
     const ctx = canvas.getContext('2d'); if (!ctx) return;
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0); ctx.clearRect(0, 0, W, H);
     ctx.font = '11px var(--font-mono, ui-monospace), monospace'; ctx.textBaseline = 'middle';
 
-    // Theme-driven palette — candles / levels / volume / gamma all follow the active theme.
-    const T = readTheme();
+    // Theme-driven palette, cached — getComputedStyle is too costly to run per frame.
+    const T = themeRef.current || (themeRef.current = readTheme());
     const COL = {
       up: T.up, down: T.down, upVol: hexA(T.up, 0.3), downVol: hexA(T.down, 0.3),
       grid: 'rgba(255,255,255,0.05)', axis: T.dim, axisDim: hexA(T.dim, 0.7),
@@ -416,8 +420,12 @@ export function SlayerChart({ profile, decimals, candles: propCandles }: SlayerC
     const canvas = canvasRef.current, container = containerRef.current; if (!canvas || !container) return;
     let rafPending = false;
     const schedule = () => { if (rafPending) return; rafPending = true; requestAnimationFrame(() => { rafPending = false; drawRef.current(); }); };
+    themeRef.current = readTheme();
     drawRef.current();
     const ro = new ResizeObserver(() => schedule()); ro.observe(container);
+    // Re-read theme tokens only when the theme actually changes, then repaint.
+    const mo = new MutationObserver(() => { themeRef.current = readTheme(); schedule(); });
+    mo.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme', 'class', 'style'] });
 
     const onWheel = (e: WheelEvent) => {
       e.preventDefault();
@@ -449,10 +457,10 @@ export function SlayerChart({ profile, decimals, candles: propCandles }: SlayerC
     window.addEventListener('mousemove', onMove);
     window.addEventListener('mouseup', onUp);
     canvas.addEventListener('mouseleave', onLeave);
-    return () => { ro.disconnect(); canvas.removeEventListener('wheel', onWheel); canvas.removeEventListener('mousedown', onDown); window.removeEventListener('mousemove', onMove); window.removeEventListener('mouseup', onUp); canvas.removeEventListener('mouseleave', onLeave); };
+    return () => { ro.disconnect(); mo.disconnect(); canvas.removeEventListener('wheel', onWheel); canvas.removeEventListener('mousedown', onDown); window.removeEventListener('mousemove', onMove); window.removeEventListener('mouseup', onUp); canvas.removeEventListener('mouseleave', onLeave); };
   }, []);
 
-  useEffect(() => { drawRef.current(); }, [candles, overlaySeries, paneSeries, displacements, showGex, showDisp, chartType, view, profile, decimals, tfKey, tickKey]);
+  useEffect(() => { themeRef.current = readTheme(); drawRef.current(); }, [candles, overlaySeries, paneSeries, displacements, showGex, showDisp, chartType, view, profile, decimals, tfKey, tickKey]);
 
   const activeCount = Object.values(ovOn).filter(Boolean).length + Object.values(paneOn).filter(Boolean).length;
   const q = query.trim().toLowerCase();

@@ -13,14 +13,17 @@ const fmtVol = (v: number) => { const a = Math.abs(v); return a >= 1e6 ? (v / 1e
  * a pure data hand-off (no layout work).
  */
 export function OrderFlow({ data, decimals }: { data?: OrderFlowData | null; decimals: number }) {
-  const imb = data ? Math.max(-1, Math.min(1, data.imbalance)) : 0;
+  // Coerce every numeric off a possibly-partial L2 frame — a bad tick must never render
+  // NaN% bars or a silently-wrong "Balanced" state.
+  const num = (x: unknown) => (Number.isFinite(Number(x)) ? Number(x) : 0);
+  const imb = data ? Math.max(-1, Math.min(1, num(data.imbalance))) : 0;
   const buyPct = ((imb + 1) / 2) * 100;
-  const cd = data?.cumulativeDelta || [];
+  const cd = (data?.cumulativeDelta || []).map(num);
   const cdLast = cd.length ? cd[cd.length - 1] : 0;
   const cdMin = cd.length ? Math.min(...cd) : 0, cdMax = cd.length ? Math.max(...cd) : 1;
   const cdRange = (cdMax - cdMin) || 1;
   const cdPath = cd.map((v, i) => `${(i / Math.max(1, cd.length - 1)) * 100},${30 - ((v - cdMin) / cdRange) * 28 - 1}`).join(' ');
-  const foot = data?.footprint || [];
+  const foot = (data?.footprint || []).map(f => ({ price: num(f.price), buyVol: num(f.buyVol), sellVol: num(f.sellVol) }));
   const maxFoot = Math.max(...foot.map(f => Math.max(f.buyVol, f.sellVol)), 1);
 
   return (
@@ -54,9 +57,9 @@ export function OrderFlow({ data, decimals }: { data?: OrderFlowData | null; dec
               <div className="absolute top-0 bottom-0 w-px bg-white/40" style={{ left: '50%' }} />
             </div>
             <div className="flex items-center justify-between mt-1.5 text-[9px] font-mono font-bold tabular-nums">
-              <span style={{ color: K.up }}>BID {fmtVol(data.bidDepth)}</span>
+              <span style={{ color: K.up }}>BID {fmtVol(num(data.bidDepth))}</span>
               <span className="uppercase tracking-widest" style={{ color: imb >= 0.12 ? K.up : imb <= -0.12 ? K.down : K.dim }}>{imb >= 0.12 ? 'Buyers Lifting' : imb <= -0.12 ? 'Sellers Hitting' : 'Balanced'}</span>
-              <span style={{ color: K.down }}>{fmtVol(data.askDepth)} ASK</span>
+              <span style={{ color: K.down }}>{fmtVol(num(data.askDepth))} ASK</span>
             </div>
           </div>
 

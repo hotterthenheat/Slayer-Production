@@ -41,6 +41,29 @@ assert(flat.confidence >= 0 && flat.confidence <= 100, 'confidence bounded on em
 for (const r of [bull, bear, flat]) {
   assert(['High', 'Moderate', 'Low', 'Mixed'].includes(r.confidenceLabel), 'confidence label valid');
   assert(r.score >= -100 && r.score <= 100, 'score bounded');
+  assert(typeof r.noTrade === 'boolean', 'noTrade flag present');
 }
+
+// The battle plan is always directionally coherent: target beyond spot in the bias
+// direction, stop on the other side — or an explicit no-trade.
+for (const [r, sp] of [[bull, 6790], [bear, 6740]] as [typeof bull, number][]) {
+  if (!r.noTrade && r.bias !== 'NEUTRAL') {
+    const d = r.bias === 'LONG' ? 1 : -1;
+    if (r.target != null) assert(d * (r.target - sp) > 0, `${r.bias} target must lie in the bias direction (got ${r.target} vs spot ${sp})`);
+    if (r.stop != null) assert(d * (sp - r.stop) > 0, `${r.bias} stop must lie opposite the bias (got ${r.stop} vs spot ${sp})`);
+  }
+}
+assert(bull.target === 6800, 'PIN long target = magnet, got ' + bull.target);
+assert(bear.target === 6720 && bear.stop === 6770, 'TREND short → put-wall target / flip stop');
+
+// A LONG read whose only "target" sits below spot must degrade to no-trade, never paint a loss green.
+const incoherent = computeTerminalRead({ spot: 6800, netGex: 5e8, gammaFlip: 6790, magnet: 6770, callWall: 6795, putWall: 6700, totalCallOi: 70000, totalPutOi: 30000 }, [6790, 6794, 6798, 6800]);
+if (incoherent.bias === 'LONG') assert(incoherent.noTrade || (incoherent.target != null && incoherent.target > 6800), 'LONG never shows a target below spot');
+
+// Honest Vanna: aggregated from per-strike vex, never synthesized.
+const mk = (o: object) => ({ strike: 0, callGex: 0, putGex: 0, netGex: 0, callOi: 0, putOi: 0, callVolume: 0, putVolume: 0, ...o });
+const vexRead = computeTerminalRead({ spot: 100, netGex: 1e8, strikes: [mk({ callVex: 3, putVex: -1 }), mk({ netVex: 5 })] as any }, []);
+assert(vexRead.netVex === 7, 'netVex aggregates per-strike vex (2 + 5), got ' + vexRead.netVex);
+assert(computeTerminalRead({ spot: 100, netGex: 1e8 }, []).netVex === undefined, 'no vex data → undefined (never invented)');
 
 console.log('🎉 ALL TERMINAL-READ TESTS PASSED! 🎉');
