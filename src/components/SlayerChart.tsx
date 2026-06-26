@@ -63,6 +63,11 @@ const PANE_DEFS: { key: string; label: string; group: string; build: (o: OHLCV) 
 const OVERLAY_GROUPS = ['Moving Averages', 'Bands & Channels', 'Trend Overlays'];
 const PANE_GROUPS = ['Momentum', 'Trend Strength', 'Volatility', 'Volume'];
 
+type ChartType = 'candles' | 'hollow' | 'bars' | 'line' | 'area';
+const CHART_TYPES: { k: ChartType; l: string }[] = [
+  { k: 'candles', l: 'Candles' }, { k: 'hollow', l: 'Hollow' }, { k: 'bars', l: 'Bars' }, { k: 'line', l: 'Line' }, { k: 'area', l: 'Area' },
+];
+
 const COL = {
   up: '#26d07c', down: '#ff4d5e', upVol: 'rgba(38,208,124,0.30)', downVol: 'rgba(255,77,94,0.30)',
   grid: 'rgba(255,255,255,0.05)', axis: '#7d8694', axisDim: '#565e6b',
@@ -93,11 +98,14 @@ export function SlayerChart({ profile, decimals, candles: propCandles }: SlayerC
   const containerRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
-  // Everything off by default except the dealer gamma-map (this is a dealer chart, not a TA chart).
+  // Default state: ONLY the GEX profile is on. Every technical indicator AND the displacement
+  // overlay are opt-in — the user adds everything else, TradingView-style.
   const [ovOn, setOvOn] = useState<Record<string, boolean>>({});
   const [paneOn, setPaneOn] = useState<Record<string, boolean>>({});
   const [showGex, setShowGex] = useState(true);
-  const [showDisp, setShowDisp] = useState(true);
+  const [showDisp, setShowDisp] = useState(false);
+  const [chartType, setChartType] = useState<ChartType>('candles');
+  const [typeOpen, setTypeOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [query, setQuery] = useState('');
   const [view, setView] = useState<{ bars: number; off: number }>({ bars: 110, off: 0 });
@@ -236,13 +244,37 @@ export function SlayerChart({ profile, decimals, candles: propCandles }: SlayerC
       ctx.fillStyle = COL.axisDim; ctx.textAlign = 'left'; ctx.font = '8px ui-monospace, monospace'; ctx.fillText('γ', plotR + 3, priceTop + 7); ctx.font = '11px ui-monospace, monospace';
     }
 
-    // candles
-    for (let i = 0; i < vis.length; i++) {
-      const c = vis[i], x = xOf(start + i), up = c.close >= c.open, col = up ? COL.up : COL.down;
-      ctx.strokeStyle = col; ctx.fillStyle = col;
-      ctx.beginPath(); ctx.moveTo(px(x), Math.round(yP(c.high))); ctx.lineTo(px(x), Math.round(yP(c.low))); ctx.stroke();
-      const yO = yP(c.open), yC = yP(c.close), bw = Math.max(1, barW * 0.7);
-      ctx.fillRect(Math.round(x - bw / 2), Math.round(Math.min(yO, yC)), Math.round(bw), Math.max(1, Math.round(Math.abs(yC - yO))));
+    // price series — five chart types (TradingView-style)
+    if (chartType === 'line' || chartType === 'area') {
+      if (chartType === 'area') {
+        ctx.beginPath(); let st = false;
+        for (let i = 0; i < vis.length; i++) { const x = xOf(start + i), y = yP(vis[i].close); if (!st) { ctx.moveTo(x, y); st = true; } else ctx.lineTo(x, y); }
+        ctx.lineTo(xOf(end - 1), priceBottom - volBandH); ctx.lineTo(xOf(start), priceBottom - volBandH); ctx.closePath();
+        const grad = ctx.createLinearGradient(0, priceTop, 0, priceBottom - volBandH);
+        grad.addColorStop(0, 'rgba(91,156,255,0.22)'); grad.addColorStop(1, 'rgba(91,156,255,0.012)');
+        ctx.fillStyle = grad; ctx.fill();
+      }
+      ctx.strokeStyle = '#5b9cff'; ctx.lineWidth = 1.7; ctx.lineJoin = 'round'; ctx.beginPath(); let st2 = false;
+      for (let i = 0; i < vis.length; i++) { const x = xOf(start + i), y = yP(vis[i].close); if (!st2) { ctx.moveTo(x, y); st2 = true; } else ctx.lineTo(x, y); }
+      ctx.stroke(); ctx.lineWidth = 1;
+    } else if (chartType === 'bars') {
+      const tick = Math.max(2, barW * 0.32);
+      for (let i = 0; i < vis.length; i++) {
+        const c = vis[i], x = xOf(start + i); ctx.strokeStyle = c.close >= c.open ? COL.up : COL.down; ctx.lineWidth = Math.max(1, Math.min(2, barW * 0.16));
+        ctx.beginPath(); ctx.moveTo(px(x), Math.round(yP(c.high))); ctx.lineTo(px(x), Math.round(yP(c.low))); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(px(x - tick), Math.round(yP(c.open)) + 0.5); ctx.lineTo(px(x), Math.round(yP(c.open)) + 0.5); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(px(x), Math.round(yP(c.close)) + 0.5); ctx.lineTo(px(x + tick), Math.round(yP(c.close)) + 0.5); ctx.stroke();
+      }
+      ctx.lineWidth = 1;
+    } else {
+      for (let i = 0; i < vis.length; i++) {
+        const c = vis[i], x = xOf(start + i), up = c.close >= c.open, col = up ? COL.up : COL.down;
+        ctx.strokeStyle = col; ctx.fillStyle = col;
+        ctx.beginPath(); ctx.moveTo(px(x), Math.round(yP(c.high))); ctx.lineTo(px(x), Math.round(yP(c.low))); ctx.stroke();
+        const yO = yP(c.open), yC = yP(c.close), bw = Math.max(1, barW * 0.7), bx = Math.round(x - bw / 2), by = Math.round(Math.min(yO, yC)), bh = Math.max(1, Math.round(Math.abs(yC - yO)));
+        if (chartType === 'hollow' && up) { ctx.lineWidth = 1.2; ctx.strokeRect(bx + 0.5, by + 0.5, Math.round(bw) - 1, Math.max(1, bh - 1)); ctx.lineWidth = 1; }
+        else ctx.fillRect(bx, by, Math.round(bw), bh);
+      }
     }
 
     // overlays (registry-driven)
@@ -399,7 +431,7 @@ export function SlayerChart({ profile, decimals, candles: propCandles }: SlayerC
     return () => { ro.disconnect(); canvas.removeEventListener('wheel', onWheel); canvas.removeEventListener('mousedown', onDown); window.removeEventListener('mousemove', onMove); window.removeEventListener('mouseup', onUp); canvas.removeEventListener('mouseleave', onLeave); };
   }, []);
 
-  useEffect(() => { drawRef.current(); }, [candles, overlaySeries, paneSeries, displacements, showGex, showDisp, view, profile, decimals, tfKey, tickKey]);
+  useEffect(() => { drawRef.current(); }, [candles, overlaySeries, paneSeries, displacements, showGex, showDisp, chartType, view, profile, decimals, tfKey, tickKey]);
 
   const activeCount = Object.values(ovOn).filter(Boolean).length + Object.values(paneOn).filter(Boolean).length;
   const q = query.trim().toLowerCase();
@@ -417,6 +449,25 @@ export function SlayerChart({ profile, decimals, candles: propCandles }: SlayerC
   return (
     <div className="w-full h-full flex flex-col bg-black" style={{ width: '100%', height: '100%', display: 'flex', flexDirection: 'column', background: '#000' }}>
       <div className="flex flex-wrap items-center gap-1.5 px-2 py-1.5 border-b border-[var(--border)] shrink-0 relative">
+        {/* Chart type */}
+        <div className="relative">
+          <button onClick={() => setTypeOpen(o => !o)} className="flex items-center gap-1.5 px-2 py-1 rounded text-[10px] font-mono font-bold uppercase tracking-wide border border-[var(--border)] bg-[var(--surface-2)] text-[var(--text-secondary)] hover:border-[var(--border-strong)] transition-colors">
+            {CHART_TYPES.find(t => t.k === chartType)?.l}<span className="text-[var(--text-tertiary)]">▾</span>
+          </button>
+          {typeOpen && (
+            <>
+              <div className="fixed inset-0 z-40" onClick={() => setTypeOpen(false)} />
+              <div className="absolute top-full left-0 mt-1 z-50 w-32 bg-[var(--surface)] border border-[var(--border-strong)] rounded-md shadow-2xl py-1">
+                {CHART_TYPES.map(t => (
+                  <button key={t.k} onClick={() => { setChartType(t.k); setTypeOpen(false); }} className={`w-full flex items-center gap-2 px-3 py-1.5 text-left text-[11px] font-mono hover:bg-white/[0.05] transition-colors ${chartType === t.k ? 'text-[var(--text-primary)]' : 'text-[var(--text-secondary)]'}`}>
+                    <span className="w-3 text-center text-[var(--accent-color)]">{chartType === t.k ? '✓' : ''}</span>{t.l}
+                  </button>
+                ))}
+              </div>
+            </>
+          )}
+        </div>
+        <span className="w-px h-4 bg-[var(--border)] mx-0.5" />
         {/* Indicator menu */}
         <div className="relative">
           <button onClick={() => setMenuOpen(o => !o)} className="flex items-center gap-1.5 px-2 py-1 rounded text-[10px] font-mono font-black uppercase tracking-wide border border-[var(--border)] bg-[var(--surface-2)] text-[var(--text-primary)] hover:border-[var(--border-strong)] transition-colors">
