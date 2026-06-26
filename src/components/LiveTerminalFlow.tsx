@@ -2,10 +2,14 @@ import { useMemo, useState, useRef, useEffect } from 'react';
 import { motion } from 'motion/react';
 import { GexProfileData, OrderFlowData } from '../types';
 import { useContractStore } from '../lib/store';
+import { computeTerminalRead } from '../lib/terminalRead';
 import { SlayerChart } from './SlayerChart';
 import { OrderFlow } from './OrderFlow';
-import { Crosshair, Activity, Zap, Layers, ChevronDown, Gauge as GaugeIcon } from 'lucide-react';
+import { Crosshair, Activity, Zap, Layers, ChevronDown, Gauge as GaugeIcon, Swords, Radio, TrendingUp, TrendingDown, Minus } from 'lucide-react';
 import { ASSET_LIST, TIMEFRAMES } from '../data';
+
+const biasColor = (b: string) => (b === 'LONG' ? 'var(--success)' : b === 'SHORT' ? 'var(--danger)' : 'var(--text-secondary)');
+const toneColor = (t: string) => (t === 'pos' ? 'var(--success)' : t === 'neg' ? 'var(--danger)' : 'var(--text-tertiary)');
 
 interface LiveTerminalFlowProps {
   profile: GexProfileData;
@@ -95,6 +99,10 @@ export function LiveTerminalFlow({ profile, ticker, decimals }: LiveTerminalFlow
   const expDir = expClose > spot * 1.0008 ? 'BULLISH' : expClose < spot * 0.9992 ? 'BEARISH' : 'NEUTRAL';
   const regime = longGamma ? 'PINNING' : 'TRENDING';
 
+  // Synthesis — the actionable read (bias / confluence / battle plan / narrative).
+  const read = useMemo(() => computeTerminalRead(profile, candles.slice(-12).map(c => c.close)), [profile, candles]);
+  const rColor = biasColor(read.bias);
+
   const Tile = ({ label, value, sub, color }: { label: string; value: string; sub?: string; color: string }) => (
     <div className="bg-[var(--surface-2)] border border-[var(--border)] rounded-md px-2.5 py-2">
       <div className="text-[8px] font-black tracking-widest uppercase text-[var(--text-tertiary)]">{label}</div>
@@ -161,6 +169,35 @@ export function LiveTerminalFlow({ profile, ticker, decimals }: LiveTerminalFlow
         </div>
       </div>
 
+      {/* ── Command bar: the at-a-glance actionable read ── */}
+      <div className="flex items-stretch h-[58px] border-b border-[var(--border)] shrink-0 bg-[var(--surface)] overflow-x-auto">
+        <div className="flex items-center gap-2.5 px-4 border-r border-[var(--border)] shrink-0">
+          <div className="flex flex-col leading-none">
+            <span className="text-[8px] font-black tracking-widest uppercase text-[var(--text-tertiary)]">Bias</span>
+            <span className="text-[19px] font-sans font-black leading-none tracking-tight mt-1" style={{ color: rColor }}>{read.bias}</span>
+          </div>
+          {read.bias === 'LONG' ? <TrendingUp className="w-5 h-5" style={{ color: rColor }} /> : read.bias === 'SHORT' ? <TrendingDown className="w-5 h-5" style={{ color: rColor }} /> : <Minus className="w-5 h-5" style={{ color: rColor }} />}
+        </div>
+        <div className="flex flex-col justify-center gap-1 px-4 border-r border-[var(--border)] shrink-0 min-w-[170px]">
+          <div className="flex items-center justify-between"><span className="text-[8px] font-black tracking-widest uppercase text-[var(--text-tertiary)]">Confluence</span><span className="text-[10px] font-mono font-black tabular-nums" style={{ color: rColor }}>{read.confidence}%</span></div>
+          <div className="h-1.5 rounded-full overflow-hidden bg-[var(--surface-3)]"><motion.div className="h-full rounded-full" style={{ background: rColor }} animate={{ width: `${read.confidence}%` }} transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }} /></div>
+          <span className="text-[8.5px] font-mono text-[var(--text-tertiary)]">{read.confidenceLabel} · {read.regime} regime</span>
+        </div>
+        <div className="flex flex-col justify-center gap-0.5 px-4 border-r border-[var(--border)] flex-1 min-w-[260px]">
+          <span className="text-[8px] font-black tracking-widest uppercase text-[var(--text-tertiary)]">The Play</span>
+          <span className="text-[11px] font-mono leading-snug text-[var(--text-secondary)] line-clamp-2">{read.play}</span>
+        </div>
+        <div className="flex flex-col justify-center px-4 border-r border-[var(--border)] shrink-0">
+          <span className="text-[8px] font-black tracking-widest uppercase text-[var(--text-tertiary)]">Target</span>
+          <span className="text-[14px] font-mono font-black tabular-nums leading-tight text-[var(--text-primary)]">{read.target ? read.target.toFixed(0) : '—'}</span>
+          <span className="text-[8.5px] font-mono tabular-nums" style={{ color: rColor }}>{read.target ? distLabel(read.target) : ''}</span>
+        </div>
+        <div className="flex flex-col justify-center px-4 shrink-0">
+          <span className="text-[8px] font-black tracking-widest uppercase text-[var(--text-tertiary)]">Exp Move</span>
+          <span className="text-[14px] font-mono font-black tabular-nums leading-tight" style={{ color: 'var(--info)' }}>{emPct != null ? `±${(emPct * 100).toFixed(2)}%` : '—'}</span>
+        </div>
+      </div>
+
       {/* ── 3-column workspace (centered on ultrawide) ── */}
       <div className="flex-1 w-full overflow-hidden flex justify-center">
         <div className="flex flex-col xl:flex-row w-full max-w-[2280px] h-full overflow-hidden">
@@ -187,6 +224,26 @@ export function LiveTerminalFlow({ profile, ticker, decimals }: LiveTerminalFlow
                   <div className="flex items-center gap-1.5 mt-1.5">
                     <span className="px-1.5 py-0.5 rounded text-[9px] font-mono font-black uppercase tracking-widest" style={{ background: `color-mix(in srgb, ${trend} 14%, transparent)`, color: trend }}>{aboveFlip ? 'Above Flip' : 'Below Flip'}</span>
                     <span className="text-[9px] font-mono text-[var(--text-tertiary)]">{regime}</span>
+                  </div>
+                </div>
+
+                {/* Confluence breakdown — the signals behind the bias */}
+                <div className="bg-[var(--surface-2)] border border-[var(--border)] rounded-md overflow-hidden">
+                  <div className="flex items-center justify-between px-3 pt-2 pb-1.5 border-b border-[var(--border)]">
+                    <span className="text-[9px] font-sans font-black tracking-widest uppercase text-[var(--text-secondary)]">Confluence</span>
+                    <span className="text-[9px] font-mono font-black" style={{ color: rColor }}>{read.confidence}% {read.bias}</span>
+                  </div>
+                  <div className="py-0.5">
+                    {read.signals.map(s => (
+                      <div key={s.key} className="flex items-center gap-2 px-3 h-[28px] hover:bg-[var(--surface-3)] transition-colors" title={s.detail}>
+                        {s.dir > 0 ? <TrendingUp className="w-3 h-3 shrink-0" style={{ color: 'var(--success)' }} /> : s.dir < 0 ? <TrendingDown className="w-3 h-3 shrink-0" style={{ color: 'var(--danger)' }} /> : <Minus className="w-3 h-3 shrink-0 text-[var(--text-tertiary)]" />}
+                        <div className="flex-1 min-w-0">
+                          <div className="text-[10px] font-mono font-bold text-[var(--text-secondary)] truncate leading-tight">{s.label}</div>
+                          <div className="text-[8px] font-mono text-[var(--text-tertiary)] truncate leading-tight">{s.detail}</div>
+                        </div>
+                        <div className="w-9 h-1 rounded-full bg-[var(--surface-3)] overflow-hidden shrink-0"><div className="h-full rounded-full" style={{ width: `${Math.min(100, (s.weight / 28) * 100)}%`, background: s.dir > 0 ? 'var(--success)' : s.dir < 0 ? 'var(--danger)' : 'var(--text-tertiary)' }} /></div>
+                      </div>
+                    ))}
                   </div>
                 </div>
 
@@ -252,11 +309,32 @@ export function LiveTerminalFlow({ profile, ticker, decimals }: LiveTerminalFlow
               </div>
             </div>
             <div className="flex-1 min-h-[400px] relative" style={{ background: 'var(--bg-base)' }}><SlayerChart profile={profile} decimals={decimals} /></div>
+            {/* Live tape — streaming narrative of the dealer read */}
+            <div className="border-t border-[var(--border)] bg-[var(--surface)] h-7 shrink-0 flex items-center gap-2 px-3 overflow-hidden">
+              <span className="flex items-center gap-1 text-[8px] font-black tracking-widest uppercase shrink-0" style={{ color: 'var(--accent-color)' }}><Radio className="w-3 h-3" /> Tape</span>
+              <div className="flex items-center gap-5 overflow-hidden whitespace-nowrap">
+                {read.events.map((e, i) => (<span key={i} className="flex items-center gap-1.5 text-[10px] font-mono shrink-0" style={{ color: toneColor(e.tone) }}><span className="w-1 h-1 rounded-full shrink-0" style={{ background: toneColor(e.tone) }} />{e.text}</span>))}
+              </div>
+            </div>
           </main>
 
           {/* ░ RIGHT — Exposure Ladder ░ */}
           <aside className="order-3 w-full xl:w-[340px] shrink-0 flex flex-col min-h-[360px] xl:min-h-0 bg-[var(--surface)]">
-            <div className="flex items-center gap-2 px-3 h-9 border-b border-[var(--border)] shrink-0">
+            {/* Battle plan — the regime-aware tactical card */}
+            <div className="m-2.5 mb-1 rounded-lg border p-2.5 relative overflow-hidden shrink-0" style={{ borderColor: `color-mix(in srgb, ${rColor} 30%, transparent)`, background: `linear-gradient(135deg, color-mix(in srgb, ${rColor} 8%, transparent), transparent)` }}>
+              <div className="flex items-center gap-1.5 mb-1.5">
+                <Swords className="w-3.5 h-3.5" style={{ color: rColor }} />
+                <span className="text-[10px] font-sans font-black tracking-widest uppercase text-[var(--text-primary)]">Battle Plan</span>
+                <span className="ml-auto text-[8px] font-mono font-black px-1.5 py-0.5 rounded uppercase tracking-widest" style={{ background: `color-mix(in srgb, ${rColor} 14%, transparent)`, color: rColor }}>{read.regime}</span>
+              </div>
+              <p className="text-[10px] font-mono leading-relaxed text-[var(--text-secondary)]">{read.play}</p>
+              <div className="grid grid-cols-3 gap-1.5 mt-2">
+                <div className="rounded bg-[var(--surface-2)] border border-[var(--border)] px-2 py-1 min-w-0"><div className="text-[7.5px] font-black tracking-widest uppercase text-[var(--text-tertiary)]">Entry</div><div className="text-[9px] font-mono font-bold text-[var(--text-secondary)] truncate" title={read.entry}>{read.entry}</div></div>
+                <div className="rounded bg-[var(--surface-2)] border border-[var(--border)] px-2 py-1"><div className="text-[7.5px] font-black tracking-widest uppercase text-[var(--text-tertiary)]">Target</div><div className="text-[12px] font-mono font-black tabular-nums" style={{ color: 'var(--success)' }}>{read.target ? read.target.toFixed(0) : '—'}</div></div>
+                <div className="rounded bg-[var(--surface-2)] border border-[var(--border)] px-2 py-1"><div className="text-[7.5px] font-black tracking-widest uppercase text-[var(--text-tertiary)]">Stop</div><div className="text-[12px] font-mono font-black tabular-nums" style={{ color: 'var(--danger)' }}>{read.stop ? read.stop.toFixed(0) : '—'}</div></div>
+              </div>
+            </div>
+            <div className="flex items-center gap-2 px-3 h-9 border-b border-t border-[var(--border)] shrink-0">
               <Layers className="w-3.5 h-3.5" style={{ color: 'var(--accent-color)' }} />
               <span className="text-[11px] font-sans font-black tracking-widest uppercase text-[var(--text-primary)]">Exposure Ladder</span>
               <span className="ml-auto flex items-center gap-1.5 px-2 py-0.5 rounded text-[9px] font-mono font-black uppercase tracking-widest border border-[var(--border)]" style={{ color: trend }}>
