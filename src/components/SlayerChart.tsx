@@ -667,29 +667,41 @@ export const SlayerChart = memo(function SlayerChartImpl({ profile, decimals, ca
       ctx.fillStyle = '#06090d'; ctx.textAlign = 'center'; ctx.fillText(label, lx, ly); ctx.font = '11px ui-monospace, monospace';
     }
 
-    // dealer levels: dashed line + collision-free gutter pills
+    // Dealer levels — retail-friendly NAMED lines that flow with the chart. Each key level draws a
+    // clean colored line at its true price plus a floating name tag at the right edge; when tags
+    // crowd near spot they stack and draw a connector back to the line, so a label never floats free.
     const last = candles[n - 1].close, lastUp = candles[n - 1].close >= candles[n - 1].open, lastY = yP(last);
-    const pillH = 13, gx = gammaR;
+    const tagH = 15;
+    const NAMES: Record<string, string> = { CW: 'Call Wall', PW: 'Put Wall', 'γF': 'Gamma Flip', MAG: 'Magnet', 'EM+': 'Exp Move ↑', 'EM-': 'Exp Move ↓' };
     const lvls: { price: number; color: string; label: string }[] = [];
     const pushLvl = (price: any, color: string, label: string) => { if (typeof price === 'number' && price > 0) lvls.push({ price, color, label }); };
     pushLvl(profile.callWall, COL.callWall, 'CW'); pushLvl(profile.putWall, COL.putWall, 'PW');
     pushLvl(profile.gammaFlip, COL.flip, 'γF'); pushLvl(profile.magnet, COL.magnet, 'MAG');
     if (profile.spot && profile.expectedMovePct) { pushLvl(profile.spot * (1 + profile.expectedMovePct), COL.em, 'EM+'); pushLvl(profile.spot * (1 - profile.expectedMovePct), COL.em, 'EM-'); }
-    const placed = lvls.map(L => { const rawY = yP(L.price); const off2 = L.price < lo || L.price > hi; return { ...L, rawY, off: off2, dir: off2 ? (L.price > hi ? -1 : 1) : 0, y: Math.max(priceTop + pillH / 2, Math.min(priceBottom - pillH / 2, rawY)) }; }).sort((a, b) => a.y - b.y);
-    for (let i = 1; i < placed.length; i++) if (placed[i].y - placed[i - 1].y < pillH + 1) placed[i].y = placed[i - 1].y + pillH + 1;
+    const placed = lvls.map(L => { const rawY = yP(L.price); const off2 = L.price < lo || L.price > hi; return { ...L, rawY, off: off2, dir: off2 ? (L.price > hi ? -1 : 1) : 0, y: Math.max(priceTop + tagH / 2, Math.min(priceBottom - tagH / 2, rawY)) }; }).sort((a, b) => a.y - b.y);
+    for (let i = 1; i < placed.length; i++) if (placed[i].y - placed[i - 1].y < tagH + 2) placed[i].y = placed[i - 1].y + tagH + 2;
+    const rr = (x: number, y: number, w: number, h: number, r: number) => { ctx.beginPath(); if ((ctx as any).roundRect) (ctx as any).roundRect(x, y, w, h, r); else ctx.rect(x, y, w, h); };
     for (const L of placed) {
-      if (!L.off) { ctx.strokeStyle = L.color; ctx.globalAlpha = 0.55; ctx.setLineDash([5, 4]); ctx.beginPath(); ctx.moveTo(plotL, px(L.rawY) - 0.5); ctx.lineTo(plotR, px(L.rawY) - 0.5); ctx.stroke(); ctx.setLineDash([]); ctx.globalAlpha = 1; }
-      ctx.fillStyle = L.color; ctx.beginPath(); (ctx as any).roundRect?.(gx + 1, L.y - pillH / 2, axisW - 2, pillH, 3); if ((ctx as any).roundRect) ctx.fill(); else ctx.fillRect(gx + 1, L.y - pillH / 2, axisW - 2, pillH);
-      ctx.fillStyle = '#06090d'; ctx.textAlign = 'left'; ctx.font = '700 9px ui-monospace, monospace';
-      ctx.fillText(L.off ? `${L.dir < 0 ? '↑' : '↓'}${L.label}` : L.label, gx + 4, L.y);
-      if (L.off) { ctx.textAlign = 'right'; ctx.fillText(nf(L.price), W - 3, L.y); }
-      ctx.font = '11px ui-monospace, monospace';
+      const name = NAMES[L.label] || L.label, isWall = L.label === 'CW' || L.label === 'PW';
+      // level line at the true price — skip walls when the Γ-MAP band already draws them (no double line)
+      if (!L.off && !(heatOn && isWall)) { ctx.strokeStyle = L.color; ctx.globalAlpha = 0.5; ctx.setLineDash([5, 4]); ctx.beginPath(); ctx.moveTo(plotL, px(L.rawY) - 0.5); ctx.lineTo(plotR, px(L.rawY) - 0.5); ctx.stroke(); ctx.setLineDash([]); ctx.globalAlpha = 1; }
+      const label = (L.off ? (L.dir < 0 ? '↑ ' : '↓ ') : '') + name;
+      ctx.font = '700 9px ui-monospace, monospace'; const tw = ctx.measureText(label).width;
+      const tagW = tw + 17, tagR = plotR - 4, tagL = tagR - tagW, ty = L.off ? (L.dir < 0 ? priceTop + tagH / 2 + 2 : priceBottom - tagH / 2 - 2) : L.y;
+      // connector from the line's right end back to the tag whenever the tag was nudged off its price
+      if (!L.off && Math.abs(L.y - L.rawY) > 1) { ctx.strokeStyle = hexA(L.color, 0.55); ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(plotR - 3, px(L.rawY) - 0.5); ctx.lineTo(tagR - 2, px(ty) - 0.5); ctx.stroke(); }
+      rr(tagL, ty - tagH / 2, tagW, tagH, 3); ctx.fillStyle = 'rgba(9,12,17,0.9)'; ctx.fill(); ctx.strokeStyle = hexA(L.color, 0.85); ctx.lineWidth = 1; ctx.stroke();
+      ctx.fillStyle = L.color; ctx.beginPath(); ctx.arc(tagL + 7, ty, 2.4, 0, Math.PI * 2); ctx.fill();
+      ctx.textAlign = 'left'; ctx.fillText(label, tagL + 12, ty);
+      // exact level price on the axis, in the level colour
+      ctx.textAlign = 'right'; ctx.fillStyle = hexA(L.color, 0.95); ctx.fillText(nf(L.price), W - 3, ty);
     }
+    ctx.font = '11px ui-monospace, monospace';
 
     ctx.textAlign = 'right';
     for (const g of gridYs) {
-      if (Math.abs(g.y - lastY) < pillH) continue;
-      if (placed.some(L => Math.abs(L.y - g.y) < pillH)) continue;
+      if (Math.abs(g.y - lastY) < tagH) continue;
+      if (placed.some(L => Math.abs(L.y - g.y) < tagH)) continue;
       ctx.fillStyle = COL.axisDim; ctx.fillText(g.label, W - 4, g.y);
     }
 
