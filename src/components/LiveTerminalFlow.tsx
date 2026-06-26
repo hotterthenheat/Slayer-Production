@@ -4,6 +4,7 @@ import { GexProfileData, OrderFlowData } from '../types';
 import { useContractStore } from '../lib/store';
 import { computeTerminalRead } from '../lib/terminalRead';
 import { computeDealerClock } from '../lib/dealerClock';
+import { fmtNum } from '../lib/format';
 import { SlayerChart } from './SlayerChart';
 import { OrderFlow } from './OrderFlow';
 import { Crosshair, Activity, Zap, Layers, ChevronDown, Gauge as GaugeIcon, Radio, TrendingUp, TrendingDown, Minus, Clock } from 'lucide-react';
@@ -298,7 +299,7 @@ export function LiveTerminalFlow({ profile, ticker, decimals }: LiveTerminalFlow
                       </motion.div>
                     </div>
                     <div className="relative h-7 mt-2">
-                      {structure.pts.map((pt, i) => (<div key={i} className="absolute -translate-x-1/2 text-center leading-tight" style={{ left: `${pt.x}%` }}><div className="text-[9px] font-mono font-black" style={{ color: pt.c }}>{pt.l}</div><div className="text-[9px] font-mono text-[var(--text-tertiary)] tabular-nums">{(pt.p as number).toFixed(0)}</div></div>))}
+                      {structure.pts.map((pt, i) => (<div key={i} className="absolute -translate-x-1/2 text-center leading-tight" style={{ left: `${pt.x}%` }}><div className="text-[9px] font-mono font-black" style={{ color: pt.c }}>{pt.l}</div><div className="text-[9px] font-mono text-[var(--text-tertiary)] tabular-nums">{fmtNum(pt.p as number)}</div></div>))}
                     </div>
                   </div>
                 )}
@@ -311,7 +312,7 @@ export function LiveTerminalFlow({ profile, ticker, decimals }: LiveTerminalFlow
                       <div key={l.n} className="flex items-center gap-2 px-3 h-[26px] hover:bg-[var(--surface-3)] transition-colors" style={{ borderTop: i ? '1px solid var(--border)' : undefined }}>
                         <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ background: l.c }} />
                         <span className="text-[11px] font-mono font-bold flex-1 truncate text-[var(--text-secondary)]">{l.n}</span>
-                        <span className="text-[11px] font-mono font-black tabular-nums" style={{ color: l.c }}>{(l.v as number).toFixed(0)}</span>
+                        <span className="text-[11px] font-mono font-black tabular-nums" style={{ color: l.c }}>{fmtNum(l.v as number)}</span>
                         <span className="text-[10px] font-mono tabular-nums w-[42px] text-right text-[var(--text-tertiary)]">{distLabel(l.v)}</span>
                       </div>
                     ))}
@@ -386,7 +387,7 @@ export function LiveTerminalFlow({ profile, ticker, decimals }: LiveTerminalFlow
                     {r.isCW && <span className="w-1.5 h-1.5 rounded-full" style={{ background: 'var(--success)' }} title="Call Wall" />}
                     {r.isPW && <span className="w-1.5 h-1.5 rounded-full" style={{ background: 'var(--danger)' }} title="Put Wall" />}
                     {r.isFlip && <span className="w-1.5 h-1.5 rounded-sm" style={{ background: 'var(--warning)' }} title="GEX Flip" />}
-                    <span className="font-black tracking-wider" style={{ color: r.isSpot ? 'var(--accent-color)' : 'var(--text-secondary)' }}>{r.strike.toFixed(0)}</span>
+                    <span className="font-black tracking-wider" style={{ color: r.isSpot ? 'var(--accent-color)' : 'var(--text-secondary)' }}>{fmtNum(r.strike)}</span>
                   </div>
                   <div className="relative flex items-center h-full">
                     <div className="w-1/2 h-full flex items-center justify-end pr-0.5 border-r border-dotted border-[var(--border)]"><div className="h-[9px] rounded-sm" style={{ width: `${r.putPct}%`, background: 'color-mix(in srgb, var(--danger) 60%, transparent)' }} /></div>
@@ -400,7 +401,7 @@ export function LiveTerminalFlow({ profile, ticker, decimals }: LiveTerminalFlow
             <div className="px-3 py-2 border-t border-[var(--border)] shrink-0 flex items-center justify-between bg-[var(--surface)]">
               <div>
                 <div className="text-[9px] font-black tracking-widest uppercase text-[var(--text-tertiary)]">Gamma Pin</div>
-                <div className="text-[15px] font-mono font-black tabular-nums text-[var(--text-primary)]">{gammaPin ? gammaPin.toFixed(decimals) : '—'}</div>
+                <div className="text-[15px] font-mono font-black tabular-nums text-[var(--text-primary)]">{gammaPin ? fmtNum(gammaPin, decimals) : '—'}</div>
               </div>
               <span className="px-2.5 py-1 rounded-md text-[10px] font-mono font-black tabular-nums uppercase tracking-widest border border-[var(--border)]" style={{ color: gammaPin >= spot ? 'var(--success)' : 'var(--danger)' }}>{distLabel(gammaPin)} vs spot</span>
             </div>

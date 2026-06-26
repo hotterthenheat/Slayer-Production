@@ -3,6 +3,7 @@ import { useContractStore } from '../lib/store';
 import {
   ShieldAlert, TrendingUp, Magnet, Activity, Zap, Layers, Hexagon, Terminal
 } from 'lucide-react';
+import { fmtNum } from '../lib/format';
 
 const num = (v: any): v is number => typeof v === 'number' && isFinite(v);
 
@@ -69,7 +70,7 @@ export function InstitutionalDashboard() {
               <div className="flex justify-between items-center">
                 <span className="text-[10px] text-[var(--text-tertiary)] font-bold uppercase">Wall Range</span>
                 <span className="text-[11px] font-mono text-[var(--text-primary)] font-black uppercase tabular-nums">
-                  {num(profile?.putWall) && num(profile?.callWall) ? `${profile!.putWall!.toFixed(0)} - ${profile!.callWall!.toFixed(0)}` : 'N/A'}
+                  {num(profile?.putWall) && num(profile?.callWall) ? `${fmtNum(profile!.putWall!)} - ${fmtNum(profile!.callWall!)}` : 'N/A'}
                 </span>
               </div>
               <div className="h-px bg-[var(--border)] w-full" />
@@ -82,7 +83,7 @@ export function InstitutionalDashboard() {
                 </div>
                 <div>
                   <div className="text-[15px] font-black text-[var(--text-primary)] tabular-nums">
-                    {num(profile?.gammaFlip) ? profile!.gammaFlip!.toFixed(0) : 'N/A'}
+                    {num(profile?.gammaFlip) ? fmtNum(profile!.gammaFlip!) : 'N/A'}
                   </div>
                   <div className="text-[10px] text-[var(--text-tertiary)] uppercase tracking-widest mt-0.5">Gamma Flip</div>
                 </div>
@@ -142,11 +143,11 @@ export function InstitutionalDashboard() {
             <div className="flex items-center justify-between px-2 pt-1">
               <div>
                 <span className="text-[10px] text-[var(--text-tertiary)] uppercase block mb-0.5">Gamma Magnet Strike</span>
-                <span className="text-[18px] font-mono font-black text-[var(--info)] tabular-nums">{num(profile?.magnet) ? profile!.magnet!.toFixed(0) : 'N/A'}</span>
+                <span className="text-[18px] font-mono font-black text-[var(--info)] tabular-nums">{num(profile?.magnet) ? fmtNum(profile!.magnet!) : 'N/A'}</span>
               </div>
               <div className="text-right">
                 <span className="text-[10px] text-[var(--text-tertiary)] uppercase block mb-0.5">Spot</span>
-                <span className="text-[12px] font-bold text-[var(--text-primary)] tabular-nums">{spot.toFixed(0)}</span>
+                <span className="text-[12px] font-bold text-[var(--text-primary)] tabular-nums">{fmtNum(spot)}</span>
               </div>
             </div>
           </div>
@@ -181,7 +182,7 @@ export function InstitutionalDashboard() {
           <div className="grid grid-cols-3 gap-3 mb-4">
             <div className="bg-[var(--surface-2)] border border-[var(--border)] p-2 rounded-sm text-center">
               <span className="text-[10px] text-[var(--text-tertiary)] uppercase block mb-0.5">CALL WALL</span>
-              <span className="text-[12px] font-mono font-bold text-[var(--text-primary)] tabular-nums">{num(profile?.callWall) ? profile!.callWall!.toFixed(0) : 'N/A'}</span>
+              <span className="text-[12px] font-mono font-bold text-[var(--text-primary)] tabular-nums">{num(profile?.callWall) ? fmtNum(profile!.callWall!) : 'N/A'}</span>
             </div>
             <div className="bg-[var(--surface-2)] border border-[var(--border)] p-2 rounded-sm text-center">
               <span className="text-[10px] text-[var(--text-tertiary)] uppercase block mb-0.5">TOTAL CALL OI</span>
@@ -203,7 +204,7 @@ export function InstitutionalDashboard() {
                   <div key={i} className="flex justify-between items-center bg-[var(--surface-2)] border border-[var(--border)] rounded-sm p-2.5 cursor-default hover:border-[var(--border-strong)] transition-colors">
                     <div className="flex items-center gap-3">
                       <span className="text-[11px] font-bold text-[var(--text-tertiary)] tabular-nums">#{i + 1}</span>
-                      <span className={`text-[12px] font-black font-mono tabular-nums ${isCall ? 'text-[var(--success)]' : 'text-[var(--danger)]'}`}>{st.strike} {isCall ? 'CALL' : 'PUT'}</span>
+                      <span className={`text-[12px] font-black font-mono tabular-nums ${isCall ? 'text-[var(--success)]' : 'text-[var(--danger)]'}`}>{fmtNum(st.strike)} {isCall ? 'CALL' : 'PUT'}</span>
                     </div>
                     <div className="flex gap-4 text-right">
                       <span className="text-[11px] font-mono text-[var(--text-primary)] font-medium tracking-wide tabular-nums">{fmtBig(st.netGex)}</span>
@@ -229,7 +230,7 @@ export function InstitutionalDashboard() {
           <div className="flex items-center justify-between bg-[var(--surface-2)] border border-[var(--border)] rounded-sm p-3 mb-4">
             <span className="text-[10px] font-bold text-[var(--text-tertiary)] uppercase">Scenario Strike</span>
             <div className="flex items-center gap-2 text-[var(--text-primary)] font-mono text-[12px] font-black bg-[var(--surface-3)] px-3 py-1 rounded border border-[var(--border)] tabular-nums">
-              {ticker} {simulatorStrike} CALL
+              {ticker} {fmtNum(simulatorStrike)} CALL
             </div>
           </div>
 
@@ -308,7 +309,7 @@ export function InstitutionalDashboard() {
             <MetricBox label="Net Charm / Day" value={num(dynamics?.charm?.netPerDay) ? fmtBig(dynamics!.charm.netPerDay) : 'N/A'} color="text-[var(--danger)]" />
             <MetricBox label="Gamma Velocity" value={num(dynamics?.gamma?.velocity) ? fmtBig(dynamics!.gamma.velocity) : 'N/A'} color="text-[var(--info)]" />
             <MetricBox label="Dealer Inventory" value={dealerBias == null ? 'N/A' : dealerBias === 'LONG GAMMA' ? 'LONG' : 'SHORT'} color={dealerBias === 'LONG GAMMA' ? 'text-[var(--success)]' : dealerBias === 'SHORT GAMMA' ? 'text-[var(--danger)]' : 'text-[var(--text-tertiary)]'} />
-            <MetricBox label="Dealer Flip Level" value={num(profile?.gammaFlip) ? profile!.gammaFlip!.toFixed(0) : 'N/A'} color="text-[var(--text-primary)]" />
+            <MetricBox label="Dealer Flip Level" value={num(profile?.gammaFlip) ? fmtNum(profile!.gammaFlip!) : 'N/A'} color="text-[var(--text-primary)]" />
             <MetricBox label="Dealer Pressure" value={dealerBias == null ? 'N/A' : dealerBias === 'LONG GAMMA' ? 'BUYING DIPS' : 'SELLING RALLIES'} color={dealerBias === 'LONG GAMMA' ? 'text-[var(--success)]' : dealerBias === 'SHORT GAMMA' ? 'text-[var(--warning)]' : 'text-[var(--text-tertiary)]'} />
           </div>
         </div>
@@ -334,7 +335,7 @@ export function InstitutionalDashboard() {
             <div className="grid grid-cols-2 gap-2 mt-1">
               <div className="bg-[var(--surface-2)] border border-[var(--border)] p-2 rounded-sm">
                 <span className="text-[10px] text-[var(--text-tertiary)] uppercase tracking-widest font-black block mb-1">Magnet</span>
-                <span className="text-[var(--text-primary)] font-black font-mono text-[14px] tabular-nums">{num(profile?.magnet) ? profile!.magnet!.toFixed(0) : 'N/A'}</span>
+                <span className="text-[var(--text-primary)] font-black font-mono text-[14px] tabular-nums">{num(profile?.magnet) ? fmtNum(profile!.magnet!) : 'N/A'}</span>
               </div>
               <div className="bg-[var(--surface-2)] border border-[var(--border)] p-2 rounded-sm">
                 <span className="text-[10px] text-[var(--text-tertiary)] uppercase tracking-widest font-black block mb-1">Migration</span>

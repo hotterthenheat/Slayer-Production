@@ -36,6 +36,7 @@ import {
   Activity
 } from 'lucide-react';
 import { ASSET_LIST } from '../data';
+import { fmtNum } from '../lib/format';
 
 const fmtBn = (v: number) => `${v >= 0 ? '+' : '−'}$${(Math.abs(v / 1e9)).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}B`;
 const fmtGreek = (v: number) => {
@@ -191,7 +192,7 @@ function ExposureProfileChart({ profile, decimals, type }: { profile: any; decim
             <div className={`w-[58px] sm:w-[72px] shrink-0 text-[10.5px] font-black tracking-[0.06em] font-mono pl-1 ${
               isSpot ? (isLight ? 'text-zinc-900 font-extrabold' : 'text-[#E5E5E5]') : isLight ? 'text-zinc-550' : 'text-zinc-400'
             }`}>
-              {r.strike.toFixed(0)}
+              {fmtNum(r.strike)}
               {isCallMax && (() => {
                 const isFailing = r.strike < profile.spot;
                 const isTesting = Math.abs(r.strike - profile.spot) / profile.spot < 0.005;
@@ -236,7 +237,7 @@ function ExposureProfileChart({ profile, decimals, type }: { profile: any; decim
                         : type === 'gex' ? 'text-[var(--danger)]' : type === 'dex' ? 'text-amber-400' : 'text-fuchsia-400'
                     }`}>PUT {typeUpper} OVERLAY</span>
                     <span className={isLight ? 'text-[var(--success)]' : 'text-zinc-650'}>|</span>
-                    <span className={`font-bold ${isLight ? 'text-zinc-900' : 'text-[#E5E5E5]'}`}>STRIKE {r.strike.toFixed(0)}</span>
+                    <span className={`font-bold ${isLight ? 'text-zinc-900' : 'text-[#E5E5E5]'}`}>STRIKE {fmtNum(r.strike)}</span>
                   </div>
                   <div className="space-y-0.5 text-left">
                     <div>{typeUpper}: <span className={`font-extrabold ${
@@ -279,7 +280,7 @@ function ExposureProfileChart({ profile, decimals, type }: { profile: any; decim
                         : type === 'gex' ? 'text-[var(--success)]' : type === 'dex' ? 'text-sky-400' : 'text-indigo-400'
                     }`}>CALL {typeUpper} OVERLAY</span>
                     <span className={isLight ? 'text-[var(--success)]' : 'text-zinc-650'}>|</span>
-                    <span className={`font-bold ${isLight ? 'text-zinc-900' : 'text-[#E5E5E5]'}`}>STRIKE {r.strike.toFixed(0)}</span>
+                    <span className={`font-bold ${isLight ? 'text-zinc-900' : 'text-[#E5E5E5]'}`}>STRIKE {fmtNum(r.strike)}</span>
                   </div>
                   <div className="space-y-0.5 text-left">
                     <div>{typeUpper}: <span className={`font-extrabold ${

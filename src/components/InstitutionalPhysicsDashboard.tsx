@@ -25,6 +25,7 @@ import { useContractStore } from '../lib/store';
 import { ASSET_LIST } from '../data';
 import { computeRndProfile } from '../lib/rndEngine';
 import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Tooltip, Legend, CartesianGrid } from 'recharts';
+import { fmtNum } from '../lib/format';
 
 // ============================================================
 // MATHEMATICAL CORE (BLACK-SCHOLES-MERTON ENGINE)
@@ -1197,7 +1198,7 @@ export function InstitutionalPhysicsDashboard({ profile: externalProfile, ticker
                   >
                     <span className="text-[var(--success)] text-left font-bold px-0.5 tabular-nums">{(strRow.callGex / 1e6).toFixed(1)}M</span>
                     <span className="text-[color:var(--text-tertiary)] font-medium tabular-nums">{Math.round(strRow.callOi / 100)}h</span>
-                    <span className={`font-black font-mono text-[10px] tabular-nums ${isAtSpotIdx ? 'text-[var(--text-primary)]' : 'text-[color:var(--text-secondary)]'}`}>{strRow.strike}</span>
+                    <span className={`font-black font-mono text-[10px] tabular-nums ${isAtSpotIdx ? 'text-[var(--text-primary)]' : 'text-[color:var(--text-secondary)]'}`}>{fmtNum(strRow.strike)}</span>
                     <span className="text-[color:var(--text-tertiary)] font-medium tabular-nums">{Math.round(strRow.putOi / 100)}h</span>
                     <span className="text-[var(--danger)] text-right font-bold px-0.5 tabular-nums">{(strRow.putGex / 1e6).toFixed(1)}M</span>
                   </div>
@@ -1438,7 +1439,7 @@ export function InstitutionalPhysicsDashboard({ profile: externalProfile, ticker
                             const data = payload[0].payload;
                             return (
                               <div className="bg-[#09090b] border border-[#1e293b] p-2 text-mono text-[10px] space-y-1 rounded-sm shadow-xl tabular-nums">
-                                <div className="text-[color:var(--text-secondary)] font-bold border-b border-[#27272a] pb-0.5 mb-1 text-[10px]">Strike: {Math.round(data.strike)}</div>
+                                <div className="text-[color:var(--text-secondary)] font-bold border-b border-[#27272a] pb-0.5 mb-1 text-[10px]">Strike: {fmtNum(Math.round(data.strike))}</div>
                                 <div className="text-[#10b981] flex justify-between gap-4"><span>Option-Implied:</span> <span>{(data.impliedDensity * 100).toFixed(4)}%</span></div>
                                 <div className="text-[#f43f5e] flex justify-between gap-4"><span>Historical:</span> <span>{(data.historicalDensity * 100).toFixed(4)}%</span></div>
                                 <div className="text-sky-400 flex justify-between gap-4"><span>Implied Vol:</span> <span>{(data.impliedVol * 100).toFixed(2)}%</span></div>

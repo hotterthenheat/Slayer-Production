@@ -17,6 +17,7 @@ import {
 import { useContractStore } from '../lib/store';
 import { ASSET_LIST } from '../data';
 import { formatTime } from '../lib/timeUtils';
+import { fmtNum } from '../lib/format';
 
 interface AlertItem {
   id: string;
@@ -226,7 +227,7 @@ export function AlertsView() {
                   <div className="flex justify-between items-start">
                     <div>
                       <span className="text-[10px] text-[var(--text-tertiary)] font-black block tracking-widest uppercase">OPTION TARGET</span>
-                      <span className="text-lg font-black text-[var(--text-primary)]">{trade.ticker} {trade.strike} {trade.type}</span>
+                      <span className="text-lg font-black text-[var(--text-primary)]">{trade.ticker} {fmtNum(trade.strike)} {trade.type}</span>
                     </div>
                     <div className="text-right">
                       <span className="text-[10px] text-[var(--text-tertiary)] block">HEALTH INDEX</span>
@@ -294,7 +295,7 @@ export function AlertsView() {
                   <div>
                     <span className="text-[10px] text-[var(--text-tertiary)] tracking-wider uppercase block">SELECTED CONTRACT</span>
                     <span className="text-2xl font-black text-[var(--text-primary)] font-sans block tracking-tight uppercase leading-snug pt-1">
-                      {activeTrade.ticker} {activeTrade.strike}{activeTrade.isCall ? 'C' : 'P'}
+                      {activeTrade.ticker} {fmtNum(activeTrade.strike)}{activeTrade.isCall ? 'C' : 'P'}
                     </span>
                     <span className="text-[10px] text-[var(--text-secondary)] block pt-1 uppercase">Direction: {activeTrade.type} EXPOSURE</span>
                   </div>

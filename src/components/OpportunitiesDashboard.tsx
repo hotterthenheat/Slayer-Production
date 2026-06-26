@@ -6,6 +6,7 @@
 import { useMemo } from 'react';
 import { ArrowRight, Activity, Sparkles } from 'lucide-react';
 import { useContractStore } from '../lib/store';
+import { fmtNum } from '../lib/format';
 
 export interface ContractOpportunity {
   id: string;
@@ -176,7 +177,7 @@ export function OpportunitiesDashboard({
           <div className="text-center md:text-left">
             <span className="text-[10px] text-[var(--text-tertiary)] uppercase font-mono block">Gamma Flip</span>
             <span className="text-sm font-mono text-[var(--text-primary)] font-bold tabular-nums">
-              {typeof profile?.gammaFlip === 'number' ? profile.gammaFlip.toFixed(0) : 'N/A'}
+              {typeof profile?.gammaFlip === 'number' ? fmtNum(profile.gammaFlip) : 'N/A'}
             </span>
           </div>
           <div className="text-center md:text-left">

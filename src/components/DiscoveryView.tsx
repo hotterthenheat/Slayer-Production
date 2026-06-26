@@ -16,6 +16,7 @@ import { AssetInfo } from '../types';
 import { ASSET_LIST } from '../data';
 import { useContractStore } from '../lib/store';
 import { formatTime } from '../lib/timeUtils';
+import { fmtNum } from '../lib/format';
 import { AssetSparkline } from './AssetSparkline';
 
 interface DiscoveryViewProps {
@@ -1302,7 +1303,7 @@ export function DiscoveryView({
                       >
                         <div className="flex justify-between items-center">
                           <span className={`text-[9.5px] font-black ${c.isCall ? 'text-[var(--success)]' : 'text-[var(--danger)]'}`}>
-                            {c.ticker} {c.strike}{c.isCall ? 'C' : 'P'}
+                            {c.ticker} {fmtNum(c.strike)}{c.isCall ? 'C' : 'P'}
                           </span>
                           <span className={`text-[7.5px] font-bold px-1 py-0.5 rounded border ${
                             c.isCall
@@ -1556,7 +1557,7 @@ export function DiscoveryView({
                                       ? 'bg-[var(--success)]/10 text-[var(--success)] border-[var(--success)]/25'
                                       : 'bg-[var(--danger)]/10 text-[var(--danger)] border-[var(--danger)]/25'
                                   }`}>
-                                    {c.ticker} {c.strike}{c.isCall ? 'C' : 'P'}
+                                    {c.ticker} {fmtNum(c.strike)}{c.isCall ? 'C' : 'P'}
                                   </span>
                                   <span className={`text-[8px] px-1.5 py-0.5 rounded font-bold uppercase tracking-widest border ${classBadgeStyle}`}>
                                     {classBadgeLabel}
@@ -1780,7 +1781,7 @@ export function DiscoveryView({
                   <>
                     <div className="space-y-0.5">
                       <span className="text-[7.5px] uppercase block font-black text-[var(--text-tertiary)]">Largest Bullish</span>
-                      <span className="text-[var(--success)] font-bold block">{topFlows.bullish.ticker} {topFlows.bullish.strike}{topFlows.bullish.type}</span>
+                      <span className="text-[var(--success)] font-bold block">{topFlows.bullish.ticker} {fmtNum(topFlows.bullish.strike)}{topFlows.bullish.type}</span>
                       <span className="text-[8px] font-sans uppercase text-[var(--text-secondary)]">{topFlows.bullish.size}</span>
                     </div>
                     <div className="text-right space-y-0.5">
@@ -1799,7 +1800,7 @@ export function DiscoveryView({
                   <>
                     <div className="space-y-0.5">
                       <span className="text-[7.5px] uppercase block font-black text-[var(--text-tertiary)]">Largest Hedge</span>
-                      <span className="text-[var(--danger)] font-bold block">{topFlows.hedge.ticker} {topFlows.hedge.strike}{topFlows.hedge.type}</span>
+                      <span className="text-[var(--danger)] font-bold block">{topFlows.hedge.ticker} {fmtNum(topFlows.hedge.strike)}{topFlows.hedge.type}</span>
                       <span className="text-[8px] font-sans uppercase text-[var(--text-secondary)]">{topFlows.hedge.size}</span>
                     </div>
                     <div className="text-right space-y-0.5">
@@ -1818,7 +1819,7 @@ export function DiscoveryView({
                   <>
                     <div className="space-y-0.5">
                       <span className="text-[7.5px] uppercase block font-black text-[var(--text-tertiary)]">Largest Overall</span>
-                      <span className="text-[var(--info)] font-bold block">{topFlows.largestOverall.ticker} {topFlows.largestOverall.strike}{topFlows.largestOverall.type}</span>
+                      <span className="text-[var(--info)] font-bold block">{topFlows.largestOverall.ticker} {fmtNum(topFlows.largestOverall.strike)}{topFlows.largestOverall.type}</span>
                       <span className="text-[8px] font-sans uppercase text-[var(--text-secondary)]">{topFlows.largestOverall.side}</span>
                     </div>
                     <div className="text-right space-y-0.5">
@@ -1890,7 +1891,7 @@ export function DiscoveryView({
 
                       <div className="flex justify-between items-baseline font-mono font-bold">
                         <span className={`text-[10.5px] ${c_textWhite}`}>
-                          {log.ticker} {log.strike}{log.type}
+                          {log.ticker} {fmtNum(log.strike)}{log.type}
                         </span>
                         <span className={isBullish ? 'text-[var(--success)]' : 'text-[var(--warning)]'}>
                           <span aria-hidden="true">{isBullish ? '+' : '−'}</span>{log.premium}
