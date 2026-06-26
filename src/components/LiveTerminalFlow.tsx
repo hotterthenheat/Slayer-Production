@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react';
 import { GexProfileData } from '../types';
 import { useContractStore } from '../lib/store';
 import { SlayerChart } from './SlayerChart';
-import { Activity, Shield, Zap, Layers, Target } from 'lucide-react';
+import { Activity, Shield, Zap, Layers, Target, Crosshair } from 'lucide-react';
 
 interface LiveTerminalFlowProps {
   profile: GexProfileData;
@@ -28,8 +28,29 @@ export function LiveTerminalFlow({ profile, ticker, decimals }: LiveTerminalFlow
   const longGamma = netGex >= 0;
   const flip = profile.gammaFlip;
   const aboveFlip = flip && spot ? spot >= flip : null;
+  const accent = longGamma ? 'var(--success)' : 'var(--danger)';
   const dist = (lvl?: number) => (lvl && spot ? ((lvl - spot) / spot) * 100 : null);
   const distLabel = (lvl?: number) => { const d = dist(lvl); return d == null ? '—' : `${d >= 0 ? '+' : ''}${d.toFixed(2)}%`; };
+
+  // Dealer-structure spectrum: spot's position across the key levels.
+  const structure = useMemo(() => {
+    const pts = ([
+      { p: profile.putWall, c: 'var(--danger)', l: 'PW' },
+      { p: profile.gammaFlip, c: 'var(--warning)', l: 'γF' },
+      { p: profile.magnet, c: '#a855f7', l: 'MAG' },
+      { p: profile.callWall, c: 'var(--success)', l: 'CW' },
+    ] as { p?: number; c: string; l: string }[]).filter(x => typeof x.p === 'number' && (x.p as number) > 0);
+    const all = [...pts.map(x => x.p as number), spot].filter(v => v > 0);
+    if (all.length < 2) return null;
+    const lo = Math.min(...all), hi = Math.max(...all), range = (hi - lo) || 1, pad = range * 0.1;
+    const L = lo - pad, H = hi + pad;
+    const pos = (p: number) => Math.max(1, Math.min(99, ((p - L) / (H - L)) * 100));
+    return { pts: pts.map(pt => ({ ...pt, x: pos(pt.p as number) })), spotPos: pos(spot) };
+  }, [profile, spot]);
+
+  const insight = longGamma
+    ? `Long-gamma — dealers fade extension. ${aboveFlip ? 'Holding above' : 'Pinned below'} γ-flip ${flip ? flip.toFixed(0) : '—'}${profile.magnet ? `; magnet ${profile.magnet.toFixed(0)} draws price` : ''}.`
+    : `Short-gamma — dealers amplify moves; expect trend & vol. Reclaiming ${flip ? flip.toFixed(0) : 'the flip'} restores stability.`;
 
   const ladderData = useMemo(() => {
     let strikes = profile?.strikes || [];
@@ -51,10 +72,8 @@ export function LiveTerminalFlow({ profile, ticker, decimals }: LiveTerminalFlow
     }));
   }, [profile, activeLadder]);
 
-  const accent = longGamma ? 'var(--success)' : 'var(--danger)';
-
   const Tile = ({ label, value, sub, color }: { label: string; value: string; sub?: string; color?: string }) => (
-    <div className="border border-[var(--border)] rounded-md px-2.5 py-2 bg-white/[0.015]">
+    <div className="border border-[var(--border)] rounded-md px-2.5 py-2 bg-white/[0.015] hover:bg-white/[0.03] transition-colors">
       <div className="text-[9px] font-mono font-bold uppercase tracking-[0.15em] text-[var(--text-tertiary)]">{label}</div>
       <div className="text-[15px] font-black tabular-nums leading-tight mt-1" style={{ color: color || 'var(--text-primary)' }}>{value}</div>
       {sub && <div className="text-[9px] font-mono text-[var(--text-tertiary)] mt-0.5 tabular-nums">{sub}</div>}
@@ -88,8 +107,7 @@ export function LiveTerminalFlow({ profile, ticker, decimals }: LiveTerminalFlow
         </div>
 
         {/* ── Right column: Dealer GEX panel + ladder ── */}
-        <div className="w-full lg:w-[420px] shrink-0 bg-black flex flex-col overflow-hidden">
-          {/* Dealer GEX dashboard */}
+        <div className="w-full lg:w-[430px] shrink-0 bg-black flex flex-col overflow-hidden">
           <div className="p-3 border-b border-[var(--border)] shrink-0">
             <div className="flex items-center gap-1.5 mb-2.5">
               <Activity className="w-3.5 h-3.5 text-[var(--accent-color)]" />
@@ -98,27 +116,55 @@ export function LiveTerminalFlow({ profile, ticker, decimals }: LiveTerminalFlow
             </div>
 
             {/* Net GEX hero */}
-            <div className="rounded-md px-3 py-2.5 mb-2 border" style={{ borderColor: longGamma ? 'rgba(34,197,94,0.35)' : 'rgba(239,68,68,0.35)', background: longGamma ? 'rgba(34,197,94,0.06)' : 'rgba(239,68,68,0.06)' }}>
+            <div className="rounded-lg px-3 py-2.5 mb-3 border relative overflow-hidden" style={{ borderColor: longGamma ? 'rgba(34,197,94,0.35)' : 'rgba(239,68,68,0.35)', background: longGamma ? 'linear-gradient(135deg, rgba(34,197,94,0.12), rgba(34,197,94,0.02))' : 'linear-gradient(135deg, rgba(239,68,68,0.12), rgba(239,68,68,0.02))' }}>
               <div className="flex items-center justify-between">
                 <div>
                   <div className="text-[9px] font-mono font-bold uppercase tracking-[0.15em] text-[var(--text-tertiary)]">Net Gamma Exposure</div>
-                  <div className="text-[22px] font-black tabular-nums leading-tight" style={{ color: accent }}>{netGex >= 0 ? '+' : '−'}{fmtBig(Math.abs(netGex))}</div>
+                  <div className="text-[24px] font-black tabular-nums leading-tight" style={{ color: accent }}>{netGex >= 0 ? '+' : '−'}{fmtBig(Math.abs(netGex))}</div>
                 </div>
-                <span className="flex items-center gap-1.5 px-2 py-1 rounded text-[10px] font-mono font-black uppercase tracking-widest" style={{ background: longGamma ? 'rgba(34,197,94,0.12)' : 'rgba(239,68,68,0.12)', color: accent }}>
+                <span className="flex items-center gap-1.5 px-2 py-1 rounded text-[10px] font-mono font-black uppercase tracking-widest" style={{ background: longGamma ? 'rgba(34,197,94,0.14)' : 'rgba(239,68,68,0.14)', color: accent }}>
                   {longGamma ? <Shield className="w-3 h-3" /> : <Zap className="w-3 h-3 fill-current" />}{longGamma ? 'Long γ' : 'Short γ'}
                 </span>
               </div>
-              <div className="text-[9px] font-mono text-[var(--text-tertiary)] mt-1">Dealers {longGamma ? 'dampen' : 'amplify'} moves · {aboveFlip == null ? '' : aboveFlip ? 'spot above flip' : 'spot below flip'}</div>
+            </div>
+
+            {/* Dealer structure spectrum */}
+            {structure && (
+              <div className="mb-3">
+                <div className="text-[9px] font-mono font-bold uppercase tracking-[0.15em] text-[var(--text-tertiary)] mb-3">Dealer Structure</div>
+                <div className="relative h-1.5 rounded-full" style={{ background: 'linear-gradient(90deg, rgba(239,68,68,0.45), rgba(120,120,130,0.22), rgba(34,197,94,0.45))' }}>
+                  {structure.pts.map((pt, i) => (
+                    <div key={i} className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 w-[3px] h-3 rounded-full" style={{ left: `${pt.x}%`, background: pt.c }} title={pt.l} />
+                  ))}
+                  <div className="absolute -top-[5px] -translate-x-1/2 z-10" style={{ left: `${structure.spotPos}%` }}>
+                    <div className="w-3 h-3 rotate-45 bg-white border border-black" style={{ boxShadow: '0 0 8px rgba(255,255,255,0.85)' }} />
+                  </div>
+                </div>
+                <div className="relative h-7 mt-2">
+                  {structure.pts.map((pt, i) => (
+                    <div key={i} className="absolute -translate-x-1/2 text-center leading-tight" style={{ left: `${pt.x}%` }}>
+                      <div className="text-[8px] font-mono font-black" style={{ color: pt.c }}>{pt.l}</div>
+                      <div className="text-[8px] font-mono text-[var(--text-tertiary)] tabular-nums">{(pt.p as number).toFixed(0)}</div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Auto-read */}
+            <div className="flex items-start gap-1.5 px-2.5 py-2 mb-3 rounded-md border border-[var(--border)] bg-white/[0.02]">
+              <Crosshair className="w-3 h-3 mt-0.5 shrink-0" style={{ color: accent }} />
+              <p className="text-[10px] font-mono leading-relaxed text-[var(--text-secondary)]">{insight}</p>
             </div>
 
             {/* Metric grid */}
-            <div className="grid grid-cols-2 gap-2">
-              <Tile label="γ Flip" value={flip ? flip.toFixed(decimals) : '—'} sub={aboveFlip == null ? undefined : aboveFlip ? 'spot above' : 'spot below'} color="var(--warning)" />
+            <div className="grid grid-cols-3 gap-2">
+              <Tile label="γ Flip" value={flip ? flip.toFixed(decimals) : '—'} sub={aboveFlip == null ? undefined : aboveFlip ? 'above' : 'below'} color="var(--warning)" />
               <Tile label="Magnet" value={profile.magnet ? profile.magnet.toFixed(decimals) : '—'} sub={distLabel(profile.magnet)} color="#a855f7" />
+              <Tile label="Exp Move" value={profile.expectedMovePct != null ? `±${(profile.expectedMovePct * 100).toFixed(2)}%` : '—'} color="var(--info)" />
               <Tile label="Call Wall" value={profile.callWall ? profile.callWall.toFixed(decimals) : '—'} sub={distLabel(profile.callWall)} color="var(--success)" />
               <Tile label="Put Wall" value={profile.putWall ? profile.putWall.toFixed(decimals) : '—'} sub={distLabel(profile.putWall)} color="var(--danger)" />
-              <Tile label="Exp. Move" value={profile.expectedMovePct != null ? `±${(profile.expectedMovePct * 100).toFixed(2)}%` : '—'} sub={profile.expectedMovePct != null && spot ? `${(spot * (1 - profile.expectedMovePct)).toFixed(0)} – ${(spot * (1 + profile.expectedMovePct)).toFixed(0)}` : undefined} color="var(--info)" />
-              <Tile label="Call / Put OI" value={profile.callPutOiRatio || (profile.totalCallOi && profile.totalPutOi ? (profile.totalCallOi / Math.max(1, profile.totalPutOi)).toFixed(2) : '—')} sub="bias" />
+              <Tile label="C/P OI" value={profile.callPutOiRatio || (profile.totalCallOi && profile.totalPutOi ? (profile.totalCallOi / Math.max(1, profile.totalPutOi)).toFixed(2) : '—')} sub="bias" />
             </div>
           </div>
 
