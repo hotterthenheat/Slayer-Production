@@ -97,7 +97,7 @@ export function SlayerChart({ profile, decimals, candles: propCandles }: SlayerC
     canvas.style.width = W + 'px'; canvas.style.height = H + 'px';
     const ctx = canvas.getContext('2d'); if (!ctx) return;
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0); ctx.clearRect(0, 0, W, H);
-    ctx.font = '10px monospace'; ctx.textBaseline = 'middle';
+    ctx.font = '11px monospace'; ctx.textBaseline = 'middle';
 
     if (candles.length === 0) { ctx.fillStyle = '#6b7280'; ctx.textAlign = 'center'; ctx.fillText('Awaiting candle stream…', W / 2, H / 2); return; }
 
@@ -260,7 +260,7 @@ export function SlayerChart({ profile, decimals, candles: propCandles }: SlayerC
       const c = candles[gi]; ctx.fillStyle = '#1f2937'; ctx.textAlign = 'center'; const tw = 34; ctx.fillRect(cx - tw / 2, H - xAxisH, tw, xAxisH); ctx.fillStyle = '#e5e7eb'; ctx.fillText(fmtTime(c.timestamp), cx, H - xAxisH + 8);
       // OHLC readout
       const up = c.close >= c.open; const txt = `O ${c.open.toFixed(decimals)}  H ${c.high.toFixed(decimals)}  L ${c.low.toFixed(decimals)}  C ${c.close.toFixed(decimals)}  V ${(c.volume || 0).toFixed(0)}`;
-      ctx.font = '10px monospace'; ctx.textAlign = 'left'; const wTxt = ctx.measureText(txt).width + 12;
+      ctx.font = '11px monospace'; ctx.textAlign = 'left'; const wTxt = ctx.measureText(txt).width + 12;
       ctx.fillStyle = 'rgba(10,10,10,0.85)'; ctx.fillRect(leftPad + 2, priceTop + 2, wTxt, 15); ctx.fillStyle = up ? '#22c55e' : '#ef4444'; ctx.fillText(txt, leftPad + 8, priceTop + 9);
     }
   };
@@ -300,13 +300,13 @@ export function SlayerChart({ profile, decimals, candles: propCandles }: SlayerC
   useEffect(() => { drawRef.current(); }, [candles, s, displacements, on, panes, showDisp, view, profile, decimals]);
 
   const chip = (active: boolean, label: string, onClick: () => void, dot?: string, tone = 'default') => (
-    <button onClick={onClick} className={`flex items-center gap-1 px-1.5 py-0.5 rounded-sm text-[9px] font-mono font-bold uppercase tracking-wide border transition-colors cursor-pointer ${active ? (tone === 'warn' ? 'bg-[var(--warning)]/15 border-[var(--warning)]/40 text-[var(--warning)]' : 'bg-[var(--surface-2)] border-[var(--border)] text-[var(--text-secondary)]') : 'bg-transparent border-transparent text-[var(--text-tertiary)] opacity-50'}`}>
+    <button onClick={onClick} className={`flex items-center gap-1 px-1.5 py-0.5 rounded-sm text-[10px] font-mono font-bold uppercase tracking-wide border transition-colors cursor-pointer ${active ? (tone === 'warn' ? 'bg-[var(--warning)]/15 border-[var(--warning)]/40 text-[var(--warning)]' : 'bg-[var(--surface-2)] border-[var(--border)] text-[var(--text-secondary)]') : 'bg-transparent border-transparent text-[var(--text-tertiary)] opacity-50'}`}>
       {dot && <span className="w-1.5 h-1.5 rounded-full" style={{ background: dot, opacity: active ? 1 : 0.4 }} />}{label}
     </button>
   );
 
   return (
-    <div className="w-full h-full flex flex-col bg-[var(--surface)]" style={{ width: '100%', height: '100%', display: 'flex', flexDirection: 'column' }}>
+    <div className="w-full h-full flex flex-col bg-black" style={{ width: '100%', height: '100%', display: 'flex', flexDirection: 'column', background: '#000' }}>
       <div className="flex flex-wrap items-center gap-1 px-2 py-1.5 border-b border-[var(--border)] shrink-0">
         {OVERLAYS.map(o => chip(!!on[o.key], o.label, () => setOn(p => ({ ...p, [o.key]: !p[o.key] })), o.color))}
         <span className="w-px h-4 bg-[var(--border)] mx-0.5" />
