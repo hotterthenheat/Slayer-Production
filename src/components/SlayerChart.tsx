@@ -31,6 +31,29 @@ const OVERLAY_DEFS: { key: string; label: string; group: string; build: (o: OHLC
   { key: 'psar', label: 'Parabolic SAR', group: 'Trend Overlays', build: o => [{ vals: TI.parabolicSAR(o.h, o.l), color: '#e5e7eb', dots: true }] },
   { key: 'linreg', label: 'Linear Reg', group: 'Trend Overlays', build: o => [{ vals: TI.linearRegression(o.c, 20).value, color: '#fbbf24', w: 1.4 }] },
   { key: 'ichimoku', label: 'Ichimoku', group: 'Trend Overlays', build: o => { const ic = TI.ichimoku(o.h, o.l, o.c); return [{ vals: ic.tenkan, color: '#60a5fa' }, { vals: ic.kijun, color: '#f87171' }]; } },
+  // ── Expanded moving-average / band / trend variants ──
+  { key: 'ema9', label: 'EMA 9', group: 'Moving Averages', build: o => [{ vals: TI.ema(o.c, 9), color: '#22d3ee' }] },
+  { key: 'ema21', label: 'EMA 21', group: 'Moving Averages', build: o => [{ vals: TI.ema(o.c, 21), color: '#818cf8' }] },
+  { key: 'ema100', label: 'EMA 100', group: 'Moving Averages', build: o => [{ vals: TI.ema(o.c, 100), color: '#fb923c' }] },
+  { key: 'ema200', label: 'EMA 200', group: 'Moving Averages', build: o => [{ vals: TI.ema(o.c, 200), color: '#ef4444' }] },
+  { key: 'sma9', label: 'SMA 9', group: 'Moving Averages', build: o => [{ vals: TI.sma(o.c, 9), color: '#a3e635' }] },
+  { key: 'sma20', label: 'SMA 20', group: 'Moving Averages', build: o => [{ vals: TI.sma(o.c, 20), color: '#38bdf8' }] },
+  { key: 'sma50', label: 'SMA 50', group: 'Moving Averages', build: o => [{ vals: TI.sma(o.c, 50), color: '#facc15' }] },
+  { key: 'sma100', label: 'SMA 100', group: 'Moving Averages', build: o => [{ vals: TI.sma(o.c, 100), color: '#fb7185' }] },
+  { key: 'wma50', label: 'WMA 50', group: 'Moving Averages', build: o => [{ vals: TI.wma(o.c, 50), color: '#2dd4bf' }] },
+  { key: 'hma9', label: 'Hull MA 9', group: 'Moving Averages', build: o => [{ vals: TI.hma(o.c, 9), color: '#f0abfc' }] },
+  { key: 'hma32', label: 'Hull MA 32', group: 'Moving Averages', build: o => [{ vals: TI.hma(o.c, 32), color: '#c084fc' }] },
+  { key: 'vwma50', label: 'VWMA 50', group: 'Moving Averages', build: o => [{ vals: TI.vwma(o.c, o.v, 50), color: '#4ade80' }] },
+  { key: 'rma14', label: 'RMA 14 (Wilder)', group: 'Moving Averages', build: o => [{ vals: TI.rma(o.c, 14), color: '#fcd34d' }] },
+  { key: 'rma21', label: 'RMA 21 (Wilder)', group: 'Moving Averages', build: o => [{ vals: TI.rma(o.c, 21), color: '#fca5a5' }] },
+  { key: 'bb50', label: 'Bollinger 50·2', group: 'Bands & Channels', build: o => { const b = TI.bollingerBands(o.c, 50, 2); return [{ vals: b.upper, color: 'rgba(99,160,255,0.5)' }, { vals: b.lower, color: 'rgba(99,160,255,0.5)' }]; } },
+  { key: 'bbTight', label: 'Bollinger 20·1', group: 'Bands & Channels', build: o => { const b = TI.bollingerBands(o.c, 20, 1); return [{ vals: b.upper, color: 'rgba(168,85,247,0.5)' }, { vals: b.lower, color: 'rgba(168,85,247,0.5)' }]; } },
+  { key: 'keltner15', label: 'Keltner 20·1.5', group: 'Bands & Channels', build: o => { const k = TI.keltnerChannels(o.h, o.l, o.c, 20, 1.5); return [{ vals: k.upper, color: 'rgba(52,211,153,0.45)' }, { vals: k.lower, color: 'rgba(52,211,153,0.45)' }]; } },
+  { key: 'donchian50', label: 'Donchian 50', group: 'Bands & Channels', build: o => { const d = TI.donchianChannels(o.h, o.l, 50); return [{ vals: d.upper, color: 'rgba(192,132,252,0.45)' }, { vals: d.lower, color: 'rgba(192,132,252,0.45)' }]; } },
+  { key: 'linreg50', label: 'Linear Reg 50', group: 'Trend Overlays', build: o => [{ vals: TI.linearRegression(o.c, 50).value, color: '#fbbf24', w: 1.4 }] },
+  { key: 'linreg100', label: 'Linear Reg 100', group: 'Trend Overlays', build: o => [{ vals: TI.linearRegression(o.c, 100).value, color: '#f59e0b', w: 1.4 }] },
+  { key: 'supertrend7', label: 'SuperTrend 7·3', group: 'Trend Overlays', build: o => [{ vals: TI.superTrend(o.h, o.l, o.c, 7, 3).trend, color: '#10b981', w: 1.6 }] },
+  { key: 'supertrend14', label: 'SuperTrend 14·2', group: 'Trend Overlays', build: o => [{ vals: TI.superTrend(o.h, o.l, o.c, 14, 2).trend, color: '#06b6d4', w: 1.6 }] },
 ];
 
 // Oscillator sub-panes — each builds render-ready data (lines / histogram / guides / range).
@@ -58,14 +81,42 @@ const PANE_DEFS: { key: string; label: string; group: string; build: (o: OHLCV) 
   { key: 'cmf', label: 'CMF 20', group: 'Volume', build: o => ({ lines: [{ vals: TI.cmf(o.h, o.l, o.c, o.v, 20), color: '#34d399' }], guides: [{ v: 0, strong: true }], readout: 'CMF 20' }) },
   { key: 'vroc', label: 'Volume ROC', group: 'Volume', build: o => ({ lines: [{ vals: TI.vroc(o.v, 14), color: '#22d3ee' }], guides: [{ v: 0, strong: true }], readout: 'VOL ROC 14' }) },
   { key: 'evm', label: 'Ease of Movement', group: 'Volume', build: o => ({ lines: [{ vals: TI.easeOfMovement(o.h, o.l, o.v, 14), color: '#a78bfa' }], guides: [{ v: 0, strong: true }], readout: 'EOM 14' }) },
+  // ── Expanded oscillator / strength / volatility / volume variants ──
+  { key: 'rsi7', label: 'RSI 7', group: 'Momentum', build: o => ({ lines: [{ vals: TI.rsi(o.c, 7), color: '#f0abfc' }], range: [0, 100], guides: [{ v: 30 }, { v: 50, strong: true }, { v: 70 }], readout: 'RSI 7' }) },
+  { key: 'rsi21', label: 'RSI 21', group: 'Momentum', build: o => ({ lines: [{ vals: TI.rsi(o.c, 21), color: '#d946ef' }], range: [0, 100], guides: [{ v: 30 }, { v: 50, strong: true }, { v: 70 }], readout: 'RSI 21' }) },
+  { key: 'rsi28', label: 'RSI 28', group: 'Momentum', build: o => ({ lines: [{ vals: TI.rsi(o.c, 28), color: '#c026d3' }], range: [0, 100], guides: [{ v: 30 }, { v: 70 }], readout: 'RSI 28' }) },
+  { key: 'stochFast', label: 'Stochastic 5·3', group: 'Momentum', build: o => { const s = TI.stochastic(o.h, o.l, o.c, 5, 3); return { lines: [{ vals: s.k, color: '#38bdf8' }, { vals: s.d, color: '#ff8a3d' }], range: [0, 100], guides: [{ v: 20 }, { v: 80 }], readout: 'STOCH 5·3' }; } },
+  { key: 'stochSlow', label: 'Stochastic 21·5', group: 'Momentum', build: o => { const s = TI.stochastic(o.h, o.l, o.c, 21, 5); return { lines: [{ vals: s.k, color: '#0ea5e9' }, { vals: s.d, color: '#f59e0b' }], range: [0, 100], guides: [{ v: 20 }, { v: 80 }], readout: 'STOCH 21·5' }; } },
+  { key: 'cci50', label: 'CCI 50', group: 'Momentum', build: o => ({ lines: [{ vals: TI.cci(o.h, o.l, o.c, 50), color: '#2dd4bf' }], guides: [{ v: 100 }, { v: 0, strong: true }, { v: -100 }], readout: 'CCI 50' }) },
+  { key: 'willr7', label: 'Williams %R 7', group: 'Momentum', build: o => ({ lines: [{ vals: TI.williamsR(o.h, o.l, o.c, 7), color: '#f472b6' }], range: [-100, 0], guides: [{ v: -20 }, { v: -80 }], readout: 'WILLIAMS %R 7' }) },
+  { key: 'willr28', label: 'Williams %R 28', group: 'Momentum', build: o => ({ lines: [{ vals: TI.williamsR(o.h, o.l, o.c, 28), color: '#ec4899' }], range: [-100, 0], guides: [{ v: -20 }, { v: -80 }], readout: 'WILLIAMS %R 28' }) },
+  { key: 'roc5', label: 'ROC 5', group: 'Momentum', build: o => ({ lines: [{ vals: TI.roc(o.c, 5), color: '#60a5fa' }], guides: [{ v: 0, strong: true }], readout: 'ROC 5' }) },
+  { key: 'roc25', label: 'ROC 25', group: 'Momentum', build: o => ({ lines: [{ vals: TI.roc(o.c, 25), color: '#3b82f6' }], guides: [{ v: 0, strong: true }], readout: 'ROC 25' }) },
+  { key: 'mom10', label: 'Momentum 10', group: 'Momentum', build: o => ({ lines: [{ vals: TI.momentum(o.c, 10), color: '#a78bfa' }], guides: [{ v: 0, strong: true }], readout: 'MOMENTUM 10' }) },
+  { key: 'mom20', label: 'Momentum 20', group: 'Momentum', build: o => ({ lines: [{ vals: TI.momentum(o.c, 20), color: '#8b5cf6' }], guides: [{ v: 0, strong: true }], readout: 'MOMENTUM 20' }) },
+  { key: 'trix9', label: 'TRIX 9', group: 'Momentum', build: o => ({ lines: [{ vals: TI.trix(o.c, 9), color: '#fbbf24' }], guides: [{ v: 0, strong: true }], readout: 'TRIX 9' }) },
+  { key: 'adx7', label: 'ADX 7', group: 'Trend Strength', build: o => { const a = TI.adx(o.h, o.l, o.c, 7); return { lines: [{ vals: a.adx, color: '#e5e7eb' }, { vals: a.plusDI, color: '#26d07c' }, { vals: a.minusDI, color: '#ff4d5e' }], range: [0, 100], guides: [{ v: 25 }], readout: 'ADX 7' }; } },
+  { key: 'adx28', label: 'ADX 28', group: 'Trend Strength', build: o => { const a = TI.adx(o.h, o.l, o.c, 28); return { lines: [{ vals: a.adx, color: '#cbd5e1' }, { vals: a.plusDI, color: '#26d07c' }, { vals: a.minusDI, color: '#ff4d5e' }], range: [0, 100], guides: [{ v: 25 }], readout: 'ADX 28' }; } },
+  { key: 'aroon14', label: 'Aroon 14', group: 'Trend Strength', build: o => { const a = TI.aroon(o.h, o.l, 14); return { lines: [{ vals: a.up, color: '#26d07c' }, { vals: a.down, color: '#ff4d5e' }], range: [0, 100], guides: [{ v: 50, strong: true }], readout: 'AROON 14' }; } },
+  { key: 'atr7', label: 'ATR 7', group: 'Volatility', build: o => ({ lines: [{ vals: TI.atr(o.h, o.l, o.c, 7), color: '#fbbf24' }], readout: 'ATR 7' }) },
+  { key: 'atr21', label: 'ATR 21', group: 'Volatility', build: o => ({ lines: [{ vals: TI.atr(o.h, o.l, o.c, 21), color: '#f59e0b' }], readout: 'ATR 21' }) },
+  { key: 'hv10', label: 'Hist Volatility 10', group: 'Volatility', build: o => ({ lines: [{ vals: TI.historicalVolatility(o.c, 10), color: '#f472b6' }], readout: 'HV 10' }) },
+  { key: 'hv50', label: 'Hist Volatility 50', group: 'Volatility', build: o => ({ lines: [{ vals: TI.historicalVolatility(o.c, 50), color: '#db2777' }], readout: 'HV 50' }) },
+  { key: 'ttm', label: 'TTM Squeeze', group: 'Volatility', build: o => { const t = TI.ttmSqueeze(o.h, o.l, o.c); return { lines: [], hist: { vals: t.momentum }, guides: [{ v: 0, strong: true }], readout: 'TTM SQUEEZE' }; } },
+  { key: 'mfi7', label: 'MFI 7', group: 'Volume', build: o => ({ lines: [{ vals: TI.mfi(o.h, o.l, o.c, o.v, 7), color: '#34d399' }], range: [0, 100], guides: [{ v: 20 }, { v: 80 }], readout: 'MFI 7' }) },
+  { key: 'vroc25', label: 'Volume ROC 25', group: 'Volume', build: o => ({ lines: [{ vals: TI.vroc(o.v, 25), color: '#22d3ee' }], guides: [{ v: 0, strong: true }], readout: 'VOL ROC 25' }) },
+  { key: 'cmf10', label: 'CMF 10', group: 'Volume', build: o => ({ lines: [{ vals: TI.cmf(o.h, o.l, o.c, o.v, 10), color: '#10b981' }], guides: [{ v: 0, strong: true }], readout: 'CMF 10' }) },
+  { key: 'accdist', label: 'Accum / Dist', group: 'Volume', build: o => ({ lines: [{ vals: TI.accumDist(o.h, o.l, o.c, o.v), color: '#5eead4' }], readout: 'ACC/DIST' }) },
+  { key: 'nvi', label: 'Neg Volume Index', group: 'Volume', build: o => ({ lines: [{ vals: TI.nvi(o.c, o.v), color: '#f87171' }], readout: 'NVI' }) },
+  { key: 'pvi', label: 'Pos Volume Index', group: 'Volume', build: o => ({ lines: [{ vals: TI.pvi(o.c, o.v), color: '#4ade80' }], readout: 'PVI' }) },
 ];
 
 const OVERLAY_GROUPS = ['Moving Averages', 'Bands & Channels', 'Trend Overlays'];
 const PANE_GROUPS = ['Momentum', 'Trend Strength', 'Volatility', 'Volume'];
 
-type ChartType = 'candles' | 'hollow' | 'heikin' | 'bars' | 'line' | 'area' | 'baseline';
+type ChartType = 'candles' | 'hollow' | 'heikin' | 'bars' | 'line' | 'area' | 'baseline' | 'step' | 'columns';
 const CHART_TYPES: { k: ChartType; l: string }[] = [
-  { k: 'candles', l: 'Candles' }, { k: 'hollow', l: 'Hollow' }, { k: 'heikin', l: 'Heikin Ashi' }, { k: 'bars', l: 'Bars' }, { k: 'line', l: 'Line' }, { k: 'area', l: 'Area' }, { k: 'baseline', l: 'Baseline' },
+  { k: 'candles', l: 'Candles' }, { k: 'hollow', l: 'Hollow' }, { k: 'heikin', l: 'Heikin Ashi' }, { k: 'bars', l: 'Bars' }, { k: 'line', l: 'Line' }, { k: 'step', l: 'Step' }, { k: 'area', l: 'Area' }, { k: 'baseline', l: 'Baseline' }, { k: 'columns', l: 'Columns' },
 ];
 
 // ── Drawing tools ──────────────────────────────────────────────────────────────
@@ -120,6 +171,8 @@ const RANGE_PRESETS: { k: RangeKey; tf: TimeframeVal; bars: number }[] = [
 // GEX level-heatmap palette — call-dominant strikes in gold, put-dominant in violet. A
 // deliberately distinct, candle-independent pair (our own take on a liquidity heatmap).
 const HEAT_POS = '#e0a93b', HEAT_NEG = '#9b6dff';
+// Interval (timeframe) options offered directly on the chart toolbar.
+const CHART_TFS: TimeframeVal[] = ['1m', '2m', '3m', '5m', '15m', '30m', '1h', '4h', '1D', '1W'];
 
 // Convert a #hex (3/6-digit) to rgba() at the given alpha — lets us tint the live theme tokens.
 const hexA = (hex: string, a: number) => {
@@ -184,6 +237,7 @@ export function SlayerChart({ profile, decimals, candles: propCandles }: SlayerC
   const [range, setRange] = useState<RangeKey | null>(null);
   const setSelectedTimeframe = useContractStore(s => s.setSelectedTimeframe);
   const [typeOpen, setTypeOpen] = useState(false);
+  const [tfOpen, setTfOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [query, setQuery] = useState('');
@@ -345,7 +399,10 @@ export function SlayerChart({ profile, decimals, candles: propCandles }: SlayerC
       ctx.restore(); ctx.font = '11px ui-monospace, monospace';
     }
 
-    const step = niceStep((hi - lo) / 6);
+    // Price-grid density scales with pane height — drag the price axis taller (or scale it)
+    // and more price levels appear for finer read accuracy.
+    const targetGrid = Math.max(5, Math.min(18, Math.round(priceAreaH / 44)));
+    const step = niceStep((hi - lo) / targetGrid);
     const gridYs: { y: number; label: string }[] = [];
     for (let g = Math.ceil(lo / step) * step; g <= hi; g += step) {
       const y = yP(g); if (y < priceTop + 4 || y > priceBottom - 2) continue;
@@ -416,9 +473,10 @@ export function SlayerChart({ profile, decimals, candles: propCandles }: SlayerC
     }
 
     // price series — five chart types (TradingView-style)
-    if (chartType === 'line' || chartType === 'area' || chartType === 'baseline') {
+    if (chartType === 'line' || chartType === 'area' || chartType === 'baseline' || chartType === 'step') {
+      const stepped = chartType === 'step';
       const lastVisGi = start + vis.length - 1;
-      const tracePath = () => { ctx.beginPath(); let st = false; for (let i = 0; i < vis.length; i++) { const x = xOf(start + i), y = yP(vis[i].close); if (!st) { ctx.moveTo(x, y); st = true; } else ctx.lineTo(x, y); } };
+      const tracePath = () => { ctx.beginPath(); let st = false, prevY = 0; for (let i = 0; i < vis.length; i++) { const x = xOf(start + i), y = yP(vis[i].close); if (!st) { ctx.moveTo(x, y); st = true; } else { if (stepped) ctx.lineTo(x, prevY); ctx.lineTo(x, y); } prevY = y; } };
       if (chartType === 'area') {
         tracePath(); ctx.lineTo(xOf(lastVisGi), priceBottom - volBandH); ctx.lineTo(xOf(start), priceBottom - volBandH); ctx.closePath();
         const grad = ctx.createLinearGradient(0, priceTop, 0, priceBottom - volBandH);
@@ -443,6 +501,14 @@ export function SlayerChart({ profile, decimals, candles: propCandles }: SlayerC
         ctx.beginPath(); ctx.moveTo(px(x), Math.round(yP(c.close)) + 0.5); ctx.lineTo(px(x + tick), Math.round(yP(c.close)) + 0.5); ctx.stroke();
       }
       ctx.lineWidth = 1;
+    } else if (chartType === 'columns') {
+      // Close-price histogram from the price-area floor, colored by close-vs-previous-close.
+      const baseY = priceBottom - volBandH;
+      for (let i = 0; i < vis.length; i++) {
+        const c = vis[i], x = xOf(start + i), prevC = i > 0 ? vis[i - 1].close : c.open, up = c.close >= prevC, y = yP(c.close), w = Math.max(1, barW * 0.72);
+        ctx.fillStyle = hexA(up ? upCol : downCol, 0.85);
+        ctx.fillRect(Math.round(x - w / 2), Math.min(y, baseY), Math.round(w), Math.max(1, Math.abs(baseY - y)));
+      }
     } else {
       const wickW = Math.max(1, Math.min(1.6, barW * 0.14));      // wick scales subtly with bar width
       const border = candleBorders && barW >= 3.4;                // crisp edge only when bars are wide enough
@@ -767,6 +833,25 @@ export function SlayerChart({ profile, decimals, candles: propCandles }: SlayerC
           )}
         </div>
         <span className="w-px h-4 bg-[var(--border)] mx-0.5" />
+        {/* Interval (timeframe) — direct on the chart; a manual pick clears the active range */}
+        <div className="relative">
+          <button onClick={() => setTfOpen(o => !o)} className="flex items-center gap-1.5 px-2 py-1 rounded text-[10px] font-mono font-bold uppercase tracking-wide border border-[var(--border)] bg-[var(--surface-2)] text-[var(--text-secondary)] hover:border-[var(--border-strong)] transition-colors">
+            {tfKey || '5m'}<span className="text-[var(--text-tertiary)]">▾</span>
+          </button>
+          {tfOpen && (
+            <>
+              <div className="fixed inset-0 z-40" onClick={() => setTfOpen(false)} />
+              <div className="absolute top-full left-0 mt-1 z-50 w-24 bg-[var(--surface)] border border-[var(--border-strong)] rounded-md shadow-2xl py-1 max-h-72 overflow-y-auto">
+                {CHART_TFS.map(t => (
+                  <button key={t} onClick={() => { setSelectedTimeframe(t); setTfOpen(false); }} className={`w-full flex items-center gap-2 px-3 py-1.5 text-left text-[11px] font-mono hover:bg-white/[0.05] transition-colors ${tfKey === t ? 'text-[var(--text-primary)]' : 'text-[var(--text-secondary)]'}`}>
+                    <span className="w-3 text-center text-[var(--accent-color)]">{tfKey === t ? '✓' : ''}</span>{t}
+                  </button>
+                ))}
+              </div>
+            </>
+          )}
+        </div>
+        <span className="w-px h-4 bg-[var(--border)] mx-0.5" />
         {/* Date range — each maps to (timeframe + visible bars); 1Y/ALL use daily/weekly bars */}
         <div className="flex items-center p-0.5 rounded gap-0.5 bg-[var(--surface-2)] border border-[var(--border)]">
           {RANGE_PRESETS.map(p => (
@@ -784,7 +869,7 @@ export function SlayerChart({ profile, decimals, candles: propCandles }: SlayerC
               <div className="fixed inset-0 z-40" onClick={() => { setMenuOpen(false); setQuery(''); }} />
               <div className="absolute top-full left-0 mt-1 z-50 w-[290px] max-h-[440px] flex flex-col bg-[var(--surface)] border border-[var(--border-strong)] rounded-md shadow-2xl overflow-hidden">
                 <div className="p-2 border-b border-[var(--border)] shrink-0">
-                  <input autoFocus value={query} onChange={e => setQuery(e.target.value)} placeholder="Search 40+ indicators…" className="w-full px-2 py-1.5 rounded bg-black/40 border border-[var(--border)] text-[11px] font-mono text-[var(--text-primary)] placeholder:text-[var(--text-tertiary)] outline-none focus:border-[var(--accent-color)]/50" />
+                  <input autoFocus value={query} onChange={e => setQuery(e.target.value)} placeholder="Search 80+ indicators…" className="w-full px-2 py-1.5 rounded bg-black/40 border border-[var(--border)] text-[11px] font-mono text-[var(--text-primary)] placeholder:text-[var(--text-tertiary)] outline-none focus:border-[var(--accent-color)]/50" />
                 </div>
                 <div className="overflow-y-auto py-1">
                   {OVERLAY_GROUPS.map(group => {

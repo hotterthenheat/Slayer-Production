@@ -2,7 +2,7 @@ import { useMemo, useState, useRef, useEffect } from 'react';
 import { motion } from 'motion/react';
 import { GexProfileData, OrderFlowData } from '../types';
 import { useContractStore } from '../lib/store';
-import { computeTerminalRead } from '../lib/terminalRead';
+import { computeTerminalRead, computeGexOutlook } from '../lib/terminalRead';
 import { computeDealerClock } from '../lib/dealerClock';
 import { fmtNum } from '../lib/format';
 import { SlayerChart } from './SlayerChart';
@@ -148,6 +148,10 @@ export function LiveTerminalFlow({ profile, ticker, decimals }: LiveTerminalFlow
   // Descriptive read of dealer structure (regime, pin strength, force breakdown, observations).
   // We render only the descriptive outputs — this is an instrument, not a trade-picker.
   const read = useMemo(() => computeTerminalRead(profile, candles.slice(-12).map(c => c.close)), [profile, candles]);
+  // GEX OUTLOOK — names the regime (pinning / gamma squeeze / short squeeze / trend / range)
+  // and the level price is being drawn toward. Descriptive path read, not a trade pick.
+  const outlook = useMemo(() => computeGexOutlook(profile, candles.slice(-12).map(c => c.close)), [profile, candles]);
+  const outlookColor = outlook.bias === 'up' ? 'var(--success)' : outlook.bias === 'down' ? 'var(--danger)' : outlook.regime === 'PINNING' ? 'var(--info)' : 'var(--text-secondary)';
 
   // 0DTE session clock — time is the dominant risk; surface session phase + live countdown.
   const clock = useMemo(() => computeDealerClock(0, profile.netVex || 0, now), [profile.netVex, now]);
@@ -321,6 +325,27 @@ export function LiveTerminalFlow({ profile, ticker, decimals }: LiveTerminalFlow
               <div className="flex-1 min-h-0"><OrderFlow data={orderFlow} decimals={decimals} /></div>
             ) : (
               <div className="flex-1 overflow-y-auto p-2.5 space-y-2.5">
+                {/* GEX OUTLOOK — the regime read + where price is being drawn (pinning / gamma
+                    squeeze / short squeeze / trend / range). Describes the path, not a trade. */}
+                <div className="rounded-lg border px-3 py-2.5 relative overflow-hidden" style={{ borderColor: `color-mix(in srgb, ${outlookColor} 40%, transparent)`, background: `linear-gradient(135deg, color-mix(in srgb, ${outlookColor} 13%, transparent), transparent)` }}>
+                  <div className="flex items-center justify-between">
+                    <span className="flex items-center gap-1.5 text-[9px] font-black tracking-widest uppercase text-[var(--text-tertiary)]"><Crosshair className="w-3 h-3" /> GEX Outlook</span>
+                    <span className="text-[9px] font-mono font-black tabular-nums" style={{ color: outlookColor }}>{outlook.confidence}% conf</span>
+                  </div>
+                  <div className="flex items-center gap-1.5 mt-1">
+                    {outlook.bias === 'up' ? <TrendingUp className="w-4 h-4" style={{ color: 'var(--success)' }} /> : outlook.bias === 'down' ? <TrendingDown className="w-4 h-4" style={{ color: 'var(--danger)' }} /> : <Minus className="w-4 h-4 text-[var(--text-tertiary)]" />}
+                    <span className="text-[17px] font-sans font-black tracking-tight leading-none" style={{ color: outlookColor }}>{outlook.regime}</span>
+                  </div>
+                  <div className="text-[11px] font-mono font-bold text-[var(--text-secondary)] mt-1.5 leading-snug">{outlook.headline}</div>
+                  <div className="text-[9.5px] font-mono text-[var(--text-tertiary)] mt-0.5 leading-snug">{outlook.detail}</div>
+                  {outlook.target != null && (
+                    <div className="flex items-center gap-1.5 mt-1.5 pt-1.5 border-t" style={{ borderColor: 'color-mix(in srgb, var(--border) 80%, transparent)' }}>
+                      <span className="text-[8.5px] font-mono uppercase tracking-widest text-[var(--text-tertiary)]">Path toward</span>
+                      <span className="text-[12px] font-mono font-black tabular-nums" style={{ color: outlookColor }}>{fmtNum(outlook.target)}</span>
+                      <span className="text-[9px] font-mono tabular-nums text-[var(--text-tertiary)] ml-auto">{distLabel(outlook.target)}</span>
+                    </div>
+                  )}
+                </div>
                 {/* Net gamma hero */}
                 <div className="rounded-lg border px-3 py-2.5 relative overflow-hidden" style={{ borderColor: longGamma ? 'color-mix(in srgb, var(--success) 32%, transparent)' : 'color-mix(in srgb, var(--danger) 32%, transparent)', background: `linear-gradient(135deg, color-mix(in srgb, ${longGamma ? 'var(--success)' : 'var(--danger)'} 9%, transparent), transparent)` }}>
                   <div className="flex items-center gap-1.5 text-[9px] font-black tracking-widest uppercase text-[var(--text-tertiary)]"><GaugeIcon className="w-3 h-3" /> Net Gamma Exposure</div>
