@@ -63,9 +63,9 @@ const PANE_DEFS: { key: string; label: string; group: string; build: (o: OHLCV) 
 const OVERLAY_GROUPS = ['Moving Averages', 'Bands & Channels', 'Trend Overlays'];
 const PANE_GROUPS = ['Momentum', 'Trend Strength', 'Volatility', 'Volume'];
 
-type ChartType = 'candles' | 'hollow' | 'bars' | 'line' | 'area';
+type ChartType = 'candles' | 'hollow' | 'heikin' | 'bars' | 'line' | 'area' | 'baseline';
 const CHART_TYPES: { k: ChartType; l: string }[] = [
-  { k: 'candles', l: 'Candles' }, { k: 'hollow', l: 'Hollow' }, { k: 'bars', l: 'Bars' }, { k: 'line', l: 'Line' }, { k: 'area', l: 'Area' },
+  { k: 'candles', l: 'Candles' }, { k: 'hollow', l: 'Hollow' }, { k: 'heikin', l: 'Heikin Ashi' }, { k: 'bars', l: 'Bars' }, { k: 'line', l: 'Line' }, { k: 'area', l: 'Area' }, { k: 'baseline', l: 'Baseline' },
 ];
 
 // Convert a #hex (3/6-digit) to rgba() at the given alpha — lets us tint the live theme tokens.
@@ -76,6 +76,15 @@ const hexA = (hex: string, a: number) => {
   const v = parseInt(n, 16);
   if (Number.isNaN(v)) return `rgba(148,148,148,${a})`; // non-hex token (e.g. hsl/var) → neutral fallback
   return `rgba(${(v >> 16) & 255}, ${(v >> 8) & 255}, ${v & 255}, ${a})`;
+};
+// Normalize a token value (#hex, #rgb, or rgb()/rgba()) to a 6-digit #hex for <input type=color> defaults.
+const toHex = (raw: string): string => {
+  const s = (raw || '').trim();
+  if (!s) return '';
+  if (s[0] === '#') return s.length === 4 ? '#' + s.slice(1).split('').map(c => c + c).join('') : s.slice(0, 7);
+  const m = s.match(/rgba?\(([^)]+)\)/i);
+  if (m) { const p = m[1].split(',').map(x => parseInt(x.trim(), 10)); if (p.length >= 3 && p.every(v => !Number.isNaN(v))) { const h = (v: number) => Math.max(0, Math.min(255, v)).toString(16).padStart(2, '0'); return `#${h(p[0])}${h(p[1])}${h(p[2])}`; } }
+  return '';
 };
 // Read the live Slayer theme tokens so the canvas matches whatever theme is active.
 function readTheme() {
@@ -112,15 +121,18 @@ export function SlayerChart({ profile, decimals, candles: propCandles }: SlayerC
   const containerRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
-  // Default state: ONLY the GEX profile is on. Every technical indicator AND the displacement
-  // overlay are opt-in — the user adds everything else, TradingView-style.
-  const [ovOn, setOvOn] = useState<Record<string, boolean>>({});
-  const [paneOn, setPaneOn] = useState<Record<string, boolean>>({});
-  const [showGex, setShowGex] = useState(true);
-  const [showDisp, setShowDisp] = useState(false);
-  const [chartType, setChartType] = useState<ChartType>('candles');
+  // Chart prefs persist across reloads (localStorage). A first-time user still gets the clean
+  // default — only the GEX profile on, every indicator + displacement opt-in, TradingView-style.
+  const initialPrefs = useMemo(() => { try { return JSON.parse(localStorage.getItem('slayerchart.prefs.v1') || '{}'); } catch { return {}; } }, []);
+  const [ovOn, setOvOn] = useState<Record<string, boolean>>(initialPrefs.ovOn || {});
+  const [paneOn, setPaneOn] = useState<Record<string, boolean>>(initialPrefs.paneOn || {});
+  const [showGex, setShowGex] = useState<boolean>(initialPrefs.showGex ?? true);
+  const [showDisp, setShowDisp] = useState<boolean>(initialPrefs.showDisp ?? false);
+  const [chartType, setChartType] = useState<ChartType>(initialPrefs.chartType || 'candles');
+  const [colors, setColors] = useState<{ up?: string; down?: string; line?: string }>(initialPrefs.colors || {});
   const [typeOpen, setTypeOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
   const [query, setQuery] = useState('');
   const [view, setView] = useState<{ bars: number; off: number }>({ bars: 110, off: 0 });
 
@@ -138,6 +150,32 @@ export function SlayerChart({ profile, decimals, candles: propCandles }: SlayerC
 
   const ohlcv = useMemo<OHLCV>(() => ({ o: candles.map(c => c.open), h: candles.map(c => c.high), l: candles.map(c => c.low), c: candles.map(c => c.close), v: candles.map(c => c.volume) }), [candles]);
   const atr = useMemo(() => TI.atr(ohlcv.h, ohlcv.l, ohlcv.c, 14), [ohlcv]);
+  // Heikin Ashi candles (smoothed) — body/wick from HA values, volume/timestamp kept raw.
+  const ha = useMemo<Candle[]>(() => {
+    const out: Candle[] = [];
+    for (let i = 0; i < candles.length; i++) {
+      const c = candles[i];
+      const close = (c.open + c.high + c.low + c.close) / 4;
+      const open = i === 0 ? (c.open + c.close) / 2 : (out[i - 1].open + out[i - 1].close) / 2;
+      out.push({ timestamp: c.timestamp, open, high: Math.max(c.high, open, close), low: Math.min(c.low, open, close), close, volume: c.volume });
+    }
+    return out;
+  }, [candles]);
+
+  // Persist chart prefs (type, colors, indicator selection, GEX/disp toggles) so a user's
+  // setup survives a reload. Saving the initial (already-stored) values once is harmless.
+  useEffect(() => {
+    try { localStorage.setItem('slayerchart.prefs.v1', JSON.stringify({ chartType, colors, ovOn, paneOn, showGex, showDisp })); } catch { /* storage unavailable */ }
+  }, [chartType, colors, ovOn, paneOn, showGex, showDisp]);
+
+  // Live theme colors (as #hex) for the color-picker DEFAULTS; refresh when the theme changes.
+  const [themeHex, setThemeHex] = useState<{ up: string; down: string; line: string }>({ up: '#4ade80', down: '#f87171', line: '#5b9cff' });
+  useEffect(() => {
+    const read = () => { const cs = getComputedStyle(document.documentElement); setThemeHex({ up: toHex(cs.getPropertyValue('--success')) || '#4ade80', down: toHex(cs.getPropertyValue('--danger')) || '#f87171', line: '#5b9cff' }); };
+    read();
+    const mo = new MutationObserver(read); mo.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme', 'class', 'style'] });
+    return () => mo.disconnect();
+  }, []);
 
   // Only enabled indicators are computed, and only when the selection or candles change
   // (NOT on pan/hover) — keeps interaction cheap.
@@ -175,10 +213,12 @@ export function SlayerChart({ profile, decimals, candles: propCandles }: SlayerC
 
     // Theme-driven palette, cached — getComputedStyle is too costly to run per frame.
     const T = themeRef.current || (themeRef.current = readTheme());
+    // User color overrides (persisted) win over the theme tokens; fall back to the theme.
+    const upCol = colors.up || T.up, downCol = colors.down || T.down, lineCol = colors.line || '#5b9cff';
     const COL = {
-      up: T.up, down: T.down, upVol: hexA(T.up, 0.3), downVol: hexA(T.down, 0.3),
+      up: upCol, down: downCol, upVol: hexA(upCol, 0.3), downVol: hexA(downCol, 0.3),
       grid: 'rgba(255,255,255,0.05)', axis: T.dim, axisDim: hexA(T.dim, 0.7),
-      callWall: T.up, putWall: T.down, flip: T.warning, magnet: T.accent, em: T.info,
+      callWall: upCol, putWall: downCol, flip: T.warning, magnet: T.accent, em: T.info,
     };
 
     // Thousands-separated price formatter for every axis / level / readout label.
@@ -196,11 +236,15 @@ export function SlayerChart({ profile, decimals, candles: propCandles }: SlayerC
 
     const n = candles.length;
     const bars = Math.max(20, Math.min(n, viewRef.current.bars));
-    const off = Math.max(0, Math.min(Math.max(0, n - 10), viewRef.current.off));
+    // Allow scrolling PAST the live edge into right-side whitespace (negative off) so the latest
+    // bar can be pulled off the right gutter — the TradingView free-movement feel.
+    const maxOff = Math.max(0, n - 10), minOff = -Math.round(bars * 0.5);
+    const off = Math.max(minOff, Math.min(maxOff, viewRef.current.off));
     const end = n - off, start = Math.max(0, end - bars);
     const barW = plotW / bars;
     const xOf = (gi: number) => plotL + (gi - start) * barW + barW / 2;
-    const vis = candles.slice(start, end);
+    const src = chartType === 'heikin' ? ha : candles;
+    const vis = src.slice(start, end);
 
     let lo = Infinity, hi = -Infinity;
     for (const c of vis) { lo = Math.min(lo, c.low); hi = Math.max(hi, c.high); }
@@ -274,18 +318,24 @@ export function SlayerChart({ profile, decimals, candles: propCandles }: SlayerC
     }
 
     // price series — five chart types (TradingView-style)
-    if (chartType === 'line' || chartType === 'area') {
+    if (chartType === 'line' || chartType === 'area' || chartType === 'baseline') {
+      const lastVisGi = start + vis.length - 1;
+      const tracePath = () => { ctx.beginPath(); let st = false; for (let i = 0; i < vis.length; i++) { const x = xOf(start + i), y = yP(vis[i].close); if (!st) { ctx.moveTo(x, y); st = true; } else ctx.lineTo(x, y); } };
       if (chartType === 'area') {
-        ctx.beginPath(); let st = false;
-        for (let i = 0; i < vis.length; i++) { const x = xOf(start + i), y = yP(vis[i].close); if (!st) { ctx.moveTo(x, y); st = true; } else ctx.lineTo(x, y); }
-        ctx.lineTo(xOf(end - 1), priceBottom - volBandH); ctx.lineTo(xOf(start), priceBottom - volBandH); ctx.closePath();
+        tracePath(); ctx.lineTo(xOf(lastVisGi), priceBottom - volBandH); ctx.lineTo(xOf(start), priceBottom - volBandH); ctx.closePath();
         const grad = ctx.createLinearGradient(0, priceTop, 0, priceBottom - volBandH);
-        grad.addColorStop(0, 'rgba(91,156,255,0.22)'); grad.addColorStop(1, 'rgba(91,156,255,0.012)');
+        grad.addColorStop(0, hexA(lineCol, 0.22)); grad.addColorStop(1, hexA(lineCol, 0.012));
         ctx.fillStyle = grad; ctx.fill();
+      } else if (chartType === 'baseline') {
+        // Two-tone fill split at the first visible close — above = up color, below = down color.
+        const baseY = Math.max(priceTop, Math.min(priceBottom - volBandH, yP(vis[0].close)));
+        const fillBand = (y0: number, h: number, col: string) => { if (h <= 0) return; ctx.save(); ctx.beginPath(); ctx.rect(plotL, y0, plotW, h); ctx.clip(); tracePath(); ctx.lineTo(xOf(lastVisGi), baseY); ctx.lineTo(xOf(start), baseY); ctx.closePath(); ctx.fillStyle = col; ctx.fill(); ctx.restore(); };
+        fillBand(priceTop, baseY - priceTop, hexA(upCol, 0.18));
+        fillBand(baseY, (priceBottom - volBandH) - baseY, hexA(downCol, 0.18));
+        ctx.strokeStyle = hexA(T.dim, 0.45); ctx.setLineDash([4, 3]); ctx.beginPath(); ctx.moveTo(plotL, px(baseY)); ctx.lineTo(plotR, px(baseY)); ctx.stroke(); ctx.setLineDash([]);
       }
-      ctx.strokeStyle = '#5b9cff'; ctx.lineWidth = 1.7; ctx.lineJoin = 'round'; ctx.beginPath(); let st2 = false;
-      for (let i = 0; i < vis.length; i++) { const x = xOf(start + i), y = yP(vis[i].close); if (!st2) { ctx.moveTo(x, y); st2 = true; } else ctx.lineTo(x, y); }
-      ctx.stroke(); ctx.lineWidth = 1;
+      ctx.strokeStyle = chartType === 'baseline' ? (vis[vis.length - 1].close >= vis[0].close ? upCol : downCol) : lineCol;
+      ctx.lineWidth = 1.7; ctx.lineJoin = 'round'; tracePath(); ctx.stroke(); ctx.lineWidth = 1;
     } else if (chartType === 'bars') {
       const tick = Math.max(2, barW * 0.32);
       for (let i = 0; i < vis.length; i++) {
@@ -393,7 +443,7 @@ export function SlayerChart({ profile, decimals, candles: propCandles }: SlayerC
 
     const hv = hoverRef.current;
     if (hv && hv.x >= plotL && hv.x <= plotR) {
-      const gi = Math.max(start, Math.min(end - 1, start + Math.round((hv.x - plotL - barW / 2) / barW)));
+      const gi = Math.max(start, Math.min(Math.min(end - 1, n - 1), start + Math.round((hv.x - plotL - barW / 2) / barW)));
       const cx = xOf(gi);
       ctx.strokeStyle = 'rgba(255,255,255,0.22)'; ctx.setLineDash([3, 3]);
       ctx.beginPath(); ctx.moveTo(px(cx), priceTop); ctx.lineTo(px(cx), H - xAxisH); ctx.stroke();
@@ -439,32 +489,45 @@ export function SlayerChart({ profile, decimals, candles: propCandles }: SlayerC
       const g = geomRef.current, r = canvas.getBoundingClientRect(), mx = e.clientX - r.left;
       if (g && mx >= g.plotL && mx <= g.plotR) {
         const giUnder = g.start + (mx - g.plotL) / g.barW, newBarW = (g.plotR - g.plotL) / next, newStart = giUnder - (mx - g.plotL) / newBarW;
-        const newOff = Math.max(0, Math.min(Math.max(0, n - 10), Math.round(n - next - newStart)));
+        const newOff = Math.max(-Math.round(next * 0.5), Math.min(Math.max(0, n - 10), Math.round(n - next - newStart)));
         setView({ bars: next, off: newOff });
       } else setView(v => ({ ...v, bars: next }));
     };
-    const onDown = (e: MouseEvent) => { dragRef.current = { x: e.clientX, off: viewRef.current.off }; };
+    const onDown = (e: MouseEvent) => { dragRef.current = { x: e.clientX, off: viewRef.current.off }; canvas.style.cursor = 'grabbing'; };
     const onMove = (e: MouseEvent) => {
       const r = canvas.getBoundingClientRect(); hoverRef.current = { x: e.clientX - r.left, y: e.clientY - r.top };
       const drag = dragRef.current;
       if (drag && geomRef.current) {
         const n = candlesRef.current.length, barW = geomRef.current.barW;
-        const nextOff = Math.max(0, Math.min(Math.max(0, n - 10), drag.off + Math.round((e.clientX - drag.x) / barW)));
+        // Clamp the same way the renderer does — allows panning into right-side whitespace.
+        const nextOff = Math.max(-Math.round(viewRef.current.bars * 0.5), Math.min(Math.max(0, n - 10), drag.off + Math.round((e.clientX - drag.x) / barW)));
         if (nextOff !== viewRef.current.off) { setView(v => ({ ...v, off: nextOff })); return; }
       }
       schedule();
     };
-    const onUp = () => { dragRef.current = null; };
+    const onUp = () => { dragRef.current = null; canvas.style.cursor = 'crosshair'; };
     const onLeave = () => { hoverRef.current = null; schedule(); };
+    // Double-click anywhere on the chart snaps back to the live edge at the default zoom.
+    const onDbl = () => setView({ bars: 110, off: 0 });
     canvas.addEventListener('wheel', onWheel, { passive: false });
     canvas.addEventListener('mousedown', onDown);
     window.addEventListener('mousemove', onMove);
     window.addEventListener('mouseup', onUp);
     canvas.addEventListener('mouseleave', onLeave);
-    return () => { ro.disconnect(); mo.disconnect(); canvas.removeEventListener('wheel', onWheel); canvas.removeEventListener('mousedown', onDown); window.removeEventListener('mousemove', onMove); window.removeEventListener('mouseup', onUp); canvas.removeEventListener('mouseleave', onLeave); };
+    canvas.addEventListener('dblclick', onDbl);
+    return () => { ro.disconnect(); mo.disconnect(); canvas.removeEventListener('wheel', onWheel); canvas.removeEventListener('mousedown', onDown); window.removeEventListener('mousemove', onMove); window.removeEventListener('mouseup', onUp); canvas.removeEventListener('mouseleave', onLeave); canvas.removeEventListener('dblclick', onDbl); };
   }, []);
 
-  useEffect(() => { themeRef.current = readTheme(); drawRef.current(); }, [candles, overlaySeries, paneSeries, displacements, showGex, showDisp, chartType, view, profile, decimals, tfKey, tickKey]);
+  useEffect(() => { themeRef.current = readTheme(); drawRef.current(); }, [candles, overlaySeries, paneSeries, displacements, showGex, showDisp, chartType, colors, ha, view, profile, decimals, tfKey, tickKey]);
+
+  // Keep a scrolled-back view anchored to the same bars when a new candle prints (a normal
+  // 1–3 bar growth). A wholesale ticker/timeframe switch is handled by the reset effect above.
+  const prevLenRef = useRef(candles.length);
+  useEffect(() => {
+    const prev = prevLenRef.current, now = candles.length; prevLenRef.current = now;
+    const grew = now - prev;
+    if (grew > 0 && grew <= 3 && viewRef.current.off > 0) setView(v => ({ ...v, off: v.off + grew }));
+  }, [candles.length]);
 
   const activeCount = Object.values(ovOn).filter(Boolean).length + Object.values(paneOn).filter(Boolean).length;
   const q = query.trim().toLowerCase();
@@ -557,9 +620,33 @@ export function SlayerChart({ profile, decimals, candles: propCandles }: SlayerC
         {PANE_DEFS.filter(d => paneOn[d.key]).map(d => removeChip(d.label, '#7d8694', () => setPaneOn(p => ({ ...p, [d.key]: false }))))}
 
         <div className="ml-auto flex items-center gap-1">
+          {/* Appearance settings — pick your own bar / line colors (persisted) */}
+          <div className="relative">
+            <button onClick={() => setSettingsOpen(o => !o)} title="Chart appearance" className="flex items-center justify-center w-6 h-6 rounded-sm text-[12px] leading-none border border-[var(--border)] bg-[var(--surface-2)] text-[var(--text-secondary)] hover:border-[var(--border-strong)] transition-colors">⚙</button>
+            {settingsOpen && (
+              <>
+                <div className="fixed inset-0 z-40" onClick={() => setSettingsOpen(false)} />
+                <div className="absolute top-full right-0 mt-1 z-50 w-[210px] bg-[var(--surface)] border border-[var(--border-strong)] rounded-md shadow-2xl p-3">
+                  <div className="text-[8.5px] font-mono font-black uppercase tracking-[0.18em] text-[var(--text-tertiary)] mb-2">Bar / Line Colors</div>
+                  <div className="space-y-2">
+                    {([['up', 'Up bars'], ['down', 'Down bars'], ['line', 'Line / Area']] as const).map(([key, label]) => (
+                      <label key={key} className="flex items-center justify-between gap-2 cursor-pointer">
+                        <span className="text-[11px] font-mono text-[var(--text-secondary)]">{label}</span>
+                        <span className="flex items-center gap-1.5">
+                          <span className="text-[9px] font-mono tabular-nums uppercase text-[var(--text-tertiary)]">{colors[key] || themeHex[key]}</span>
+                          <input type="color" value={colors[key] || themeHex[key]} onChange={e => setColors(c => ({ ...c, [key]: e.target.value }))} className="w-7 h-6 rounded cursor-pointer bg-transparent border border-[var(--border)] p-0" />
+                        </span>
+                      </label>
+                    ))}
+                  </div>
+                  <button onClick={() => setColors({})} className="w-full mt-2.5 py-1 rounded text-[10px] font-mono font-bold uppercase tracking-widest border border-[var(--border)] text-[var(--text-tertiary)] hover:text-[var(--text-primary)] hover:border-[var(--border-strong)] transition-colors">Reset to theme</button>
+                </div>
+              </>
+            )}
+          </div>
           {specChip(showGex, 'γ-MAP', () => setShowGex(v => !v))}
           {specChip(showDisp, '⚡ DISP', () => setShowDisp(v => !v), 'warn')}
-          {view.off > 0 && <button onClick={() => setView(v => ({ ...v, off: 0 }))} className="px-1.5 py-0.5 rounded-sm text-[10px] font-mono font-bold uppercase tracking-wide border border-[var(--border)] bg-[var(--surface-2)] text-[var(--text-secondary)]">⟳ LIVE</button>}
+          {view.off !== 0 && <button onClick={() => setView(v => ({ ...v, off: 0 }))} title="Jump back to the live edge (or double-click the chart)" className="px-1.5 py-0.5 rounded-sm text-[10px] font-mono font-bold uppercase tracking-wide border border-[var(--border)] bg-[var(--surface-2)] text-[var(--text-secondary)] hover:border-[var(--border-strong)] transition-colors">⟳ LIVE</button>}
         </div>
       </div>
       <div ref={containerRef} className="relative flex-1 min-h-[300px]" style={{ position: 'relative', flex: 1, minHeight: 300 }}>
