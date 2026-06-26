@@ -254,6 +254,7 @@ export const SlayerChart = memo(function SlayerChartImpl({ profile, decimals, ca
   const [showOrbs, setShowOrbs] = useState<boolean>(gexMapV2 ? (initialPrefs.showOrbs ?? false) : false);
   // Dealer-map density — how many strikes the heatmap / orbs / exposure-lane render. Lower = cleaner.
   const [gexCount, setGexCount] = useState<number>(typeof initialPrefs.gexCount === 'number' ? initialPrefs.gexCount : 16);
+  const [ctxMenu, setCtxMenu] = useState<{ x: number; y: number } | null>(null); // right-click "View" menu (reset to live, etc.)
   const [chartType, setChartType] = useState<ChartType>(initialPrefs.chartType || 'candles');
   const [colors, setColors] = useState<{ up?: string; down?: string; line?: string; wick?: string; bg?: string; grid?: string }>(initialPrefs.colors || {});
   const [showGrid, setShowGrid] = useState<boolean>(initialPrefs.showGrid ?? true);
@@ -960,6 +961,8 @@ export const SlayerChart = memo(function SlayerChartImpl({ profile, decimals, ca
       return best;
     };
     const onDown = (e: MouseEvent) => {
+      if (e.button !== 0) return; // left button only — right-click opens the view context menu
+      setCtxMenu(null);
       if (tweenRef.current) { cancelAnimationFrame(tweenRef.current); tweenRef.current = 0; }
       const r = canvas.getBoundingClientRect(), mx = e.clientX - r.left, my = e.clientY - r.top, g = geomRef.current, tl = toolRef.current;
       if (!g) return;
@@ -1008,6 +1011,8 @@ export const SlayerChart = memo(function SlayerChartImpl({ profile, decimals, ca
     const onLeave = () => { hoverRef.current = null; broadcastCrosshair(null, panelId ?? 'main'); schedule(); };
     // Double-click (cursor mode): price gutter → auto-fit; elsewhere → snap back to the live edge.
     const onDbl = (e: MouseEvent) => { if (toolRef.current !== 'cursor') return; const r = canvas.getBoundingClientRect(), mx = e.clientX - r.left, g = geomRef.current; if (g && mx >= g.plotR) setPriceView(null); else tweenView({ bars: 110, off: 0 }); };
+    // Right-click anywhere on the chart → a small "View" menu (reset to the live view, jump to live, auto-fit Y).
+    const onCtx = (e: MouseEvent) => { e.preventDefault(); const r = canvas.getBoundingClientRect(); setCtxMenu({ x: Math.max(6, Math.min(e.clientX - r.left, r.width - 192)), y: Math.max(6, Math.min(e.clientY - r.top, r.height - 128)) }); };
     const onKey = (e: KeyboardEvent) => {
       const tgt = e.target as HTMLElement | null; if (tgt && (tgt.tagName === 'INPUT' || tgt.tagName === 'TEXTAREA')) return;
       if (e.key === 'Delete' && selectedRef.current) { const id = selectedRef.current; setDrawings(a => a.filter(d => d.id !== id)); setSelectedId(null); }
@@ -1019,8 +1024,9 @@ export const SlayerChart = memo(function SlayerChartImpl({ profile, decimals, ca
     window.addEventListener('mouseup', onUp);
     canvas.addEventListener('mouseleave', onLeave);
     canvas.addEventListener('dblclick', onDbl);
+    canvas.addEventListener('contextmenu', onCtx);
     window.addEventListener('keydown', onKey);
-    return () => { ro.disconnect(); mo.disconnect(); canvas.removeEventListener('wheel', onWheel); canvas.removeEventListener('mousedown', onDown); window.removeEventListener('mousemove', onMove); window.removeEventListener('mouseup', onUp); canvas.removeEventListener('mouseleave', onLeave); canvas.removeEventListener('dblclick', onDbl); window.removeEventListener('keydown', onKey); };
+    return () => { ro.disconnect(); mo.disconnect(); canvas.removeEventListener('wheel', onWheel); canvas.removeEventListener('mousedown', onDown); window.removeEventListener('mousemove', onMove); window.removeEventListener('mouseup', onUp); canvas.removeEventListener('mouseleave', onLeave); canvas.removeEventListener('dblclick', onDbl); canvas.removeEventListener('contextmenu', onCtx); window.removeEventListener('keydown', onKey); };
   }, []);
 
   // Data/view-driven repaints are rAF-coalesced and do NOT re-read the theme (the MutationObserver
@@ -1273,6 +1279,17 @@ export const SlayerChart = memo(function SlayerChartImpl({ profile, decimals, ca
       </div>
       <div ref={containerRef} className="relative flex-1 min-h-[300px]" style={{ position: 'relative', flex: 1, minHeight: 300 }}>
         <canvas ref={canvasRef} className="absolute inset-0 cursor-crosshair" style={{ position: 'absolute', inset: 0 }} />
+        {ctxMenu && (
+          <>
+            <div className="fixed inset-0 z-40" onClick={() => setCtxMenu(null)} onContextMenu={e => { e.preventDefault(); setCtxMenu(null); }} onWheel={() => setCtxMenu(null)} />
+            <div className="absolute z-50 min-w-[182px] bg-[var(--surface)] border border-[var(--border-strong)] rounded-md shadow-2xl py-1 select-none" style={{ left: ctxMenu.x, top: ctxMenu.y }}>
+              <div className="px-3 pt-1 pb-1 text-[8.5px] font-mono font-black uppercase tracking-[0.18em] text-[var(--text-tertiary)]">View</div>
+              <button onClick={() => { resetView(); setCtxMenu(null); }} className="w-full flex items-center gap-2 px-3 py-1.5 text-left text-[11px] font-mono text-[var(--text-secondary)] hover:bg-white/[0.05] hover:text-[var(--text-primary)] transition-colors"><span className="text-[var(--accent-color)]">⟳</span> Reset to live view</button>
+              {view.off !== 0 && <button onClick={() => { tweenView({ bars: view.bars, off: 0 }); setCtxMenu(null); }} className="w-full flex items-center gap-2 px-3 py-1.5 text-left text-[11px] font-mono text-[var(--text-secondary)] hover:bg-white/[0.05] hover:text-[var(--text-primary)] transition-colors"><span className="text-[var(--accent-color)]">⟲</span> Jump to live edge</button>}
+              {priceView && <button onClick={() => { setPriceView(null); setCtxMenu(null); }} className="w-full flex items-center gap-2 px-3 py-1.5 text-left text-[11px] font-mono text-[var(--text-secondary)] hover:bg-white/[0.05] hover:text-[var(--text-primary)] transition-colors"><span className="text-[var(--accent-color)]">⤢</span> Auto-fit price scale</button>}
+            </div>
+          </>
+        )}
       </div>
     </div>
   );
