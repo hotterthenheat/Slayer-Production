@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Candle, GexProfileData } from '../types';
+import { Candle, GexProfileData, TimeframeVal } from '../types';
 import { useContractStore } from '../lib/store';
 import * as TI from '../lib/indicators';
 
@@ -102,6 +102,21 @@ function distToSeg(px2: number, py: number, ax: number, ay: number, bx: number, 
   let tt = len2 ? ((px2 - ax) * dx + (py - ay) * dy) / len2 : 0; tt = Math.max(0, Math.min(1, tt));
   const cx = ax + tt * dx, cy = ay + tt * dy; return Math.hypot(px2 - cx, py - cy);
 }
+// Multiply a #hex toward black (f<1) / white-ish (f>1) for crisp candle borders.
+function shade(hex: string, f: number): string {
+  const h = (hex || '').replace('#', ''); if (h.length < 6) return hex;
+  const v = parseInt(h.slice(0, 6), 16); if (Number.isNaN(v)) return hex;
+  const cl = (x: number) => Math.max(0, Math.min(255, Math.round(x)));
+  return `rgb(${cl(((v >> 16) & 255) * f)}, ${cl(((v >> 8) & 255) * f)}, ${cl((v & 255) * f)})`;
+}
+
+// ── Date-range presets — each maps to a backend timeframe + a sensible visible-bar count.
+//    Switching the timeframe auto-switches the server's 200-bar buffer for that resolution. ──
+type RangeKey = '1D' | '5D' | '1M' | '3M' | '6M' | '1Y' | 'ALL';
+const RANGE_PRESETS: { k: RangeKey; tf: TimeframeVal; bars: number }[] = [
+  { k: '1D', tf: '5m', bars: 78 }, { k: '5D', tf: '15m', bars: 130 }, { k: '1M', tf: '1h', bars: 140 },
+  { k: '3M', tf: '1D', bars: 63 }, { k: '6M', tf: '1D', bars: 128 }, { k: '1Y', tf: '1D', bars: 200 }, { k: 'ALL', tf: '1W', bars: 200 },
+];
 
 // Convert a #hex (3/6-digit) to rgba() at the given alpha — lets us tint the live theme tokens.
 const hexA = (hex: string, a: number) => {
@@ -157,7 +172,13 @@ export function SlayerChart({ profile, decimals, candles: propCandles }: SlayerC
   const [showGex, setShowGex] = useState<boolean>(initialPrefs.showGex ?? true);
   const [showDisp, setShowDisp] = useState<boolean>(initialPrefs.showDisp ?? false);
   const [chartType, setChartType] = useState<ChartType>(initialPrefs.chartType || 'candles');
-  const [colors, setColors] = useState<{ up?: string; down?: string; line?: string }>(initialPrefs.colors || {});
+  const [colors, setColors] = useState<{ up?: string; down?: string; line?: string; wick?: string; bg?: string; grid?: string }>(initialPrefs.colors || {});
+  const [showGrid, setShowGrid] = useState<boolean>(initialPrefs.showGrid ?? true);
+  const [showVolume, setShowVolume] = useState<boolean>(initialPrefs.showVolume ?? true);
+  const [showWatermark, setShowWatermark] = useState<boolean>(initialPrefs.showWatermark ?? true);
+  const [candleBorders, setCandleBorders] = useState<boolean>(initialPrefs.candleBorders ?? true);
+  const [range, setRange] = useState<RangeKey | null>(null);
+  const setSelectedTimeframe = useContractStore(s => s.setSelectedTimeframe);
   const [typeOpen, setTypeOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -173,7 +194,14 @@ export function SlayerChart({ profile, decimals, candles: propCandles }: SlayerC
 
   const tfKey = useContractStore(s => s.selectedTimeframe);
   const tickKey = useContractStore(s => s.selectedAsset?.ticker);
-  useEffect(() => { setView({ bars: 110, off: 0 }); setPriceView(null); }, [tfKey, tickKey]);
+  // A range button can request a specific bar count for the new timeframe; the reset consumes it.
+  const pendingBarsRef = useRef<number | null>(null);
+  useEffect(() => {
+    const pending = pendingBarsRef.current;
+    setView({ bars: pending ?? 110, off: 0 });
+    if (pending == null) setRange(null); // an external timeframe/ticker change isn't a preset range
+    pendingBarsRef.current = null; setPriceView(null);
+  }, [tfKey, tickKey]);
   // Load this ticker's saved drawings (and reset transient drawing state) on symbol change.
   useEffect(() => {
     try { const raw = localStorage.getItem('slayerchart.draw.' + (tickKey || '_')); setDrawings(raw ? JSON.parse(raw) : []); } catch { setDrawings([]); }
@@ -214,8 +242,8 @@ export function SlayerChart({ profile, decimals, candles: propCandles }: SlayerC
   // Persist chart prefs (type, colors, indicator selection, GEX/disp toggles) so a user's
   // setup survives a reload. Saving the initial (already-stored) values once is harmless.
   useEffect(() => {
-    try { localStorage.setItem('slayerchart.prefs.v1', JSON.stringify({ chartType, colors, ovOn, paneOn, showGex, showDisp })); } catch { /* storage unavailable */ }
-  }, [chartType, colors, ovOn, paneOn, showGex, showDisp]);
+    try { localStorage.setItem('slayerchart.prefs.v1', JSON.stringify({ chartType, colors, ovOn, paneOn, showGex, showDisp, showGrid, showVolume, showWatermark, candleBorders })); } catch { /* storage unavailable */ }
+  }, [chartType, colors, ovOn, paneOn, showGex, showDisp, showGrid, showVolume, showWatermark, candleBorders]);
 
   // Only enabled indicators are computed, and only when the selection or candles change
   // (NOT on pan/hover) — keeps interaction cheap.
@@ -249,6 +277,8 @@ export function SlayerChart({ profile, decimals, candles: propCandles }: SlayerC
     if (canvas.width !== nw || canvas.height !== nh) { canvas.width = nw; canvas.height = nh; canvas.style.width = W + 'px'; canvas.style.height = H + 'px'; }
     const ctx = canvas.getContext('2d'); if (!ctx) return;
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0); ctx.clearRect(0, 0, W, H);
+    // Optional custom background fill (default: transparent → the themed container shows through).
+    if (colors.bg) { ctx.fillStyle = colors.bg; ctx.fillRect(0, 0, W, H); }
     ctx.font = '11px var(--font-mono, ui-monospace), monospace'; ctx.textBaseline = 'middle';
 
     // Theme-driven palette, cached — getComputedStyle is too costly to run per frame.
@@ -257,7 +287,7 @@ export function SlayerChart({ profile, decimals, candles: propCandles }: SlayerC
     const upCol = colors.up || DEFAULT_COLORS.up, downCol = colors.down || DEFAULT_COLORS.down, lineCol = colors.line || DEFAULT_COLORS.line;
     const COL = {
       up: upCol, down: downCol, upVol: hexA(upCol, 0.3), downVol: hexA(downCol, 0.3),
-      grid: 'rgba(255,255,255,0.05)', axis: T.dim, axisDim: hexA(T.dim, 0.7),
+      grid: colors.grid || 'rgba(255,255,255,0.05)', axis: T.dim, axisDim: hexA(T.dim, 0.7),
       callWall: upCol, putWall: downCol, flip: T.warning, magnet: T.accent, em: T.info,
     };
 
@@ -298,13 +328,13 @@ export function SlayerChart({ profile, decimals, candles: propCandles }: SlayerC
     // Manual vertical scale (drag the price axis): scale the auto range about its center + shift.
     const pv = priceViewRef.current;
     if (pv) { const center = (lo + hi) / 2, half = Math.max(1e-6, ((hi - lo) / 2) * pv.factor); lo = center - half + pv.offset; hi = center + half + pv.offset; }
-    const volBandH = priceH * 0.13, priceAreaH = priceH - volBandH;
+    const volBandH = showVolume ? priceH * 0.13 : 0, priceAreaH = priceH - volBandH;
     const yP = (p: number) => priceTop + priceAreaH - ((p - lo) / (hi - lo)) * priceAreaH;
     const pOfY = (y: number) => lo + (1 - (y - priceTop) / priceAreaH) * (hi - lo);
     geomRef.current = { plotL, plotR, barW, start, end, n, priceTop, priceAreaH, lo, hi };
 
     // faint ticker · timeframe watermark (lower third, dim)
-    if (tickKey) {
+    if (tickKey && showWatermark) {
       ctx.save(); ctx.textAlign = 'center'; ctx.fillStyle = 'rgba(255,255,255,0.026)';
       ctx.font = '600 44px ui-sans-serif, system-ui, sans-serif';
       ctx.fillText(`${tickKey}${tfKey ? '  ·  ' + tfKey : ''}`, plotL + plotW / 2, priceTop + priceAreaH * 0.74);
@@ -315,7 +345,7 @@ export function SlayerChart({ profile, decimals, candles: propCandles }: SlayerC
     const gridYs: { y: number; label: string }[] = [];
     for (let g = Math.ceil(lo / step) * step; g <= hi; g += step) {
       const y = yP(g); if (y < priceTop + 4 || y > priceBottom - 2) continue;
-      ctx.strokeStyle = COL.grid; ctx.beginPath(); ctx.moveTo(plotL, px(y) - 0.5); ctx.lineTo(plotR, px(y) - 0.5); ctx.stroke();
+      if (showGrid) { ctx.strokeStyle = COL.grid; ctx.beginPath(); ctx.moveTo(plotL, px(y) - 0.5); ctx.lineTo(plotR, px(y) - 0.5); ctx.stroke(); }
       gridYs.push({ y, label: nf(g) });
     }
 
@@ -334,15 +364,17 @@ export function SlayerChart({ profile, decimals, candles: propCandles }: SlayerC
     }
 
     // Volume strip — opacity scales with price velocity (|Δ| vs ATR) so impulse bars read louder.
-    let maxVol = 0; for (const c of vis) maxVol = Math.max(maxVol, c.volume || 0);
-    const volBase = priceBottom;
-    ctx.strokeStyle = 'rgba(255,255,255,0.06)'; ctx.beginPath(); ctx.moveTo(plotL, px(priceBottom - volBandH - 1)); ctx.lineTo(plotR, px(priceBottom - volBandH - 1)); ctx.stroke();
-    for (let i = 0; i < vis.length; i++) {
-      const gi = start + i, c = vis[i], vh = maxVol ? ((c.volume || 0) / maxVol) * (volBandH - 2) : 0;
-      const a = atr[gi], vel = a && a > 0 ? Math.min(1, Math.abs(c.close - c.open) / (1.6 * a)) : 0.4;
-      const alpha = 0.2 + vel * 0.45;
-      ctx.fillStyle = c.close >= c.open ? hexA(COL.up, alpha) : hexA(COL.down, alpha);
-      ctx.fillRect(xOf(gi) - barW * 0.34, volBase - vh, barW * 0.68, vh);
+    if (showVolume && volBandH > 0) {
+      let maxVol = 0; for (const c of vis) maxVol = Math.max(maxVol, c.volume || 0);
+      const volBase = priceBottom;
+      ctx.strokeStyle = 'rgba(255,255,255,0.06)'; ctx.beginPath(); ctx.moveTo(plotL, px(priceBottom - volBandH - 1)); ctx.lineTo(plotR, px(priceBottom - volBandH - 1)); ctx.stroke();
+      for (let i = 0; i < vis.length; i++) {
+        const gi = start + i, c = vis[i], vh = maxVol ? ((c.volume || 0) / maxVol) * (volBandH - 2) : 0;
+        const a = atr[gi], vel = a && a > 0 ? Math.min(1, Math.abs(c.close - c.open) / (1.6 * a)) : 0.4;
+        const alpha = 0.2 + vel * 0.45;
+        ctx.fillStyle = c.close >= c.open ? hexA(COL.up, alpha) : hexA(COL.down, alpha);
+        ctx.fillRect(xOf(gi) - barW * 0.34, volBase - vh, barW * 0.68, vh);
+      }
     }
 
     // GEX gamma-profile lane
@@ -389,14 +421,19 @@ export function SlayerChart({ profile, decimals, candles: propCandles }: SlayerC
       }
       ctx.lineWidth = 1;
     } else {
+      const wickW = Math.max(1, Math.min(1.6, barW * 0.14));      // wick scales subtly with bar width
+      const border = candleBorders && barW >= 3.4;                // crisp edge only when bars are wide enough
       for (let i = 0; i < vis.length; i++) {
-        const c = vis[i], x = xOf(start + i), up = c.close >= c.open, col = up ? COL.up : COL.down;
-        ctx.strokeStyle = col; ctx.fillStyle = col;
+        const c = vis[i], x = xOf(start + i), up = c.close >= c.open, col = up ? upCol : downCol, wickCol = colors.wick || col;
+        // wick first (sits behind the body), centered + pixel-snapped
+        ctx.strokeStyle = wickCol; ctx.lineWidth = wickW;
         ctx.beginPath(); ctx.moveTo(px(x), Math.round(yP(c.high))); ctx.lineTo(px(x), Math.round(yP(c.low))); ctx.stroke();
-        const yO = yP(c.open), yC = yP(c.close), bw = Math.max(1, barW * 0.7), bx = Math.round(x - bw / 2), by = Math.round(Math.min(yO, yC)), bh = Math.max(1, Math.round(Math.abs(yC - yO)));
-        if (chartType === 'hollow' && up) { ctx.lineWidth = 1.2; ctx.strokeRect(bx + 0.5, by + 0.5, Math.round(bw) - 1, Math.max(1, bh - 1)); ctx.lineWidth = 1; }
-        else ctx.fillRect(bx, by, Math.round(bw), bh);
+        // body — fuller (0.78 of the slot), pixel-snapped, optional darker crisp border for depth
+        const yO = yP(c.open), yC = yP(c.close), bw = Math.max(1, barW * 0.78), w = Math.round(bw), bx = Math.round(x - bw / 2), by = Math.round(Math.min(yO, yC)), bh = Math.max(1, Math.round(Math.abs(yC - yO)));
+        if (chartType === 'hollow' && up) { ctx.strokeStyle = col; ctx.lineWidth = 1.3; ctx.strokeRect(bx + 0.5, by + 0.5, w - 1, Math.max(1, bh - 1)); }
+        else { ctx.fillStyle = col; ctx.fillRect(bx, by, w, bh); if (border) { ctx.strokeStyle = shade(col, 0.72); ctx.lineWidth = 1; ctx.strokeRect(bx + 0.5, by + 0.5, w - 1, Math.max(1, bh - 1)); } }
       }
+      ctx.lineWidth = 1;
     }
 
     // overlays (registry-driven)
@@ -567,6 +604,7 @@ export function SlayerChart({ profile, decimals, candles: propCandles }: SlayerC
       const n = candlesRef.current.length || 300, factor = e.deltaY > 0 ? 1.15 : 0.87;
       const cur = viewRef.current, next = Math.max(20, Math.min(n, Math.round(cur.bars * factor)));
       if (next === cur.bars) return;
+      setRange(null); // manual zoom breaks the active range preset
       const g = geomRef.current, r = canvas.getBoundingClientRect(), mx = e.clientX - r.left;
       if (g && mx >= g.plotL && mx <= g.plotR) {
         const giUnder = g.start + (mx - g.plotL) / g.barW, newBarW = (g.plotR - g.plotL) / next, newStart = giUnder - (mx - g.plotL) / newBarW;
@@ -653,7 +691,7 @@ export function SlayerChart({ profile, decimals, candles: propCandles }: SlayerC
   useEffect(() => {
     if (redrawRafRef.current) return;
     redrawRafRef.current = requestAnimationFrame(() => { redrawRafRef.current = 0; drawRef.current(); });
-  }, [candles, overlaySeries, paneSeries, displacements, showGex, showDisp, chartType, colors, ha, view, priceView, drawings, tool, selectedId, profile, decimals, tfKey, tickKey]);
+  }, [candles, overlaySeries, paneSeries, displacements, showGex, showDisp, chartType, colors, ha, view, priceView, drawings, tool, selectedId, showGrid, showVolume, showWatermark, candleBorders, profile, decimals, tfKey, tickKey]);
 
   // Keep a scrolled-back view anchored to the same bars when a new candle prints (a normal
   // 1–3 bar growth). A wholesale ticker/timeframe switch is handled by the reset effect above.
@@ -677,6 +715,12 @@ export function SlayerChart({ profile, decimals, candles: propCandles }: SlayerC
     <button onClick={onClick} className={`flex items-center gap-1 px-1.5 py-0.5 rounded-sm text-[10px] font-mono font-bold uppercase tracking-wide border transition-colors ${active ? (tone === 'warn' ? 'bg-[var(--warning)]/15 border-[var(--warning)]/40 text-[var(--warning)]' : 'bg-[var(--surface-2)] border-[var(--border)] text-[var(--text-secondary)]') : 'bg-transparent border-transparent text-[var(--text-tertiary)] opacity-50'}`}>{label}</button>
   );
   const pickTool = (k: DrawTool) => { setTool(t => (t === k ? 'cursor' : k)); draftRef.current = null; measureRef.current = null; measureDragRef.current = false; };
+  const pickRange = (r: RangeKey) => {
+    const p = RANGE_PRESETS.find(x => x.k === r); if (!p) return;
+    setRange(r);
+    if (tfKey === p.tf) { setView({ bars: p.bars, off: 0 }); setPriceView(null); }
+    else { pendingBarsRef.current = p.bars; setSelectedTimeframe(p.tf); } // tf change → reset effect applies the bars
+  };
 
   return (
     <div className="w-full h-full flex flex-col" style={{ width: '100%', height: '100%', display: 'flex', flexDirection: 'column', background: 'var(--bg-base)' }}>
@@ -698,6 +742,13 @@ export function SlayerChart({ profile, decimals, candles: propCandles }: SlayerC
               </div>
             </>
           )}
+        </div>
+        <span className="w-px h-4 bg-[var(--border)] mx-0.5" />
+        {/* Date range — each maps to (timeframe + visible bars); 1Y/ALL use daily/weekly bars */}
+        <div className="flex items-center p-0.5 rounded gap-0.5 bg-[var(--surface-2)] border border-[var(--border)]">
+          {RANGE_PRESETS.map(p => (
+            <button key={p.k} onClick={() => pickRange(p.k)} title={`${p.k} — ${p.tf} bars`} className={`px-1.5 py-0.5 text-[10px] font-mono font-black tracking-wide rounded transition-colors ${range === p.k ? 'text-black' : 'text-[var(--text-tertiary)] hover:text-[var(--text-primary)]'}`} style={range === p.k ? { background: 'var(--accent-color)' } : undefined}>{p.k}</button>
+          ))}
         </div>
         <span className="w-px h-4 bg-[var(--border)] mx-0.5" />
         {/* Indicator menu */}
@@ -773,20 +824,31 @@ export function SlayerChart({ profile, decimals, candles: propCandles }: SlayerC
             {settingsOpen && (
               <>
                 <div className="fixed inset-0 z-40" onClick={() => setSettingsOpen(false)} />
-                <div className="absolute top-full right-0 mt-1 z-50 w-[210px] bg-[var(--surface)] border border-[var(--border-strong)] rounded-md shadow-2xl p-3">
-                  <div className="text-[8.5px] font-mono font-black uppercase tracking-[0.18em] text-[var(--text-tertiary)] mb-2">Bar / Line Colors</div>
-                  <div className="space-y-2">
-                    {([['up', 'Up bars'], ['down', 'Down bars'], ['line', 'Line / Area']] as const).map(([key, label]) => (
+                <div className="absolute top-full right-0 mt-1 z-50 w-[232px] max-h-[78vh] overflow-y-auto bg-[var(--surface)] border border-[var(--border-strong)] rounded-md shadow-2xl p-3">
+                  <div className="text-[8.5px] font-mono font-black uppercase tracking-[0.18em] text-[var(--text-tertiary)] mb-2">Colors</div>
+                  <div className="space-y-1.5">
+                    {([['up', 'Up bars', DEFAULT_COLORS.up], ['down', 'Down bars', DEFAULT_COLORS.down], ['wick', 'Wick', DEFAULT_COLORS.up], ['line', 'Line / Area', DEFAULT_COLORS.line], ['bg', 'Background', '#0d0d0d'], ['grid', 'Grid', '#262626']] as const).map(([key, label, def]) => (
                       <label key={key} className="flex items-center justify-between gap-2 cursor-pointer">
                         <span className="text-[11px] font-mono text-[var(--text-secondary)]">{label}</span>
                         <span className="flex items-center gap-1.5">
-                          <span className="text-[9px] font-mono tabular-nums uppercase text-[var(--text-tertiary)]">{colors[key] || DEFAULT_COLORS[key]}</span>
-                          <input type="color" value={colors[key] || DEFAULT_COLORS[key]} onChange={e => setColors(c => ({ ...c, [key]: e.target.value }))} className="w-7 h-6 rounded cursor-pointer bg-transparent border border-[var(--border)] p-0" />
+                          <span className="text-[9px] font-mono tabular-nums uppercase text-[var(--text-tertiary)]">{colors[key] || def}</span>
+                          <input type="color" value={colors[key] || def} onChange={e => setColors(c => ({ ...c, [key]: e.target.value }))} className="w-7 h-6 rounded cursor-pointer bg-transparent border border-[var(--border)] p-0" />
                         </span>
                       </label>
                     ))}
                   </div>
-                  <button onClick={() => setColors({})} className="w-full mt-2.5 py-1 rounded text-[10px] font-mono font-bold uppercase tracking-widest border border-[var(--border)] text-[var(--text-tertiary)] hover:text-[var(--text-primary)] hover:border-[var(--border-strong)] transition-colors">Reset to default</button>
+                  <div className="text-[8.5px] font-mono font-black uppercase tracking-[0.18em] text-[var(--text-tertiary)] mt-3 mb-1.5">Display</div>
+                  <div className="space-y-1.5">
+                    {([['Grid', showGrid, setShowGrid], ['Volume', showVolume, setShowVolume], ['Watermark', showWatermark, setShowWatermark], ['Candle borders', candleBorders, setCandleBorders]] as const).map(([label, val, set]) => (
+                      <button key={label} onClick={() => set(v => !v)} className="w-full flex items-center justify-between gap-2">
+                        <span className="text-[11px] font-mono text-[var(--text-secondary)]">{label}</span>
+                        <span className={`relative w-7 h-4 rounded-full transition-colors shrink-0 ${val ? '' : 'bg-[var(--surface-3)]'}`} style={val ? { background: 'var(--accent-color)' } : undefined}>
+                          <span className={`absolute top-0.5 w-3 h-3 rounded-full bg-white transition-all ${val ? 'left-3.5' : 'left-0.5'}`} />
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+                  <button onClick={() => setColors({})} className="w-full mt-3 py-1 rounded text-[10px] font-mono font-bold uppercase tracking-widest border border-[var(--border)] text-[var(--text-tertiary)] hover:text-[var(--text-primary)] hover:border-[var(--border-strong)] transition-colors">Reset colors</button>
                 </div>
               </>
             )}
