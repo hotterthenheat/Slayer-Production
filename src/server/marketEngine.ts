@@ -43,11 +43,14 @@ import { updateRedisPresence } from './auth';
 import { dbLoadCalibrationPairs } from '../db';
 
 // Initialize in-memory candles on bootstrap for all assets + timeframe parameters
+// Max candles retained per TICKER-TIMEFRAME series. 500 lets the chart's range selector
+// show a true ~1Y on daily / multi-year on weekly (was 200 ≈ 9.6 months on daily).
+const CANDLE_BUFFER = 500;
 const initializeCandles = () => {
   for (const asset of ASSET_LIST) {
     for (const tf of TIMEFRAMES) {
       const key = `${asset.ticker}-${tf.val}`;
-      db.candles[key] = generateInitialCandles(asset, tf.val, 200);
+      db.candles[key] = generateInitialCandles(asset, tf.val, CANDLE_BUFFER);
     }
   }
 };
@@ -577,7 +580,7 @@ async function runTickerCycleInner() {
             volume: Math.round((50 + Math.random() * 450) * Math.sqrt(M)),
           };
           prev.push(newCandle);
-          if (prev.length > 200) {
+          if (prev.length > CANDLE_BUFFER) {
             prev.shift();
           }
         } else {
@@ -959,7 +962,7 @@ const buildPayload = (params: PayloadParams) => {
 
   const asset = ASSET_LIST.find(a => a.ticker === assetName) || ASSET_LIST[0];
   const expLabel = optionExpiryLabel(asset); // '0DTE' for daily names, '{n}DTE' front-weekly for single stocks
-  const candles = db.candles[`${asset.ticker}-${timeframe}`] || generateInitialCandles(asset, timeframe as TimeframeVal, 200);
+  const candles = db.candles[`${asset.ticker}-${timeframe}`] || generateInitialCandles(asset, timeframe as TimeframeVal, CANDLE_BUFFER);
   const lastPrice = candles[candles.length - 1].close;
 
   const liveChain = db.liveOptionChains[asset.ticker] || null;

@@ -115,8 +115,11 @@ function shade(hex: string, f: number): string {
 type RangeKey = '1D' | '5D' | '1M' | '3M' | '6M' | '1Y' | 'ALL';
 const RANGE_PRESETS: { k: RangeKey; tf: TimeframeVal; bars: number }[] = [
   { k: '1D', tf: '5m', bars: 78 }, { k: '5D', tf: '15m', bars: 130 }, { k: '1M', tf: '1h', bars: 140 },
-  { k: '3M', tf: '1D', bars: 63 }, { k: '6M', tf: '1D', bars: 128 }, { k: '1Y', tf: '1D', bars: 200 }, { k: 'ALL', tf: '1W', bars: 200 },
+  { k: '3M', tf: '1D', bars: 63 }, { k: '6M', tf: '1D', bars: 128 }, { k: '1Y', tf: '1D', bars: 252 }, { k: 'ALL', tf: '1W', bars: 500 },
 ];
+// GEX level-heatmap palette — call-dominant strikes in gold, put-dominant in violet. A
+// deliberately distinct, candle-independent pair (our own take on a liquidity heatmap).
+const HEAT_POS = '#e0a93b', HEAT_NEG = '#9b6dff';
 
 // Convert a #hex (3/6-digit) to rgba() at the given alpha — lets us tint the live theme tokens.
 const hexA = (hex: string, a: number) => {
@@ -171,6 +174,7 @@ export function SlayerChart({ profile, decimals, candles: propCandles }: SlayerC
   const [paneOn, setPaneOn] = useState<Record<string, boolean>>(initialPrefs.paneOn || {});
   const [showGex, setShowGex] = useState<boolean>(initialPrefs.showGex ?? true);
   const [showDisp, setShowDisp] = useState<boolean>(initialPrefs.showDisp ?? false);
+  const [showHeat, setShowHeat] = useState<boolean>(initialPrefs.showHeat ?? false);
   const [chartType, setChartType] = useState<ChartType>(initialPrefs.chartType || 'candles');
   const [colors, setColors] = useState<{ up?: string; down?: string; line?: string; wick?: string; bg?: string; grid?: string }>(initialPrefs.colors || {});
   const [showGrid, setShowGrid] = useState<boolean>(initialPrefs.showGrid ?? true);
@@ -242,8 +246,8 @@ export function SlayerChart({ profile, decimals, candles: propCandles }: SlayerC
   // Persist chart prefs (type, colors, indicator selection, GEX/disp toggles) so a user's
   // setup survives a reload. Saving the initial (already-stored) values once is harmless.
   useEffect(() => {
-    try { localStorage.setItem('slayerchart.prefs.v1', JSON.stringify({ chartType, colors, ovOn, paneOn, showGex, showDisp, showGrid, showVolume, showWatermark, candleBorders })); } catch { /* storage unavailable */ }
-  }, [chartType, colors, ovOn, paneOn, showGex, showDisp, showGrid, showVolume, showWatermark, candleBorders]);
+    try { localStorage.setItem('slayerchart.prefs.v1', JSON.stringify({ chartType, colors, ovOn, paneOn, showGex, showDisp, showHeat, showGrid, showVolume, showWatermark, candleBorders })); } catch { /* storage unavailable */ }
+  }, [chartType, colors, ovOn, paneOn, showGex, showDisp, showHeat, showGrid, showVolume, showWatermark, candleBorders]);
 
   // Only enabled indicators are computed, and only when the selection or candles change
   // (NOT on pan/hover) — keeps interaction cheap.
@@ -347,6 +351,25 @@ export function SlayerChart({ profile, decimals, candles: propCandles }: SlayerC
       const y = yP(g); if (y < priceTop + 4 || y > priceBottom - 2) continue;
       if (showGrid) { ctx.strokeStyle = COL.grid; ctx.beginPath(); ctx.moveTo(plotL, px(y) - 0.5); ctx.lineTo(plotR, px(y) - 0.5); ctx.stroke(); }
       gridYs.push({ y, label: nf(g) });
+    }
+
+    // GEX level heatmap — every significant dealer strike as a full-width dotted row, gold for
+    // call-dominant (positive net γ) / violet for put-dominant, intensity ∝ |net γ|. Slayer's own
+    // take on a liquidity heatmap; drawn behind the candles so price reads on top. (toggle)
+    if (showHeat && profile.strikes && profile.strikes.length) {
+      const inRange = profile.strikes.filter(s => { const y = yP(s.strike); return y >= priceTop + 2 && y <= priceBottom - 2 && Math.abs(s.netGex || 0) > 0; });
+      if (inRange.length) {
+        const maxG = Math.max(...inRange.map(s => Math.abs(s.netGex || 0)), 1e-9);
+        const top = [...inRange].sort((a, b) => Math.abs(b.netGex || 0) - Math.abs(a.netGex || 0)).slice(0, 30);
+        for (const s of top) {
+          const y = yP(s.strike), mag = Math.abs(s.netGex || 0) / maxG, pos = (s.netGex || 0) >= 0;
+          const isWall = s.strike === profile.callWall || s.strike === profile.putWall;
+          ctx.strokeStyle = hexA(pos ? HEAT_POS : HEAT_NEG, 0.1 + mag * 0.5);
+          ctx.lineWidth = isWall ? 2.2 : 1 + mag * 1.4; ctx.setLineDash(isWall ? [] : [2, 4]);
+          ctx.beginPath(); ctx.moveTo(plotL, px(y) - 0.5); ctx.lineTo(plotR, px(y) - 0.5); ctx.stroke();
+        }
+        ctx.setLineDash([]); ctx.lineWidth = 1;
+      }
     }
 
     let lastDayTickX = -1e9;
@@ -691,7 +714,7 @@ export function SlayerChart({ profile, decimals, candles: propCandles }: SlayerC
   useEffect(() => {
     if (redrawRafRef.current) return;
     redrawRafRef.current = requestAnimationFrame(() => { redrawRafRef.current = 0; drawRef.current(); });
-  }, [candles, overlaySeries, paneSeries, displacements, showGex, showDisp, chartType, colors, ha, view, priceView, drawings, tool, selectedId, showGrid, showVolume, showWatermark, candleBorders, profile, decimals, tfKey, tickKey]);
+  }, [candles, overlaySeries, paneSeries, displacements, showGex, showDisp, showHeat, chartType, colors, ha, view, priceView, drawings, tool, selectedId, showGrid, showVolume, showWatermark, candleBorders, profile, decimals, tfKey, tickKey]);
 
   // Keep a scrolled-back view anchored to the same bars when a new candle prints (a normal
   // 1–3 bar growth). A wholesale ticker/timeframe switch is handled by the reset effect above.
@@ -854,6 +877,7 @@ export function SlayerChart({ profile, decimals, candles: propCandles }: SlayerC
             )}
           </div>
           {specChip(showGex, 'γ-MAP', () => setShowGex(v => !v))}
+          {specChip(showHeat, '≣ LVL', () => setShowHeat(v => !v))}
           {specChip(showDisp, '⚡ DISP', () => setShowDisp(v => !v), 'warn')}
           {priceView && <button onClick={() => setPriceView(null)} title="Reset price scale to auto-fit (or double-click the price axis)" className="px-1.5 py-0.5 rounded-sm text-[10px] font-mono font-bold uppercase tracking-wide border border-[var(--border)] bg-[var(--surface-2)] text-[var(--text-secondary)] hover:border-[var(--border-strong)] transition-colors">⤢ AUTO Y</button>}
           {view.off !== 0 && <button onClick={() => setView(v => ({ ...v, off: 0 }))} title="Jump back to the live edge (or double-click the chart)" className="px-1.5 py-0.5 rounded-sm text-[10px] font-mono font-bold uppercase tracking-wide border border-[var(--border)] bg-[var(--surface-2)] text-[var(--text-secondary)] hover:border-[var(--border-strong)] transition-colors">⟳ LIVE</button>}
