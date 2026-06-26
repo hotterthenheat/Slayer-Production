@@ -178,7 +178,7 @@ export function QuantAuditView({
     const clean = ticker.replace(/[^a-zA-Z]/g, '').toUpperCase();
     if (clean === 'NDX') return 'bg-[var(--surface-3)] text-[var(--warning)] border border-[var(--border)]';
     if (clean === 'SPX') return 'bg-[var(--surface-3)] text-[var(--danger)] border border-[var(--border)]';
-    if (clean === 'SPY') return 'bg-[var(--surface-3)] text-[#818CF8] border border-[var(--border)]';
+    if (clean === 'SPY') return 'bg-[var(--surface-3)] text-[var(--info)] border border-[var(--border)]';
     if (clean === 'QQQ') return 'bg-[var(--surface-3)] text-[var(--info)] border border-[var(--border)]';
     return 'bg-[var(--surface-3)] text-[var(--text-tertiary)] border border-[var(--border)]';
   };

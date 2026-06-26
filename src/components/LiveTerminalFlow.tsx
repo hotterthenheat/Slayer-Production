@@ -6,11 +6,11 @@ import { computeTerminalRead } from '../lib/terminalRead';
 import { computeDealerClock } from '../lib/dealerClock';
 import { SlayerChart } from './SlayerChart';
 import { OrderFlow } from './OrderFlow';
-import { Crosshair, Activity, Zap, Layers, ChevronDown, Gauge as GaugeIcon, Swords, Radio, TrendingUp, TrendingDown, Minus, Clock } from 'lucide-react';
+import { Crosshair, Activity, Zap, Layers, ChevronDown, Gauge as GaugeIcon, Radio, TrendingUp, TrendingDown, Minus, Clock } from 'lucide-react';
 import { ASSET_LIST, TIMEFRAMES } from '../data';
 
-const biasColor = (b: string) => (b === 'LONG' ? 'var(--success)' : b === 'SHORT' ? 'var(--danger)' : 'var(--text-secondary)');
 const toneColor = (t: string) => (t === 'pos' ? 'var(--success)' : t === 'neg' ? 'var(--danger)' : 'var(--text-tertiary)');
+// Tight, legible type scale (raised the floor off 7.5/8px so dense data stays readable).
 
 interface LiveTerminalFlowProps {
   profile: GexProfileData;
@@ -59,7 +59,8 @@ export function LiveTerminalFlow({ profile, ticker, decimals }: LiveTerminalFlow
 
   const hvl = useMemo(() => { const ss = profile.strikes || []; if (!ss.length) return undefined; return ss.reduce((a, b) => ((b.callOi || 0) + (b.putOi || 0)) > ((a.callOi || 0) + (a.putOi || 0)) ? b : a).strike; }, [profile]);
   const callOi = profile.totalCallOi || 0, putOi = profile.totalPutOi || 0;
-  const bullPct = callOi + putOi ? (callOi / (callOi + putOi)) * 100 : 50;
+  // Clamp to [0,100] so a malformed (negative) OI can never overflow the BULL/BEAR bar width.
+  const bullPct = callOi + putOi > 0 ? Math.max(0, Math.min(100, (callOi / (callOi + putOi)) * 100)) : 50;
 
   const levels = ([
     { n: 'Call Wall', v: profile.callWall, c: 'var(--success)' },
@@ -102,14 +103,11 @@ export function LiveTerminalFlow({ profile, ticker, decimals }: LiveTerminalFlow
     }); });
   }, [profile, spot, ladderMetric]);
 
-  const expClose = profile.magnet || spot;
-  const expDir = expClose > spot * 1.0008 ? 'BULLISH' : expClose < spot * 0.9992 ? 'BEARISH' : 'NEUTRAL';
+  const gammaPin = profile.magnet || spot; // where dealer gamma pins price — descriptive, not a call
 
-  // Synthesis — the single source of truth for bias / confluence / regime / battle plan.
+  // Descriptive read of dealer structure (regime, pin strength, force breakdown, observations).
+  // We render only the descriptive outputs — this is an instrument, not a trade-picker.
   const read = useMemo(() => computeTerminalRead(profile, candles.slice(-12).map(c => c.close)), [profile, candles]);
-  const rColor = biasColor(read.bias);
-  // Price-direction colour for plan levels (above spot = up/success, below = down/danger).
-  const dirColor = (lvl?: number) => (lvl == null ? 'var(--text-tertiary)' : lvl >= spot ? 'var(--success)' : 'var(--danger)');
 
   // 0DTE session clock — time is the dominant risk; surface session phase + live countdown.
   const clock = useMemo(() => computeDealerClock(0, profile.netVex || 0, now), [profile.netVex, now]);
@@ -126,9 +124,9 @@ export function LiveTerminalFlow({ profile, ticker, decimals }: LiveTerminalFlow
 
   const Tile = ({ label, value, sub, color }: { label: string; value: string; sub?: string; color: string }) => (
     <div className="bg-[var(--surface-2)] border border-[var(--border)] rounded-md px-2.5 py-2">
-      <div className="text-[8px] font-black tracking-widest uppercase text-[var(--text-tertiary)]">{label}</div>
+      <div className="text-[9px] font-black tracking-widest uppercase text-[var(--text-tertiary)]">{label}</div>
       <div className="text-[14px] font-mono font-black tabular-nums leading-tight mt-0.5" style={{ color }}>{value}</div>
-      {sub && <div className="text-[8.5px] font-mono text-[var(--text-tertiary)] mt-0.5 truncate">{sub}</div>}
+      {sub && <div className="text-[10px] font-mono text-[var(--text-tertiary)] mt-0.5 truncate">{sub}</div>}
     </div>
   );
 
@@ -153,7 +151,7 @@ export function LiveTerminalFlow({ profile, ticker, decimals }: LiveTerminalFlow
               <span className="text-[13px] font-sans font-black tracking-widest uppercase text-[var(--text-primary)]">Live Terminal</span>
               <span className="relative flex h-1.5 w-1.5"><span className="animate-ping absolute inline-flex h-full w-full rounded-full opacity-60" style={{ background: 'var(--success)' }} /><span className="relative inline-flex rounded-full h-1.5 w-1.5" style={{ background: 'var(--success)' }} /></span>
             </div>
-            <div className="text-[7.5px] font-mono uppercase tracking-[0.28em] mt-0.5 text-[var(--text-tertiary)]">Dealer Flow Engine</div>
+            <div className="text-[9px] font-mono uppercase tracking-[0.28em] mt-0.5 text-[var(--text-tertiary)]">Dealer Flow Engine</div>
           </div>
           <span className="w-px h-5 bg-[var(--border)] hidden sm:block" />
           {/* symbol */}
@@ -190,32 +188,42 @@ export function LiveTerminalFlow({ profile, ticker, decimals }: LiveTerminalFlow
         </div>
       </div>
 
-      {/* ── Command bar: the at-a-glance actionable read ── */}
-      <div className="flex items-stretch h-[58px] border-b border-[var(--border)] shrink-0 bg-[var(--surface)] overflow-x-auto">
-        <div className="flex items-center gap-2.5 px-4 border-r border-[var(--border)] shrink-0">
-          <div className="flex flex-col leading-none">
-            <span className="text-[8px] font-black tracking-widest uppercase text-[var(--text-tertiary)]">Bias</span>
-            <span className="text-[19px] font-sans font-black leading-none tracking-tight mt-1" style={{ color: rColor }}>{read.bias}</span>
+      {/* ── Dealer Pulse: a descriptive, at-a-glance picture of dealer positioning. It SHOWS
+          the mechanics (a force balance, net γ, the implied range, a live observation tape) —
+          it does NOT issue a trade. The trader reads it and decides. ── */}
+      <div className="flex items-stretch h-[58px] border-b border-[var(--border)] shrink-0 bg-[var(--surface)] overflow-hidden">
+        {/* Dealer positioning force balance — a picture of the dealer book, not a call */}
+        <div className="flex flex-col justify-center gap-1 px-4 border-r border-[var(--border)] shrink-0 w-[214px]">
+          <div className="flex items-center justify-between">
+            <span className="text-[9px] font-black tracking-widest uppercase text-[var(--text-tertiary)]">Dealer Positioning</span>
+            <span className="text-[9px] font-mono font-black tabular-nums" style={{ color: read.score > 8 ? 'var(--success)' : read.score < -8 ? 'var(--danger)' : 'var(--text-tertiary)' }}>{read.score > 0 ? '+' : ''}{read.score}</span>
           </div>
-          {read.bias === 'LONG' ? <TrendingUp className="w-5 h-5" style={{ color: rColor }} /> : read.bias === 'SHORT' ? <TrendingDown className="w-5 h-5" style={{ color: rColor }} /> : <Minus className="w-5 h-5" style={{ color: rColor }} />}
+          <div className="relative h-1.5 rounded-full bg-[var(--surface-3)] overflow-hidden">
+            <div className="absolute top-0 bottom-0 left-1/2 w-px z-10" style={{ background: 'var(--border-strong)' }} />
+            {read.score >= 0
+              ? <motion.div className="absolute top-0 bottom-0 left-1/2" style={{ background: 'var(--success)' }} animate={{ width: `${Math.min(50, read.score / 2)}%` }} transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }} />
+              : <motion.div className="absolute top-0 bottom-0 right-1/2" style={{ background: 'var(--danger)' }} animate={{ width: `${Math.min(50, -read.score / 2)}%` }} transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }} />}
+          </div>
+          <div className="flex items-center justify-between text-[9px] font-mono uppercase tracking-widest"><span style={{ color: 'var(--danger)' }}>Bearish book</span><span style={{ color: 'var(--success)' }}>Bullish book</span></div>
         </div>
-        <div className="flex flex-col justify-center gap-1 px-4 border-r border-[var(--border)] shrink-0 min-w-[170px]">
-          <div className="flex items-center justify-between"><span className="text-[8px] font-black tracking-widest uppercase text-[var(--text-tertiary)]">Confluence</span><span className="text-[10px] font-mono font-black tabular-nums" style={{ color: rColor }}>{read.confidence}%</span></div>
-          <div className="h-1.5 rounded-full overflow-hidden bg-[var(--surface-3)]"><motion.div className="h-full rounded-full" style={{ background: rColor }} animate={{ width: `${read.confidence}%` }} transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }} /></div>
-          <span className="text-[8.5px] font-mono text-[var(--text-tertiary)]">{read.confidenceLabel} · {read.regime === 'PIN' ? `Pin ${read.pinStrength}` : 'Trend'}</span>
-        </div>
-        <div className="flex flex-col justify-center gap-0.5 px-4 border-r border-[var(--border)] flex-1 min-w-[260px]">
-          <span className="text-[8px] font-black tracking-widest uppercase text-[var(--text-tertiary)]">The Play</span>
-          <span className="text-[11px] font-mono leading-snug text-[var(--text-secondary)] line-clamp-2">{read.play}</span>
-        </div>
+        {/* Net gamma + regime */}
         <div className="flex flex-col justify-center px-4 border-r border-[var(--border)] shrink-0">
-          <span className="text-[8px] font-black tracking-widest uppercase text-[var(--text-tertiary)]">Target</span>
-          <span className="text-[14px] font-mono font-black tabular-nums leading-tight" style={{ color: dirColor(read.target) }}>{read.target ? read.target.toFixed(0) : (read.noTrade ? 'WAIT' : '—')}</span>
-          <span className="text-[8.5px] font-mono tabular-nums" style={{ color: dirColor(read.target) }}>{read.target ? distLabel(read.target) : ''}</span>
+          <span className="text-[9px] font-black tracking-widest uppercase text-[var(--text-tertiary)]">Net γ · {read.regime === 'PIN' ? `Pin ${read.pinStrength}` : 'Trend'}</span>
+          <span className="text-[16px] font-mono font-black tabular-nums leading-tight mt-0.5" style={{ color: trend }}>{netGex >= 0 ? '+' : ''}{fmtBig(netGex)}</span>
         </div>
-        <div className="flex flex-col justify-center px-4 shrink-0">
-          <span className="text-[8px] font-black tracking-widest uppercase text-[var(--text-tertiary)]">Exp Move</span>
-          <span className="text-[14px] font-mono font-black tabular-nums leading-tight" style={{ color: 'var(--info)' }}>{emPct != null ? `±${(emPct * 100).toFixed(2)}%` : '—'}</span>
+        {/* Implied range */}
+        <div className="flex flex-col justify-center px-4 border-r border-[var(--border)] shrink-0">
+          <span className="text-[9px] font-black tracking-widest uppercase text-[var(--text-tertiary)]">Implied Range</span>
+          <span className="text-[16px] font-mono font-black tabular-nums leading-tight mt-0.5" style={{ color: 'var(--info)' }}>{emPct != null ? `±${(emPct * 100).toFixed(2)}%` : '—'}</span>
+        </div>
+        {/* Live observation tape — what's happening, never what to do */}
+        <div className="flex-1 min-w-0 flex items-center gap-2 px-4 overflow-hidden">
+          <span className="flex items-center gap-1 text-[9px] font-black tracking-widest uppercase shrink-0" style={{ color: 'var(--accent-color)' }}><Radio className="w-3 h-3" /> Tape</span>
+          <div className="flex-1 overflow-hidden">
+            <div className="flex gap-8 whitespace-nowrap animate-ticker-marquee">
+              {[...read.events, ...read.events].map((e, i) => (<span key={i} className="text-[10px] font-mono inline-flex items-center gap-1.5" style={{ color: toneColor(e.tone) }}><span className="w-1 h-1 rounded-full shrink-0" style={{ background: toneColor(e.tone) }} />{e.text}</span>))}
+            </div>
+          </div>
         </div>
       </div>
 
@@ -251,7 +259,7 @@ export function LiveTerminalFlow({ profile, ticker, decimals }: LiveTerminalFlow
               <div className="flex-1 overflow-y-auto p-2.5 space-y-2.5">
                 {/* Net gamma hero */}
                 <div className="rounded-lg border px-3 py-2.5 relative overflow-hidden" style={{ borderColor: longGamma ? 'color-mix(in srgb, var(--success) 32%, transparent)' : 'color-mix(in srgb, var(--danger) 32%, transparent)', background: `linear-gradient(135deg, color-mix(in srgb, ${longGamma ? 'var(--success)' : 'var(--danger)'} 9%, transparent), transparent)` }}>
-                  <div className="flex items-center gap-1.5 text-[8px] font-black tracking-widest uppercase text-[var(--text-tertiary)]"><GaugeIcon className="w-3 h-3" /> Net Gamma Exposure</div>
+                  <div className="flex items-center gap-1.5 text-[9px] font-black tracking-widest uppercase text-[var(--text-tertiary)]"><GaugeIcon className="w-3 h-3" /> Net Gamma Exposure</div>
                   <div className="text-[26px] font-mono font-black tabular-nums leading-none mt-1" style={{ color: trend }}>{netGex >= 0 ? '+' : ''}{fmtBig(netGex)}</div>
                   <div className="flex items-center gap-1.5 mt-1.5">
                     <span className="px-1.5 py-0.5 rounded text-[9px] font-mono font-black uppercase tracking-widest" style={{ background: `color-mix(in srgb, ${trend} 14%, transparent)`, color: trend }}>{aboveFlip == null ? 'No Flip' : aboveFlip ? 'Above Flip' : 'Below Flip'}</span>
@@ -259,11 +267,11 @@ export function LiveTerminalFlow({ profile, ticker, decimals }: LiveTerminalFlow
                   </div>
                 </div>
 
-                {/* Confluence breakdown — the signals behind the bias */}
+                {/* Dealer Forces — each mechanic's lean, shown so the trader reads it themselves */}
                 <div className="bg-[var(--surface-2)] border border-[var(--border)] rounded-md overflow-hidden">
                   <div className="flex items-center justify-between px-3 pt-2 pb-1.5 border-b border-[var(--border)]">
-                    <span className="text-[9px] font-sans font-black tracking-widest uppercase text-[var(--text-secondary)]">Confluence</span>
-                    <span className="text-[9px] font-mono font-black" style={{ color: rColor }}>{read.confidence}% {read.bias}</span>
+                    <span className="text-[9px] font-sans font-black tracking-widest uppercase text-[var(--text-secondary)]">Dealer Forces</span>
+                    <span className="text-[9px] font-mono uppercase tracking-widest text-[var(--text-tertiary)]">what's driving structure</span>
                   </div>
                   <div className="py-0.5">
                     {read.signals.map(s => (
@@ -271,7 +279,7 @@ export function LiveTerminalFlow({ profile, ticker, decimals }: LiveTerminalFlow
                         {s.dir > 0 ? <TrendingUp className="w-3 h-3 shrink-0" style={{ color: 'var(--success)' }} /> : s.dir < 0 ? <TrendingDown className="w-3 h-3 shrink-0" style={{ color: 'var(--danger)' }} /> : <Minus className="w-3 h-3 shrink-0 text-[var(--text-tertiary)]" />}
                         <div className="flex-1 min-w-0">
                           <div className="text-[10px] font-mono font-bold text-[var(--text-secondary)] truncate leading-tight">{s.label}</div>
-                          <div className="text-[8px] font-mono text-[var(--text-tertiary)] truncate leading-tight">{s.detail}</div>
+                          <div className="text-[9px] font-mono text-[var(--text-tertiary)] truncate leading-tight">{s.detail}</div>
                         </div>
                         <div className="w-9 h-1 rounded-full bg-[var(--surface-3)] overflow-hidden shrink-0"><div className="h-full rounded-full" style={{ width: `${Math.min(100, (s.weight / 28) * 100)}%`, background: s.dir > 0 ? 'var(--success)' : s.dir < 0 ? 'var(--danger)' : 'var(--text-tertiary)' }} /></div>
                       </div>
@@ -282,7 +290,7 @@ export function LiveTerminalFlow({ profile, ticker, decimals }: LiveTerminalFlow
                 {/* dealer-structure spectrum */}
                 {structure && (
                   <div className="bg-[var(--surface-2)] border border-[var(--border)] rounded-md px-3 py-3">
-                    <div className="text-[8px] font-black tracking-widest uppercase text-[var(--text-tertiary)] mb-3">Dealer Structure</div>
+                    <div className="text-[9px] font-black tracking-widest uppercase text-[var(--text-tertiary)] mb-3">Dealer Structure</div>
                     <div className="relative h-1.5 rounded-full" style={{ background: 'linear-gradient(90deg, color-mix(in srgb, var(--danger) 45%, transparent), color-mix(in srgb, var(--text-tertiary) 25%, transparent), color-mix(in srgb, var(--success) 45%, transparent))' }}>
                       {structure.pts.map((pt, i) => (<div key={i} className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 w-[3px] h-3 rounded-full" style={{ left: `${pt.x}%`, background: pt.c }} title={pt.l} />))}
                       <motion.div className="absolute -top-[5px] -translate-x-1/2 z-10" animate={{ left: `${structure.spotPos}%` }} transition={{ type: 'spring', stiffness: 90, damping: 18 }}>
@@ -290,7 +298,7 @@ export function LiveTerminalFlow({ profile, ticker, decimals }: LiveTerminalFlow
                       </motion.div>
                     </div>
                     <div className="relative h-7 mt-2">
-                      {structure.pts.map((pt, i) => (<div key={i} className="absolute -translate-x-1/2 text-center leading-tight" style={{ left: `${pt.x}%` }}><div className="text-[8px] font-mono font-black" style={{ color: pt.c }}>{pt.l}</div><div className="text-[8px] font-mono text-[var(--text-tertiary)] tabular-nums">{(pt.p as number).toFixed(0)}</div></div>))}
+                      {structure.pts.map((pt, i) => (<div key={i} className="absolute -translate-x-1/2 text-center leading-tight" style={{ left: `${pt.x}%` }}><div className="text-[9px] font-mono font-black" style={{ color: pt.c }}>{pt.l}</div><div className="text-[9px] font-mono text-[var(--text-tertiary)] tabular-nums">{(pt.p as number).toFixed(0)}</div></div>))}
                     </div>
                   </div>
                 )}
@@ -302,9 +310,9 @@ export function LiveTerminalFlow({ profile, ticker, decimals }: LiveTerminalFlow
                     {levels.map((l, i) => (
                       <div key={l.n} className="flex items-center gap-2 px-3 h-[26px] hover:bg-[var(--surface-3)] transition-colors" style={{ borderTop: i ? '1px solid var(--border)' : undefined }}>
                         <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ background: l.c }} />
-                        <span className="text-[10.5px] font-mono font-bold flex-1 truncate text-[var(--text-secondary)]">{l.n}</span>
-                        <span className="text-[10.5px] font-mono font-black tabular-nums" style={{ color: l.c }}>{(l.v as number).toFixed(0)}</span>
-                        <span className="text-[8.5px] font-mono tabular-nums w-[42px] text-right text-[var(--text-tertiary)]">{distLabel(l.v)}</span>
+                        <span className="text-[11px] font-mono font-bold flex-1 truncate text-[var(--text-secondary)]">{l.n}</span>
+                        <span className="text-[11px] font-mono font-black tabular-nums" style={{ color: l.c }}>{(l.v as number).toFixed(0)}</span>
+                        <span className="text-[10px] font-mono tabular-nums w-[42px] text-right text-[var(--text-tertiary)]">{distLabel(l.v)}</span>
                       </div>
                     ))}
                   </div>
@@ -327,7 +335,7 @@ export function LiveTerminalFlow({ profile, ticker, decimals }: LiveTerminalFlow
                 <div className="flex items-center gap-2 text-[10px] font-mono font-black uppercase tracking-wider min-w-0">
                   <span className="flex items-center gap-1" style={{ color: 'var(--accent-color)' }}><Activity className="w-3 h-3" /> Flow</span>
                   <span className="text-[var(--text-primary)]">{selectedAsset.ticker}</span>
-                  <span className="px-1.5 py-0.5 rounded text-[8.5px]" style={{ background: 'color-mix(in srgb, var(--accent-color) 14%, transparent)', color: 'var(--accent-color)' }}>{scope}</span>
+                  <span className="px-1.5 py-0.5 rounded text-[10px]" style={{ background: 'color-mix(in srgb, var(--accent-color) 14%, transparent)', color: 'var(--accent-color)' }}>{scope}</span>
                   <span className="hidden sm:inline text-[var(--text-tertiary)]">· {selectedTimeframe} · LIVE</span>
                 </div>
                 <div className="flex items-center gap-2 text-[9px] font-mono font-black tabular-nums shrink-0">
@@ -343,7 +351,7 @@ export function LiveTerminalFlow({ profile, ticker, decimals }: LiveTerminalFlow
             <div className="flex-1 min-h-[400px] relative" style={{ background: 'var(--bg-base)' }}><SlayerChart profile={profile} decimals={decimals} /></div>
             {/* Live tape — streaming narrative of the dealer read */}
             <div className="border-t border-[var(--border)] bg-[var(--surface)] h-7 shrink-0 flex items-center gap-2 px-3 overflow-hidden">
-              <span className="flex items-center gap-1 text-[8px] font-black tracking-widest uppercase shrink-0" style={{ color: 'var(--accent-color)' }}><Radio className="w-3 h-3" /> Tape</span>
+              <span className="flex items-center gap-1 text-[9px] font-black tracking-widest uppercase shrink-0" style={{ color: 'var(--accent-color)' }}><Radio className="w-3 h-3" /> Tape</span>
               <div className="flex items-center gap-5 overflow-hidden whitespace-nowrap">
                 {read.events.map((e, i) => (<span key={i} className="flex items-center gap-1.5 text-[10px] font-mono shrink-0" style={{ color: toneColor(e.tone) }}><span className="w-1 h-1 rounded-full shrink-0" style={{ background: toneColor(e.tone) }} />{e.text}</span>))}
               </div>
@@ -352,21 +360,7 @@ export function LiveTerminalFlow({ profile, ticker, decimals }: LiveTerminalFlow
 
           {/* ░ RIGHT — Exposure Ladder ░ */}
           <aside className="order-3 w-full xl:w-[340px] shrink-0 flex flex-col min-h-[360px] xl:min-h-0 bg-[var(--surface)]">
-            {/* Battle plan — the regime-aware tactical card */}
-            <div className="m-2.5 mb-1 rounded-lg border p-2.5 relative overflow-hidden shrink-0" style={{ borderColor: `color-mix(in srgb, ${rColor} 30%, transparent)`, background: `linear-gradient(135deg, color-mix(in srgb, ${rColor} 8%, transparent), transparent)` }}>
-              <div className="flex items-center gap-1.5 mb-1.5">
-                <Swords className="w-3.5 h-3.5" style={{ color: rColor }} />
-                <span className="text-[10px] font-sans font-black tracking-widest uppercase text-[var(--text-primary)]">Battle Plan</span>
-                <span className="ml-auto text-[8px] font-mono font-black px-1.5 py-0.5 rounded uppercase tracking-widest" style={{ background: `color-mix(in srgb, ${read.noTrade ? 'var(--warning)' : rColor} 14%, transparent)`, color: read.noTrade ? 'var(--warning)' : rColor }}>{read.noTrade ? 'NO TRADE' : read.regime}</span>
-              </div>
-              <p className="text-[10px] font-mono leading-relaxed text-[var(--text-secondary)]">{read.play}</p>
-              <div className="grid grid-cols-3 gap-1.5 mt-2">
-                <div className="rounded bg-[var(--surface-2)] border border-[var(--border)] px-2 py-1 min-w-0"><div className="text-[7.5px] font-black tracking-widest uppercase text-[var(--text-tertiary)]">Entry</div><div className="text-[9px] font-mono font-bold text-[var(--text-secondary)] truncate" title={read.entry}>{read.entry}</div></div>
-                <div className="rounded bg-[var(--surface-2)] border border-[var(--border)] px-2 py-1"><div className="text-[7.5px] font-black tracking-widest uppercase text-[var(--text-tertiary)]">Target</div><div className="text-[12px] font-mono font-black tabular-nums" style={{ color: dirColor(read.target) }}>{read.target ? read.target.toFixed(0) : '—'}</div></div>
-                <div className="rounded bg-[var(--surface-2)] border border-[var(--border)] px-2 py-1"><div className="text-[7.5px] font-black tracking-widest uppercase text-[var(--text-tertiary)]">Stop</div><div className="text-[12px] font-mono font-black tabular-nums" style={{ color: dirColor(read.stop) }}>{read.stop ? read.stop.toFixed(0) : '—'}</div></div>
-              </div>
-            </div>
-            <div className="flex items-center gap-2 px-3 h-9 border-b border-t border-[var(--border)] shrink-0">
+            <div className="flex items-center gap-2 px-3 h-9 border-b border-[var(--border)] shrink-0">
               <Layers className="w-3.5 h-3.5" style={{ color: 'var(--accent-color)' }} />
               <span className="text-[11px] font-sans font-black tracking-widest uppercase text-[var(--text-primary)]">Exposure Ladder</span>
               <span className="ml-auto flex items-center gap-1.5 px-2 py-0.5 rounded text-[9px] font-mono font-black uppercase tracking-widest border border-[var(--border)]" style={{ color: trend }}>
@@ -375,7 +369,7 @@ export function LiveTerminalFlow({ profile, ticker, decimals }: LiveTerminalFlow
             </div>
             {/* GAMMA / DELTA / VANNA exposure metric */}
             <div className="flex items-center gap-1 px-3 py-1.5 border-b border-[var(--border)] shrink-0">
-              <span className="text-[8px] font-black tracking-widest uppercase text-[var(--text-tertiary)] mr-1">Metric</span>
+              <span className="text-[9px] font-black tracking-widest uppercase text-[var(--text-tertiary)] mr-1">Metric</span>
               {(['GAMMA', 'DELTA', 'VANNA'] as const).map(m => { const dis = (m === 'DELTA' && !hasDex) || (m === 'VANNA' && !hasVex); return (
                 <button key={m} disabled={dis} onClick={() => setLadderMetric(m)} title={dis ? `No ${m.toLowerCase()} data in this feed` : `Show per-strike ${m.toLowerCase()}`} className="px-2 py-0.5 text-[9px] font-mono font-black tracking-wider rounded transition-colors" style={ladderMetric === m ? { background: 'var(--surface-3)', color: 'var(--text-primary)' } : { color: dis ? 'color-mix(in srgb, var(--text-tertiary) 40%, transparent)' : 'var(--text-tertiary)', cursor: dis ? 'not-allowed' : 'pointer' }}>{m}</button>
               ); })}
@@ -405,10 +399,10 @@ export function LiveTerminalFlow({ profile, ticker, decimals }: LiveTerminalFlow
             </div>
             <div className="px-3 py-2 border-t border-[var(--border)] shrink-0 flex items-center justify-between bg-[var(--surface)]">
               <div>
-                <div className="text-[8px] font-black tracking-widest uppercase text-[var(--text-tertiary)]">Expected Close</div>
-                <div className="text-[15px] font-mono font-black tabular-nums text-[var(--text-primary)]">{expClose ? expClose.toFixed(decimals) : '—'}</div>
+                <div className="text-[9px] font-black tracking-widest uppercase text-[var(--text-tertiary)]">Gamma Pin</div>
+                <div className="text-[15px] font-mono font-black tabular-nums text-[var(--text-primary)]">{gammaPin ? gammaPin.toFixed(decimals) : '—'}</div>
               </div>
-              <span className="px-2.5 py-1 rounded-md text-[10px] font-mono font-black uppercase tracking-widest border border-[var(--border)]" style={{ color: expDir === 'BULLISH' ? 'var(--success)' : expDir === 'BEARISH' ? 'var(--danger)' : 'var(--accent-color)' }}>{expDir}</span>
+              <span className="px-2.5 py-1 rounded-md text-[10px] font-mono font-black tabular-nums uppercase tracking-widest border border-[var(--border)]" style={{ color: gammaPin >= spot ? 'var(--success)' : 'var(--danger)' }}>{distLabel(gammaPin)} vs spot</span>
             </div>
           </aside>
 

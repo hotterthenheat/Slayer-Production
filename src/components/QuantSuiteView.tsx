@@ -520,7 +520,7 @@ export default function QuantSuiteView() {
       <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center border-b border-[var(--border)] pb-4 gap-4">
         <div>
           <h2 className="text-[13px] font-bold tracking-[0.14em] text-[var(--text-primary)] uppercase flex items-center gap-2">
-            <Calculator className="w-4 h-4 text-[#D9A15C]" />
+            <Calculator className="w-4 h-4 text-[var(--accent-color)]" />
             Quant Lab
             <span
               className={`text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded border ${
@@ -772,7 +772,7 @@ export default function QuantSuiteView() {
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
                 <div className="lg:col-span-2 flex flex-col bg-[var(--surface)] border border-[var(--border)] p-4 rounded-lg gap-4">
                   <SectionHeader
-                    icon={<Layers className="w-3.5 h-3.5 text-[#D9A15C]" />}
+                    icon={<Layers className="w-3.5 h-3.5 text-[var(--accent-color)]" />}
                     label="Auto-Built Strategy"
                     right={
                       <span className="text-[10px] text-[var(--text-tertiary)] tracking-wide">
@@ -1113,7 +1113,7 @@ export default function QuantSuiteView() {
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
                 <div className="lg:col-span-2 flex flex-col bg-[var(--surface)] border border-[var(--border)] p-4 rounded-lg gap-3">
                   <SectionHeader
-                    icon={<RadioTower className="w-3.5 h-3.5 text-[#D9A15C]" />}
+                    icon={<RadioTower className="w-3.5 h-3.5 text-[var(--accent-color)]" />}
                     label="Active Alert Rules"
                     right={
                       <button
@@ -1286,7 +1286,7 @@ export default function QuantSuiteView() {
       {/* Footer: REAL dealer GEX (when streamed) + per-expiry GEX breakdown */}
       <div className="grid grid-cols-1 lg:grid-cols-3 border-t border-[var(--border)] pt-4 gap-4" id="quant-suite-gex-footer">
         <div className="bg-[var(--surface)] border border-[var(--border)] p-3 rounded-lg flex flex-col gap-2">
-          <SectionHeader icon={<Layers className="w-3.5 h-3.5 text-[#D9A15C]" />} label="Dealer GEX Profile" />
+          <SectionHeader icon={<Layers className="w-3.5 h-3.5 text-[var(--accent-color)]" />} label="Dealer GEX Profile" />
           {gexProfile ? (
             <div className="flex flex-col gap-2 text-[11px]">
               <div className="flex justify-between border-b border-[var(--border)] pb-1.5">
