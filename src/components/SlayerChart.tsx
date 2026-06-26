@@ -77,15 +77,8 @@ const hexA = (hex: string, a: number) => {
   if (Number.isNaN(v)) return `rgba(148,148,148,${a})`; // non-hex token (e.g. hsl/var) → neutral fallback
   return `rgba(${(v >> 16) & 255}, ${(v >> 8) & 255}, ${v & 255}, ${a})`;
 };
-// Normalize a token value (#hex, #rgb, or rgb()/rgba()) to a 6-digit #hex for <input type=color> defaults.
-const toHex = (raw: string): string => {
-  const s = (raw || '').trim();
-  if (!s) return '';
-  if (s[0] === '#') return s.length === 4 ? '#' + s.slice(1).split('').map(c => c + c).join('') : s.slice(0, 7);
-  const m = s.match(/rgba?\(([^)]+)\)/i);
-  if (m) { const p = m[1].split(',').map(x => parseInt(x.trim(), 10)); if (p.length >= 3 && p.every(v => !Number.isNaN(v))) { const h = (v: number) => Math.max(0, Math.min(255, v)).toString(16).padStart(2, '0'); return `#${h(p[0])}${h(p[1])}${h(p[2])}`; } }
-  return '';
-};
+// Classic green/up · red/down candle defaults (normal trading colors), overridable per-user.
+const DEFAULT_COLORS: { up: string; down: string; line: string } = { up: '#22c55e', down: '#ef4444', line: '#5b9cff' };
 // Read the live Slayer theme tokens so the canvas matches whatever theme is active.
 function readTheme() {
   const cs = getComputedStyle(document.documentElement);
@@ -135,14 +128,19 @@ export function SlayerChart({ profile, decimals, candles: propCandles }: SlayerC
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [query, setQuery] = useState('');
   const [view, setView] = useState<{ bars: number; off: number }>({ bars: 110, off: 0 });
+  // Vertical price scale: null = auto-fit (default). Manual = the user dragged the price axis;
+  // `factor` scales the auto range (1 = auto, <1 zoom in, >1 zoom out), `offset` shifts it.
+  const [priceView, setPriceView] = useState<{ factor: number; offset: number } | null>(null);
 
   const tfKey = useContractStore(s => s.selectedTimeframe);
   const tickKey = useContractStore(s => s.selectedAsset?.ticker);
-  useEffect(() => { setView({ bars: 110, off: 0 }); }, [tfKey, tickKey]);
+  useEffect(() => { setView({ bars: 110, off: 0 }); setPriceView(null); }, [tfKey, tickKey]);
 
   const hoverRef = useRef<{ x: number; y: number } | null>(null);
   const dragRef = useRef<{ x: number; off: number } | null>(null);
+  const priceDragRef = useRef<{ y: number; factor: number; offset: number } | null>(null);
   const viewRef = useRef(view); viewRef.current = view;
+  const priceViewRef = useRef(priceView); priceViewRef.current = priceView;
   const candlesRef = useRef(candles); candlesRef.current = candles;
   const drawRef = useRef<() => void>(() => {});
   const geomRef = useRef<{ plotL: number; plotR: number; barW: number; start: number; end: number; n: number } | null>(null);
@@ -167,15 +165,6 @@ export function SlayerChart({ profile, decimals, candles: propCandles }: SlayerC
   useEffect(() => {
     try { localStorage.setItem('slayerchart.prefs.v1', JSON.stringify({ chartType, colors, ovOn, paneOn, showGex, showDisp })); } catch { /* storage unavailable */ }
   }, [chartType, colors, ovOn, paneOn, showGex, showDisp]);
-
-  // Live theme colors (as #hex) for the color-picker DEFAULTS; refresh when the theme changes.
-  const [themeHex, setThemeHex] = useState<{ up: string; down: string; line: string }>({ up: '#4ade80', down: '#f87171', line: '#5b9cff' });
-  useEffect(() => {
-    const read = () => { const cs = getComputedStyle(document.documentElement); setThemeHex({ up: toHex(cs.getPropertyValue('--success')) || '#4ade80', down: toHex(cs.getPropertyValue('--danger')) || '#f87171', line: '#5b9cff' }); };
-    read();
-    const mo = new MutationObserver(read); mo.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme', 'class', 'style'] });
-    return () => mo.disconnect();
-  }, []);
 
   // Only enabled indicators are computed, and only when the selection or candles change
   // (NOT on pan/hover) — keeps interaction cheap.
@@ -213,8 +202,8 @@ export function SlayerChart({ profile, decimals, candles: propCandles }: SlayerC
 
     // Theme-driven palette, cached — getComputedStyle is too costly to run per frame.
     const T = themeRef.current || (themeRef.current = readTheme());
-    // User color overrides (persisted) win over the theme tokens; fall back to the theme.
-    const upCol = colors.up || T.up, downCol = colors.down || T.down, lineCol = colors.line || '#5b9cff';
+    // User color overrides (persisted) win; otherwise classic green-up / red-down defaults.
+    const upCol = colors.up || DEFAULT_COLORS.up, downCol = colors.down || DEFAULT_COLORS.down, lineCol = colors.line || DEFAULT_COLORS.line;
     const COL = {
       up: upCol, down: downCol, upVol: hexA(upCol, 0.3), downVol: hexA(downCol, 0.3),
       grid: 'rgba(255,255,255,0.05)', axis: T.dim, axisDim: hexA(T.dim, 0.7),
@@ -255,6 +244,9 @@ export function SlayerChart({ profile, decimals, candles: propCandles }: SlayerC
     if (profile.spot && profile.expectedMovePct) levelPrices.push(profile.spot * (1 + profile.expectedMovePct), profile.spot * (1 - profile.expectedMovePct));
     for (const p of levelPrices) { if (typeof p === 'number' && p > 0 && p >= capLo && p <= capHi) { lo = Math.min(lo, p); hi = Math.max(hi, p); } }
     const pad = ((hi - lo) || 1) * 0.08; lo -= pad; hi += pad;
+    // Manual vertical scale (drag the price axis): scale the auto range about its center + shift.
+    const pv = priceViewRef.current;
+    if (pv) { const center = (lo + hi) / 2, half = Math.max(1e-6, ((hi - lo) / 2) * pv.factor); lo = center - half + pv.offset; hi = center + half + pv.offset; }
     const volBandH = priceH * 0.13, priceAreaH = priceH - volBandH;
     const yP = (p: number) => priceTop + priceAreaH - ((p - lo) / (hi - lo)) * priceAreaH;
     const pOfY = (y: number) => lo + (1 - (y - priceTop) / priceAreaH) * (hi - lo);
@@ -493,9 +485,16 @@ export function SlayerChart({ profile, decimals, candles: propCandles }: SlayerC
         setView({ bars: next, off: newOff });
       } else setView(v => ({ ...v, bars: next }));
     };
-    const onDown = (e: MouseEvent) => { dragRef.current = { x: e.clientX, off: viewRef.current.off }; canvas.style.cursor = 'grabbing'; };
+    const onDown = (e: MouseEvent) => {
+      const r = canvas.getBoundingClientRect(), mx = e.clientX - r.left, g = geomRef.current;
+      if (g && mx >= g.plotR) { // right gutter (price axis) → vertical-scale drag
+        const cur = priceViewRef.current; priceDragRef.current = { y: e.clientY, factor: cur?.factor ?? 1, offset: cur?.offset ?? 0 }; canvas.style.cursor = 'ns-resize';
+      } else { dragRef.current = { x: e.clientX, off: viewRef.current.off }; canvas.style.cursor = 'grabbing'; }
+    };
     const onMove = (e: MouseEvent) => {
       const r = canvas.getBoundingClientRect(); hoverRef.current = { x: e.clientX - r.left, y: e.clientY - r.top };
+      const pd = priceDragRef.current;
+      if (pd) { const dy = e.clientY - pd.y; const factor = Math.max(0.2, Math.min(6, pd.factor * Math.exp(dy / 240))); setPriceView({ factor, offset: pd.offset }); return; }
       const drag = dragRef.current;
       if (drag && geomRef.current) {
         const n = candlesRef.current.length, barW = geomRef.current.barW;
@@ -503,12 +502,14 @@ export function SlayerChart({ profile, decimals, candles: propCandles }: SlayerC
         const nextOff = Math.max(-Math.round(viewRef.current.bars * 0.5), Math.min(Math.max(0, n - 10), drag.off + Math.round((e.clientX - drag.x) / barW)));
         if (nextOff !== viewRef.current.off) { setView(v => ({ ...v, off: nextOff })); return; }
       }
+      // Cursor hint: vertical-scale over the price gutter, crosshair over the plot.
+      if (!dragRef.current && !priceDragRef.current) { const g = geomRef.current; canvas.style.cursor = (g && (e.clientX - r.left) >= g.plotR) ? 'ns-resize' : 'crosshair'; }
       schedule();
     };
-    const onUp = () => { dragRef.current = null; canvas.style.cursor = 'crosshair'; };
+    const onUp = () => { dragRef.current = null; priceDragRef.current = null; canvas.style.cursor = 'crosshair'; };
     const onLeave = () => { hoverRef.current = null; schedule(); };
-    // Double-click anywhere on the chart snaps back to the live edge at the default zoom.
-    const onDbl = () => setView({ bars: 110, off: 0 });
+    // Double-click the price gutter → reset price to auto-fit; elsewhere → snap back to live edge.
+    const onDbl = (e: MouseEvent) => { const r = canvas.getBoundingClientRect(), mx = e.clientX - r.left, g = geomRef.current; if (g && mx >= g.plotR) setPriceView(null); else setView({ bars: 110, off: 0 }); };
     canvas.addEventListener('wheel', onWheel, { passive: false });
     canvas.addEventListener('mousedown', onDown);
     window.addEventListener('mousemove', onMove);
@@ -518,7 +519,13 @@ export function SlayerChart({ profile, decimals, candles: propCandles }: SlayerC
     return () => { ro.disconnect(); mo.disconnect(); canvas.removeEventListener('wheel', onWheel); canvas.removeEventListener('mousedown', onDown); window.removeEventListener('mousemove', onMove); window.removeEventListener('mouseup', onUp); canvas.removeEventListener('mouseleave', onLeave); canvas.removeEventListener('dblclick', onDbl); };
   }, []);
 
-  useEffect(() => { themeRef.current = readTheme(); drawRef.current(); }, [candles, overlaySeries, paneSeries, displacements, showGex, showDisp, chartType, colors, ha, view, profile, decimals, tfKey, tickKey]);
+  // Data/view-driven repaints are rAF-coalesced and do NOT re-read the theme (the MutationObserver
+  // above keeps themeRef fresh) — getComputedStyle on every pan/zoom/tick frame was the jank source.
+  const redrawRafRef = useRef(0);
+  useEffect(() => {
+    if (redrawRafRef.current) return;
+    redrawRafRef.current = requestAnimationFrame(() => { redrawRafRef.current = 0; drawRef.current(); });
+  }, [candles, overlaySeries, paneSeries, displacements, showGex, showDisp, chartType, colors, ha, view, priceView, profile, decimals, tfKey, tickKey]);
 
   // Keep a scrolled-back view anchored to the same bars when a new candle prints (a normal
   // 1–3 bar growth). A wholesale ticker/timeframe switch is handled by the reset effect above.
@@ -615,8 +622,9 @@ export function SlayerChart({ profile, decimals, candles: propCandles }: SlayerC
         </div>
 
         <span className="w-px h-4 bg-[var(--border)] mx-0.5" />
-        {/* Active indicator chips (click to remove) */}
-        {OVERLAY_DEFS.filter(d => ovOn[d.key]).map(d => removeChip(d.label, d.build(ohlcv)[0]?.color || '#888', () => setOvOn(p => ({ ...p, [d.key]: false }))))}
+        {/* Active indicator chips (click to remove) — reuse the memoized series color (don't
+            recompute the indicator on every render just to read its chip color). */}
+        {OVERLAY_DEFS.filter(d => ovOn[d.key]).map(d => removeChip(d.label, overlaySeries[d.key]?.[0]?.color || '#888', () => setOvOn(p => ({ ...p, [d.key]: false }))))}
         {PANE_DEFS.filter(d => paneOn[d.key]).map(d => removeChip(d.label, '#7d8694', () => setPaneOn(p => ({ ...p, [d.key]: false }))))}
 
         <div className="ml-auto flex items-center gap-1">
@@ -633,19 +641,20 @@ export function SlayerChart({ profile, decimals, candles: propCandles }: SlayerC
                       <label key={key} className="flex items-center justify-between gap-2 cursor-pointer">
                         <span className="text-[11px] font-mono text-[var(--text-secondary)]">{label}</span>
                         <span className="flex items-center gap-1.5">
-                          <span className="text-[9px] font-mono tabular-nums uppercase text-[var(--text-tertiary)]">{colors[key] || themeHex[key]}</span>
-                          <input type="color" value={colors[key] || themeHex[key]} onChange={e => setColors(c => ({ ...c, [key]: e.target.value }))} className="w-7 h-6 rounded cursor-pointer bg-transparent border border-[var(--border)] p-0" />
+                          <span className="text-[9px] font-mono tabular-nums uppercase text-[var(--text-tertiary)]">{colors[key] || DEFAULT_COLORS[key]}</span>
+                          <input type="color" value={colors[key] || DEFAULT_COLORS[key]} onChange={e => setColors(c => ({ ...c, [key]: e.target.value }))} className="w-7 h-6 rounded cursor-pointer bg-transparent border border-[var(--border)] p-0" />
                         </span>
                       </label>
                     ))}
                   </div>
-                  <button onClick={() => setColors({})} className="w-full mt-2.5 py-1 rounded text-[10px] font-mono font-bold uppercase tracking-widest border border-[var(--border)] text-[var(--text-tertiary)] hover:text-[var(--text-primary)] hover:border-[var(--border-strong)] transition-colors">Reset to theme</button>
+                  <button onClick={() => setColors({})} className="w-full mt-2.5 py-1 rounded text-[10px] font-mono font-bold uppercase tracking-widest border border-[var(--border)] text-[var(--text-tertiary)] hover:text-[var(--text-primary)] hover:border-[var(--border-strong)] transition-colors">Reset to default</button>
                 </div>
               </>
             )}
           </div>
           {specChip(showGex, 'γ-MAP', () => setShowGex(v => !v))}
           {specChip(showDisp, '⚡ DISP', () => setShowDisp(v => !v), 'warn')}
+          {priceView && <button onClick={() => setPriceView(null)} title="Reset price scale to auto-fit (or double-click the price axis)" className="px-1.5 py-0.5 rounded-sm text-[10px] font-mono font-bold uppercase tracking-wide border border-[var(--border)] bg-[var(--surface-2)] text-[var(--text-secondary)] hover:border-[var(--border-strong)] transition-colors">⤢ AUTO Y</button>}
           {view.off !== 0 && <button onClick={() => setView(v => ({ ...v, off: 0 }))} title="Jump back to the live edge (or double-click the chart)" className="px-1.5 py-0.5 rounded-sm text-[10px] font-mono font-bold uppercase tracking-wide border border-[var(--border)] bg-[var(--surface-2)] text-[var(--text-secondary)] hover:border-[var(--border-strong)] transition-colors">⟳ LIVE</button>}
         </div>
       </div>
