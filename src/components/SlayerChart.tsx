@@ -446,8 +446,9 @@ export const SlayerChart = memo(function SlayerChartImpl({ profile, decimals, ca
     const laneOn = !!(showGex && profile.strikes && profile.strikes.length);
     const heatOn = !!(showHeat && profile.strikes && profile.strikes.length);
     const orbsOn = !!(showOrbs && profile.strikes && profile.strikes.length);
-    // Reserve a right gutter for the γ-lane (wide), the ORBS focal column (medium), or the Γ-MAP diamonds (thin).
-    const gammaW = laneOn ? 46 : orbsOn ? 22 : heatOn ? 16 : 0;
+    // Reserve a right gutter for the γ-lane (wide) or the Γ-MAP diamonds (thin). ORBS need no gutter —
+    // they draw ON the chart at the right edge so each dot sits on its actual price level.
+    const gammaW = laneOn ? 46 : orbsOn ? 0 : heatOn ? 16 : 0;
     const plotL = 2, plotR = W - axisW - gammaW, plotW = plotR - plotL, gammaR = plotR + gammaW;
     const availH = H - topPad - xAxisH;
     const subH = paneSeries.length ? Math.min(86, (availH * 0.42) / paneSeries.length) : 0;
@@ -559,15 +560,16 @@ export const SlayerChart = memo(function SlayerChartImpl({ profile, decimals, ca
       }
     }
 
-    // ORBS — focal gamma-concentration orbs in the right gutter: radius ∝ |net γ|, gold (call-dominant) /
-    // violet (put-dominant), walls largest + ringed, each with a soft radial glow. A clean, Skylit-style
-    // alternative to the Γ-MAP diamonds (which it replaces in the gutter when active).
+    // ORBS — focal gamma-concentration dots drawn ON the chart at the right edge, each sitting exactly on
+    // its price level (cy = yP(strike)): radius ∝ |net γ|, gold (call-dominant) / violet (put-dominant),
+    // walls largest + ringed, each with a soft radial glow. A clean, Skylit-style alternative to the
+    // Γ-MAP diamonds (which it replaces when active).
     if (orbsOn) {
       const inR = profile.strikes!.filter(s => { const y = yP(s.strike); return y >= priceTop + 2 && y <= priceBottom - 2 && Math.abs(s.netGex || 0) > 0; });
       if (inR.length) {
         const maxG = Math.max(...inR.map(s => Math.abs(s.netGex || 0)), 1e-9);
         const top = [...inR].sort((a, b) => Math.abs(b.netGex || 0) - Math.abs(a.netGex || 0)).slice(0, 24);
-        const cx = plotR + gammaW / 2;
+        const cx = plotR - 14; // on-chart, hugging the right edge so each dot lands on its accurate level
         for (const s of top) {
           const y = yP(s.strike), mag = Math.abs(s.netGex || 0) / maxG, pos = (s.netGex || 0) >= 0;
           const isWall = s.strike === profile.callWall || s.strike === profile.putWall;
