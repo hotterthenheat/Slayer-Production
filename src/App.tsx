@@ -198,7 +198,12 @@ export default function App() {
   // INJECT: VIEWPORT SIMULATION STATE
   const [originalAdminSession, setOriginalAdminSession] = useState<any | null>(null);
   const [isSimulating, setIsSimulating] = useState(false);
-  const [feedStatus, setFeedStatus] = useState<'connecting' | 'live' | 'offline'>('connecting');
+  const [feedStatus, setFeedStatus] = useState<'connecting' | 'live' | 'offline' | 'stale'>('connecting');
+  // Feed heartbeat: SSE 'open' only means the socket connected — NOT that ticks are still arriving.
+  // We stamp every data frame and, if the stream goes quiet, flip to a distinct 'stale' state so the
+  // UI can never keep flashing "Live" over frozen prices (a data-integrity failure, not just a UX one).
+  const lastMsgRef = useRef<number>(0);
+  const [staleSec, setStaleSec] = useState(0);
 
   const handleSimulateTier = (targetTier: string, targetTierNum: number) => {
     // Save the real admin session in the background before overriding
@@ -675,9 +680,11 @@ export default function App() {
 
     const url = `/api/stream?asset=${assetParam}&timeframe=${tfParam}&isCall=${isCall}${strikeParam}${posParam}`;
     
+    const STALE_MS = 8000; // ~8 missed 1Hz frames → treat the feed as quiet, not live
     const eventSource = new EventSource(url);
     setFeedStatus('connecting');
-    eventSource.onopen = () => setFeedStatus('live');
+    lastMsgRef.current = Date.now(); // don't trip 'stale' before the first frame lands
+    eventSource.onopen = () => { setFeedStatus('live'); lastMsgRef.current = Date.now(); };
     let latestPayload: any = null;
     let flushInterval: any = null;
 
@@ -694,10 +701,20 @@ export default function App() {
           return;
         }
         latestPayload = data;
+        // True heartbeat: a real data frame arrived → stamp it and clear any stale/offline state.
+        lastMsgRef.current = Date.now();
+        setFeedStatus(s => (s === 'live' ? s : 'live'));
       } catch (err) {
         console.error('[SkyVision Client] Parsing SSE Data Stream', err);
       }
     };
+
+    // Watchdog: if no frame has landed within STALE_MS, surface a distinct 'stale' state (and a
+    // live-counting age) without overriding a hard 'offline'. Cheap — only writes state while stale.
+    const heartbeat = setInterval(() => {
+      const age = Date.now() - lastMsgRef.current;
+      if (age >= STALE_MS) { setFeedStatus(s => (s === 'offline' ? s : 'stale')); setStaleSec(Math.floor(age / 1000)); }
+    }, 1000);
 
     
     // Throttle SSE flushes to ~7/sec. Candle/greek data doesn't need 60fps, and
@@ -725,6 +742,7 @@ export default function App() {
       cancelled = true;
       eventSource.close();
       if (flushInterval) cancelAnimationFrame(flushInterval);
+      clearInterval(heartbeat);
     };
   }, [selectedAsset, selectedTimeframe, selectedOptionType, selectedStrike, isPositionOpen, updateFromSSE, sessionActive]);
 
@@ -899,11 +917,15 @@ export default function App() {
         {showAlerts && <SkyseyeAlertHub />}
 
         <div className="flex-1 flex flex-col w-full mx-auto relative z-10 h-full overflow-hidden">
-          {/* Stale-feed banner: surface SSE disconnects inside the views, not just the sidebar dot. */}
-          {feedStatus === 'offline' && !['home', 'subscription'].includes(activeTab) && (
-            <div role="status" aria-live="polite" className="shrink-0 flex items-center justify-center gap-2 bg-[var(--warning)]/10 border-b border-[var(--warning)]/30 px-4 py-1.5 text-[10px] font-mono uppercase tracking-widest text-[var(--warning)]">
-              <span className="h-1.5 w-1.5 rounded-full bg-[var(--warning)] animate-pulse" aria-hidden="true" />
-              Live feed disconnected — reconnecting. Figures may be stale.
+          {/* Feed-honesty banner: surface SSE disconnects AND a quiet-but-open stream inside the
+              views, not just the sidebar dot. 'offline' (hard drop) reads red; 'stale' (open but no
+              fresh ticks) reads amber with a live age — never let frozen prices pass as live. */}
+          {(feedStatus === 'offline' || feedStatus === 'stale') && !['home', 'subscription'].includes(activeTab) && (
+            <div role="status" aria-live="polite" className={`shrink-0 flex items-center justify-center gap-2 px-4 py-1.5 text-[10px] font-mono uppercase tracking-widest border-b ${feedStatus === 'offline' ? 'bg-[var(--danger)]/10 border-[var(--danger)]/30 text-[var(--danger)]' : 'bg-[var(--warning)]/10 border-[var(--warning)]/30 text-[var(--warning)]'}`}>
+              <span className={`h-1.5 w-1.5 rounded-full animate-pulse ${feedStatus === 'offline' ? 'bg-[var(--danger)]' : 'bg-[var(--warning)]'}`} aria-hidden="true" />
+              {feedStatus === 'offline'
+                ? 'Live feed disconnected — reconnecting. Figures may be stale.'
+                : `Feed quiet ${staleSec}s — prices may be delayed, not live.`}
             </div>
           )}
           {/* Main workspace frame */}
@@ -1139,8 +1161,8 @@ export default function App() {
           <span className="text-[var(--text-tertiary)]">Not investment advice.</span>
         </div>
         <div className="flex items-center gap-2 mt-2 sm:mt-0">
-          <div className={`w-1.5 h-1.5 rounded-full ${feedStatus === 'offline' ? 'bg-[var(--danger)]' : 'bg-[var(--success)] animate-pulse'}`}></div>
-          <span className="text-[var(--text-tertiary)] font-bold">{feedStatus === 'offline' ? 'Offline' : serverState?.data_source === 'SANDBOX_SYNTHETIC' ? 'Sandbox Feed' : 'Live Feed'}</span>
+          <div className={`w-1.5 h-1.5 rounded-full ${feedStatus === 'offline' ? 'bg-[var(--danger)]' : feedStatus === 'stale' ? 'bg-[var(--warning)]' : 'bg-[var(--success)] animate-pulse'}`}></div>
+          <span className="text-[var(--text-tertiary)] font-bold">{feedStatus === 'offline' ? 'Offline' : feedStatus === 'stale' ? `Stale Feed · ${staleSec}s` : serverState?.data_source === 'SANDBOX_SYNTHETIC' ? 'Sandbox Feed' : 'Live Feed'}</span>
         </div>
       </footer>
       )}

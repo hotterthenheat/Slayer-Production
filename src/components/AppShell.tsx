@@ -31,7 +31,7 @@ interface AppShellProps {
   tierInfo: any;
   onUpgradeClick: () => void;
   setShowAuthModal: (open: boolean) => void;
-  feedStatus?: 'connecting' | 'live' | 'offline';
+  feedStatus?: 'connecting' | 'live' | 'offline' | 'stale';
 }
 
 // Dynamic nav context. NavItem is hoisted to module scope (a stable component
@@ -79,7 +79,7 @@ function NavItem({ id, label, icon: Icon, adminOnly = false, activeColor = 'text
 }
 
 // Live data-feed status indicator (driven by the SSE connection state).
-function FeedPill({ status, compact = false }: { status?: 'connecting' | 'live' | 'offline'; compact?: boolean }) {
+function FeedPill({ status, compact = false }: { status?: 'connecting' | 'live' | 'offline' | 'stale'; compact?: boolean }) {
   const s = status || 'connecting';
   // Resolve theme tokens once so the status dot matches the token-driven UI
   // (instead of hardcoded hexes) across light/dark/custom themes.
@@ -88,6 +88,9 @@ function FeedPill({ status, compact = false }: { status?: 'connecting' | 'live' 
   const map = {
     live: { c: tok('--success', '#4ADE80'), t: 'LIVE' },
     connecting: { c: tok('--warning', '#FBBF24'), t: 'CONNECTING' },
+    // Open socket but no fresh ticks — amber, and crucially NOT pinging like 'live' (the ping is
+    // gated to 'live' below), so a quiet feed never visually impersonates a flowing one.
+    stale: { c: tok('--warning', '#FBBF24'), t: 'STALE' },
     offline: { c: tok('--danger', '#F87171'), t: 'OFFLINE' },
   } as const;
   const cfg = map[s];
