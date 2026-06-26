@@ -7,6 +7,12 @@ interface SlayerChartProps {
   profile: GexProfileData;
   decimals: number;
   candles?: Candle[]; // optional override; falls back to the live store stream
+  // Multi-chart panel mode: when panelId is set the instance owns its OWN timeframe and its
+  // OWN persisted prefs/drawings (keys suffixed by panelId), independent of the global store.
+  // When absent, every code path stays byte-for-byte identical to the single main chart.
+  panelId?: string;
+  initialTimeframe?: TimeframeVal;
+  title?: string; // ticker label shown for a panel
 }
 
 type OHLCV = { o: number[]; h: number[]; l: number[]; c: number[]; v: number[] };
@@ -214,15 +220,18 @@ const fmtOsc = (v: number) => Math.abs(v) >= 1e6 ? (v / 1e6).toFixed(2) + 'M' : 
  * bursts that gold-ring on a dealer level. ~40 of the 48 unit-tested indicators are exposed
  * through a grouped/searchable menu; everything is opt-in. Redraws are rAF-throttled.
  */
-export function SlayerChart({ profile, decimals, candles: propCandles }: SlayerChartProps) {
+export function SlayerChart({ profile, decimals, candles: propCandles, panelId, initialTimeframe, title }: SlayerChartProps) {
   const storeChart = useContractStore(s => s.activeContract?.chartData);
+  // localStorage key suffix — panels namespace their prefs/drawings; the main chart (no panelId)
+  // keeps the exact original keys so existing saved setups are untouched.
+  const keySuffix = panelId ? '.' + panelId : '';
   const candles = propCandles ?? storeChart ?? EMPTY;
   const containerRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
   // Chart prefs persist across reloads (localStorage). A first-time user still gets the clean
   // default — only the GEX profile on, every indicator + displacement opt-in, TradingView-style.
-  const initialPrefs = useMemo(() => { try { return JSON.parse(localStorage.getItem('slayerchart.prefs.v1') || '{}'); } catch { return {}; } }, []);
+  const initialPrefs = useMemo(() => { try { return JSON.parse(localStorage.getItem('slayerchart.prefs.v1' + keySuffix) || '{}'); } catch { return {}; } }, [keySuffix]);
   const [ovOn, setOvOn] = useState<Record<string, boolean>>(initialPrefs.ovOn || {});
   const [paneOn, setPaneOn] = useState<Record<string, boolean>>(initialPrefs.paneOn || {});
   const [showGex, setShowGex] = useState<boolean>(initialPrefs.showGex ?? true);
@@ -250,8 +259,13 @@ export function SlayerChart({ profile, decimals, candles: propCandles }: SlayerC
   const [tool, setTool] = useState<DrawTool>('cursor');
   const [selectedId, setSelectedId] = useState<string | null>(null);
 
-  const tfKey = useContractStore(s => s.selectedTimeframe);
-  const tickKey = useContractStore(s => s.selectedAsset?.ticker);
+  const storeTf = useContractStore(s => s.selectedTimeframe);
+  const storeTick = useContractStore(s => s.selectedAsset?.ticker);
+  const [localTf, setLocalTf] = useState<TimeframeVal>(initialTimeframe ?? '5m');
+  // Panel mode owns its own timeframe + ticker label; the main chart follows the global store.
+  const tfKey = panelId ? localTf : storeTf;
+  const tickKey = panelId ? (title ?? storeTick) : storeTick;
+  const applyTf = (tf: TimeframeVal) => { if (panelId) setLocalTf(tf); else setSelectedTimeframe(tf); };
   // A range button can request a specific bar count for the new timeframe; the reset consumes it.
   const pendingBarsRef = useRef<number | null>(null);
   useEffect(() => {
@@ -262,10 +276,10 @@ export function SlayerChart({ profile, decimals, candles: propCandles }: SlayerC
   }, [tfKey, tickKey]);
   // Load this ticker's saved drawings (and reset transient drawing state) on symbol change.
   useEffect(() => {
-    try { const raw = localStorage.getItem('slayerchart.draw.' + (tickKey || '_')); setDrawings(raw ? JSON.parse(raw) : []); } catch { setDrawings([]); }
+    try { const raw = localStorage.getItem('slayerchart.draw.' + (panelId ? panelId + '.' : '') + (tickKey || '_')); setDrawings(raw ? JSON.parse(raw) : []); } catch { setDrawings([]); }
     setSelectedId(null); draftRef.current = null; measureRef.current = null; measureDragRef.current = false;
   }, [tickKey]);
-  useEffect(() => { try { localStorage.setItem('slayerchart.draw.' + (tickKey || '_'), JSON.stringify(drawings)); } catch { /* storage unavailable */ } }, [drawings, tickKey]);
+  useEffect(() => { try { localStorage.setItem('slayerchart.draw.' + (panelId ? panelId + '.' : '') + (tickKey || '_'), JSON.stringify(drawings)); } catch { /* storage unavailable */ } }, [drawings, tickKey, panelId]);
 
   const hoverRef = useRef<{ x: number; y: number } | null>(null);
   const dragRef = useRef<{ x: number; off: number } | null>(null);
@@ -300,7 +314,7 @@ export function SlayerChart({ profile, decimals, candles: propCandles }: SlayerC
   // Persist chart prefs (type, colors, indicator selection, GEX/disp toggles) so a user's
   // setup survives a reload. Saving the initial (already-stored) values once is harmless.
   useEffect(() => {
-    try { localStorage.setItem('slayerchart.prefs.v1', JSON.stringify({ chartType, colors, ovOn, paneOn, showGex, showDisp, showHeat, showGrid, showVolume, showWatermark, candleBorders })); } catch { /* storage unavailable */ }
+    try { localStorage.setItem('slayerchart.prefs.v1' + keySuffix, JSON.stringify({ chartType, colors, ovOn, paneOn, showGex, showDisp, showHeat, showGrid, showVolume, showWatermark, candleBorders })); } catch { /* storage unavailable */ }
   }, [chartType, colors, ovOn, paneOn, showGex, showDisp, showHeat, showGrid, showVolume, showWatermark, candleBorders]);
 
   // Only enabled indicators are computed, and only when the selection or candles change
@@ -808,7 +822,7 @@ export function SlayerChart({ profile, decimals, candles: propCandles }: SlayerC
     const p = RANGE_PRESETS.find(x => x.k === r); if (!p) return;
     setRange(r);
     if (tfKey === p.tf) { setView({ bars: p.bars, off: 0 }); setPriceView(null); }
-    else { pendingBarsRef.current = p.bars; setSelectedTimeframe(p.tf); } // tf change → reset effect applies the bars
+    else { pendingBarsRef.current = p.bars; applyTf(p.tf); } // tf change → reset effect applies the bars
   };
 
   return (
@@ -843,7 +857,7 @@ export function SlayerChart({ profile, decimals, candles: propCandles }: SlayerC
               <div className="fixed inset-0 z-40" onClick={() => setTfOpen(false)} />
               <div className="absolute top-full left-0 mt-1 z-50 w-24 bg-[var(--surface)] border border-[var(--border-strong)] rounded-md shadow-2xl py-1 max-h-72 overflow-y-auto">
                 {CHART_TFS.map(t => (
-                  <button key={t} onClick={() => { setSelectedTimeframe(t); setTfOpen(false); }} className={`w-full flex items-center gap-2 px-3 py-1.5 text-left text-[11px] font-mono hover:bg-white/[0.05] transition-colors ${tfKey === t ? 'text-[var(--text-primary)]' : 'text-[var(--text-secondary)]'}`}>
+                  <button key={t} onClick={() => { applyTf(t); setTfOpen(false); }} className={`w-full flex items-center gap-2 px-3 py-1.5 text-left text-[11px] font-mono hover:bg-white/[0.05] transition-colors ${tfKey === t ? 'text-[var(--text-primary)]' : 'text-[var(--text-secondary)]'}`}>
                     <span className="w-3 text-center text-[var(--accent-color)]">{tfKey === t ? '✓' : ''}</span>{t}
                   </button>
                 ))}
