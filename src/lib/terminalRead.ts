@@ -151,3 +151,137 @@ export function computeTerminalRead(profile: GexProfileData, recentCloses: numbe
 
   return { bias, score, confidence, confidenceLabel, regime, regimeLabel, pinStrength, signals, play, entry, target, stop, noTrade, netVex, events };
 }
+
+/**
+ * GEX OUTLOOK — a descriptive regime/path classifier. Where computeTerminalRead builds a
+ * tradeable bracket, this answers only "what is the dealer book likely to make price DO?":
+ * pin to a magnet, squeeze up into a call wall, force shorts to cover, trend with the flip,
+ * or oscillate inside the cage. It is a READ, not a trade — no contracts, entries, or stops.
+ *
+ * Mechanic-driven, regime-correct: in long gamma (netGex ≥ 0) dealers suppress vol, so price
+ * pins to / mean-reverts toward the dominant-gamma strike; in short gamma (netGex < 0) dealers
+ * hedge WITH the move, so breaks of the γ-flip amplify and put-heavy reversals force covering.
+ */
+export interface GexOutlook {
+  regime: 'PINNING' | 'GAMMA SQUEEZE' | 'SHORT SQUEEZE' | 'TREND UP' | 'TREND DOWN' | 'RANGE' | 'NEUTRAL';
+  bias: 'up' | 'down' | 'sideways';
+  headline: string;     // short, e.g. "Pinned to 6,800" / "Gamma squeeze risk above 6,850"
+  detail: string;       // one sentence on the dealer mechanic driving it
+  target?: number;      // the level price is drawn toward (magnet/wall/flip), undefined if none
+  confidence: number;   // 0..100
+}
+
+export function computeGexOutlook(profile: GexProfileData, recentCloses: number[] = []): GexOutlook {
+  const spot = profile.spot || 0;
+  const netGex = profile.netGex || 0;
+
+  // NEUTRAL — insufficient data (no usable spot or no gamma signal at all).
+  if (!spot || (!profile.netGex && !(profile.strikes || []).length)) {
+    return { regime: 'NEUTRAL', bias: 'sideways', headline: 'No clear regime', detail: 'Insufficient GEX data to classify the dealer path.', target: undefined, confidence: 10 };
+  }
+
+  const longGamma = netGex >= 0;
+  const flip = profile.gammaFlip;
+  const magnet = profile.magnet;
+  const cw = profile.callWall;
+  const pw = profile.putWall;
+  const callOi = profile.totalCallOi || 0, putOi = profile.totalPutOi || 0;
+  const pct = (lvl?: number) => (lvl && spot ? ((lvl - spot) / spot) * 100 : null);
+
+  // Momentum from recent closes — same convention as computeTerminalRead.
+  let mom: -1 | 0 | 1 = 0;
+  if (recentCloses.length >= 4) {
+    const a = recentCloses[recentCloses.length - 1], b = recentCloses[0];
+    mom = a > b * 1.0005 ? 1 : a < b * 0.9995 ? -1 : 0;
+  }
+  // Reversal-off-a-low: last close turning up from the lowest point in the window — the
+  // tell for a short squeeze (forced covering tends to ignite off a flush, not a drift).
+  const reversalUp = (() => {
+    if (recentCloses.length < 4) return false;
+    const last = recentCloses[recentCloses.length - 1];
+    const lo = Math.min(...recentCloses);
+    const loIdx = recentCloses.indexOf(lo);
+    return loIdx < recentCloses.length - 1 && last > lo * 1.0005;
+  })();
+
+  // OI skew — call- vs put-dominant positioning.
+  const oiTot = callOi + putOi;
+  const callPct = oiTot > 0 ? (callOi / oiTot) * 100 : 50;
+  const callHeavy = callPct >= 55, putHeavy = callPct <= 45;
+
+  // Dominant-gamma strike + concentration (HHI), reused from the pinStrength mechanic. The
+  // magnet is the headline attractor, but the dominant strike is the true gamma center.
+  const ss = profile.strikes || [];
+  let domStrike: number | undefined, hhi = 0;
+  if (ss.length) {
+    const tot = ss.reduce((a, s) => a + Math.abs(s.netGex || 0), 0) || 1;
+    let top = ss[0];
+    for (const s of ss) { const sh = Math.abs(s.netGex || 0) / tot; hhi += sh * sh; if (Math.abs(s.netGex || 0) > Math.abs(top.netGex || 0)) top = s; }
+    domStrike = top.strike;
+  }
+  const pinTarget = magnet ?? domStrike;
+  // Continuous pin strength (0..100): concentration × proximity to the dominant strike.
+  const pinStrength = (() => {
+    if (!longGamma || !ss.length || domStrike == null) return 0;
+    const prox = Math.exp(-Math.pow((spot - domStrike) / (spot * 0.004), 2));
+    return Math.max(0, Math.min(100, Math.round(100 * Math.sqrt(hhi) * prox)));
+  })();
+
+  const dPin = pct(pinTarget);     // % distance to the pin attractor
+  const dCw = pct(cw);             // % distance to call wall (>0 ⇒ above spot)
+  const dPw = pct(pw);             // % distance to put wall
+  const aboveFlip = flip != null ? spot >= flip : null;
+  const r1 = (v?: number) => r0(v);
+
+  // ── Classification (priority order) ────────────────────────────────────────
+  // 1) PINNING — long gamma, glued to the attractor, gamma concentrated.
+  if (longGamma && pinTarget != null && dPin != null && Math.abs(dPin) <= 0.20 && pinStrength >= 40) {
+    const confidence = Math.max(45, Math.min(96, Math.round(40 + pinStrength * 0.55)));
+    return { regime: 'PINNING', bias: 'sideways', headline: `Pinned to ${r1(pinTarget)}`, detail: `Long-gamma dealers suppress volatility around ${r1(pinTarget)}; price sticks to the magnet until gamma rolls off.`, target: pinTarget, confidence };
+  }
+
+  // 2) GAMMA SQUEEZE — long gamma above the flip, pressing UP into a large call wall.
+  if (longGamma && cw != null && aboveFlip === true && dCw != null && dCw > 0 && dCw <= 0.6 && callHeavy && mom >= 0) {
+    const prox = 1 - dCw / 0.6;               // closer to the wall ⇒ hotter
+    const confidence = Math.max(50, Math.min(92, Math.round(52 + prox * 30 + (mom > 0 ? 8 : 0))));
+    return { regime: 'GAMMA SQUEEZE', bias: 'up', headline: `Gamma squeeze risk above ${r1(cw)}`, detail: `Spot is pressing the ${r1(cw)} call wall above the flip; dealers buy to stay hedged as price rises, accelerating the upside.`, target: cw, confidence };
+  }
+
+  // 3) SHORT SQUEEZE — short gamma, reversing up off a low, put-heavy book (forced covering).
+  if (!longGamma && putHeavy && (reversalUp || mom > 0)) {
+    const tgt = flip ?? cw;
+    const confidence = Math.max(48, Math.min(90, Math.round(54 + (reversalUp ? 16 : 6) + (putHeavy ? 8 : 0))));
+    return { regime: 'SHORT SQUEEZE', bias: 'up', headline: tgt != null ? `Short squeeze toward ${r1(tgt)}` : 'Short squeeze risk', detail: `Short-gamma dealers and a put-heavy book chase a reversal higher; covering is forced and the move is more violent than a gamma squeeze.`, target: tgt, confidence };
+  }
+
+  // 4) TREND DOWN — short gamma below the flip with downside momentum (dealers amplify selling).
+  if (!longGamma && aboveFlip === false && mom < 0) {
+    const tgt = pw ?? flip;
+    const confidence = Math.max(45, Math.min(88, Math.round(56 + (putHeavy ? 10 : 0) + (dPw != null && dPw < 0 ? 6 : 0))));
+    return { regime: 'TREND DOWN', bias: 'down', headline: tgt != null ? `Trending down toward ${r1(tgt)}` : 'Trending down', detail: `Short-gamma dealers sell into weakness below the flip; downside momentum is amplified toward ${r1(tgt)}.`, target: tgt, confidence };
+  }
+
+  // 5) TREND UP — short gamma above the flip with upside momentum (not a clean squeeze).
+  if (!longGamma && aboveFlip === true && mom > 0) {
+    const tgt = cw ?? flip;
+    const confidence = Math.max(45, Math.min(86, Math.round(54 + (callHeavy ? 10 : 0))));
+    return { regime: 'TREND UP', bias: 'up', headline: tgt != null ? `Trending up toward ${r1(tgt)}` : 'Trending up', detail: `Short-gamma dealers buy into strength above the flip; upside momentum is amplified toward ${r1(tgt)}.`, target: tgt, confidence };
+  }
+
+  // 6) RANGE — long gamma, mid-cage between the walls (not pinned): mean-reverts wall-to-wall.
+  if (longGamma && cw != null && pw != null && cw > pw && spot > pw && spot < cw) {
+    const tgt = magnet;
+    const confidence = Math.max(40, Math.min(78, Math.round(48 + pinStrength * 0.2)));
+    return { regime: 'RANGE', bias: 'sideways', headline: `Ranging ${r1(pw)}–${r1(cw)}`, detail: `Long-gamma dealers dampen vol inside the cage; price mean-reverts between the ${r1(pw)} put wall and ${r1(cw)} call wall.`, target: tgt, confidence };
+  }
+
+  // Fallback — has a usable spot/gamma but no decisive structure/momentum. Lean on the
+  // gamma sign for a soft, low-confidence read rather than over-committing.
+  if (longGamma) {
+    const tgt = pinTarget;
+    return { regime: 'RANGE', bias: 'sideways', headline: tgt != null ? `Range around ${r1(tgt)}` : 'Choppy / range', detail: `Long-gamma dealers suppress volatility; expect mean-reversion with no decisive directional path.`, target: tgt, confidence: 35 };
+  }
+  const tgt = aboveFlip === false ? (pw ?? flip) : (cw ?? flip);
+  const bias: GexOutlook['bias'] = aboveFlip === false ? 'down' : aboveFlip === true ? 'up' : 'sideways';
+  return { regime: bias === 'down' ? 'TREND DOWN' : bias === 'up' ? 'TREND UP' : 'NEUTRAL', bias, headline: bias === 'sideways' ? 'Unstable / no clear path' : `Unstable — leaning ${bias}`, detail: `Short-gamma dealers amplify moves; direction unresolved until the ${r1(flip)} flip is decisively held or lost.`, target: bias === 'sideways' ? undefined : tgt, confidence: 30 };
+}
