@@ -203,6 +203,7 @@ function readTheme() {
     up: g('--success', '#4ADE80'), down: g('--danger', '#F87171'), accent: g('--accent-color', '#FAFAFA'),
     info: g('--info', '#60A5FA'), warning: g('--warning', '#FBBF24'),
     text: g('--text-primary', '#E5E5E5'), dim: g('--text-tertiary', '#A3A3A3'), bgBase: g('--bg-base', '#0A0A0A'),
+    surf: g('--surface-3', '#262626'),
   };
 }
 
@@ -466,22 +467,33 @@ export const SlayerChart = memo(function SlayerChartImpl({ profile, decimals, ca
     for (const c of vis) { lo = Math.min(lo, c.low); hi = Math.max(hi, c.high); }
     if (!isFinite(lo) || !isFinite(hi)) return;
     const cRange = (hi - lo) || (hi || 1) * 0.01;
-    const capLo = lo - cRange * 0.85, capHi = hi + cRange * 0.85;
+    // Keep the candles dominant: only pull a dealer level into the auto-scale if it sits within
+    // ~30% of the candle range beyond the price action. Farther levels (e.g. EM±, a distant wall)
+    // stay off-screen and are surfaced by their ↑/↓ tags — otherwise they squash price into a thin
+    // band of whitespace. (Manual price-scale drag/scroll still overrides this.)
+    const capLo = lo - cRange * 0.30, capHi = hi + cRange * 0.30;
     const levelPrices = [profile.spot, profile.callWall, profile.putWall, profile.gammaFlip, profile.magnet];
     if (profile.spot && profile.expectedMovePct) levelPrices.push(profile.spot * (1 + profile.expectedMovePct), profile.spot * (1 - profile.expectedMovePct));
     for (const p of levelPrices) { if (typeof p === 'number' && p > 0 && p >= capLo && p <= capHi) { lo = Math.min(lo, p); hi = Math.max(hi, p); } }
-    const pad = ((hi - lo) || 1) * 0.08; lo -= pad; hi += pad;
+    const pad = ((hi - lo) || 1) * 0.07; lo -= pad; hi += pad;
     // Manual vertical scale (drag the price axis): scale the auto range about its center + shift.
     const pv = priceViewRef.current;
     if (pv) { const center = (lo + hi) / 2, half = Math.max(1e-6, ((hi - lo) / 2) * pv.factor); lo = center - half + pv.offset; hi = center + half + pv.offset; }
-    // Glide the displayed range toward the target (lo/hi) each frame; re-schedule until it settles.
+    // Glide the displayed range toward the target each frame, but SNAP (no animation) on a big jump
+    // — a ticker/timeframe switch to a totally different price band — and on tiny per-tick noise, so
+    // a live feed doesn't visibly "breathe". Only meaningful changes (zoom/scale/reset) ease.
     const disp = dispRangeRef.current;
     if (!disp) { dispRangeRef.current = { lo, hi }; }
     else {
-      const span = (hi - lo) || 1, k = 0.3;
-      disp.lo += (lo - disp.lo) * k; disp.hi += (hi - disp.hi) * k;
-      if (Math.abs(disp.lo - lo) + Math.abs(disp.hi - hi) < span * 0.0015) { disp.lo = lo; disp.hi = hi; }
-      else scheduleRef.current();
+      const span = (hi - lo) || 1, diff = Math.abs(disp.lo - lo) + Math.abs(disp.hi - hi);
+      const bigJump = Math.abs((lo + hi) / 2 - (disp.lo + disp.hi) / 2) > Math.max(hi - lo, disp.hi - disp.lo) * 0.6;
+      if (bigJump || diff < span * 0.02) { disp.lo = lo; disp.hi = hi; }
+      else {
+        const k = 0.32;
+        disp.lo += (lo - disp.lo) * k; disp.hi += (hi - disp.hi) * k;
+        if (Math.abs(disp.lo - lo) + Math.abs(disp.hi - hi) < span * 0.003) { disp.lo = lo; disp.hi = hi; }
+        else scheduleRef.current();
+      }
       lo = disp.lo; hi = disp.hi;
     }
     const volBandH = showVolume ? priceH * 0.13 : 0, priceAreaH = priceH - volBandH;
@@ -695,18 +707,31 @@ export const SlayerChart = memo(function SlayerChartImpl({ profile, decimals, ca
     const placed = lvls.map(L => { const rawY = yP(L.price); const off2 = L.price < lo || L.price > hi; return { ...L, rawY, off: off2, dir: off2 ? (L.price > hi ? -1 : 1) : 0, y: Math.max(priceTop + tagH / 2, Math.min(priceBottom - tagH / 2, rawY)) }; }).sort((a, b) => a.y - b.y);
     for (let i = 1; i < placed.length; i++) if (placed[i].y - placed[i - 1].y < tagH + 2) placed[i].y = placed[i - 1].y + tagH + 2;
     const rr = (x: number, y: number, w: number, h: number, r: number) => { ctx.beginPath(); if ((ctx as any).roundRect) (ctx as any).roundRect(x, y, w, h, r); else ctx.rect(x, y, w, h); };
+    // Skylit-style "orb" strength: a wall's share of total dealer gamma — how strong this level is.
+    const totalAbsGex = (profile.strikes || []).reduce((a, s) => a + Math.abs(s.netGex || 0), 0);
+    const gexPctAt = (price: number): number | null => {
+      const ss = profile.strikes; if (!totalAbsGex || !ss || !ss.length) return null;
+      let best = ss[0], bd = Infinity;
+      for (const s of ss) { const d = Math.abs(s.strike - price); if (d < bd) { bd = d; best = s; } }
+      if (bd > price * 0.0015) return null; // only when the level genuinely sits on a strike
+      return Math.round((Math.abs(best.netGex || 0) / totalAbsGex) * 100);
+    };
     for (const L of placed) {
       const name = NAMES[L.label] || L.label, isWall = L.label === 'CW' || L.label === 'PW';
       // level line at the true price — skip walls when the Γ-MAP band already draws them (no double line)
       if (!L.off && !(heatOn && isWall)) { ctx.strokeStyle = L.color; ctx.globalAlpha = 0.5; ctx.setLineDash([5, 4]); ctx.beginPath(); ctx.moveTo(plotL, px(L.rawY) - 0.5); ctx.lineTo(plotR, px(L.rawY) - 0.5); ctx.stroke(); ctx.setLineDash([]); ctx.globalAlpha = 1; }
-      const label = (L.off ? (L.dir < 0 ? '↑ ' : '↓ ') : '') + name;
-      ctx.font = '700 9px ui-monospace, monospace'; const tw = ctx.measureText(label).width;
-      const tagW = tw + 17, tagR = plotR - 4, tagL = tagR - tagW, ty = L.off ? (L.dir < 0 ? priceTop + tagH / 2 + 2 : priceBottom - tagH / 2 - 2) : L.y;
+      // Name + (for walls/magnet) the gamma-concentration %, so you read strength at a glance.
+      const pct = (isWall || L.label === 'MAG') ? gexPctAt(L.price) : null;
+      const nameLbl = (L.off ? (L.dir < 0 ? '↑ ' : '↓ ') : '') + name, pctLbl = pct != null ? `  ${pct}%` : '';
+      ctx.font = '700 9px ui-monospace, monospace';
+      const nameW = ctx.measureText(nameLbl).width, pctW = pctLbl ? ctx.measureText(pctLbl).width : 0;
+      const tagW = nameW + pctW + 17, tagR = plotR - 4, tagL = tagR - tagW, ty = L.off ? (L.dir < 0 ? priceTop + tagH / 2 + 2 : priceBottom - tagH / 2 - 2) : L.y;
       // connector from the line's right end back to the tag whenever the tag was nudged off its price
       if (!L.off && Math.abs(L.y - L.rawY) > 1) { ctx.strokeStyle = hexA(L.color, 0.55); ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(plotR - 3, px(L.rawY) - 0.5); ctx.lineTo(tagR - 2, px(ty) - 0.5); ctx.stroke(); }
       rr(tagL, ty - tagH / 2, tagW, tagH, 3); ctx.fillStyle = 'rgba(9,12,17,0.9)'; ctx.fill(); ctx.strokeStyle = hexA(L.color, 0.85); ctx.lineWidth = 1; ctx.stroke();
       ctx.fillStyle = L.color; ctx.beginPath(); ctx.arc(tagL + 7, ty, 2.4, 0, Math.PI * 2); ctx.fill();
-      ctx.textAlign = 'left'; ctx.fillText(label, tagL + 12, ty);
+      ctx.textAlign = 'left'; ctx.fillText(nameLbl, tagL + 12, ty);
+      if (pctLbl) { ctx.fillStyle = hexA(T.text, 0.72); ctx.fillText(pctLbl, tagL + 12 + nameW, ty); }
       // exact level price on the axis, in the level colour
       ctx.textAlign = 'right'; ctx.fillStyle = hexA(L.color, 0.95); ctx.fillText(nf(L.price), W - 3, ty);
     }
@@ -773,15 +798,23 @@ export const SlayerChart = memo(function SlayerChartImpl({ profile, decimals, ca
     if (hv && hv.x >= plotL && hv.x <= plotR) {
       const gi = Math.max(start, Math.min(Math.min(end - 1, n - 1), start + Math.round((hv.x - plotL - barW / 2) / barW)));
       const cx = xOf(gi);
-      ctx.strokeStyle = 'rgba(255,255,255,0.22)'; ctx.setLineDash([3, 3]);
+      ctx.strokeStyle = hexA(T.text, 0.26); ctx.setLineDash([3, 3]);
       ctx.beginPath(); ctx.moveTo(px(cx), priceTop); ctx.lineTo(px(cx), H - xAxisH); ctx.stroke();
       if (hv.y > priceTop && hv.y < H - xAxisH) { ctx.beginPath(); ctx.moveTo(plotL, px(hv.y)); ctx.lineTo(plotR, px(hv.y)); ctx.stroke(); }
       ctx.setLineDash([]);
+      // Theme-aware rounded axis bubbles. The price bubble is bordered up/down vs the last close,
+      // so you instantly see whether the cursor sits above or below current price.
+      const bubble = (bx: number, by: number, bw: number, bh: number, border: string, label: string, align: CanvasTextAlign, tx: number) => {
+        ctx.beginPath(); (ctx as any).roundRect ? (ctx as any).roundRect(bx, by, bw, bh, 3) : ctx.rect(bx, by, bw, bh);
+        ctx.fillStyle = T.surf; ctx.fill(); ctx.strokeStyle = border; ctx.lineWidth = 1; ctx.stroke();
+        ctx.fillStyle = T.text; ctx.textAlign = align; ctx.fillText(label, tx, by + bh / 2);
+      };
       if (hv.y >= priceTop && hv.y <= priceBottom - volBandH) {
         const pr = pOfY(hv.y);
-        ctx.fillStyle = '#252b36'; (ctx as any).roundRect ? (ctx.beginPath(), (ctx as any).roundRect(plotR + 1, hv.y - 8, axisW + gammaW - 1, 16, 3), ctx.fill()) : ctx.fillRect(plotR + 1, hv.y - 8, axisW + gammaW - 1, 16); ctx.fillStyle = '#e5e7eb'; ctx.textAlign = 'left'; ctx.fillText(nf(pr), plotR + 6, hv.y);
+        bubble(plotR + 1, hv.y - 9, axisW + gammaW - 2, 18, hexA(pr >= last ? COL.up : COL.down, 0.9), nf(pr), 'left', plotR + 6);
       }
-      const c = candles[gi]; ctx.fillStyle = '#252b36'; ctx.textAlign = 'center'; const tw = 40; ctx.fillRect(cx - tw / 2, H - xAxisH, tw, xAxisH); ctx.fillStyle = '#e5e7eb'; ctx.fillText(fmtTime(c.timestamp), cx, H - xAxisH + 11);
+      const c = candles[gi]; const tlbl = fmtTime(c.timestamp), tbw = ctx.measureText(tlbl).width + 14;
+      bubble(cx - tbw / 2, H - xAxisH + 1, tbw, xAxisH - 2, hexA(T.accent, 0.55), tlbl, 'center', cx);
       const up = c.close >= c.open, dC = c.close - c.open, dPct = c.open ? (dC / c.open) * 100 : 0;
       const txt = `O ${nf(c.open)}   H ${nf(c.high)}   L ${nf(c.low)}   C ${nf(c.close)}   ${dC >= 0 ? '+' : ''}${dPct.toFixed(2)}%   V ${(c.volume || 0) >= 1e6 ? ((c.volume || 0) / 1e6).toFixed(2) + 'M' : (c.volume || 0).toLocaleString("en-US")}`;
       ctx.font = '11px ui-monospace, monospace'; ctx.textAlign = 'left'; const wTxt = ctx.measureText(txt).width + 14;
