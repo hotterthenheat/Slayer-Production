@@ -42,7 +42,12 @@ for (const r of [bull, bear, flat]) {
   assert(['High', 'Moderate', 'Low', 'Mixed'].includes(r.confidenceLabel), 'confidence label valid');
   assert(r.score >= -100 && r.score <= 100, 'score bounded');
   assert(typeof r.noTrade === 'boolean', 'noTrade flag present');
+  assert(r.pinStrength >= 0 && r.pinStrength <= 100, 'pinStrength bounded 0..100');
 }
+// Pin strength only fires in a long-gamma PIN, and a tightly concentrated profile pins harder.
+assert(bear.pinStrength === 0, 'TREND (short gamma) → pinStrength 0');
+const tightPin = computeTerminalRead({ spot: 100, netGex: 1e9, gammaFlip: 99, magnet: 100, callWall: 103, putWall: 97, strikes: [{ strike: 100, callGex: 9e8, putGex: -1e8, netGex: 8e8, callOi: 0, putOi: 0, callVolume: 0, putVolume: 0 }, { strike: 101, callGex: 1e7, putGex: 0, netGex: 1e7, callOi: 0, putOi: 0, callVolume: 0, putVolume: 0 }] as any }, []);
+assert(tightPin.pinStrength > 50, 'concentrated gamma at spot → strong pin, got ' + tightPin.pinStrength);
 
 // The battle plan is always directionally coherent: target beyond spot in the bias
 // direction, stop on the other side — or an explicit no-trade.

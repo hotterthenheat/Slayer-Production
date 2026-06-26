@@ -3,9 +3,10 @@ import { motion } from 'motion/react';
 import { GexProfileData, OrderFlowData } from '../types';
 import { useContractStore } from '../lib/store';
 import { computeTerminalRead } from '../lib/terminalRead';
+import { computeDealerClock } from '../lib/dealerClock';
 import { SlayerChart } from './SlayerChart';
 import { OrderFlow } from './OrderFlow';
-import { Crosshair, Activity, Zap, Layers, ChevronDown, Gauge as GaugeIcon, Swords, Radio, TrendingUp, TrendingDown, Minus } from 'lucide-react';
+import { Crosshair, Activity, Zap, Layers, ChevronDown, Gauge as GaugeIcon, Swords, Radio, TrendingUp, TrendingDown, Minus, Clock } from 'lucide-react';
 import { ASSET_LIST, TIMEFRAMES } from '../data';
 
 const biasColor = (b: string) => (b === 'LONG' ? 'var(--success)' : b === 'SHORT' ? 'var(--danger)' : 'var(--text-secondary)');
@@ -29,6 +30,9 @@ export function LiveTerminalFlow({ profile, ticker, decimals }: LiveTerminalFlow
   const [tickerOpen, setTickerOpen] = useState(false);
   const [leftTab, setLeftTab] = useState<'levels' | 'flow'>('levels');
   const [scope, setScope] = useState<'0DTE' | 'ALL'>('0DTE');
+  const [ladderMetric, setLadderMetric] = useState<'GAMMA' | 'DELTA' | 'VANNA'>('GAMMA');
+  const [now, setNow] = useState(() => new Date());
+  useEffect(() => { const t = setInterval(() => setNow(new Date()), 1000); return () => clearInterval(t); }, []);
   const TF = TIMEFRAMES.filter(t => ['1m', '5m', '15m', '30m', '1h', '1D'].includes(t.val));
 
   const spot = profile.spot || 0;
@@ -82,18 +86,21 @@ export function LiveTerminalFlow({ profile, ticker, decimals }: LiveTerminalFlow
     return { pts: pts.map(pt => ({ ...pt, x: pos(pt.p as number) })), spotPos: pos(spot) };
   }, [profile, spot]);
 
+  const hasDex = useMemo(() => (profile.strikes || []).some(s => s.callDex != null || s.putDex != null), [profile]);
+  const hasVex = useMemo(() => (profile.strikes || []).some(s => s.callVex != null || s.putVex != null), [profile]);
   const ladder = useMemo(() => {
     let ss = [...(profile.strikes || [])];
     if (profile.spot) ss = ss.sort((a, b) => Math.abs(a.strike - spot) - Math.abs(b.strike - spot)).slice(0, 30);
-    const maxG = Math.max(...ss.map(s => Math.max(Math.abs(s.callGex || 0), Math.abs(s.putGex || 0))), 1);
+    const pick = (s: typeof ss[number]): [number, number] => ladderMetric === 'DELTA' ? [s.callDex || 0, s.putDex || 0] : ladderMetric === 'VANNA' ? [s.callVex || 0, s.putVex || 0] : [s.callGex || 0, s.putGex || 0];
+    const maxM = Math.max(...ss.map(s => { const [c, p] = pick(s); return Math.max(Math.abs(c), Math.abs(p)); }), 1);
     const maxV = Math.max(...ss.map(s => (s.callVolume || 0) + (s.putVolume || 0)), 1);
-    return ss.sort((a, b) => b.strike - a.strike).map(s => ({
-      strike: s.strike, net: s.netGex || 0,
-      callPct: (Math.abs(s.callGex || 0) / maxG) * 100, putPct: (Math.abs(s.putGex || 0) / maxG) * 100,
+    return ss.sort((a, b) => b.strike - a.strike).map(s => { const [c, p] = pick(s); return ({
+      strike: s.strike, net: c + p,
+      callPct: (Math.abs(c) / maxM) * 100, putPct: (Math.abs(p) / maxM) * 100,
       vol: (s.callVolume || 0) + (s.putVolume || 0), volPct: (((s.callVolume || 0) + (s.putVolume || 0)) / maxV) * 100,
       isSpot: Math.abs(s.strike - spot) < spot * 0.0008, isCW: s.strike === profile.callWall, isPW: s.strike === profile.putWall, isFlip: s.strike === profile.gammaFlip,
-    }));
-  }, [profile, spot]);
+    }); });
+  }, [profile, spot, ladderMetric]);
 
   const expClose = profile.magnet || spot;
   const expDir = expClose > spot * 1.0008 ? 'BULLISH' : expClose < spot * 0.9992 ? 'BEARISH' : 'NEUTRAL';
@@ -103,6 +110,19 @@ export function LiveTerminalFlow({ profile, ticker, decimals }: LiveTerminalFlow
   const rColor = biasColor(read.bias);
   // Price-direction colour for plan levels (above spot = up/success, below = down/danger).
   const dirColor = (lvl?: number) => (lvl == null ? 'var(--text-tertiary)' : lvl >= spot ? 'var(--success)' : 'var(--danger)');
+
+  // 0DTE session clock — time is the dominant risk; surface session phase + live countdown.
+  const clock = useMemo(() => computeDealerClock(0, profile.netVex || 0, now), [profile.netVex, now]);
+  const sess = useMemo(() => {
+    const et = new Date(now.toLocaleString('en-US', { timeZone: 'America/New_York' }));
+    const secs = et.getHours() * 3600 + et.getMinutes() * 60 + et.getSeconds();
+    const open = 9.5 * 3600, close = 16 * 3600, live = secs >= open && secs <= close;
+    const toClose = live ? close - secs : 0;
+    const prog = live ? (secs - open) / (close - open) : secs < open ? 0 : 1;
+    const cd = live ? `${Math.floor(toClose / 3600)}:${String(Math.floor((toClose % 3600) / 60)).padStart(2, '0')}:${String(Math.floor(toClose % 60)).padStart(2, '0')}` : 'CLOSED';
+    return { live, prog, cd };
+  }, [now]);
+  const SEGS = [{ k: 'o', sess: 'OPEN', l: 'Open Drive', w: 0.154 }, { k: 'm', sess: 'MIDDAY', l: 'Midday', w: 0.615 }, { k: 'p', sess: 'POWER_HOUR', l: 'Power Hour', w: 0.154 }, { k: 'c', sess: 'CLOSE', l: 'Into Close', w: 0.077 }] as const;
 
   const Tile = ({ label, value, sub, color }: { label: string; value: string; sub?: string; color: string }) => (
     <div className="bg-[var(--surface-2)] border border-[var(--border)] rounded-md px-2.5 py-2">
@@ -165,7 +185,7 @@ export function LiveTerminalFlow({ profile, ticker, decimals }: LiveTerminalFlow
           <div className="hidden md:block">{segToggle(TF.map(t => t.val), selectedTimeframe, setSelectedTimeframe)}</div>
           {segToggle(['0DTE', 'ALL'], scope, v => setScope(v as '0DTE' | 'ALL'), true)}
           <span className="flex items-center gap-1.5 px-2.5 py-1 rounded-md border text-[10px] font-mono font-black uppercase tracking-widest" style={{ borderColor: longGamma ? 'color-mix(in srgb, var(--success) 40%, transparent)' : 'color-mix(in srgb, var(--danger) 40%, transparent)', background: longGamma ? 'color-mix(in srgb, var(--success) 10%, transparent)' : 'color-mix(in srgb, var(--danger) 10%, transparent)', color: trend, boxShadow: `0 0 16px ${longGamma ? 'color-mix(in srgb, var(--success) 18%, transparent)' : 'color-mix(in srgb, var(--danger) 18%, transparent)'}` }}>
-            {longGamma ? <Activity className="w-3 h-3" /> : <Zap className="w-3 h-3 fill-current" />}{longGamma ? 'Long γ' : 'Short γ'} · {read.regime}
+            {longGamma ? <Activity className="w-3 h-3" /> : <Zap className="w-3 h-3 fill-current" />}{longGamma ? 'Long γ' : 'Short γ'} · {read.regime === 'PIN' ? `Pin ${read.pinStrength}` : 'Trend'}
           </span>
         </div>
       </div>
@@ -182,7 +202,7 @@ export function LiveTerminalFlow({ profile, ticker, decimals }: LiveTerminalFlow
         <div className="flex flex-col justify-center gap-1 px-4 border-r border-[var(--border)] shrink-0 min-w-[170px]">
           <div className="flex items-center justify-between"><span className="text-[8px] font-black tracking-widest uppercase text-[var(--text-tertiary)]">Confluence</span><span className="text-[10px] font-mono font-black tabular-nums" style={{ color: rColor }}>{read.confidence}%</span></div>
           <div className="h-1.5 rounded-full overflow-hidden bg-[var(--surface-3)]"><motion.div className="h-full rounded-full" style={{ background: rColor }} animate={{ width: `${read.confidence}%` }} transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }} /></div>
-          <span className="text-[8.5px] font-mono text-[var(--text-tertiary)]">{read.confidenceLabel} · {read.regime} regime</span>
+          <span className="text-[8.5px] font-mono text-[var(--text-tertiary)]">{read.confidenceLabel} · {read.regime === 'PIN' ? `Pin ${read.pinStrength}` : 'Trend'}</span>
         </div>
         <div className="flex flex-col justify-center gap-0.5 px-4 border-r border-[var(--border)] flex-1 min-w-[260px]">
           <span className="text-[8px] font-black tracking-widest uppercase text-[var(--text-tertiary)]">The Play</span>
@@ -197,6 +217,17 @@ export function LiveTerminalFlow({ profile, ticker, decimals }: LiveTerminalFlow
           <span className="text-[8px] font-black tracking-widest uppercase text-[var(--text-tertiary)]">Exp Move</span>
           <span className="text-[14px] font-mono font-black tabular-nums leading-tight" style={{ color: 'var(--info)' }}>{emPct != null ? `±${(emPct * 100).toFixed(2)}%` : '—'}</span>
         </div>
+      </div>
+
+      {/* ── 0DTE session band: phase + live countdown to close ── */}
+      <div className="flex items-center gap-2.5 h-6 px-3 border-b border-[var(--border)] shrink-0" style={{ background: 'var(--bg-base)' }}>
+        <Clock className="w-3 h-3 shrink-0" style={{ color: sess.live ? 'var(--accent-color)' : 'var(--text-tertiary)' }} />
+        <div className="relative flex-1 h-1.5 rounded-full overflow-hidden flex" style={{ background: 'var(--surface-2)' }}>
+          {SEGS.map(s => (<div key={s.k} className="h-full" style={{ width: `${s.w * 100}%`, borderRight: '1px solid var(--bg-base)', background: clock.session === s.sess ? 'color-mix(in srgb, var(--accent-color) 55%, transparent)' : 'transparent' }} title={s.l} />))}
+          {sess.live && <div className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 w-2 h-2 rounded-full" style={{ left: `${sess.prog * 100}%`, background: 'var(--accent-color)', boxShadow: '0 0 6px var(--accent-color)' }} />}
+        </div>
+        <span className="text-[9px] font-mono font-black uppercase tracking-widest shrink-0" style={{ color: sess.live ? 'var(--text-secondary)' : 'var(--text-tertiary)' }}>{SEGS.find(s => s.sess === clock.session)?.l ?? (sess.live ? 'Session' : 'Closed')}</span>
+        <span className="text-[10px] font-mono font-black tabular-nums shrink-0 w-[88px] text-right" style={{ color: sess.cd !== 'CLOSED' && sess.prog > 0.77 ? 'var(--warning)' : sess.live ? 'var(--text-secondary)' : 'var(--text-tertiary)' }}>{sess.cd !== 'CLOSED' ? `${sess.cd} to close` : 'Market closed'}</span>
       </div>
 
       {/* ── 3-column workspace (centered on ultrawide) ── */}
@@ -342,9 +373,16 @@ export function LiveTerminalFlow({ profile, ticker, decimals }: LiveTerminalFlow
                 <span className="w-1.5 h-1.5 rounded-full" style={{ background: trend }} />{read.regime}
               </span>
             </div>
+            {/* GAMMA / DELTA / VANNA exposure metric */}
+            <div className="flex items-center gap-1 px-3 py-1.5 border-b border-[var(--border)] shrink-0">
+              <span className="text-[8px] font-black tracking-widest uppercase text-[var(--text-tertiary)] mr-1">Metric</span>
+              {(['GAMMA', 'DELTA', 'VANNA'] as const).map(m => { const dis = (m === 'DELTA' && !hasDex) || (m === 'VANNA' && !hasVex); return (
+                <button key={m} disabled={dis} onClick={() => setLadderMetric(m)} title={dis ? `No ${m.toLowerCase()} data in this feed` : `Show per-strike ${m.toLowerCase()}`} className="px-2 py-0.5 text-[9px] font-mono font-black tracking-wider rounded transition-colors" style={ladderMetric === m ? { background: 'var(--surface-3)', color: 'var(--text-primary)' } : { color: dis ? 'color-mix(in srgb, var(--text-tertiary) 40%, transparent)' : 'var(--text-tertiary)', cursor: dis ? 'not-allowed' : 'pointer' }}>{m}</button>
+              ); })}
+            </div>
             <div className="grid grid-cols-[52px_1fr_64px] gap-2 px-3 py-1.5 border-b border-[var(--border)] shrink-0 text-[9px] font-mono font-black uppercase tracking-widest text-[var(--text-tertiary)]">
               <div className="text-right">Strike</div>
-              <div className="flex justify-between"><span style={{ color: 'var(--danger)' }}>◄ Put</span><span style={{ color: 'var(--success)' }}>Call ►</span></div>
+              <div className="flex justify-between"><span style={{ color: 'var(--danger)' }}>◄ Put {ladderMetric === 'GAMMA' ? 'γ' : ladderMetric === 'DELTA' ? 'Δ' : 'V'}</span><span style={{ color: 'var(--success)' }}>{ladderMetric === 'GAMMA' ? 'γ' : ladderMetric === 'DELTA' ? 'Δ' : 'V'} Call ►</span></div>
               <div className="text-right">Net</div>
             </div>
             <div className="flex-1 overflow-y-auto">

@@ -24,6 +24,7 @@ export interface TerminalRead {
   confidenceLabel: string;
   regime: 'PIN' | 'TREND';
   regimeLabel: string;    // single source of truth for regime wording
+  pinStrength: number;    // 0..100 — concentration × proximity of dealer gamma (PIN only)
   signals: TerminalSignal[];
   play: string;
   entry: string;
@@ -102,6 +103,18 @@ export function computeTerminalRead(profile: GexProfileData, recentCloses: numbe
   const confidence = biasDir === 0 ? Math.min(40, Math.round(Math.abs(score))) : Math.round((agreeWeight / dirWeight) * 100);
   const confidenceLabel = confidence >= 75 ? 'High' : confidence >= 50 ? 'Moderate' : confidence >= 30 ? 'Low' : 'Mixed';
 
+  // Continuous pin strength: HHI concentration of |netGex| × proximity to the dominant
+  // strike. High ⇒ a tight, sticky pin; low ⇒ diffuse gamma, weak magnet. PIN regime only.
+  const pinStrength = (() => {
+    const ss = profile.strikes || [];
+    if (!longGamma || !ss.length || !spot) return 0;
+    const tot = ss.reduce((a, s) => a + Math.abs(s.netGex || 0), 0) || 1;
+    let hhi = 0, top = ss[0];
+    for (const s of ss) { const sh = Math.abs(s.netGex || 0) / tot; hhi += sh * sh; if (Math.abs(s.netGex || 0) > Math.abs(top.netGex || 0)) top = s; }
+    const prox = Math.exp(-Math.pow((spot - top.strike) / (spot * 0.004), 2));
+    return Math.max(0, Math.min(100, Math.round(100 * Math.sqrt(hhi) * prox)));
+  })();
+
   // ── Battle plan — always directionally coherent, or an explicit no-trade ──
   const tiny = spot * 0.0006; // ~0.06% dead-zone
   let target: number | undefined, stop: number | undefined, entry: string, play: string, noTrade = false;
@@ -136,5 +149,5 @@ export function computeTerminalRead(profile: GexProfileData, recentCloses: numbe
   events.push({ text: `Net ${fmtGex(netGex)} gamma — dealers ${longGamma ? 'suppress vol' : 'chase moves'}`, tone: longGamma ? 'pos' : 'neg' });
   if (emPct) events.push({ text: `Implied day range ±${(emPct * 100).toFixed(2)}% (${r0(spot * (1 - emPct))}–${r0(spot * (1 + emPct))})`, tone: 'neutral' });
 
-  return { bias, score, confidence, confidenceLabel, regime, regimeLabel, signals, play, entry, target, stop, noTrade, netVex, events };
+  return { bias, score, confidence, confidenceLabel, regime, regimeLabel, pinStrength, signals, play, entry, target, stop, noTrade, netVex, events };
 }
