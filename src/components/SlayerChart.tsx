@@ -707,18 +707,31 @@ export const SlayerChart = memo(function SlayerChartImpl({ profile, decimals, ca
     const placed = lvls.map(L => { const rawY = yP(L.price); const off2 = L.price < lo || L.price > hi; return { ...L, rawY, off: off2, dir: off2 ? (L.price > hi ? -1 : 1) : 0, y: Math.max(priceTop + tagH / 2, Math.min(priceBottom - tagH / 2, rawY)) }; }).sort((a, b) => a.y - b.y);
     for (let i = 1; i < placed.length; i++) if (placed[i].y - placed[i - 1].y < tagH + 2) placed[i].y = placed[i - 1].y + tagH + 2;
     const rr = (x: number, y: number, w: number, h: number, r: number) => { ctx.beginPath(); if ((ctx as any).roundRect) (ctx as any).roundRect(x, y, w, h, r); else ctx.rect(x, y, w, h); };
+    // Skylit-style "orb" strength: a wall's share of total dealer gamma — how strong this level is.
+    const totalAbsGex = (profile.strikes || []).reduce((a, s) => a + Math.abs(s.netGex || 0), 0);
+    const gexPctAt = (price: number): number | null => {
+      const ss = profile.strikes; if (!totalAbsGex || !ss || !ss.length) return null;
+      let best = ss[0], bd = Infinity;
+      for (const s of ss) { const d = Math.abs(s.strike - price); if (d < bd) { bd = d; best = s; } }
+      if (bd > price * 0.0015) return null; // only when the level genuinely sits on a strike
+      return Math.round((Math.abs(best.netGex || 0) / totalAbsGex) * 100);
+    };
     for (const L of placed) {
       const name = NAMES[L.label] || L.label, isWall = L.label === 'CW' || L.label === 'PW';
       // level line at the true price — skip walls when the Γ-MAP band already draws them (no double line)
       if (!L.off && !(heatOn && isWall)) { ctx.strokeStyle = L.color; ctx.globalAlpha = 0.5; ctx.setLineDash([5, 4]); ctx.beginPath(); ctx.moveTo(plotL, px(L.rawY) - 0.5); ctx.lineTo(plotR, px(L.rawY) - 0.5); ctx.stroke(); ctx.setLineDash([]); ctx.globalAlpha = 1; }
-      const label = (L.off ? (L.dir < 0 ? '↑ ' : '↓ ') : '') + name;
-      ctx.font = '700 9px ui-monospace, monospace'; const tw = ctx.measureText(label).width;
-      const tagW = tw + 17, tagR = plotR - 4, tagL = tagR - tagW, ty = L.off ? (L.dir < 0 ? priceTop + tagH / 2 + 2 : priceBottom - tagH / 2 - 2) : L.y;
+      // Name + (for walls/magnet) the gamma-concentration %, so you read strength at a glance.
+      const pct = (isWall || L.label === 'MAG') ? gexPctAt(L.price) : null;
+      const nameLbl = (L.off ? (L.dir < 0 ? '↑ ' : '↓ ') : '') + name, pctLbl = pct != null ? `  ${pct}%` : '';
+      ctx.font = '700 9px ui-monospace, monospace';
+      const nameW = ctx.measureText(nameLbl).width, pctW = pctLbl ? ctx.measureText(pctLbl).width : 0;
+      const tagW = nameW + pctW + 17, tagR = plotR - 4, tagL = tagR - tagW, ty = L.off ? (L.dir < 0 ? priceTop + tagH / 2 + 2 : priceBottom - tagH / 2 - 2) : L.y;
       // connector from the line's right end back to the tag whenever the tag was nudged off its price
       if (!L.off && Math.abs(L.y - L.rawY) > 1) { ctx.strokeStyle = hexA(L.color, 0.55); ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(plotR - 3, px(L.rawY) - 0.5); ctx.lineTo(tagR - 2, px(ty) - 0.5); ctx.stroke(); }
       rr(tagL, ty - tagH / 2, tagW, tagH, 3); ctx.fillStyle = 'rgba(9,12,17,0.9)'; ctx.fill(); ctx.strokeStyle = hexA(L.color, 0.85); ctx.lineWidth = 1; ctx.stroke();
       ctx.fillStyle = L.color; ctx.beginPath(); ctx.arc(tagL + 7, ty, 2.4, 0, Math.PI * 2); ctx.fill();
-      ctx.textAlign = 'left'; ctx.fillText(label, tagL + 12, ty);
+      ctx.textAlign = 'left'; ctx.fillText(nameLbl, tagL + 12, ty);
+      if (pctLbl) { ctx.fillStyle = hexA(T.text, 0.72); ctx.fillText(pctLbl, tagL + 12 + nameW, ty); }
       // exact level price on the axis, in the level colour
       ctx.textAlign = 'right'; ctx.fillStyle = hexA(L.color, 0.95); ctx.fillText(nf(L.price), W - 3, ty);
     }
