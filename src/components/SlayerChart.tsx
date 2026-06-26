@@ -56,6 +56,11 @@ export function SlayerChart({ profile, decimals, candles: propCandles }: SlayerC
   const [showDisp, setShowDisp] = useState(true);
   const [view, setView] = useState<{ bars: number; off: number }>({ bars: 110, off: 0 });
 
+  // Snap back to the latest bars whenever the symbol or timeframe changes.
+  const tfKey = useContractStore(s => s.selectedTimeframe);
+  const tickKey = useContractStore(s => s.selectedAsset?.ticker);
+  useEffect(() => { setView({ bars: 110, off: 0 }); }, [tfKey, tickKey]);
+
   // Mutable mirrors for the native pointer handlers (attached once).
   const hoverRef = useRef<{ x: number; y: number } | null>(null);
   const dragRef = useRef<{ x: number; off: number } | null>(null);

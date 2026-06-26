@@ -2,7 +2,8 @@ import { useMemo, useState } from 'react';
 import { GexProfileData } from '../types';
 import { useContractStore } from '../lib/store';
 import { SlayerChart } from './SlayerChart';
-import { Activity, Shield, Zap, Layers, Target, Crosshair } from 'lucide-react';
+import { Activity, Shield, Zap, Layers, Target, Crosshair, ChevronDown } from 'lucide-react';
+import { ASSET_LIST, TIMEFRAMES } from '../data';
 
 interface LiveTerminalFlowProps {
   profile: GexProfileData;
@@ -22,6 +23,15 @@ export function LiveTerminalFlow({ profile, ticker, decimals }: LiveTerminalFlow
   const themeMode = useContractStore(s => s.themeMode);
   const isLight = themeMode === 'light';
   const [activeLadder, setActiveLadder] = useState<'30' | 'ALL'>('30');
+
+  // Symbol + timeframe live off the global store — changing them re-opens the SSE stream
+  // (App.tsx) so candles AND the dealer GEX profile refresh for the new selection.
+  const selectedAsset = useContractStore(s => s.selectedAsset);
+  const setSelectedAsset = useContractStore(s => s.setSelectedAsset);
+  const selectedTimeframe = useContractStore(s => s.selectedTimeframe);
+  const setSelectedTimeframe = useContractStore(s => s.setSelectedTimeframe);
+  const [tickerOpen, setTickerOpen] = useState(false);
+  const TF = TIMEFRAMES.filter(t => ['1m', '5m', '15m', '30m', '1h', '1D'].includes(t.val));
 
   const spot = profile.spot || 0;
   const netGex = profile.netGex || 0;
@@ -108,10 +118,36 @@ export function LiveTerminalFlow({ profile, ticker, decimals }: LiveTerminalFlow
     <div className={`w-full flex flex-col h-auto ${isLight ? 'bg-zinc-100 text-zinc-900' : 'bg-black text-[var(--text-secondary)]'}`} style={{ minHeight: '780px' }}>
       {/* ── Header ── */}
       <div className="flex items-center justify-between px-4 h-12 border-b border-[var(--border)] bg-black shrink-0">
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2.5">
           <span className="relative flex h-2 w-2"><span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[var(--success)] opacity-60" /><span className="relative inline-flex rounded-full h-2 w-2 bg-[var(--success)]" /></span>
-          <span className="text-[13px] font-sans font-black tracking-tight text-[var(--text-primary)]">Live Terminal</span>
-          <span className="px-2 py-0.5 rounded bg-[var(--surface-3)] border border-[var(--border)] text-[11px] font-mono font-bold tracking-widest text-[var(--text-secondary)]">{ticker}</span>
+          <span className="text-[13px] font-sans font-black tracking-tight text-[var(--text-primary)] hidden md:block">Live Terminal</span>
+
+          {/* Symbol selector */}
+          <div className="relative">
+            <button onClick={() => setTickerOpen(o => !o)} className="flex items-center gap-1.5 px-2.5 py-1 rounded bg-[var(--surface-3)] border border-[var(--border)] hover:border-[var(--border-strong)] text-[12px] font-mono font-black text-[var(--text-primary)] tracking-wider transition-colors">
+              {selectedAsset.ticker}<ChevronDown className={`w-3 h-3 text-[var(--text-tertiary)] transition-transform ${tickerOpen ? 'rotate-180' : ''}`} />
+            </button>
+            {tickerOpen && (
+              <>
+                <div className="fixed inset-0 z-40" onClick={() => setTickerOpen(false)} />
+                <div className="absolute top-full left-0 mt-1 z-50 w-48 max-h-80 overflow-y-auto bg-[var(--surface)] border border-[var(--border-strong)] rounded-md shadow-2xl py-1">
+                  {ASSET_LIST.map(a => (
+                    <button key={a.ticker} onClick={() => { setSelectedAsset(a); setTickerOpen(false); }} className={`w-full flex items-center justify-between px-3 py-1.5 text-left hover:bg-white/[0.05] transition-colors ${a.ticker === selectedAsset.ticker ? 'bg-white/[0.05]' : ''}`}>
+                      <span className="text-[12px] font-mono font-bold text-[var(--text-secondary)]">{a.ticker}</span>
+                      <span className="text-[9px] font-sans text-[var(--text-tertiary)] truncate ml-2 max-w-[110px]">{a.name}</span>
+                    </button>
+                  ))}
+                </div>
+              </>
+            )}
+          </div>
+
+          {/* Timeframe selector */}
+          <div className="flex items-center gap-0.5 bg-[var(--surface-2)] border border-[var(--border)] rounded p-0.5">
+            {TF.map(t => (
+              <button key={t.val} onClick={() => setSelectedTimeframe(t.val)} className={`px-2 py-0.5 text-[10px] font-mono font-black rounded transition-colors ${selectedTimeframe === t.val ? 'bg-[var(--surface-3)] text-[var(--text-primary)]' : 'text-[var(--text-tertiary)] hover:text-[var(--text-secondary)]'}`}>{t.val}</button>
+            ))}
+          </div>
         </div>
         <div className="flex items-center gap-3">
           <span className={`flex items-center gap-1.5 px-2.5 py-1 rounded border text-[10px] font-mono font-black uppercase tracking-widest ${longGamma ? 'bg-[var(--success)]/10 border-[var(--success)]/40 text-[var(--success)]' : 'bg-[var(--danger)]/10 border-[var(--danger)]/40 text-[var(--danger)]'}`}>
