@@ -6,6 +6,7 @@ import { SyncChannel, CHANNEL_CYCLE, CHANNEL_COLORS, subscribeChannel, publishCh
 import { fetchHistory } from '../lib/historyCache';
 import { OVERLAY_DEFS, PANE_DEFS, OVERLAY_GROUPS, PANE_GROUPS, type OHLCV, type Series, type PaneData } from './chart/indicators';
 import { newId, idxOfTime, timeOfIdx, distToSeg, shade, RANGE_PRESETS, HEAT_POS, HEAT_NEG, fmtGex, mixHex, CHART_TFS, hexA, DEFAULT_COLORS, readTheme, EMPTY, niceStep, fmtTime, sameDay, px, fmtOsc, type RangeKey } from './chart/format';
+import { CHART_TYPES, DRAW_COLOR, DRAW_TOOLS, type ChartType, type DrawTool, type Anchor, type Drawing } from './chart/drawing';
 
 interface SlayerChartProps {
   profile: GexProfileData;
@@ -21,22 +22,6 @@ interface SlayerChartProps {
   initialChannel?: SyncChannel;   // initial sync channel for a panel
 }
 
-
-type ChartType = 'candles' | 'hollow' | 'heikin' | 'bars' | 'line' | 'area' | 'baseline' | 'step' | 'columns';
-const CHART_TYPES: { k: ChartType; l: string }[] = [
-  { k: 'candles', l: 'Candles' }, { k: 'hollow', l: 'Hollow' }, { k: 'heikin', l: 'Heikin Ashi' }, { k: 'bars', l: 'Bars' }, { k: 'line', l: 'Line' }, { k: 'step', l: 'Step' }, { k: 'area', l: 'Area' }, { k: 'baseline', l: 'Baseline' }, { k: 'columns', l: 'Columns' },
-];
-
-// ── Drawing tools ──────────────────────────────────────────────────────────────
-type DrawTool = 'cursor' | 'trend' | 'ray' | 'hline' | 'measure';
-type Anchor = { t: number; price: number }; // timestamp + price, so a mark stays glued on pan/zoom
-type Drawing =
-  | { id: string; kind: 'hline'; price: number; color: string }
-  | { id: string; kind: 'trend' | 'ray'; a: Anchor; b: Anchor; color: string };
-const DRAW_COLOR = '#38bdf8';
-const DRAW_TOOLS: { k: Exclude<DrawTool, 'cursor'>; g: string; l: string }[] = [
-  { k: 'trend', g: '╱', l: 'Trend line' }, { k: 'ray', g: '➚', l: 'Ray' }, { k: 'hline', g: '─', l: 'Horizontal line' }, { k: 'measure', g: '⊡', l: 'Measure' },
-];
 
 /**
  * SlayerChart — our own canvas engine (no library). Smart-scaled price pane with candles /
