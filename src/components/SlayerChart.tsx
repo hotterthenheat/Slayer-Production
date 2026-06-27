@@ -2,12 +2,12 @@ import { useEffect, useMemo, useRef, useState, memo } from 'react';
 import { Candle, GexProfileData, TimeframeVal } from '../types';
 import { useContractStore } from '../lib/store';
 import * as TI from '../lib/indicators';
-import { SyncChannel, CHANNEL_CYCLE, CHANNEL_COLORS, subscribeChannel, publishChannel, broadcastCrosshair } from '../lib/chartSync';
+import { SyncChannel, CHANNEL_CYCLE, CHANNEL_COLORS, subscribeChannel, publishChannel, broadcastCrosshair, broadcastPriceScale } from '../lib/chartSync';
 import { fetchHistory } from '../lib/historyCache';
 import { OVERLAY_DEFS, PANE_DEFS, type OHLCV, type Series, type PaneData } from './chart/indicators';
 import { newId, idxOfTime, timeOfIdx, distToSeg, RANGE_PRESETS, CHART_TFS, readTheme, EMPTY, type RangeKey } from './chart/format';
 import { CHART_TYPES, DRAW_COLOR, DRAW_TOOLS, type ChartType, type DrawTool, type Anchor, type Drawing } from './chart/drawing';
-import { DealerMap, RegimeChip, ChartContextMenu } from './chart/overlays';
+import { ChartContextMenu } from './chart/overlays';
 import { IndicatorMenu } from './chart/IndicatorMenu';
 import { ChartSettings } from './chart/ChartSettings';
 import { drawChart } from './chart/draw';
@@ -64,7 +64,6 @@ export const SlayerChart = memo(function SlayerChartImpl({ profile, decimals, ca
   // Dealer-map density — how many strikes the heatmap / orbs / exposure-lane render. Lower = cleaner.
   const [gexCount, setGexCount] = useState<number>(typeof initialPrefs.gexCount === 'number' ? initialPrefs.gexCount : 16);
   const [showLadder, setShowLadder] = useState<boolean>(initialPrefs.showLadder ?? true); // Loaded GEX Strikes (flagship)
-  const [showDealerBox, setShowDealerBox] = useState<boolean>(initialPrefs.showDealerBox ?? true); // Dealer Positioning panel
   const [ctxMenu, setCtxMenu] = useState<{ x: number; y: number } | null>(null); // right-click "View" menu (reset to live, etc.)
   const [chartType, setChartType] = useState<ChartType>(initialPrefs.chartType || 'candles');
   const [colors, setColors] = useState<{ up?: string; down?: string; line?: string; wick?: string; bg?: string; grid?: string }>(initialPrefs.colors || {});
@@ -201,21 +200,13 @@ export const SlayerChart = memo(function SlayerChartImpl({ profile, decimals, ca
   // Persist chart prefs (type, colors, indicator selection, GEX/disp toggles) so a user's
   // setup survives a reload. Saving the initial (already-stored) values once is harmless.
   useEffect(() => {
-    try { localStorage.setItem('slayerchart.prefs.v1' + keySuffix, JSON.stringify({ chartType, colors, ovOn, paneOn, showGex, showDisp, showHeat, showOrbs, gexCount, showLadder, showDealerBox, showGrid, showVolume, showWatermark, candleBorders, gexMapV2: true, ...(panelId ? { ticker: panelTicker, timeframe: localTf, channel, expiry } : {}) })); } catch { /* storage unavailable */ }
-  }, [chartType, colors, ovOn, paneOn, showGex, showDisp, showHeat, showOrbs, gexCount, showLadder, showDealerBox, showGrid, showVolume, showWatermark, candleBorders, panelId, panelTicker, localTf, channel, expiry]);
+    try { localStorage.setItem('slayerchart.prefs.v1' + keySuffix, JSON.stringify({ chartType, colors, ovOn, paneOn, showGex, showDisp, showHeat, showOrbs, gexCount, showLadder, showGrid, showVolume, showWatermark, candleBorders, gexMapV2: true, ...(panelId ? { ticker: panelTicker, timeframe: localTf, channel, expiry } : {}) })); } catch { /* storage unavailable */ }
+  }, [chartType, colors, ovOn, paneOn, showGex, showDisp, showHeat, showOrbs, gexCount, showLadder, showGrid, showVolume, showWatermark, candleBorders, panelId, panelTicker, localTf, channel, expiry]);
 
   // Only enabled indicators are computed, and only when the selection or candles change
   // (NOT on pan/hover) — keeps interaction cheap.
   const overlaySeries = useMemo(() => { const out: Record<string, Series[]> = {}; for (const d of OVERLAY_DEFS) if (ovOn[d.key]) out[d.key] = d.build(ohlcv); return out; }, [ohlcv, ovOn]);
   const paneSeries = useMemo(() => { const out: { def: typeof PANE_DEFS[number]; data: PaneData }[] = []; for (const d of PANE_DEFS) if (paneOn[d.key]) out.push({ def: d, data: d.build(ohlcv) }); return out; }, [ohlcv, paneOn]);
-  // Dealer Positioning summary for the corner dashboard — net γ, call/put dominance, largest strikes.
-  const dealerStats = useMemo(() => {
-    const ss = profile.strikes; if (!ss || !ss.length) return null;
-    let pos = 0, neg = 0, dex = 0, vex = 0, hasDex = false, hasVex = false, lc: (typeof ss)[number] | null = null, lp: (typeof ss)[number] | null = null;
-    for (const s of ss) { const g = s.netGex || 0; if (g > 0) { pos += g; if (!lc || g > (lc.netGex || 0)) lc = s; } else if (g < 0) { neg += -g; if (!lp || g < (lp.netGex || 0)) lp = s; } const d = s.netDex ?? ((s.callDex ?? 0) + (s.putDex ?? 0)); if (s.netDex != null || s.callDex != null || s.putDex != null) { dex += d; hasDex = true; } const v = s.netVex ?? ((s.callVex ?? 0) + (s.putVex ?? 0)); if (s.netVex != null || s.callVex != null || s.putVex != null) { vex += v; hasVex = true; } }
-    const total = pos + neg;
-    return { net: pos - neg, callPct: total ? Math.round((pos / total) * 100) : 50, long: pos >= neg, largestCall: lc?.strike, largestPut: lp?.strike, netDex: hasDex ? dex : null, netVex: hasVex ? vex : null };
-  }, [profile]);
 
   const displacements = useMemo(() => {
     const levels = [profile.callWall, profile.putWall, profile.gammaFlip, profile.magnet, profile.spot].filter(x => typeof x === 'number' && (x as number) > 0) as number[];
@@ -231,12 +222,23 @@ export const SlayerChart = memo(function SlayerChartImpl({ profile, decimals, ca
     return out;
   }, [candles, atr, profile]);
 
+  // Publish the chart's LIVE visible price range so the detached Exposure Ladder can align its strikes
+  // to exactly the prices the chart is showing. Only the flagship chart (no panelId) drives the shared
+  // ladder; the spot rides along so the ladder's marker matches. We broadcast on EVERY draw (not just
+  // on change) so a ladder that mounts after the chart's first frame still receives the current scale —
+  // the listener rAF-throttles and drops no-op frames, so this is cheap.
+  const onScale = (lo: number, hi: number, priceTop: number, priceAreaH: number) => {
+    if (panelId) return;
+    const rTop = canvasRef.current ? canvasRef.current.getBoundingClientRect().top : 0;
+    broadcastPriceScale(lo, hi, profile.spot ?? null, rTop + priceTop, priceAreaH, 'main');
+  };
+
   drawRef.current = () => drawChart({
     canvasRef, containerRef, viewRef, priceViewRef, geomRef, dispRangeRef, scaleViewRef, themeRef,
     hoverRef, gexDeltaRef, draftRef, measureRef, drawingsRef, toolRef, selectedRef,
     candles, ha, atr, profile, colors, decimals, chartType, ovOn, overlaySeries, paneSeries,
     displacements, gexCount, showVolume, showGrid, showWatermark, candleBorders,
-    showGex, showHeat, showOrbs, showDisp, showLadder, tickKey, tfKey,
+    showGex, showHeat, showOrbs, showDisp, showLadder, tickKey, tfKey, onScale,
   });
 
   useEffect(() => {
@@ -497,7 +499,7 @@ export const SlayerChart = memo(function SlayerChartImpl({ profile, decimals, ca
           <ChartSettings
             colors={colors} setColors={setColors} gexCount={gexCount} setGexCount={setGexCount}
             display={[['Grid', showGrid, setShowGrid], ['Volume', showVolume, setShowVolume], ['Watermark', showWatermark, setShowWatermark], ['Candle borders', candleBorders, setCandleBorders]]}
-            dealer={[['Loaded strikes', showLadder, setShowLadder], ['Positioning panel', showDealerBox, setShowDealerBox], ['Γ Heatmap', showHeat, setShowHeat], ['Orbs', showOrbs, setShowOrbs], ['γ Exposure lane', showGex, setShowGex], ['Displacement', showDisp, setShowDisp]]}
+            dealer={[['Loaded strikes', showLadder, setShowLadder], ['Γ Heatmap', showHeat, setShowHeat], ['Orbs', showOrbs, setShowOrbs], ['γ Exposure lane', showGex, setShowGex], ['Displacement', showDisp, setShowDisp]]}
           />
           {specChip(showLadder, '≣ STRIKES', () => setShowLadder(v => !v))}
           {specChip(showHeat, 'Γ-MAP', () => setShowHeat(v => !v))}
@@ -511,8 +513,6 @@ export const SlayerChart = memo(function SlayerChartImpl({ profile, decimals, ca
       </div>
       <div ref={containerRef} className="relative flex-1 min-h-[300px]" style={{ position: 'relative', flex: 1, minHeight: 300 }}>
         <canvas ref={canvasRef} className="absolute inset-0 cursor-crosshair" style={{ position: 'absolute', inset: 0 }} />
-        {showDealerBox && dealerStats && <DealerMap stats={dealerStats} profile={profile} decimals={decimals} />}
-        {showDealerBox && dealerStats && <RegimeChip long={dealerStats.long} />}
         {ctxMenu && <ChartContextMenu menu={ctxMenu} onClose={() => setCtxMenu(null)} resetView={resetView} view={view} tweenView={tweenView} priceView={priceView} onAutoFit={() => setPriceView(null)} />}
       </div>
     </div>

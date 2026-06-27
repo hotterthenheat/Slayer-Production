@@ -46,6 +46,7 @@ export type DrawDeps = {
   showVolume: boolean; showGrid: boolean; showWatermark: boolean; candleBorders: boolean;
   showGex: boolean; showHeat: boolean; showOrbs: boolean; showDisp: boolean; showLadder: boolean;
   tickKey: string; tfKey: string;
+  onScale?: (lo: number, hi: number, priceTop: number, priceAreaH: number) => void;   // report the live visible price range + price-area box (for the price-aligned ladder)
 };
 
 export function drawChart(deps: DrawDeps) {
@@ -54,7 +55,7 @@ export function drawChart(deps: DrawDeps) {
     hoverRef, gexDeltaRef, draftRef, measureRef, drawingsRef, toolRef, selectedRef,
     candles, ha, atr, profile, colors, decimals, chartType, ovOn, overlaySeries, paneSeries,
     displacements, gexCount, showVolume, showGrid, showWatermark, candleBorders,
-    showGex, showHeat, showOrbs, showDisp, showLadder, tickKey, tfKey,
+    showGex, showHeat, showOrbs, showDisp, showLadder, tickKey, tfKey, onScale,
   } = deps;
     const canvas = canvasRef.current, container = containerRef.current;
     if (!canvas || !container) return;
@@ -162,6 +163,7 @@ export function drawChart(deps: DrawDeps) {
     const yP = (p: number) => priceTop + priceAreaH - ((p - lo) / (hi - lo)) * priceAreaH;
     const pOfY = (y: number) => lo + (1 - (y - priceTop) / priceAreaH) * (hi - lo);
     geomRef.current = { plotL, plotR, barW, start, end, n, priceTop, priceAreaH, lo, hi };
+    onScale?.(lo, hi, priceTop, priceAreaH);   // publish the live visible price range + price-area box so the Exposure Ladder aligns to the chart
 
     // TradingView-style axis frame — a faint strip behind the right price axis and the bottom time
     // axis, with thin dividers, so the scales read as framed panels instead of floating on the chart.
@@ -281,11 +283,17 @@ export function drawChart(deps: DrawDeps) {
       if (priceBottom - fy > 18) { ctx.fillStyle = hexA(COL.down, 0.46); ctx.fillText('NEGATIVE γ · UNSTABLE', plotL + 8, fy + 13); }
     }
 
-    // Expected-move ±1σ channel — shade the band between EM+ and EM- (dealer-implied day range).
+    // Expected-move ±1σ channel — shade the band between EM+ and EM- (dealer-implied day range) and
+    // label it, so the space around price reads as "the implied range" rather than empty headroom.
     if (profile.spot && profile.expectedMovePct) {
       const emHi = yP(profile.spot * (1 + profile.expectedMovePct)), emLo = yP(profile.spot * (1 - profile.expectedMovePct));
       const top = Math.max(priceTop, Math.min(emHi, emLo)), h = Math.min(priceBottom, Math.max(emHi, emLo)) - top;
-      if (h > 0) { ctx.fillStyle = hexA(COL.em, 0.06); ctx.fillRect(plotL, top, plotW, h); }
+      if (h > 0) {
+        const eg = ctx.createLinearGradient(0, top, 0, top + h);
+        eg.addColorStop(0, hexA(COL.em, 0.11)); eg.addColorStop(0.5, hexA(COL.em, 0.035)); eg.addColorStop(1, hexA(COL.em, 0.11));
+        ctx.fillStyle = eg; ctx.fillRect(plotL, top, plotW, h);
+        if (h > 26) { ctx.font = '700 8px ui-monospace, monospace'; ctx.textAlign = 'left'; ctx.fillStyle = hexA(COL.em, 0.5); ctx.fillText(`EXPECTED MOVE · ±${(profile.expectedMovePct * 100).toFixed(2)}%`, plotL + 8, top + 9); ctx.font = '11px ui-monospace, monospace'; }
+      }
     }
 
     // Volume strip — opacity scales with price velocity (|Δ| vs ATR) so impulse bars read louder.
@@ -445,8 +453,10 @@ export function drawChart(deps: DrawDeps) {
     // lines), so the dealer positioning BEHIND the walls is visible, not just the walls themselves.
     if (showLadder && profile.strikes && profile.strikes.length) {
       const named = [profile.callWall, profile.putWall, profile.gammaFlip, profile.magnet].filter((x): x is number => typeof x === 'number');
+      // Cap the on-chart loaded-strike tags so the right edge stays readable — walls / flip / magnet
+      // already carry the structure. gexCount still governs heatmap / γ-lane / orbs / ladder density.
       const cand = profile.strikes.filter(s => s.strike >= lo && s.strike <= hi && Math.abs(s.netGex || 0) > 0 && !named.some(nm => Math.abs(nm - s.strike) < 1e-6))
-        .sort((a, b) => Math.abs(b.netGex || 0) - Math.abs(a.netGex || 0)).slice(0, gexCount);
+        .sort((a, b) => Math.abs(b.netGex || 0) - Math.abs(a.netGex || 0)).slice(0, Math.min(gexCount, 6));
       cand.forEach((s, i) => { const g = s.netGex || 0, rk = i < 3 ? `#${i + 1} ` : ''; pushLvl(s.strike, g >= 0 ? COL.up : COL.down, 'GEX', Math.abs(g), `${rk}${Math.round(s.strike)}  ${fmtGex(g)}`); });
     }
     const maxLvlGex = Math.max(...lvls.map(L => L.gex || 0), 1e-9);

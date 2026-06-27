@@ -13,12 +13,14 @@ import { StrikeMatrix } from './StrikeMatrix';
 import { OrderFlow } from './OrderFlow';
 import { SystemStatus } from './terminal/StatusBar';
 import { ReplayScrubber } from './terminal/ReplayScrubber';
-import { CROSSHAIR_EVENT, CrosshairDetail } from '../lib/chartSync';
+import { DealerPulse } from './terminal/DealerPulse';
+import { SessionBand } from './terminal/SessionBand';
+import { fmtBig } from './terminal/format';
+import { CROSSHAIR_EVENT, CrosshairDetail, PRICE_SCALE_EVENT, PriceScaleDetail } from '../lib/chartSync';
 import { EdgeTrackRecord } from './EdgeTrackRecord';
-import { Crosshair, Activity, Zap, Layers, ChevronDown, Gauge as GaugeIcon, Radio, TrendingUp, TrendingDown, Minus, Clock } from 'lucide-react';
+import { Crosshair, Activity, Zap, Layers, ChevronDown, Gauge as GaugeIcon, TrendingUp, TrendingDown, Minus, Clock } from 'lucide-react';
 import { ASSET_LIST, TIMEFRAMES } from '../data';
 
-const toneColor = (t: string) => (t === 'pos' ? 'var(--success)' : t === 'neg' ? 'var(--danger)' : 'var(--text-tertiary)');
 // Tight, legible type scale (raised the floor off 7.5/8px so dense data stays readable).
 
 interface LiveTerminalFlowProps {
@@ -27,7 +29,6 @@ interface LiveTerminalFlowProps {
   decimals: number;
 }
 
-const fmtBig = (v: number) => { const a = Math.abs(v), s = v < 0 ? '−' : ''; return a >= 1e9 ? s + (a / 1e9).toFixed(2) + 'B' : a >= 1e6 ? s + (a / 1e6).toFixed(1) + 'M' : a >= 1e3 ? s + (a / 1e3).toFixed(1) + 'K' : s + a.toFixed(0); };
 
 export function LiveTerminalFlow({ profile: liveProfile, ticker, decimals }: LiveTerminalFlowProps) {
   // ── Market Replay (§3.2) — append-only buffer of the full dealer state over the session; a scrubber
@@ -71,6 +72,10 @@ export function LiveTerminalFlow({ profile: liveProfile, ticker, decimals }: Liv
   const [multiChart, setMultiChart] = useState(false); // opt-in movable/resizable multi-chart grid
   const [gexLines, setGexLines] = useState(false); // center toggle — multi-strike GEX line chart
   const [ladderMetric, setLadderMetric] = useState<'GAMMA' | 'DELTA' | 'VANNA' | 'OI' | 'VOL'>('GAMMA');
+  // Live price scale the chart is showing — lo/hi plus the price-area's VIEWPORT box (top/height in px)
+  // so the Exposure Ladder can place each strike at the exact same screen-y as that price on the chart.
+  // null until the chart broadcasts, in which case the ladder falls back to its evenly-spaced list.
+  const [syncScale, setSyncScale] = useState<{ lo: number; hi: number; top: number; height: number } | null>(null);
   const [now, setNow] = useState(() => new Date());
   useEffect(() => { const t = setInterval(() => setNow(new Date()), 1000); return () => clearInterval(t); }, []);
   // Feed heartbeat — stamp every SSE frame; if the stream goes quiet the UI must SAY so
@@ -167,6 +172,18 @@ export function LiveTerminalFlow({ profile: liveProfile, ticker, decimals }: Liv
     return () => { window.removeEventListener(CROSSHAIR_EVENT, onXhair as EventListener); if (raf) cancelAnimationFrame(raf); clearLit(); };
   }, []);
 
+  // ── Price-scale bridge — the Exposure Ladder follows the chart's live visible range ──
+  // rAF-throttled so a pan/zoom/tick storm never thrashes React state; the setState compare drops
+  // no-op frames so the ladder only re-renders when the range actually moves.
+  useEffect(() => {
+    let raf = 0, pending: { lo: number; hi: number; top: number; height: number } | null = null;
+    const same = (a: NonNullable<typeof pending>, b: NonNullable<typeof pending>) => Math.abs(a.lo - b.lo) < 1e-6 && Math.abs(a.hi - b.hi) < 1e-6 && Math.abs(a.top - b.top) < 0.5 && Math.abs(a.height - b.height) < 0.5;
+    const flush = () => { raf = 0; const p = pending; if (p) setSyncScale(prev => (prev && same(prev, p)) ? prev : p); };
+    const onScale = (e: Event) => { const d = (e as CustomEvent<PriceScaleDetail>).detail; if (!d || !(d.hi > d.lo) || !(d.height > 0)) return; pending = { lo: d.lo, hi: d.hi, top: d.top, height: d.height }; if (!raf) raf = requestAnimationFrame(flush); };
+    window.addEventListener(PRICE_SCALE_EVENT, onScale as EventListener);
+    return () => { window.removeEventListener(PRICE_SCALE_EVENT, onScale as EventListener); if (raf) cancelAnimationFrame(raf); };
+  }, []);
+
   // ── TASK 4 — GEX regime theming ──────────────────────────────────────────────
   // Net-GEX sign is the regime. On a FLIP only, pulse the ambient frame harder for ~1.4s so the
   // change is felt peripherally; it then settles to a faint cool (long-gamma) / warning
@@ -237,6 +254,25 @@ export function LiveTerminalFlow({ profile: liveProfile, ticker, decimals }: Liv
 
   const mSym = ladderMetric === 'GAMMA' ? 'γ' : ladderMetric === 'DELTA' ? 'Δ' : ladderMetric === 'VANNA' ? 'V' : ladderMetric === 'OI' ? 'OI' : 'Vol';
   const gammaPin = profile.magnet || spot; // where dealer gamma pins price — descriptive, not a call
+
+  // One Exposure-Ladder row's cells (strike · put/call bars · net) — shared by the price-aligned and
+  // the fallback list modes. The bars carry a width transition so a live GEX refresh animates rather
+  // than snapping.
+  const ladderRowCells = (r: typeof ladder[number]) => (
+    <>
+      <div className="text-right flex items-center justify-end gap-1">
+        {r.isCW && <span className="w-1.5 h-1.5 rounded-full" style={{ background: 'var(--success)' }} title="Call Wall" />}
+        {r.isPW && <span className="w-1.5 h-1.5 rounded-full" style={{ background: 'var(--danger)' }} title="Put Wall" />}
+        {r.isFlip && <span className="w-1.5 h-1.5 rounded-sm" style={{ background: 'var(--warning)' }} title="GEX Flip" />}
+        <span className="font-black tracking-wider" style={{ color: r.isSpot ? 'var(--accent-color)' : 'var(--text-secondary)' }}>{fmtNum(r.strike)}</span>
+      </div>
+      <div className="relative flex items-center h-full">
+        <div className="w-1/2 h-full flex items-center justify-end pr-0.5 border-r border-dotted border-[var(--border)]"><div className="h-[9px] rounded-sm" style={{ width: `${r.putPct}%`, background: 'color-mix(in srgb, var(--danger) 60%, transparent)', transition: 'width 0.45s cubic-bezier(0.16,1,0.3,1)' }} /></div>
+        <div className="w-1/2 h-full flex items-center pl-0.5"><div className="h-[9px] rounded-sm" style={{ width: `${r.callPct}%`, background: 'color-mix(in srgb, var(--success) 60%, transparent)', transition: 'width 0.45s cubic-bezier(0.16,1,0.3,1)' }} /></div>
+      </div>
+      <div className="text-right font-black" style={{ color: (ladderMetric === 'GAMMA' || ladderMetric === 'DELTA' || ladderMetric === 'VANNA') ? 'var(--greek)' : (r.netUp ? 'var(--success)' : 'var(--danger)') }}>{fmtBig(r.net)}</div>
+    </>
+  );
 
   // Descriptive read of dealer structure (regime, pin strength, force breakdown, observations).
   // We render only the descriptive outputs — this is an instrument, not a trade-picker.
@@ -386,71 +422,11 @@ export function LiveTerminalFlow({ profile: liveProfile, ticker, decimals }: Liv
         </div>
       </div>
 
-      {/* ── Dealer Pulse: a descriptive, at-a-glance picture of dealer positioning. It SHOWS
-          the mechanics (a force balance, net γ, the implied range, a live observation tape) —
-          it does NOT issue a trade. The trader reads it and decides. ── */}
-      <div className="flex items-stretch h-[58px] border-b border-[var(--border)] shrink-0 bg-[var(--surface)] overflow-hidden">
-        {/* Dealer positioning force balance — a picture of the dealer book, not a call */}
-        <div className="flex flex-col justify-center gap-1 px-4 border-r border-[var(--border)] shrink-0 w-[214px]">
-          <div className="flex items-center justify-between">
-            <span className="text-[9px] font-black tracking-widest uppercase text-[var(--text-tertiary)]">Dealer Positioning</span>
-            <span className="text-[9px] font-mono font-black tabular-nums" style={{ color: read.score > 8 ? 'var(--success)' : read.score < -8 ? 'var(--danger)' : 'var(--text-tertiary)' }}>{read.score > 0 ? '+' : ''}{read.score}</span>
-          </div>
-          <div className="relative h-1.5 rounded-full bg-[var(--surface-3)] overflow-hidden">
-            <div className="absolute top-0 bottom-0 left-1/2 w-px z-10" style={{ background: 'var(--border-strong)' }} />
-            {read.score >= 0
-              ? <motion.div className="absolute top-0 bottom-0 left-1/2" style={{ background: 'var(--success)' }} animate={{ width: `${Math.min(50, read.score / 2)}%` }} transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }} />
-              : <motion.div className="absolute top-0 bottom-0 right-1/2" style={{ background: 'var(--danger)' }} animate={{ width: `${Math.min(50, -read.score / 2)}%` }} transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }} />}
-          </div>
-          <div className="flex items-center justify-between text-[9px] font-mono uppercase tracking-widest"><span style={{ color: 'var(--danger)' }}>Bearish book</span><span style={{ color: 'var(--success)' }}>Bullish book</span></div>
-        </div>
-        {/* Net gamma + regime */}
-        <div className="flex flex-col justify-center px-4 border-r border-[var(--border)] shrink-0">
-          <span className="text-[9px] font-black tracking-widest uppercase text-[var(--text-tertiary)]">Net γ · {read.regime === 'PIN' ? `Pin ${read.pinStrength}` : 'Trend'}</span>
-          <span className="text-[16px] font-mono font-black tabular-nums leading-tight mt-0.5" style={{ color: trend }}>{netGex >= 0 ? '+' : ''}{fmtBig(netGex)}</span>
-        </div>
-        {/* Implied range */}
-        <div className="flex flex-col justify-center px-4 border-r border-[var(--border)] shrink-0">
-          <span className="text-[9px] font-black tracking-widest uppercase text-[var(--text-tertiary)]">Implied Range</span>
-          <span className="text-[16px] font-mono font-black tabular-nums leading-tight mt-0.5" style={{ color: 'var(--info)' }}>{emPct != null ? `±${(emPct * 100).toFixed(2)}%` : '—'}</span>
-        </div>
-        {/* Dealer MOTION — how the book is CHANGING right now: gamma hedging state, vanna
-            hedge-flow, and which way the gamma center-of-mass (the pin) is drifting. */}
-        {dyn && (
-          <div className="flex flex-col justify-center px-4 border-r border-[var(--border)] shrink-0 w-[188px]">
-            <div className="flex items-center justify-between">
-              <span className="text-[9px] font-black tracking-widest uppercase text-[var(--text-tertiary)]">Dealer Motion</span>
-              {migration && migration.direction !== 'STABLE' && (
-                <span className="flex items-center gap-0.5 text-[9px] font-mono font-black" style={{ color: migration.direction === 'BULLISH' ? 'var(--success)' : 'var(--danger)' }} title={`Gamma center-of-mass drifting ${migration.direction.toLowerCase()}${migration.comCurrent ? ` toward ${fmtNum(migration.comCurrent)}` : ''}`}>
-                  {migration.direction === 'BULLISH' ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}PIN
-                </span>
-              )}
-            </div>
-            <span className="text-[13px] font-mono font-black leading-tight mt-0.5" style={{ color: gammaMotion ? gammaMotion.color : 'var(--text-tertiary)' }}>{gammaMotion ? gammaMotion.label : '—'}</span>
-            <span className="text-[9px] font-mono tracking-wide text-[var(--text-tertiary)] truncate">{gammaMotion?.sub ?? 'awaiting dynamics'}{vannaFlow && vannaFlow !== 'NEUTRAL' ? ` · vanna ${vannaFlow.toLowerCase()}` : ''}</span>
-          </div>
-        )}
-        {/* Live observation tape — what's happening, never what to do */}
-        <div className="flex-1 min-w-0 flex items-center gap-2 px-4 overflow-hidden">
-          <span className="flex items-center gap-1 text-[9px] font-black tracking-widest uppercase shrink-0" style={{ color: 'var(--accent-color)' }}><Radio className="w-3 h-3" /> Tape</span>
-          <div className="flex-1 overflow-hidden">
-            <div className="flex gap-8 whitespace-nowrap animate-ticker-marquee">
-              {[...read.events, ...read.events].map((e, i) => (<span key={i} className="text-[10px] font-mono inline-flex items-center gap-1.5" style={{ color: toneColor(e.tone) }}><span className="w-1 h-1 rounded-full shrink-0" style={{ background: toneColor(e.tone) }} />{e.text}</span>))}
-            </div>
-          </div>
-        </div>
-      </div>
+      {/* Dealer Pulse — descriptive picture of dealer positioning (force balance · net γ · range · motion · tape) */}
+      <DealerPulse read={read} trend={trend} netGex={netGex} showMotion={!!dyn} migration={migration} gammaMotion={gammaMotion} vannaFlow={vannaFlow} />
 
       {/* ── 0DTE session band: phase + live countdown to close ── */}
-      <div className="flex items-center gap-2.5 h-6 px-3 border-b border-[var(--border)] shrink-0" style={{ background: 'var(--bg-base)' }}>
-        <Clock className="w-3 h-3 shrink-0" style={{ color: sess.live ? 'var(--accent-color)' : 'var(--text-tertiary)' }} />
-        <div className="relative flex-1 h-1.5 rounded-full overflow-hidden flex" style={{ background: 'var(--surface-2)' }}>
-          {SEGS.map(s => (<div key={s.k} className="h-full" style={{ width: `${s.w * 100}%`, borderRight: '1px solid var(--bg-base)', background: clock.session === s.sess ? 'color-mix(in srgb, var(--accent-color) 55%, transparent)' : 'transparent' }} title={s.l} />))}
-          {sess.live && <div className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 w-2 h-2 rounded-full" style={{ left: `${sess.prog * 100}%`, background: 'var(--accent-color)', boxShadow: '0 0 6px var(--accent-color)' }} />}
-        </div>
-        <span className="text-[9px] font-mono font-black uppercase tracking-widest shrink-0" style={{ color: sess.live ? 'var(--text-secondary)' : 'var(--text-tertiary)' }}>{SEGS.find(s => s.sess === clock.session)?.l ?? (sess.live ? 'Session' : 'Closed')}</span>
-        <span className="text-[10px] font-mono font-black tabular-nums shrink-0 w-[88px] text-right" style={{ color: sess.cd !== 'CLOSED' && sess.prog > 0.77 ? 'var(--warning)' : sess.live ? 'var(--text-secondary)' : 'var(--text-tertiary)' }}>{sess.cd !== 'CLOSED' ? `${sess.cd} to close` : 'Market closed'}</span>
-      </div>
+      <SessionBand sess={sess} clock={clock} />
 
       {/* ── 3-column workspace (full-bleed — fills the whole screen) ── */}
       <div className="flex-1 w-full overflow-hidden flex">
@@ -472,10 +448,10 @@ export function LiveTerminalFlow({ profile: liveProfile, ticker, decimals }: Liv
             ) : leftTab === 'flow' ? (
               <div className="flex-1 min-h-0"><OrderFlow data={orderFlow} decimals={decimals} /></div>
             ) : (
-              <div className="flex-1 overflow-y-auto p-2.5 space-y-2.5">
+              <div className="flex-1 overflow-y-auto p-2 space-y-2">
                 {/* GEX OUTLOOK — the regime read + where price is being drawn (pinning / gamma
                     squeeze / short squeeze / trend / range). Describes the path, not a trade. */}
-                <div className="rounded-lg border px-3 py-2.5 relative overflow-hidden" style={{ borderColor: `color-mix(in srgb, ${outlookColor} 40%, transparent)`, background: `linear-gradient(135deg, color-mix(in srgb, ${outlookColor} 13%, transparent), transparent)` }}>
+                <div className="rounded-lg border px-3 py-2 relative overflow-hidden" style={{ borderColor: `color-mix(in srgb, ${outlookColor} 40%, transparent)`, background: `linear-gradient(135deg, color-mix(in srgb, ${outlookColor} 13%, transparent), transparent)` }}>
                   <div className="flex items-center justify-between">
                     <span className="flex items-center gap-1.5 text-[9px] font-black tracking-widest uppercase text-[var(--text-tertiary)]"><Crosshair className="w-3 h-3" /> GEX Outlook</span>
                     <span className="text-[9px] font-mono font-black tabular-nums" style={{ color: outlookColor }}>{outlook.confidence}% conf</span>
@@ -504,7 +480,7 @@ export function LiveTerminalFlow({ profile: liveProfile, ticker, decimals }: Liv
                     Turns the regime call from an assertion into a measured, falsifiable hit-rate. */}
                 <EdgeTrackRecord profile={profile} ticker={selectedAsset.ticker} candles={candles} provenance={liveFeed ? 'live' : 'model'} />
                 {/* Net gamma hero */}
-                <div className="rounded-lg border px-3 py-2.5 relative overflow-hidden" style={{ borderColor: longGamma ? 'color-mix(in srgb, var(--success) 32%, transparent)' : 'color-mix(in srgb, var(--danger) 32%, transparent)', background: `linear-gradient(135deg, color-mix(in srgb, ${longGamma ? 'var(--success)' : 'var(--danger)'} 9%, transparent), transparent)` }}>
+                <div className="rounded-lg border px-3 py-2 relative overflow-hidden" style={{ borderColor: longGamma ? 'color-mix(in srgb, var(--success) 32%, transparent)' : 'color-mix(in srgb, var(--danger) 32%, transparent)', background: `linear-gradient(135deg, color-mix(in srgb, ${longGamma ? 'var(--success)' : 'var(--danger)'} 9%, transparent), transparent)` }}>
                   <div className="flex items-center gap-1.5 text-[9px] font-black tracking-widest uppercase text-[var(--text-tertiary)]"><GaugeIcon className="w-3 h-3" /> Net Gamma Exposure</div>
                   <div className="text-[26px] font-mono font-black tabular-nums leading-none mt-1" style={{ color: trend }}>{netGex >= 0 ? '+' : ''}{fmtBig(netGex)}</div>
                   <div className="flex items-center gap-1.5 mt-1.5">
@@ -553,7 +529,7 @@ export function LiveTerminalFlow({ profile: liveProfile, ticker, decimals }: Liv
 
                 {/* dealer-structure spectrum */}
                 {structure && (
-                  <div className="bg-[var(--surface-2)] rounded-lg px-3 py-3">
+                  <div className="bg-[var(--surface-2)] rounded-lg px-3 py-2.5">
                     <div className="flex items-center justify-between mb-3">
                       <span className="text-[9px] font-black tracking-widest uppercase text-[var(--text-tertiary)]">Dealer Structure</span>
                       {migration && migration.direction !== 'STABLE' && (
@@ -632,13 +608,6 @@ export function LiveTerminalFlow({ profile: liveProfile, ticker, decimals }: Liv
                 ? <ChartPanelGrid profile={profile} decimals={decimals} candles={candles} baseTicker={selectedAsset.ticker} timeframe={selectedTimeframe} />
                 : <SlayerChart profile={profile} decimals={decimals} />}
             </div>
-            {/* Live tape — streaming narrative of the dealer read */}
-            <div className="border-t border-[var(--border)] bg-[var(--surface)] h-7 shrink-0 flex items-center gap-2 px-3 overflow-hidden">
-              <span className="flex items-center gap-1 text-[9px] font-black tracking-widest uppercase shrink-0" style={{ color: 'var(--accent-color)' }}><Radio className="w-3 h-3" /> Tape</span>
-              <div className="flex items-center gap-5 overflow-hidden whitespace-nowrap">
-                {read.events.map((e, i) => (<span key={i} className="flex items-center gap-1.5 text-[10px] font-mono shrink-0" style={{ color: toneColor(e.tone) }}><span className="w-1 h-1 rounded-full shrink-0" style={{ background: toneColor(e.tone) }} />{e.text}</span>))}
-              </div>
-            </div>
           </main>
 
           {/* ░ RIGHT — Exposure Ladder ░ */}
@@ -670,25 +639,45 @@ export function LiveTerminalFlow({ profile: liveProfile, ticker, decimals }: Liv
               <div className="flex justify-between"><span style={{ color: 'var(--danger)' }}>◄ Put {mSym}</span><span style={{ color: 'var(--success)' }}>{mSym} Call ►</span></div>
               <div className="text-right">{ladderMetric === 'OI' || ladderMetric === 'VOL' ? 'Total' : 'Net'}</div>
             </div>
-            <div ref={ladderScrollRef} className="flex-1 overflow-y-auto">
-              {ladder.map(r => {
+            {/* In LIVE-ALIGNED mode the rows are positioned by PRICE on the chart's exact visible range,
+                so a strike here sits at the same height as that price on the chart and tracks every
+                pan / zoom / tick. Falls back to the evenly-spaced scroll list before the chart syncs. */}
+            <div ref={ladderScrollRef} className={`flex-1 relative ${syncScale ? 'overflow-hidden' : 'overflow-y-auto'}`}>
+              {ladder.length === 0 && <div className="flex items-center justify-center py-12 text-[11px] font-mono text-[var(--text-tertiary)]">Awaiting dealer chain…</div>}
+              {syncScale && syncScale.hi > syncScale.lo ? (() => {
+                const { lo, hi, top, height } = syncScale, span = hi - lo;
+                // Map a price to a y in the ladder's OWN coordinates that lands at the same viewport-y as
+                // that price on the chart: (chart price-area top − ladder list top) + price offset.
+                const listTop = ladderScrollRef.current ? ladderScrollRef.current.getBoundingClientRect().top : top;
+                const yPx = (p: number) => (top - listTop) + (1 - (p - lo) / span) * height;
+                const pad = span * 0.04;
+                const vis = ladder.filter(r => r.strike >= lo - pad && r.strike <= hi + pad);
+                return (
+                  <>
+                    {spot >= lo && spot <= hi && (
+                      <div className="absolute left-0 right-0 z-20 pointer-events-none flex items-center px-1" style={{ top: `${yPx(spot)}px`, transform: 'translateY(-50%)', transition: 'top 0.2s linear' }} title={`Spot ${fmtNum(spot, decimals)}`}>
+                        <div className="flex-1 h-px" style={{ background: 'var(--accent-color)', boxShadow: '0 0 6px var(--accent-color)' }} />
+                        <span className="text-[8px] font-mono font-black px-1 rounded-sm leading-none py-px" style={{ background: 'var(--accent-color)', color: '#06090d' }}>{fmtNum(spot, decimals)}</span>
+                      </div>
+                    )}
+                    {vis.map(r => {
+                      const inVac = !!((vacAbove && r.strike >= vacAbove.lo && r.strike <= vacAbove.hi) || (vacBelow && r.strike >= vacBelow.lo && r.strike <= vacBelow.hi));
+                      return (
+                        <div key={r.strike} data-strike={r.strike} className="absolute left-0 right-0 grid grid-cols-[52px_1fr_64px] gap-2 px-3 items-center text-[10px] font-mono tabular-nums" style={{ top: `${yPx(r.strike)}px`, transform: 'translateY(-50%)', height: 18, transition: 'top 0.2s linear', ...(r.isSpot ? { boxShadow: 'inset 2px 0 0 var(--accent-color)' } : inVac ? { background: 'color-mix(in srgb, var(--warning) 6%, transparent)' } : undefined) }}>
+                          {ladderRowCells(r)}
+                        </div>
+                      );
+                    })}
+                  </>
+                );
+              })() : ladder.map(r => {
                 const inVac = !!((vacAbove && r.strike >= vacAbove.lo && r.strike <= vacAbove.hi) || (vacBelow && r.strike >= vacBelow.lo && r.strike <= vacBelow.hi));
                 return (
-                <div key={r.strike} data-strike={r.strike} className="grid grid-cols-[52px_1fr_64px] gap-2 px-3 h-[24px] items-center text-[10px] font-mono tabular-nums hover:bg-[var(--surface-2)]" style={r.isSpot ? { background: 'color-mix(in srgb, var(--accent-color) 12%, transparent)', boxShadow: 'inset 2px 0 0 var(--accent-color)' } : inVac ? { background: 'color-mix(in srgb, var(--warning) 6%, transparent)' } : undefined}>
-                  <div className="text-right flex items-center justify-end gap-1">
-                    {r.isCW && <span className="w-1.5 h-1.5 rounded-full" style={{ background: 'var(--success)' }} title="Call Wall" />}
-                    {r.isPW && <span className="w-1.5 h-1.5 rounded-full" style={{ background: 'var(--danger)' }} title="Put Wall" />}
-                    {r.isFlip && <span className="w-1.5 h-1.5 rounded-sm" style={{ background: 'var(--warning)' }} title="GEX Flip" />}
-                    <span className="font-black tracking-wider" style={{ color: r.isSpot ? 'var(--accent-color)' : 'var(--text-secondary)' }}>{fmtNum(r.strike)}</span>
+                  <div key={r.strike} data-strike={r.strike} className="grid grid-cols-[52px_1fr_64px] gap-2 px-3 h-[24px] items-center text-[10px] font-mono tabular-nums hover:bg-[var(--surface-2)]" style={r.isSpot ? { background: 'color-mix(in srgb, var(--accent-color) 12%, transparent)', boxShadow: 'inset 2px 0 0 var(--accent-color)' } : inVac ? { background: 'color-mix(in srgb, var(--warning) 6%, transparent)' } : undefined}>
+                    {ladderRowCells(r)}
                   </div>
-                  <div className="relative flex items-center h-full">
-                    <div className="w-1/2 h-full flex items-center justify-end pr-0.5 border-r border-dotted border-[var(--border)]"><div className="h-[9px] rounded-sm" style={{ width: `${r.putPct}%`, background: 'color-mix(in srgb, var(--danger) 60%, transparent)' }} /></div>
-                    <div className="w-1/2 h-full flex items-center pl-0.5"><div className="h-[9px] rounded-sm" style={{ width: `${r.callPct}%`, background: 'color-mix(in srgb, var(--success) 60%, transparent)' }} /></div>
-                  </div>
-                  <div className="text-right font-black" style={{ color: (ladderMetric === 'GAMMA' || ladderMetric === 'DELTA' || ladderMetric === 'VANNA') ? 'var(--greek)' : (r.netUp ? 'var(--success)' : 'var(--danger)') }}>{fmtBig(r.net)}</div>
-                </div>
-              ); })}
-              {ladder.length === 0 && <div className="flex items-center justify-center py-12 text-[11px] font-mono text-[var(--text-tertiary)]">Awaiting dealer chain…</div>}
+                );
+              })}
             </div>
             <div className="px-3 py-2 border-t border-[var(--border)] shrink-0 flex items-center justify-between bg-[var(--surface)]">
               <div>
