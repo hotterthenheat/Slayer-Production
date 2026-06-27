@@ -923,9 +923,17 @@ export const SlayerChart = memo(function SlayerChartImpl({ profile, decimals, ca
     };
     paneSeries.forEach((entry, idx) => drawPane(entry, priceBottom + idx * subH, subH));
 
-    const axisY = H - xAxisH; ctx.fillStyle = COL.axisDim; ctx.textAlign = 'center';
-    const ticks = Math.max(2, Math.floor(plotW / 96));
-    for (let t = 0; t <= ticks; t++) { const gi = start + Math.round(((end - 1 - start) * t) / ticks); if (gi < start || gi >= end || !candles[gi]) continue; const c = candles[gi]; const lbl = (lastDayTickX > 0 && Math.abs(xOf(gi) - lastDayTickX) < 40) ? `${new Date(c.timestamp).getMonth() + 1}/${new Date(c.timestamp).getDate()}` : fmtTime(c.timestamp); ctx.fillText(lbl, xOf(gi), axisY + 11); }
+    // Time axis (TradingView-style): denser ticks; the first tick of each new day shows a bold, brighter
+    // DATE label, intraday ticks show the time — so day boundaries anchor the eye.
+    const axisY = H - xAxisH; ctx.textAlign = 'center';
+    const ticks = Math.max(2, Math.floor(plotW / 84));
+    let prevTickDay = -1;
+    for (let t = 0; t <= ticks; t++) {
+      const gi = start + Math.round(((end - 1 - start) * t) / ticks); if (gi < start || gi >= end || !candles[gi]) continue;
+      const c = candles[gi], d = new Date(c.timestamp), day = d.getDate(), isNewDay = prevTickDay !== -1 && day !== prevTickDay; prevTickDay = day;
+      if (isNewDay) { ctx.fillStyle = hexA(T.text, 0.58); ctx.font = '700 10px ui-monospace, monospace'; ctx.fillText(`${d.getMonth() + 1}/${day}`, xOf(gi), axisY + 11); ctx.font = '11px ui-monospace, monospace'; }
+      else { ctx.fillStyle = COL.axisDim; ctx.fillText(fmtTime(c.timestamp), xOf(gi), axisY + 11); }
+    }
 
     const hv = hoverRef.current;
     if (hv && hv.x >= plotL && hv.x <= plotR) {
