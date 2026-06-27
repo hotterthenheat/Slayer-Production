@@ -236,6 +236,33 @@ export function LiveTerminalFlow({ profile: liveProfile, ticker, decimals }: Liv
     }); });
   }, [profile, spot, ladderMetric]);
 
+  // Live flash — when a strike's net makes a BIG move on a refresh, briefly tint its row so the eye
+  // catches where dealers are repositioning. Imperative (no re-render); gated to significant moves so
+  // it stays calm, and skipped on metric switches (which change every value at once).
+  const prevNetRef = useRef<{ metric: string; map: Map<number, number> }>({ metric: ladderMetric, map: new Map() });
+  useEffect(() => {
+    const box = ladderScrollRef.current; if (!box) return;
+    const store = prevNetRef.current;
+    const sameMetric = store.metric === ladderMetric;
+    store.metric = ladderMetric;
+    const moves: { strike: number; d: number }[] = [];
+    for (const r of ladder) {
+      const before = store.map.get(r.strike);
+      if (sameMetric && before != null) {
+        const d = r.net - before;
+        if (Math.abs(d) > Math.max(3e7, Math.abs(before) * 0.08)) moves.push({ strike: r.strike, d });
+      }
+      store.map.set(r.strike, r.net);
+    }
+    // Only the 2 biggest movers flash — enough to draw the eye to where dealers are repositioning,
+    // never a disco even on a volatile refresh.
+    moves.sort((a, b) => Math.abs(b.d) - Math.abs(a.d));
+    for (const m of moves.slice(0, 2)) {
+      const el = box.querySelector(`[data-strike="${CSS.escape(String(m.strike))}"]`) as HTMLElement | null;
+      if (el) { el.classList.remove('ladder-flash-up', 'ladder-flash-down'); void el.offsetWidth; el.classList.add(m.d > 0 ? 'ladder-flash-up' : 'ladder-flash-down'); }
+    }
+  }, [ladder, ladderMetric]);
+
   const mSym = ladderMetric === 'GAMMA' ? 'γ' : ladderMetric === 'DELTA' ? 'Δ' : ladderMetric === 'VANNA' ? 'V' : ladderMetric === 'OI' ? 'OI' : 'Vol';
   const gammaPin = profile.magnet || spot; // where dealer gamma pins price — descriptive, not a call
 
