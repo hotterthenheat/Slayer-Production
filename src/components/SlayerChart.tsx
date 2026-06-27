@@ -898,7 +898,8 @@ export const SlayerChart = memo(function SlayerChartImpl({ profile, decimals, ca
       // Magnitude bar (#3): faint colour fill from the left, width ∝ this strike's share of peak GEX — bars read faster than numbers.
       if (L.value && lrel > 0) { rr(tagL + 1, ty - tagH / 2 + 1, (tagW - 2) * Math.max(0.05, lrel), tagH - 2, 2.5); ctx.fillStyle = hexA(col, 0.17); ctx.fill(); }
       ctx.fillStyle = col; ctx.beginPath(); ctx.arc(tagL + 7, ty, 2.4, 0, Math.PI * 2); ctx.fill();
-      ctx.textAlign = 'left'; ctx.fillText(nameLbl, tagL + 12, ty);
+      // §9 hybrid: loaded-strike GEX values read in greek-purple (magnitude); the dot / line / bar stay green/red (the call-put sign).
+      ctx.textAlign = 'left'; ctx.fillStyle = L.value ? (isTop ? '#c79cff' : mixHex('#6f6880', '#b98cff', Math.max(0.22, Math.min(1, lrel)))) : col; ctx.fillText(nameLbl, tagL + 12, ty);
       if (pctLbl) { ctx.fillStyle = hexA(T.text, 0.72); ctx.fillText(pctLbl, tagL + 12 + nameW, ty); }
       if (deltaLbl) { ctx.fillStyle = deltaUp ? COL.up : COL.down; ctx.fillText(deltaLbl, tagL + 12 + nameW + pctW, ty); }
       // named levels print their exact price on the axis at the SAME size as the gridline scale (uniform)

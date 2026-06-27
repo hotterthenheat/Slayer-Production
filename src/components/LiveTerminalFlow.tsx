@@ -659,7 +659,7 @@ export function LiveTerminalFlow({ profile, ticker, decimals }: LiveTerminalFlow
                     <div className="w-1/2 h-full flex items-center justify-end pr-0.5 border-r border-dotted border-[var(--border)]"><div className="h-[9px] rounded-sm" style={{ width: `${r.putPct}%`, background: 'color-mix(in srgb, var(--danger) 60%, transparent)' }} /></div>
                     <div className="w-1/2 h-full flex items-center pl-0.5"><div className="h-[9px] rounded-sm" style={{ width: `${r.callPct}%`, background: 'color-mix(in srgb, var(--success) 60%, transparent)' }} /></div>
                   </div>
-                  <div className="text-right font-black" style={{ color: r.netUp ? 'var(--success)' : 'var(--danger)' }}>{fmtBig(r.net)}</div>
+                  <div className="text-right font-black" style={{ color: (ladderMetric === 'GAMMA' || ladderMetric === 'DELTA' || ladderMetric === 'VANNA') ? 'var(--greek)' : (r.netUp ? 'var(--success)' : 'var(--danger)') }}>{fmtBig(r.net)}</div>
                 </div>
               ); })}
               {ladder.length === 0 && <div className="flex items-center justify-center py-12 text-[11px] font-mono text-[var(--text-tertiary)]">Awaiting dealer chain…</div>}
