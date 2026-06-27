@@ -54,3 +54,16 @@ export interface CrosshairDetail { price: number | null; source: string }
 export function broadcastCrosshair(price: number | null, source: string): void {
   try { window.dispatchEvent(new CustomEvent<CrosshairDetail>(CROSSHAIR_EVENT, { detail: { price, source } })); } catch { /* SSR-safe */ }
 }
+
+// ── Price-scale bridge ────────────────────────────────────────────────────────
+// The chart broadcasts its LIVE visible price range so the detached Exposure Ladder can align its
+// strikes to exactly the prices the chart is showing — and re-align as the chart pans / zooms /
+// ticks. Pure window event (no React state) for the same 60fps reason as the crosshair bridge.
+export const PRICE_SCALE_EVENT = 'slayer:pricescale';
+// `top` / `height` are the chart price-area's VIEWPORT rectangle (px) so a sibling column can place a
+// strike at the exact same screen-y as that price on the chart — not just the same proportion.
+export interface PriceScaleDetail { lo: number; hi: number; spot: number | null; top: number; height: number; source: string }
+
+export function broadcastPriceScale(lo: number, hi: number, spot: number | null, top: number, height: number, source: string): void {
+  try { window.dispatchEvent(new CustomEvent<PriceScaleDetail>(PRICE_SCALE_EVENT, { detail: { lo, hi, spot, top, height, source } })); } catch { /* SSR-safe */ }
+}
