@@ -72,10 +72,9 @@ export function LiveTerminalFlow({ profile: liveProfile, ticker, decimals }: Liv
   const [multiChart, setMultiChart] = useState(false); // opt-in movable/resizable multi-chart grid
   const [gexLines, setGexLines] = useState(false); // center toggle — multi-strike GEX line chart
   const [ladderMetric, setLadderMetric] = useState<'GAMMA' | 'DELTA' | 'VANNA' | 'OI' | 'VOL'>('GAMMA');
-  // Live price scale the chart is showing — lo/hi plus the price-area's VIEWPORT box (top/height in px)
-  // so the Exposure Ladder can place each strike at the exact same screen-y as that price on the chart.
-  // null until the chart broadcasts, in which case the ladder falls back to its evenly-spaced list.
-  const [syncScale, setSyncScale] = useState<{ lo: number; hi: number; top: number; height: number } | null>(null);
+  // Live price range the chart is showing — the Dealer Gamma Profile fills its panel with this range
+  // and flows as the chart's price axis expands / shortens. null until the chart broadcasts.
+  const [syncScale, setSyncScale] = useState<{ lo: number; hi: number } | null>(null);
   const [now, setNow] = useState(() => new Date());
   useEffect(() => { const t = setInterval(() => setNow(new Date()), 1000); return () => clearInterval(t); }, []);
   // Feed heartbeat — stamp every SSE frame; if the stream goes quiet the UI must SAY so
@@ -172,14 +171,12 @@ export function LiveTerminalFlow({ profile: liveProfile, ticker, decimals }: Liv
     return () => { window.removeEventListener(CROSSHAIR_EVENT, onXhair as EventListener); if (raf) cancelAnimationFrame(raf); clearLit(); };
   }, []);
 
-  // ── Price-scale bridge — the Exposure Ladder follows the chart's live visible range ──
-  // rAF-throttled so a pan/zoom/tick storm never thrashes React state; the setState compare drops
-  // no-op frames so the ladder only re-renders when the range actually moves.
+  // ── Price-scale bridge — the gamma profile follows the chart's live visible range ──
+  // rAF-throttled; the setState compare drops no-op frames so it only re-renders when the range moves.
   useEffect(() => {
-    let raf = 0, pending: { lo: number; hi: number; top: number; height: number } | null = null;
-    const same = (a: NonNullable<typeof pending>, b: NonNullable<typeof pending>) => Math.abs(a.lo - b.lo) < 1e-6 && Math.abs(a.hi - b.hi) < 1e-6 && Math.abs(a.top - b.top) < 0.5 && Math.abs(a.height - b.height) < 0.5;
-    const flush = () => { raf = 0; const p = pending; if (p) setSyncScale(prev => (prev && same(prev, p)) ? prev : p); };
-    const onScale = (e: Event) => { const d = (e as CustomEvent<PriceScaleDetail>).detail; if (!d || !(d.hi > d.lo) || !(d.height > 0)) return; pending = { lo: d.lo, hi: d.hi, top: d.top, height: d.height }; if (!raf) raf = requestAnimationFrame(flush); };
+    let raf = 0, pending: { lo: number; hi: number } | null = null;
+    const flush = () => { raf = 0; const p = pending; if (p) setSyncScale(prev => (prev && Math.abs(prev.lo - p.lo) < 1e-6 && Math.abs(prev.hi - p.hi) < 1e-6) ? prev : p); };
+    const onScale = (e: Event) => { const d = (e as CustomEvent<PriceScaleDetail>).detail; if (!d || !(d.hi > d.lo)) return; pending = { lo: d.lo, hi: d.hi }; if (!raf) raf = requestAnimationFrame(flush); };
     window.addEventListener(PRICE_SCALE_EVENT, onScale as EventListener);
     return () => { window.removeEventListener(PRICE_SCALE_EVENT, onScale as EventListener); if (raf) cancelAnimationFrame(raf); };
   }, []);
@@ -251,6 +248,61 @@ export function LiveTerminalFlow({ profile: liveProfile, ticker, decimals }: Liv
       isSpot: Math.abs(s.strike - spot) < spot * 0.0008, isCW: s.strike === profile.callWall, isPW: s.strike === profile.putWall, isFlip: s.strike === profile.gammaFlip,
     }); });
   }, [profile, spot, ladderMetric]);
+
+  // Live flash — when a strike's net makes a BIG move on a refresh, briefly tint its row so the eye
+  // catches where dealers are repositioning. Imperative (no re-render); gated to significant moves so
+  // it stays calm, and skipped on metric switches (which change every value at once).
+  const prevNetRef = useRef<{ metric: string; map: Map<number, number> }>({ metric: ladderMetric, map: new Map() });
+  useEffect(() => {
+    const box = ladderScrollRef.current; if (!box) return;
+    const store = prevNetRef.current;
+    const sameMetric = store.metric === ladderMetric;
+    store.metric = ladderMetric;
+    const moves: { strike: number; d: number }[] = [];
+    for (const r of ladder) {
+      const before = store.map.get(r.strike);
+      if (sameMetric && before != null) {
+        const d = r.net - before;
+        if (Math.abs(d) > Math.max(3e7, Math.abs(before) * 0.08)) moves.push({ strike: r.strike, d });
+      }
+      store.map.set(r.strike, r.net);
+    }
+    // Only the 2 biggest movers flash — enough to draw the eye to where dealers are repositioning,
+    // never a disco even on a volatile refresh.
+    moves.sort((a, b) => Math.abs(b.d) - Math.abs(a.d));
+    for (const m of moves.slice(0, 2)) {
+      const el = box.querySelector(`[data-strike="${CSS.escape(String(m.strike))}"]`) as HTMLElement | null;
+      if (el) { el.classList.remove('ladder-flash-up', 'ladder-flash-down'); void el.offsetWidth; el.classList.add(m.d > 0 ? 'ladder-flash-up' : 'ladder-flash-down'); }
+    }
+  }, [ladder, ladderMetric]);
+
+  // Dealer Gamma Profile — every strike inside the chart's live range, as a tiling horizontal histogram
+  // (bar thickness = strike spacing so it fills the panel; length = the selected metric). Flows as the
+  // chart's price axis expands/shortens.
+  const gammaProfile = useMemo(() => {
+    if (!syncScale) return null;
+    const { lo, hi } = syncScale, span = hi - lo;
+    if (!(span > 0)) return null;
+    const inRange = (profile.strikes || []).filter(s => s.strike >= lo && s.strike <= hi);
+    if (inRange.length < 2) return null;
+    const oiLike = ladderMetric === 'OI' || ladderMetric === 'VOL';
+    const pick = (s: typeof inRange[number]): [number, number] => ladderMetric === 'DELTA' ? [s.callDex || 0, s.putDex || 0] : ladderMetric === 'VANNA' ? [s.callVex || 0, s.putVex || 0] : ladderMetric === 'OI' ? [s.callOi || 0, s.putOi || 0] : ladderMetric === 'VOL' ? [s.callVolume || 0, s.putVolume || 0] : [s.callGex || 0, s.putGex || 0];
+    const maxM = Math.max(...inRange.map(s => { const [c, p] = pick(s); return Math.max(Math.abs(c), Math.abs(p)); }), 1);
+    const sorted = [...inRange].sort((a, b) => a.strike - b.strike);
+    const steps = sorted.slice(1).map((s, i) => s.strike - sorted[i].strike).filter(x => x > 0).sort((a, b) => a - b);
+    const step = steps.length ? steps[Math.floor(steps.length / 2)] : span / sorted.length;  // median strike gap
+    const rowHpct = Math.min(14, (step / span) * 100);
+    return {
+      lo, hi, span, rowHpct,
+      rows: sorted.map(s => { const [c, p] = pick(s); const net = c + p; return {
+        strike: s.strike, net, netUp: oiLike ? c >= p : net >= 0,
+        callPct: (Math.abs(c) / maxM) * 100, putPct: (Math.abs(p) / maxM) * 100,
+        yPct: (1 - (s.strike - lo) / span) * 100,
+        isCW: s.strike === profile.callWall, isPW: s.strike === profile.putWall, isFlip: s.strike === profile.gammaFlip,
+        isSpot: Math.abs(s.strike - spot) < spot * 0.0008,
+      }; }),
+    };
+  }, [syncScale, profile, ladderMetric, spot]);
 
   const mSym = ladderMetric === 'GAMMA' ? 'γ' : ladderMetric === 'DELTA' ? 'Δ' : ladderMetric === 'VANNA' ? 'V' : ladderMetric === 'OI' ? 'OI' : 'Vol';
   const gammaPin = profile.magnet || spot; // where dealer gamma pins price — descriptive, not a call
@@ -639,41 +691,45 @@ export function LiveTerminalFlow({ profile: liveProfile, ticker, decimals }: Liv
               <div className="flex justify-between"><span style={{ color: 'var(--danger)' }}>◄ Put {mSym}</span><span style={{ color: 'var(--success)' }}>{mSym} Call ►</span></div>
               <div className="text-right">{ladderMetric === 'OI' || ladderMetric === 'VOL' ? 'Total' : 'Net'}</div>
             </div>
-            {/* In LIVE-ALIGNED mode the rows are positioned by PRICE on the chart's exact visible range,
-                so a strike here sits at the same height as that price on the chart and tracks every
-                pan / zoom / tick. Falls back to the evenly-spaced scroll list before the chart syncs. */}
-            <div ref={ladderScrollRef} className={`flex-1 relative ${syncScale ? 'overflow-hidden' : 'overflow-y-auto'}`}>
+            {/* Dealer Gamma Profile — a price-aligned tiling histogram that fills the panel with the
+                chart's live range and flows as the price axis expands / shortens. Bar thickness tracks
+                strike spacing (no sparse gaps); bar length = the metric. Falls back to a dense list
+                until the chart broadcasts its scale. */}
+            <div ref={ladderScrollRef} className={`flex-1 relative ${gammaProfile ? 'overflow-hidden' : 'overflow-y-auto'}`}>
               {ladder.length === 0 && <div className="flex items-center justify-center py-12 text-[11px] font-mono text-[var(--text-tertiary)]">Awaiting dealer chain…</div>}
-              {syncScale && syncScale.hi > syncScale.lo ? (() => {
-                const { lo, hi, top, height } = syncScale, span = hi - lo;
-                // Map a price to a y in the ladder's OWN coordinates that lands at the same viewport-y as
-                // that price on the chart: (chart price-area top − ladder list top) + price offset.
-                const listTop = ladderScrollRef.current ? ladderScrollRef.current.getBoundingClientRect().top : top;
-                const yPx = (p: number) => (top - listTop) + (1 - (p - lo) / span) * height;
-                const pad = span * 0.04;
-                const vis = ladder.filter(r => r.strike >= lo - pad && r.strike <= hi + pad);
+              {gammaProfile ? (() => {
+                const { lo, hi, span, rowHpct, rows } = gammaProfile;
+                const labels = rowHpct >= 3.1;            // show strike/value text only when rows are tall enough
+                const barH = labels ? '68%' : 'calc(100% - 1px)';
+                const greek = ladderMetric === 'GAMMA' || ladderMetric === 'DELTA' || ladderMetric === 'VANNA';
                 return (
                   <>
-                    {spot >= lo && spot <= hi && (
-                      <div className="absolute left-0 right-0 z-20 pointer-events-none flex items-center px-1" style={{ top: `${yPx(spot)}px`, transform: 'translateY(-50%)', transition: 'top 0.2s linear' }} title={`Spot ${fmtNum(spot, decimals)}`}>
-                        <div className="flex-1 h-px" style={{ background: 'var(--accent-color)', boxShadow: '0 0 6px var(--accent-color)' }} />
-                        <span className="text-[8px] font-mono font-black px-1 rounded-sm leading-none py-px" style={{ background: 'var(--accent-color)', color: '#06090d' }}>{fmtNum(spot, decimals)}</span>
-                      </div>
-                    )}
-                    {vis.map(r => {
+                    {rows.map(r => {
                       const inVac = !!((vacAbove && r.strike >= vacAbove.lo && r.strike <= vacAbove.hi) || (vacBelow && r.strike >= vacBelow.lo && r.strike <= vacBelow.hi));
+                      const mk = r.isCW ? 'var(--success)' : r.isPW ? 'var(--danger)' : r.isFlip ? 'var(--warning)' : null;
                       return (
-                        <div key={r.strike} data-strike={r.strike} className="absolute left-0 right-0 grid grid-cols-[52px_1fr_64px] gap-2 px-3 items-center text-[10px] font-mono tabular-nums" style={{ top: `${yPx(r.strike)}px`, transform: 'translateY(-50%)', height: 18, transition: 'top 0.2s linear', ...(r.isSpot ? { boxShadow: 'inset 2px 0 0 var(--accent-color)' } : inVac ? { background: 'color-mix(in srgb, var(--warning) 6%, transparent)' } : undefined) }}>
-                          {ladderRowCells(r)}
+                        <div key={r.strike} data-strike={r.strike} className="absolute left-0 right-0 flex items-center px-2" style={{ top: `${r.yPct}%`, height: `${rowHpct}%`, transform: 'translateY(-50%)', transition: 'top 0.3s cubic-bezier(0.22,1,0.36,1), height 0.3s cubic-bezier(0.22,1,0.36,1)', background: inVac ? 'color-mix(in srgb, var(--warning) 5%, transparent)' : undefined }}>
+                          {labels && <span className="w-[42px] shrink-0 text-right text-[9px] font-mono tabular-nums flex items-center justify-end gap-1" style={{ color: r.isSpot ? 'var(--accent-color)' : 'var(--text-tertiary)' }}>{mk && <span className="w-1 h-1 rounded-full shrink-0" style={{ background: mk }} />}{fmtNum(r.strike)}</span>}
+                          <div className="flex-1 h-full flex items-center mx-1.5">
+                            <div className="w-1/2 h-full flex items-center justify-end pr-px border-r border-[var(--border)]"><div className="rounded-l-[2px]" style={{ width: `${r.putPct}%`, height: barH, background: 'color-mix(in srgb, var(--danger) 62%, transparent)', transition: 'width 0.42s cubic-bezier(0.22,1,0.36,1), height 0.3s ease' }} /></div>
+                            <div className="w-1/2 h-full flex items-center justify-start pl-px"><div className="rounded-r-[2px]" style={{ width: `${r.callPct}%`, height: barH, background: 'color-mix(in srgb, var(--success) 62%, transparent)', transition: 'width 0.42s cubic-bezier(0.22,1,0.36,1), height 0.3s ease' }} /></div>
+                          </div>
+                          {labels && <span className="w-[56px] shrink-0 text-right text-[9px] font-mono font-black tabular-nums" style={{ color: greek ? 'var(--greek)' : (r.netUp ? 'var(--success)' : 'var(--danger)') }}>{fmtBig(r.net)}</span>}
                         </div>
                       );
                     })}
+                    {spot >= lo && spot <= hi && (
+                      <div className="absolute left-0 right-0 z-20 pointer-events-none flex items-center" style={{ top: `${(1 - (spot - lo) / span) * 100}%`, transform: 'translateY(-50%)', transition: 'top 0.3s cubic-bezier(0.22,1,0.36,1)' }} title={`Spot ${fmtNum(spot, decimals)}`}>
+                        <div className="flex-1 h-px" style={{ background: 'var(--accent-color)', boxShadow: '0 0 7px var(--accent-color)' }} />
+                        <span className="text-[8px] font-mono font-black px-1 rounded-sm leading-none py-px mr-1" style={{ background: 'var(--accent-color)', color: '#06090d' }}>{fmtNum(spot, decimals)}</span>
+                      </div>
+                    )}
                   </>
                 );
               })() : ladder.map(r => {
                 const inVac = !!((vacAbove && r.strike >= vacAbove.lo && r.strike <= vacAbove.hi) || (vacBelow && r.strike >= vacBelow.lo && r.strike <= vacBelow.hi));
                 return (
-                  <div key={r.strike} data-strike={r.strike} className="grid grid-cols-[52px_1fr_64px] gap-2 px-3 h-[24px] items-center text-[10px] font-mono tabular-nums hover:bg-[var(--surface-2)]" style={r.isSpot ? { background: 'color-mix(in srgb, var(--accent-color) 12%, transparent)', boxShadow: 'inset 2px 0 0 var(--accent-color)' } : inVac ? { background: 'color-mix(in srgb, var(--warning) 6%, transparent)' } : undefined}>
+                  <div key={r.strike} data-strike={r.strike} className="grid grid-cols-[52px_1fr_64px] gap-2 px-3 h-[22px] items-center text-[10px] font-mono tabular-nums hover:bg-[var(--surface-2)]" style={r.isSpot ? { background: 'color-mix(in srgb, var(--accent-color) 12%, transparent)', boxShadow: 'inset 2px 0 0 var(--accent-color)' } : inVac ? { background: 'color-mix(in srgb, var(--warning) 6%, transparent)' } : undefined}>
                     {ladderRowCells(r)}
                   </div>
                 );

@@ -222,16 +222,9 @@ export const SlayerChart = memo(function SlayerChartImpl({ profile, decimals, ca
     return out;
   }, [candles, atr, profile]);
 
-  // Publish the chart's LIVE visible price range so the detached Exposure Ladder can align its strikes
-  // to exactly the prices the chart is showing. Only the flagship chart (no panelId) drives the shared
-  // ladder; the spot rides along so the ladder's marker matches. We broadcast on EVERY draw (not just
-  // on change) so a ladder that mounts after the chart's first frame still receives the current scale —
-  // the listener rAF-throttles and drops no-op frames, so this is cheap.
-  const onScale = (lo: number, hi: number, priceTop: number, priceAreaH: number) => {
-    if (panelId) return;
-    const rTop = canvasRef.current ? canvasRef.current.getBoundingClientRect().top : 0;
-    broadcastPriceScale(lo, hi, profile.spot ?? null, rTop + priceTop, priceAreaH, 'main');
-  };
+  // Broadcast the chart's live visible price range every frame (main chart only) so the Dealer Gamma
+  // Profile flows with it; the listener rAF-throttles and drops no-op frames.
+  const onScale = (lo: number, hi: number) => { if (!panelId) broadcastPriceScale(lo, hi, profile.spot ?? null, 'main'); };
 
   drawRef.current = () => drawChart({
     canvasRef, containerRef, viewRef, priceViewRef, geomRef, dispRangeRef, scaleViewRef, themeRef,

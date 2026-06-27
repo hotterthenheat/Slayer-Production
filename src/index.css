@@ -583,6 +583,13 @@ button:active, a:active, [role="button"]:active {
 .tick-up { animation: tickUp 0.8s var(--ease-smooth) both; }
 .tick-down { animation: tickDown 0.8s var(--ease-smooth) both; }
 
+/* Exposure-Ladder live flash — a brief tint on a strike whose net GEX makes a big move on a refresh,
+   so the eye catches WHERE dealers are repositioning. Gated to significant moves so it stays calm. */
+@keyframes ladderFlashUp { 0% { background-color: color-mix(in srgb, var(--success) 32%, transparent); } 100% { background-color: transparent; } }
+@keyframes ladderFlashDown { 0% { background-color: color-mix(in srgb, var(--danger) 32%, transparent); } 100% { background-color: transparent; } }
+.ladder-flash-up { animation: ladderFlashUp 0.7s ease-out; }
+.ladder-flash-down { animation: ladderFlashDown 0.7s ease-out; }
+
 /* Slow ambient float for hero/branding elements */
 @keyframes ambientFloat {
   0%, 100% { transform: translateY(0); }
