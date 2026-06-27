@@ -533,6 +533,16 @@ export const SlayerChart = memo(function SlayerChartImpl({ profile, decimals, ca
     const pOfY = (y: number) => lo + (1 - (y - priceTop) / priceAreaH) * (hi - lo);
     geomRef.current = { plotL, plotR, barW, start, end, n, priceTop, priceAreaH, lo, hi };
 
+    // TradingView-style axis frame — a faint strip behind the right price axis and the bottom time
+    // axis, with thin dividers, so the scales read as framed panels instead of floating on the chart.
+    const axisX = gammaR;
+    ctx.fillStyle = hexA(T.text, 0.022);
+    ctx.fillRect(axisX, priceTop, W - axisX, priceBottom - priceTop);
+    ctx.fillRect(plotL, priceBottom, W - plotL, H - priceBottom);
+    ctx.strokeStyle = hexA(T.text, 0.09); ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(px(axisX), priceTop); ctx.lineTo(px(axisX), priceBottom); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(plotL, px(priceBottom)); ctx.lineTo(W, px(priceBottom)); ctx.stroke();
+
     // Slayer Terminal brand watermark — the ">slayer_terminal▌" logo lockup over the ticker · timeframe,
     // faint in the lower third behind the candles (the chart's own mark, à la a TradingView chart logo).
     // Authentic monospace brand font + glow caret block; theme-aware alpha so it also reads on light themes.
