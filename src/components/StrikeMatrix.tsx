@@ -2,16 +2,22 @@ import { useMemo } from 'react';
 import type { GexProfileData } from '../types';
 
 /**
- * Color-coded strike matrix — a dense, institutional strike table (à la SpotGamma /
- * the reference terminal). Each strike's call/put gamma renders as a cell tinted by
- * magnitude (heavy = saturated, weak = nearly invisible) with the $ value on top, plus
- * a net column and an OI bar. Single-expiry today; multi-expiry columns are a separate
- * backend task. Walls / flip / spot are marked.
+ * Strike Matrix — institutional "no-box" build. No cell fills, no checkerboard: every value is
+ * right-aligned tabular monospace with a thin inline magnitude bar beneath it, so a row tells its
+ * story at a glance without the eye fighting solid colour blocks. Weak strikes fade toward passive
+ * gray; walls / flip / spot carry quiet markers, never boxes. Numbers are tabular so nothing wobbles
+ * horizontally as values tick.
  */
 
 const fmtG = (v: number) => { const a = Math.abs(v), s = v < 0 ? '-' : '+'; if (a >= 1e9) return `${s}${(a / 1e9).toFixed(a >= 1e10 ? 1 : 2)}B`; if (a >= 1e6) return `${s}${(a / 1e6).toFixed(0)}M`; if (a >= 1e3) return `${s}${(a / 1e3).toFixed(0)}K`; return `${s}${Math.round(a)}`; };
 const fmtOi = (v: number) => v >= 1000 ? `${(v / 1000).toFixed(v >= 10000 ? 0 : 1)}K` : `${Math.round(v)}`;
-const tint = (token: string, mag: number) => `color-mix(in srgb, var(${token}) ${Math.round(8 + Math.pow(mag, 0.85) * 60)}%, transparent)`;
+// Value colour fades from passive gray (weak) to the directional hue (strong) — discipline over saturation.
+const valCol = (token: string, mag: number, top: boolean) => top ? `var(${token})` : `color-mix(in srgb, var(${token}) ${Math.round(26 + mag * 66)}%, var(--text-tertiary))`;
+
+function Bar({ mag, token, top }: { mag: number; token: string; top: boolean }) {
+  if (mag <= 0) return null;
+  return <div className="absolute bottom-[1.5px] right-0 h-[2px] rounded-full pointer-events-none" style={{ width: `${Math.max(3, Math.min(100, mag * 100))}%`, background: `var(${token})`, opacity: top ? 0.92 : 0.16 + mag * 0.5 }} />;
+}
 
 export function StrikeMatrix({ profile, decimals = 0 }: { profile: GexProfileData; decimals?: number }) {
   const { rows, totals } = useMemo(() => {
@@ -43,36 +49,32 @@ export function StrikeMatrix({ profile, decimals = 0 }: { profile: GexProfileDat
 
   if (!rows.length) return <div className="flex items-center justify-center py-12 text-[11px] font-mono text-[var(--text-tertiary)]">Awaiting dealer chain…</div>;
 
+  const cols = 'grid grid-cols-[50px_1fr_1fr_46px] gap-x-2.5 px-3';
   return (
-    <div className="w-full font-mono text-[10px] tabular-nums">
-      <div className="grid grid-cols-[58px_1fr_1fr_56px] gap-px px-2 py-1.5 sticky top-0 z-10 bg-[var(--surface)] border-b border-[var(--border)] text-[8.5px] font-black uppercase tracking-widest text-[var(--text-tertiary)]">
+    <div className="w-full font-mono text-[10.5px] tabular-nums">
+      <div className={`${cols} py-1.5 sticky top-0 z-10 bg-[var(--surface)] border-b border-[var(--border)] text-[8px] font-black uppercase tracking-[0.16em] text-[var(--text-tertiary)]`}>
         <div className="text-right">Strike</div>
-        <div className="text-center" style={{ color: 'var(--success)' }}>Call γ</div>
-        <div className="text-center" style={{ color: 'var(--danger)' }}>Put γ</div>
+        <div className="text-right" style={{ color: 'color-mix(in srgb, var(--success) 50%, var(--text-tertiary))' }}>Call γ</div>
+        <div className="text-right" style={{ color: 'color-mix(in srgb, var(--danger) 50%, var(--text-tertiary))' }}>Put γ</div>
         <div className="text-right">Vol</div>
       </div>
       <div>
         {rows.map(r => (
-          <div key={r.strike} className="grid grid-cols-[58px_1fr_1fr_56px] gap-px items-stretch h-[19px]" style={r.isSpot ? { boxShadow: 'inset 2px 0 0 var(--accent-color)', background: 'color-mix(in srgb, var(--accent-color) 9%, transparent)' } : undefined}>
-            <div className="flex items-center justify-end gap-1 pr-1.5">
-              {r.isCW && <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ background: 'var(--success)' }} title="Call Wall" />}
-              {r.isPW && <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ background: 'var(--danger)' }} title="Put Wall" />}
-              {r.isFlip && <span className="w-1.5 h-1.5 rounded-sm shrink-0" style={{ background: 'var(--warning)' }} title="Gamma Flip" />}
-              <span className="font-black tracking-wide" style={{ color: r.isSpot ? 'var(--accent-color)' : 'var(--text-secondary)' }}>{r.strike.toLocaleString(undefined, { minimumFractionDigits: decimals, maximumFractionDigits: decimals })}</span>
+          <div key={r.strike} className={`${cols} items-stretch h-[22px] hover:bg-white/[0.02] transition-colors`} style={r.isSpot ? { boxShadow: 'inset 2px 0 0 var(--accent-color)' } : undefined}>
+            <div className="relative flex items-center justify-end">
+              {(r.isCW || r.isPW || r.isFlip) && <span className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-1 rounded-full" style={{ background: r.isCW ? 'var(--success)' : r.isPW ? 'var(--danger)' : 'var(--warning)' }} title={r.isCW ? 'Call Wall' : r.isPW ? 'Put Wall' : 'Gamma Flip'} />}
+              <span style={{ color: r.isSpot ? 'var(--accent-color)' : 'var(--text-secondary)', fontWeight: r.isSpot ? 800 : 600 }}>{r.strike.toLocaleString(undefined, { minimumFractionDigits: decimals, maximumFractionDigits: decimals })}</span>
             </div>
-            <div className="flex items-center justify-center" style={{ background: tint('--success', r.cMag), color: r.cMag > 0.18 ? 'var(--success)' : 'var(--text-tertiary)', fontWeight: r.topCall ? 900 : 700, boxShadow: r.topCall ? 'inset 0 0 0 1.5px color-mix(in srgb, var(--success) 75%, transparent)' : undefined }}>{r.callGex ? fmtG(r.callGex) : '·'}</div>
-            <div className="flex items-center justify-center" style={{ background: tint('--danger', r.pMag), color: r.pMag > 0.18 ? 'var(--danger)' : 'var(--text-tertiary)', fontWeight: r.topPut ? 900 : 700, boxShadow: r.topPut ? 'inset 0 0 0 1.5px color-mix(in srgb, var(--danger) 75%, transparent)' : undefined }}>{r.putGex ? fmtG(r.putGex) : '·'}</div>
-            <div className="relative flex items-center justify-end pr-1.5 overflow-hidden">
-              <div className="absolute inset-y-[3px] right-0 rounded-sm" style={{ width: `${Math.max(3, r.volMag * 100)}%`, background: r.topVol ? 'color-mix(in srgb, var(--accent-color) 40%, transparent)' : 'color-mix(in srgb, var(--accent-color) 15%, transparent)' }} />
-              <span className="relative" style={{ fontWeight: r.topVol ? 900 : 700, color: r.topVol ? 'var(--text-primary)' : 'var(--text-secondary)' }}>{fmtOi(r.vol)}</span>
-            </div>
+            <div className="relative flex items-center justify-end" style={{ color: valCol('--success', r.cMag, r.topCall), fontWeight: r.topCall ? 800 : 600 }}>{r.callGex ? fmtG(r.callGex) : <span className="text-[var(--text-tertiary)] opacity-40">·</span>}<Bar mag={r.cMag} token="--success" top={r.topCall} /></div>
+            <div className="relative flex items-center justify-end" style={{ color: valCol('--danger', r.pMag, r.topPut), fontWeight: r.topPut ? 800 : 600 }}>{r.putGex ? fmtG(r.putGex) : <span className="text-[var(--text-tertiary)] opacity-40">·</span>}<Bar mag={r.pMag} token="--danger" top={r.topPut} /></div>
+            <div className="relative flex items-center justify-end" style={{ color: r.topVol ? 'var(--text-primary)' : 'var(--text-tertiary)', fontWeight: r.topVol ? 800 : 600 }}>{fmtOi(r.vol)}<Bar mag={r.volMag} token="--accent-color" top={r.topVol} /></div>
           </div>
         ))}
       </div>
-      <div className="sticky bottom-0 grid grid-cols-[58px_1fr_1fr_56px] gap-px px-2 py-1.5 bg-[var(--surface)] border-t border-[var(--border-strong)] text-[9px] font-black tabular-nums z-10">
-        <div className="text-right text-[var(--text-tertiary)] uppercase tracking-[0.14em] text-[8px] self-center">Total</div>
-        <div className="text-center" style={{ color: 'var(--success)' }}>{fmtG(totals.callGex)}</div>
-        <div className="text-center" style={{ color: 'var(--danger)' }}>{fmtG(totals.putGex)}</div>
+      <div className={`${cols} py-1.5 sticky bottom-0 bg-[var(--surface)] border-t border-[var(--border-strong)] text-[9px] font-black tabular-nums z-10`}>
+        <div className="text-right text-[var(--text-tertiary)] uppercase tracking-[0.12em] text-[8px] self-center">Total</div>
+        <div className="text-right" style={{ color: 'var(--success)' }}>{fmtG(totals.callGex)}</div>
+        <div className="text-right" style={{ color: 'var(--danger)' }}>{fmtG(totals.putGex)}</div>
         <div className="text-right text-[var(--text-secondary)]">{fmtOi(totals.vol)}</div>
       </div>
     </div>

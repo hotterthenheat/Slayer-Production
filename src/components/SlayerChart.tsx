@@ -409,10 +409,10 @@ export const SlayerChart = memo(function SlayerChartImpl({ profile, decimals, ca
   // Dealer Positioning summary for the corner dashboard — net γ, call/put dominance, largest strikes.
   const dealerStats = useMemo(() => {
     const ss = profile.strikes; if (!ss || !ss.length) return null;
-    let pos = 0, neg = 0, lc: (typeof ss)[number] | null = null, lp: (typeof ss)[number] | null = null;
-    for (const s of ss) { const g = s.netGex || 0; if (g > 0) { pos += g; if (!lc || g > (lc.netGex || 0)) lc = s; } else if (g < 0) { neg += -g; if (!lp || g < (lp.netGex || 0)) lp = s; } }
+    let pos = 0, neg = 0, dex = 0, vex = 0, hasDex = false, hasVex = false, lc: (typeof ss)[number] | null = null, lp: (typeof ss)[number] | null = null;
+    for (const s of ss) { const g = s.netGex || 0; if (g > 0) { pos += g; if (!lc || g > (lc.netGex || 0)) lc = s; } else if (g < 0) { neg += -g; if (!lp || g < (lp.netGex || 0)) lp = s; } const d = s.netDex ?? ((s.callDex ?? 0) + (s.putDex ?? 0)); if (s.netDex != null || s.callDex != null || s.putDex != null) { dex += d; hasDex = true; } const v = s.netVex ?? ((s.callVex ?? 0) + (s.putVex ?? 0)); if (s.netVex != null || s.callVex != null || s.putVex != null) { vex += v; hasVex = true; } }
     const total = pos + neg;
-    return { net: pos - neg, callPct: total ? Math.round((pos / total) * 100) : 50, long: pos >= neg, largestCall: lc?.strike, largestPut: lp?.strike };
+    return { net: pos - neg, callPct: total ? Math.round((pos / total) * 100) : 50, long: pos >= neg, largestCall: lc?.strike, largestPut: lp?.strike, netDex: hasDex ? dex : null, netVex: hasVex ? vex : null };
   }, [profile]);
 
   const displacements = useMemo(() => {
@@ -452,7 +452,7 @@ export const SlayerChart = memo(function SlayerChartImpl({ profile, decimals, ca
     const upCol = colors.up || DEFAULT_COLORS.up, downCol = colors.down || DEFAULT_COLORS.down, lineCol = colors.line || DEFAULT_COLORS.line;
     const COL = {
       up: upCol, down: downCol, upVol: hexA(upCol, 0.3), downVol: hexA(downCol, 0.3),
-      grid: colors.grid || 'rgba(255,255,255,0.05)', axis: T.dim, axisDim: hexA(T.dim, 0.7),
+      grid: colors.grid || 'rgba(255,255,255,0.028)', axis: T.dim, axisDim: hexA(T.dim, 0.7),
       callWall: upCol, putWall: downCol, flip: T.warning, magnet: T.accent, em: T.info,
     };
 
@@ -584,7 +584,7 @@ export const SlayerChart = memo(function SlayerChartImpl({ profile, decimals, ca
     for (let g = Math.ceil(lo / step) * step; g <= hi; g += step) {
       const y = yP(g); if (y < priceTop + 4 || y > priceBottom - 2) continue;
       const major = Math.abs(g / majorStep - Math.round(g / majorStep)) < 1e-6;
-      if (showGrid) { ctx.strokeStyle = major ? hexA(T.text, 0.07) : COL.grid; ctx.beginPath(); ctx.moveTo(plotL, px(y) - 0.5); ctx.lineTo(plotR, px(y) - 0.5); ctx.stroke(); }
+      if (showGrid) { ctx.strokeStyle = major ? hexA(T.text, 0.045) : COL.grid; ctx.beginPath(); ctx.moveTo(plotL, px(y) - 0.5); ctx.lineTo(plotR, px(y) - 0.5); ctx.stroke(); }
       gridYs.push({ y, label: nfT(g), major });
     }
 
@@ -741,7 +741,7 @@ export const SlayerChart = memo(function SlayerChartImpl({ profile, decimals, ca
         ctx.fillRect(Math.round(x - w / 2), Math.min(y, baseY), Math.round(w), Math.max(1, Math.abs(baseY - y)));
       }
     } else {
-      const wickW = Math.max(1, Math.min(1.6, barW * 0.14));      // wick scales subtly with bar width
+      const wickW = Math.max(0.75, Math.min(1, barW * 0.1));      // razor-thin wick — barely there, lets the bodies lead
       const border = candleBorders && barW >= 3.4;                // crisp edge only when bars are wide enough
       for (let i = 0; i < vis.length; i++) {
         const c = vis[i], x = xOf(start + i), up = c.close >= c.open, col = up ? upCol : downCol, wickCol = colors.wick || col;
@@ -749,7 +749,7 @@ export const SlayerChart = memo(function SlayerChartImpl({ profile, decimals, ca
         ctx.strokeStyle = wickCol; ctx.lineWidth = wickW;
         ctx.beginPath(); ctx.moveTo(px(x), Math.round(yP(c.high))); ctx.lineTo(px(x), Math.round(yP(c.low))); ctx.stroke();
         // body — fuller (0.78 of the slot), pixel-snapped, optional darker crisp border for depth
-        const yO = yP(c.open), yC = yP(c.close), bw = Math.max(1, barW * 0.78), w = Math.round(bw), bx = Math.round(x - bw / 2), by = Math.round(Math.min(yO, yC)), bh = Math.max(1, Math.round(Math.abs(yC - yO)));
+        const yO = yP(c.open), yC = yP(c.close), bw = Math.max(1, barW * 0.62), w = Math.round(bw), bx = Math.round(x - bw / 2), by = Math.round(Math.min(yO, yC)), bh = Math.max(1, Math.round(Math.abs(yC - yO)));
         if (chartType === 'hollow' && up) { ctx.strokeStyle = col; ctx.lineWidth = 1.3; ctx.strokeRect(bx + 0.5, by + 0.5, w - 1, Math.max(1, bh - 1)); }
         else { ctx.fillStyle = col; ctx.fillRect(bx, by, w, bh); if (border) { ctx.strokeStyle = shade(col, 0.72); ctx.lineWidth = 1; ctx.strokeRect(bx + 0.5, by + 0.5, w - 1, Math.max(1, bh - 1)); } }
       }
@@ -867,7 +867,8 @@ export const SlayerChart = memo(function SlayerChartImpl({ profile, decimals, ca
       if (!L.off && !(heatOn && isWall)) {
         const act = !!(L.value && L.price === activeStrike);
         if (act) { ctx.fillStyle = hexA(col, 0.07); ctx.fillRect(plotL, px(L.rawY) - 4, plotW, 8); }
-        ctx.strokeStyle = col; ctx.globalAlpha = L.value ? (act ? 0.95 : 0.1 + Math.pow(lrel, 1.3) * 0.75) : 0.5; ctx.lineWidth = L.value ? (act ? 2.6 : 0.6 + lrel * 3) : 1; ctx.setLineDash(!L.value ? [5, 4] : minor ? [2, 4] : []);
+        const p1 = !L.value && (L.label === 'CW' || L.label === 'PW' || L.label === 'γF'); // Priority-1 levels: walls + gamma flip read crisp; EM / magnet stay softer (P2).
+        ctx.strokeStyle = col; ctx.globalAlpha = L.value ? (act ? 0.95 : 0.1 + Math.pow(lrel, 1.3) * 0.75) : (p1 ? 0.72 : 0.32); ctx.lineWidth = L.value ? (act ? 2.6 : 0.6 + lrel * 3) : (p1 ? 1.5 : 1); ctx.setLineDash(!L.value ? (p1 && L.label !== 'γF' ? [] : [5, 4]) : minor ? [2, 4] : []);
         ctx.beginPath(); ctx.moveTo(plotL, px(L.rawY) - 0.5); ctx.lineTo(plotR, px(L.rawY) - 0.5); ctx.stroke();
         ctx.setLineDash([]); ctx.globalAlpha = 1; ctx.lineWidth = 1;
       }
@@ -1046,6 +1047,15 @@ export const SlayerChart = memo(function SlayerChartImpl({ profile, decimals, ca
         ];
         if ((sd.callOi || 0) || (sd.putOi || 0)) rows.push(['OI C/P', `${fK(sd.callOi || 0)} / ${fK(sd.putOi || 0)}`, hexA(T.text, 0.85)]);
         if ((sd.callVolume || 0) || (sd.putVolume || 0)) rows.push(['Vol C/P', `${fK(sd.callVolume || 0)} / ${fK(sd.putVolume || 0)}`, hexA(T.text, 0.85)]);
+        // Dealer greeks for this strike + ΔGEX + a pin-strength rating (#5 / #16).
+        const dxv = sd.netDex != null ? sd.netDex : ((sd.callDex || 0) + (sd.putDex || 0));
+        const vxv = sd.netVex != null ? sd.netVex : ((sd.callVex || 0) + (sd.putVex || 0));
+        if (dxv) rows.push(['Net Δ', fmtGex(dxv), dxv >= 0 ? COL.up : COL.down]);
+        if (vxv) rows.push(['Vanna', fmtGex(vxv), vxv >= 0 ? COL.up : COL.down]);
+        const dgv = gexDeltaAt(sd.strike);
+        if (Math.abs(dgv) >= 1e6) rows.push(['Δγ · 45s', `${dgv >= 0 ? '↑' : '↓'}${fmtGex(Math.abs(dgv)).replace(/^\+/, '')}`, dgv >= 0 ? COL.up : COL.down]);
+        const peakG = Math.max(...profile.strikes.map(s => Math.abs(s.netGex || 0)), 1e-9), stars = Math.max(1, Math.min(5, Math.round(Math.abs(sd.netGex || 0) / peakG * 5)));
+        rows.push(['Pin', '★★★★★'.slice(0, stars) + '☆☆☆☆☆'.slice(0, 5 - stars), hexA(T.accent, 0.95)]);
         ctx.font = '600 10px ui-monospace, monospace';
         let keyW = 0, valW = 0; for (const [k, v] of rows) { keyW = Math.max(keyW, ctx.measureText(k).width); valW = Math.max(valW, ctx.measureText(v).width); }
         const lab = hoverTag.value ? '' : (NAMES[hoverTag.label] || hoverTag.label).toUpperCase();
@@ -1460,9 +1470,9 @@ export const SlayerChart = memo(function SlayerChartImpl({ profile, decimals, ca
               </div>
             )}
             {/* Dealer greeks (#10): net delta + vanna exposure beside gamma, so the whole hedging picture reads in one card. */}
-            {(profile.netDex != null || profile.netVex != null) && (
+            {((profile.netDex ?? dealerStats.netDex) != null || (profile.netVex ?? dealerStats.netVex) != null) && (
               <div className="grid grid-cols-2 gap-1.5 mb-2">
-                {([['Net Δ', profile.netDex], ['Net Vanna', profile.netVex]] as const).map(([k, v]) => (
+                {([['Net Δ', profile.netDex ?? dealerStats.netDex], ['Net Vanna', profile.netVex ?? dealerStats.netVex]] as const).map(([k, v]) => (
                   <div key={k} className="rounded px-1.5 py-1" style={{ background: 'color-mix(in srgb, var(--text-primary) 4%, transparent)' }}>
                     <div className="text-[7.5px] uppercase tracking-wider text-[var(--text-tertiary)] leading-none mb-0.5">{k}</div>
                     <div className="text-[10px] font-black tabular-nums leading-none" style={{ color: v == null ? 'var(--text-tertiary)' : v >= 0 ? 'var(--success)' : 'var(--danger)' }}>{v == null ? '—' : fmtGex(v)}</div>

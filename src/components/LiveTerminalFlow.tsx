@@ -220,6 +220,26 @@ export function LiveTerminalFlow({ profile, ticker, decimals }: LiveTerminalFlow
   const outlook = useMemo(() => computeGexOutlook(profile, candles.slice(-12).map(c => c.close)), [profile, candles]);
   const outlookColor = outlook.bias === 'up' ? 'var(--success)' : outlook.bias === 'down' ? 'var(--danger)' : outlook.regime === 'PINNING' ? 'var(--info)' : 'var(--text-secondary)';
 
+  // Narrative Engine — translates the live net-γ trend into one readable sentence instead of a raw number.
+  // Pure synthesis of real data (Δ net GEX over the session window + the regime); confidence reuses the
+  // already-derived outlook score rather than inventing a new one.
+  const narrative = useMemo(() => {
+    const cur = (profile.strikes || []).reduce((a, s) => a + (s.netGex || 0), 0) || (profile.netGex ?? 0);
+    if (gexHist.length < 3) return null;
+    const last = gexHist[gexHist.length - 1].t, windowMs = 15 * 60 * 1000;
+    let past = gexHist[0];
+    for (const sn of gexHist) { if (last - sn.t <= windowMs) { past = sn; break; } }
+    const pastNet = Object.values(past.m).reduce((a, v) => a + (v as number), 0);
+    const delta = cur - pastNet, mins = Math.max(1, Math.round((last - past.t) / 60000));
+    if (Math.abs(delta) < 1e6) return null;
+    const longG = cur >= 0, rising = delta >= 0;
+    const imp = longG && rising ? 'Dealers are growing more long gamma — historically this dampens intraday volatility and favours mean-reversion around the pin.'
+      : longG && !rising ? 'Dealers stay long gamma but are bleeding it — the volatility pin is weakening; watch the flip.'
+      : !longG && !rising ? 'Dealers are pushing deeper short gamma — hedging amplifies the move, so expect trend continuation and wider ranges.'
+      : 'Dealers are short gamma but covering — downside acceleration is easing.';
+    return { text: `Net GEX ${rising ? 'climbed' : 'slid'} ${delta >= 0 ? '+' : '−'}${fmtBig(Math.abs(delta))} over the last ${mins} min. ${imp}`, conf: outlook.confidence, rising };
+  }, [profile, gexHist, outlook]);
+
   // 0DTE session clock — time is the dominant risk; surface session phase + live countdown.
   const clock = useMemo(() => computeDealerClock(0, profile.netVex || 0, now), [profile.netVex, now]);
   const sess = useMemo(() => {
@@ -234,7 +254,7 @@ export function LiveTerminalFlow({ profile, ticker, decimals }: LiveTerminalFlow
   const SEGS = [{ k: 'o', sess: 'OPEN', l: 'Open Drive', w: 0.154 }, { k: 'm', sess: 'MIDDAY', l: 'Midday', w: 0.615 }, { k: 'p', sess: 'POWER_HOUR', l: 'Power Hour', w: 0.154 }, { k: 'c', sess: 'CLOSE', l: 'Into Close', w: 0.077 }] as const;
 
   const Tile = ({ label, value, sub, color }: { label: string; value: string; sub?: string; color: string }) => (
-    <div className="bg-[var(--surface-2)] border border-[var(--border)] rounded-md shadow-[inset_0_1px_0_rgba(255,255,255,0.05)] px-2.5 py-2">
+    <div className="bg-[var(--surface-2)] rounded-lg px-2.5 py-2">
       <div className="text-[9px] font-black tracking-widest uppercase text-[var(--text-tertiary)]">{label}</div>
       <div className="text-[14px] font-mono font-black tabular-nums leading-tight mt-0.5" style={{ color }}>{value}</div>
       {sub && <div className="text-[10px] font-mono text-[var(--text-tertiary)] mt-0.5 truncate">{sub}</div>}
@@ -426,6 +446,12 @@ export function LiveTerminalFlow({ profile, ticker, decimals }: LiveTerminalFlow
                       <span className="text-[9px] font-mono tabular-nums text-[var(--text-tertiary)] ml-auto">{distLabel(outlook.target)}</span>
                     </div>
                   )}
+                  {narrative && (
+                    <div className="flex gap-1.5 mt-1.5 pt-1.5 border-t" style={{ borderColor: 'color-mix(in srgb, var(--border) 70%, transparent)' }}>
+                      <span className="mt-[3px] w-1 h-1 rounded-full shrink-0 animate-pulse" style={{ background: narrative.rising ? 'var(--success)' : 'var(--danger)' }} />
+                      <p className="text-[9.5px] font-mono leading-snug text-[var(--text-secondary)]">{narrative.text} <span className="text-[var(--text-tertiary)]">({narrative.conf}% conf)</span></p>
+                    </div>
+                  )}
                 </div>
                 {/* PROVEN EDGE — the GEX outlook above, scored against what price actually did.
                     Turns the regime call from an assertion into a measured, falsifiable hit-rate. */}
@@ -459,7 +485,7 @@ export function LiveTerminalFlow({ profile, ticker, decimals }: LiveTerminalFlow
                 </div>
 
                 {/* Dealer Forces — each mechanic's lean, shown so the trader reads it themselves */}
-                <div className="bg-[var(--surface-2)] border border-[var(--border)] rounded-md shadow-[inset_0_1px_0_rgba(255,255,255,0.05)] overflow-hidden">
+                <div className="bg-[var(--surface-2)] rounded-lg overflow-hidden">
                   <div className="flex items-center justify-between px-3 pt-2 pb-1.5 border-b border-[var(--border)]">
                     <span className="text-[9px] font-sans font-black tracking-widest uppercase text-[var(--text-secondary)]">Dealer Forces</span>
                     <span className="text-[9px] font-mono uppercase tracking-widest text-[var(--text-tertiary)]">what's driving structure</span>
@@ -480,7 +506,7 @@ export function LiveTerminalFlow({ profile, ticker, decimals }: LiveTerminalFlow
 
                 {/* dealer-structure spectrum */}
                 {structure && (
-                  <div className="bg-[var(--surface-2)] border border-[var(--border)] rounded-md shadow-[inset_0_1px_0_rgba(255,255,255,0.05)] px-3 py-3">
+                  <div className="bg-[var(--surface-2)] rounded-lg px-3 py-3">
                     <div className="flex items-center justify-between mb-3">
                       <span className="text-[9px] font-black tracking-widest uppercase text-[var(--text-tertiary)]">Dealer Structure</span>
                       {migration && migration.direction !== 'STABLE' && (
@@ -502,7 +528,7 @@ export function LiveTerminalFlow({ profile, ticker, decimals }: LiveTerminalFlow
                 )}
 
                 {/* key levels list */}
-                <div className="bg-[var(--surface-2)] border border-[var(--border)] rounded-md shadow-[inset_0_1px_0_rgba(255,255,255,0.05)] overflow-hidden">
+                <div className="bg-[var(--surface-2)] rounded-lg overflow-hidden">
                   <div className="px-3 pt-2 pb-1.5 text-[9px] font-sans font-black tracking-widest uppercase text-[var(--text-secondary)] border-b border-[var(--border)]">Key Levels</div>
                   <div className="stagger-children">
                     {levels.map((l, i) => (
@@ -628,6 +654,38 @@ export function LiveTerminalFlow({ profile, ticker, decimals }: LiveTerminalFlow
 
         </div>
       </div>
+      <SystemStatus feedLabel={feedLabel} live={liveFeed} feedColor={feedColor} cd={sess.cd} />
+    </div>
+  );
+}
+
+/**
+ * SystemStatus — institutional telemetry footer. Isolated component so its 1 Hz FPS/memory
+ * updates re-render only this strip, never the whole terminal. FPS + heap are measured live;
+ * Feed reflects the real chain status. (Latency / cache wire in once the live WS is connected.)
+ */
+function SystemStatus({ feedLabel, live, feedColor, cd }: { feedLabel: string; live: boolean; feedColor: string; cd: string }) {
+  const [t, setT] = useState<{ fps: number; mem: number | null }>({ fps: 0, mem: null });
+  useEffect(() => {
+    let frames = 0, raf = 0, last = performance.now();
+    const loop = () => { frames++; const n = performance.now(); if (n - last >= 1000) { const m = (performance as unknown as { memory?: { usedJSHeapSize: number } }).memory?.usedJSHeapSize; setT({ fps: Math.round((frames * 1000) / (n - last)), mem: m != null ? m / 1048576 : null }); frames = 0; last = n; } raf = requestAnimationFrame(loop); };
+    raf = requestAnimationFrame(loop);
+    return () => cancelAnimationFrame(raf);
+  }, []);
+  const Cell = ({ label, value, color, dot }: { label: string; value: string; color: string; dot?: string }) => (
+    <div className="flex items-center gap-1.5 shrink-0">
+      {dot && <span className="w-1.5 h-1.5 rounded-full" style={{ background: dot }} />}
+      <span className="text-[8px] font-black uppercase tracking-[0.18em] text-[var(--text-tertiary)]">{label}</span>
+      <span className="text-[10px] font-mono font-bold tabular-nums" style={{ color }}>{value}</span>
+    </div>
+  );
+  return (
+    <div className="shrink-0 h-7 border-t border-[var(--border)] bg-[var(--surface)] flex items-center gap-5 px-4 overflow-hidden">
+      <Cell label="Feed" value={live ? feedLabel.replace('LIVE · ', '') : 'IDLE'} color={feedColor} dot={feedColor} />
+      <Cell label="FPS" value={t.fps ? String(t.fps) : '—'} color={t.fps >= 50 ? 'var(--success)' : t.fps ? 'var(--warning)' : 'var(--text-tertiary)'} />
+      {t.mem != null && <Cell label="Mem" value={t.mem >= 1024 ? (t.mem / 1024).toFixed(2) + 'GB' : Math.round(t.mem) + 'MB'} color="var(--text-secondary)" />}
+      <Cell label="Session" value={cd} color={cd === 'CLOSED' ? 'var(--text-tertiary)' : 'var(--text-secondary)'} />
+      <div className="ml-auto text-[8px] font-black uppercase tracking-[0.22em] text-[var(--text-tertiary)] shrink-0">Slayer Terminal</div>
     </div>
   );
 }
