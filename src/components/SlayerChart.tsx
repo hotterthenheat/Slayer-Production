@@ -409,10 +409,10 @@ export const SlayerChart = memo(function SlayerChartImpl({ profile, decimals, ca
   // Dealer Positioning summary for the corner dashboard — net γ, call/put dominance, largest strikes.
   const dealerStats = useMemo(() => {
     const ss = profile.strikes; if (!ss || !ss.length) return null;
-    let pos = 0, neg = 0, lc: (typeof ss)[number] | null = null, lp: (typeof ss)[number] | null = null;
-    for (const s of ss) { const g = s.netGex || 0; if (g > 0) { pos += g; if (!lc || g > (lc.netGex || 0)) lc = s; } else if (g < 0) { neg += -g; if (!lp || g < (lp.netGex || 0)) lp = s; } }
+    let pos = 0, neg = 0, dex = 0, vex = 0, hasDex = false, hasVex = false, lc: (typeof ss)[number] | null = null, lp: (typeof ss)[number] | null = null;
+    for (const s of ss) { const g = s.netGex || 0; if (g > 0) { pos += g; if (!lc || g > (lc.netGex || 0)) lc = s; } else if (g < 0) { neg += -g; if (!lp || g < (lp.netGex || 0)) lp = s; } const d = s.netDex ?? ((s.callDex ?? 0) + (s.putDex ?? 0)); if (s.netDex != null || s.callDex != null || s.putDex != null) { dex += d; hasDex = true; } const v = s.netVex ?? ((s.callVex ?? 0) + (s.putVex ?? 0)); if (s.netVex != null || s.callVex != null || s.putVex != null) { vex += v; hasVex = true; } }
     const total = pos + neg;
-    return { net: pos - neg, callPct: total ? Math.round((pos / total) * 100) : 50, long: pos >= neg, largestCall: lc?.strike, largestPut: lp?.strike };
+    return { net: pos - neg, callPct: total ? Math.round((pos / total) * 100) : 50, long: pos >= neg, largestCall: lc?.strike, largestPut: lp?.strike, netDex: hasDex ? dex : null, netVex: hasVex ? vex : null };
   }, [profile]);
 
   const displacements = useMemo(() => {
@@ -1046,6 +1046,15 @@ export const SlayerChart = memo(function SlayerChartImpl({ profile, decimals, ca
         ];
         if ((sd.callOi || 0) || (sd.putOi || 0)) rows.push(['OI C/P', `${fK(sd.callOi || 0)} / ${fK(sd.putOi || 0)}`, hexA(T.text, 0.85)]);
         if ((sd.callVolume || 0) || (sd.putVolume || 0)) rows.push(['Vol C/P', `${fK(sd.callVolume || 0)} / ${fK(sd.putVolume || 0)}`, hexA(T.text, 0.85)]);
+        // Dealer greeks for this strike + ΔGEX + a pin-strength rating (#5 / #16).
+        const dxv = sd.netDex != null ? sd.netDex : ((sd.callDex || 0) + (sd.putDex || 0));
+        const vxv = sd.netVex != null ? sd.netVex : ((sd.callVex || 0) + (sd.putVex || 0));
+        if (dxv) rows.push(['Net Δ', fmtGex(dxv), dxv >= 0 ? COL.up : COL.down]);
+        if (vxv) rows.push(['Vanna', fmtGex(vxv), vxv >= 0 ? COL.up : COL.down]);
+        const dgv = gexDeltaAt(sd.strike);
+        if (Math.abs(dgv) >= 1e6) rows.push(['Δγ · 45s', `${dgv >= 0 ? '↑' : '↓'}${fmtGex(Math.abs(dgv)).replace(/^\+/, '')}`, dgv >= 0 ? COL.up : COL.down]);
+        const peakG = Math.max(...profile.strikes.map(s => Math.abs(s.netGex || 0)), 1e-9), stars = Math.max(1, Math.min(5, Math.round(Math.abs(sd.netGex || 0) / peakG * 5)));
+        rows.push(['Pin', '★★★★★'.slice(0, stars) + '☆☆☆☆☆'.slice(0, 5 - stars), hexA(T.accent, 0.95)]);
         ctx.font = '600 10px ui-monospace, monospace';
         let keyW = 0, valW = 0; for (const [k, v] of rows) { keyW = Math.max(keyW, ctx.measureText(k).width); valW = Math.max(valW, ctx.measureText(v).width); }
         const lab = hoverTag.value ? '' : (NAMES[hoverTag.label] || hoverTag.label).toUpperCase();
@@ -1460,9 +1469,9 @@ export const SlayerChart = memo(function SlayerChartImpl({ profile, decimals, ca
               </div>
             )}
             {/* Dealer greeks (#10): net delta + vanna exposure beside gamma, so the whole hedging picture reads in one card. */}
-            {(profile.netDex != null || profile.netVex != null) && (
+            {((profile.netDex ?? dealerStats.netDex) != null || (profile.netVex ?? dealerStats.netVex) != null) && (
               <div className="grid grid-cols-2 gap-1.5 mb-2">
-                {([['Net Δ', profile.netDex], ['Net Vanna', profile.netVex]] as const).map(([k, v]) => (
+                {([['Net Δ', profile.netDex ?? dealerStats.netDex], ['Net Vanna', profile.netVex ?? dealerStats.netVex]] as const).map(([k, v]) => (
                   <div key={k} className="rounded px-1.5 py-1" style={{ background: 'color-mix(in srgb, var(--text-primary) 4%, transparent)' }}>
                     <div className="text-[7.5px] uppercase tracking-wider text-[var(--text-tertiary)] leading-none mb-0.5">{k}</div>
                     <div className="text-[10px] font-black tabular-nums leading-none" style={{ color: v == null ? 'var(--text-tertiary)' : v >= 0 ? 'var(--success)' : 'var(--danger)' }}>{v == null ? '—' : fmtGex(v)}</div>
