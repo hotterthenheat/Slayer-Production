@@ -7,6 +7,8 @@ import { computeDealerClock } from '../lib/dealerClock';
 import { fmtNum } from '../lib/format';
 import { SlayerChart } from './SlayerChart';
 import { ChartPanelGrid } from './ChartPanelGrid';
+import { StrikeGexChart } from './StrikeGexChart';
+import { useGexHistory } from '../lib/gexHistory';
 import { OrderFlow } from './OrderFlow';
 import { CROSSHAIR_EVENT, CrosshairDetail } from '../lib/chartSync';
 import { EdgeTrackRecord } from './EdgeTrackRecord';
@@ -40,6 +42,7 @@ export function LiveTerminalFlow({ profile, ticker, decimals }: LiveTerminalFlow
   const [leftTab, setLeftTab] = useState<'levels' | 'flow'>('levels');
   const [scope, setScope] = useState<'0DTE' | 'ALL'>('0DTE');
   const [multiChart, setMultiChart] = useState(false); // opt-in movable/resizable multi-chart grid
+  const [gexLines, setGexLines] = useState(false); // center toggle — multi-strike GEX line chart
   const [ladderMetric, setLadderMetric] = useState<'GAMMA' | 'DELTA' | 'VANNA' | 'OI' | 'VOL'>('GAMMA');
   const [now, setNow] = useState(() => new Date());
   useEffect(() => { const t = setInterval(() => setNow(new Date()), 1000); return () => clearInterval(t); }, []);
@@ -189,6 +192,7 @@ export function LiveTerminalFlow({ profile, ticker, decimals }: LiveTerminalFlow
   const hasVex = useMemo(() => (profile.strikes || []).some(s => s.callVex != null || s.putVex != null), [profile]);
   const hasOi = useMemo(() => (profile.strikes || []).some(s => (s.callOi || 0) + (s.putOi || 0) > 0), [profile]);
   const hasVol = useMemo(() => (profile.strikes || []).some(s => (s.callVolume || 0) + (s.putVolume || 0) > 0), [profile]);
+  const gexHist = useGexHistory(profile, selectedAsset.ticker);
   const ladder = useMemo(() => {
     let ss = [...(profile.strikes || [])];
     if (profile.spot) ss = ss.sort((a, b) => Math.abs(a.strike - spot) - Math.abs(b.strike - spot)).slice(0, 30);
@@ -534,6 +538,7 @@ export function LiveTerminalFlow({ profile, ticker, decimals }: LiveTerminalFlow
                   <span className="hidden sm:inline" style={{ color: isStale ? 'var(--danger)' : 'var(--text-tertiary)' }}>· {selectedTimeframe} · {liveFeed ? 'LIVE' : isStale ? `STALE ${staleSecs}s` : 'MODEL'}</span>
                 </div>
                 <div className="flex items-center gap-2 text-[9px] font-mono font-black tabular-nums shrink-0">
+                  <button onClick={() => setGexLines(m => !m)} title="Strike GEX line chart — top strikes' net gamma tracked over the session" className={`flex items-center gap-1 px-1.5 py-0.5 rounded-sm text-[9px] font-mono font-black uppercase tracking-wide border transition-colors ${gexLines ? 'border-[var(--accent-color)] text-black' : 'border-[var(--border)] bg-[var(--surface-2)] text-[var(--text-tertiary)] hover:text-[var(--text-primary)]'}`} style={gexLines ? { background: 'var(--accent-color)' } : undefined}><Activity className="w-3 h-3" /> GEX</button>
                   <button onClick={() => setMultiChart(m => !m)} title="Toggle the movable multi-chart grid" className={`flex items-center gap-1 px-1.5 py-0.5 rounded-sm text-[9px] font-mono font-black uppercase tracking-wide border transition-colors ${multiChart ? 'border-[var(--accent-color)] text-black' : 'border-[var(--border)] bg-[var(--surface-2)] text-[var(--text-tertiary)] hover:text-[var(--text-primary)]'}`} style={multiChart ? { background: 'var(--accent-color)' } : undefined}><Layers className="w-3 h-3" /> Multi</button>
                   <span style={{ color: 'var(--success)' }}>BULL {bullPct.toFixed(0)}%</span>
                   <span style={{ color: 'var(--danger)' }}>BEAR {(100 - bullPct).toFixed(0)}%</span>
@@ -545,7 +550,9 @@ export function LiveTerminalFlow({ profile, ticker, decimals }: LiveTerminalFlow
               </div>
             </div>
             <div className="flex-1 min-h-[400px] relative" style={{ background: 'var(--bg-base)' }}>
-              {multiChart
+              {gexLines
+                ? <div className="absolute inset-0 p-1.5"><StrikeGexChart history={gexHist} /></div>
+                : multiChart
                 ? <ChartPanelGrid profile={profile} decimals={decimals} candles={candles} baseTicker={selectedAsset.ticker} timeframe={selectedTimeframe} />
                 : <SlayerChart profile={profile} decimals={decimals} />}
             </div>
