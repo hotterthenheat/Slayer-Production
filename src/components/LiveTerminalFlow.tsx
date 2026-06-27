@@ -23,6 +23,18 @@ import { ASSET_LIST, TIMEFRAMES } from '../data';
 
 // Tight, legible type scale (raised the floor off 7.5/8px so dense data stays readable).
 
+// NYSE full-day closes (ET) — so the feed badge never reads "LIVE" over a weekday holiday when the
+// SSE stream is still echoing the last snapshot. Extendable; the authoritative source should ultimately
+// be a server session flag, with this + the staleness guard as the client backstop. Half-day early
+// closes (1pm) are handled below.
+const NYSE_HOLIDAYS = new Set<string>([
+  '2025-01-01', '2025-01-20', '2025-02-17', '2025-04-18', '2025-05-26', '2025-06-19', '2025-07-04', '2025-09-01', '2025-11-27', '2025-12-25',
+  '2026-01-01', '2026-01-19', '2026-02-16', '2026-04-03', '2026-05-25', '2026-06-19', '2026-07-03', '2026-09-07', '2026-11-26', '2026-12-25',
+  '2027-01-01', '2027-01-18', '2027-02-15', '2027-03-26', '2027-05-31', '2027-06-18', '2027-07-05', '2027-09-06', '2027-11-25', '2027-12-24',
+]);
+// 1pm ET early closes.
+const NYSE_HALF_DAYS = new Set<string>(['2025-07-03', '2025-11-28', '2025-12-24', '2026-11-27', '2026-12-24', '2027-11-26']);
+
 interface LiveTerminalFlowProps {
   profile: GexProfileData;
   ticker: string;
@@ -97,7 +109,15 @@ export function LiveTerminalFlow({ profile: liveProfile, ticker, decimals }: Liv
 
   // Market session (ET regular hours). A "LIVE" badge must never sit over a closed/frozen tape, so the
   // feed status below is gated on this: when the session is closed we show LAST CLOSE, not LIVE.
-  const marketOpen = useMemo(() => { const et = new Date(now.toLocaleString('en-US', { timeZone: 'America/New_York' })); const secs = et.getHours() * 3600 + et.getMinutes() * 60 + et.getSeconds(); const dow = et.getDay(); return dow >= 1 && dow <= 5 && secs >= 9.5 * 3600 && secs <= 16 * 3600; }, [now]);
+  const marketOpen = useMemo(() => {
+    const et = new Date(now.toLocaleString('en-US', { timeZone: 'America/New_York' }));
+    const secs = et.getHours() * 3600 + et.getMinutes() * 60 + et.getSeconds();
+    const dow = et.getDay();
+    const key = `${et.getFullYear()}-${String(et.getMonth() + 1).padStart(2, '0')}-${String(et.getDate()).padStart(2, '0')}`;
+    if (dow === 0 || dow === 6 || NYSE_HOLIDAYS.has(key)) return false;   // weekend or full-day holiday
+    const close = NYSE_HALF_DAYS.has(key) ? 13 * 3600 : 16 * 3600;        // 1pm early close on half-days
+    return secs >= 9.5 * 3600 && secs <= close;
+  }, [now]);
   // Honest feed status from the server's own source label — provider when the options chain
   // is live, MODEL on synthetic data, STALE if the heartbeat stalls. Never a hardcoded "LIVE".
   const feedRaw = (profile.feed || serverState?.data_source || '').toUpperCase();

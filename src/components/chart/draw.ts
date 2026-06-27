@@ -282,8 +282,8 @@ export function drawChart(deps: DrawDeps) {
       // per-strike sign. Label the zones with Σγ so a negative individual strike inside the upper zone
       // is not read as a contradiction: the zone describes aggregate dealer positioning, not one strike.
       ctx.font = '700 8.5px ui-monospace, monospace'; ctx.textAlign = 'left';
-      if (fy - priceTop > 18) { ctx.fillStyle = hexA(COL.up, 0.6); ctx.fillText('Σγ POSITIVE · DEALERS LONG · PINNED', plotL + 8, fy - 8); }
-      if (priceBottom - fy > 18) { ctx.fillStyle = hexA(COL.down, 0.6); ctx.fillText('Σγ NEGATIVE · DEALERS SHORT · UNSTABLE', plotL + 8, fy + 13); }
+      if (fy - priceTop > 18) { ctx.fillStyle = hexA(COL.up, 0.62); ctx.fillText('Σγ POSITIVE (CUMULATIVE) · DEALERS NET-LONG · PINNED', plotL + 8, fy - 8); }
+      if (priceBottom - fy > 18) { ctx.fillStyle = hexA(COL.down, 0.62); ctx.fillText('Σγ NEGATIVE (CUMULATIVE) · DEALERS NET-SHORT · UNSTABLE', plotL + 8, fy + 13); }
     }
 
     // Expected-move ±1σ channel — shade the band between EM+ and EM- (dealer-implied day range) and
