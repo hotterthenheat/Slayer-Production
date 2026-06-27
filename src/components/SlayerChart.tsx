@@ -638,6 +638,19 @@ export const SlayerChart = memo(function SlayerChartImpl({ profile, decimals, ca
       if (prev && !sameDay(prev.timestamp, c.timestamp)) { const x = xOf(gi); ctx.strokeStyle = 'rgba(255,255,255,0.10)'; ctx.beginPath(); ctx.moveTo(px(x - barW / 2), priceTop); ctx.lineTo(px(x - barW / 2), priceBottom); ctx.stroke(); lastDayTickX = x; }
     }
 
+    // Gamma regime backdrop — the single most important GEX read. ABOVE the flip dealers are LONG γ
+    // (hedge against the move → suppressive, price pins / mean-reverts); BELOW it they're SHORT γ
+    // (hedge with the move → accelerant, trend / high-vol). A faint split tint that blooms from the
+    // flip line makes the regime obvious before you read a single number.
+    if (typeof profile.gammaFlip === 'number' && profile.gammaFlip > 0) {
+      const fy = Math.max(priceTop, Math.min(priceBottom, yP(profile.gammaFlip)));
+      if (fy > priceTop + 0.5) { const gp = ctx.createLinearGradient(0, priceTop, 0, fy); gp.addColorStop(0, hexA(COL.up, 0.014)); gp.addColorStop(1, hexA(COL.up, 0.065)); ctx.fillStyle = gp; ctx.fillRect(plotL, priceTop, plotW, fy - priceTop); }
+      if (fy < priceBottom - 0.5) { const gn = ctx.createLinearGradient(0, fy, 0, priceBottom); gn.addColorStop(0, hexA(COL.down, 0.07)); gn.addColorStop(1, hexA(COL.down, 0.014)); ctx.fillStyle = gn; ctx.fillRect(plotL, fy, plotW, priceBottom - fy); }
+      ctx.font = '700 8.5px ui-monospace, monospace'; ctx.textAlign = 'left';
+      if (fy - priceTop > 18) { ctx.fillStyle = hexA(COL.up, 0.46); ctx.fillText('POSITIVE γ · PINNED', plotL + 8, fy - 8); }
+      if (priceBottom - fy > 18) { ctx.fillStyle = hexA(COL.down, 0.46); ctx.fillText('NEGATIVE γ · UNSTABLE', plotL + 8, fy + 13); }
+    }
+
     // Expected-move ±1σ channel — shade the band between EM+ and EM- (dealer-implied day range).
     if (profile.spot && profile.expectedMovePct) {
       const emHi = yP(profile.spot * (1 + profile.expectedMovePct)), emLo = yP(profile.spot * (1 - profile.expectedMovePct));
@@ -648,15 +661,19 @@ export const SlayerChart = memo(function SlayerChartImpl({ profile, decimals, ca
     // Volume strip — opacity scales with price velocity (|Δ| vs ATR) so impulse bars read louder.
     if (showVolume && volBandH > 0) {
       let maxVol = 0; for (const c of vis) maxVol = Math.max(maxVol, c.volume || 0);
-      const volBase = priceBottom;
-      ctx.strokeStyle = 'rgba(255,255,255,0.06)'; ctx.beginPath(); ctx.moveTo(plotL, px(priceBottom - volBandH - 1)); ctx.lineTo(plotR, px(priceBottom - volBandH - 1)); ctx.stroke();
+      const volBase = priceBottom, volTop = priceBottom - volBandH;
+      ctx.strokeStyle = 'rgba(255,255,255,0.06)'; ctx.beginPath(); ctx.moveTo(plotL, px(volTop - 1)); ctx.lineTo(plotR, px(volTop - 1)); ctx.stroke();
+      // Gradient bars — brighter at the base, fading up — so the strip reads with depth, not flat blocks.
+      const vgUp = ctx.createLinearGradient(0, volTop, 0, volBase); vgUp.addColorStop(0, hexA(COL.up, 0.28)); vgUp.addColorStop(1, hexA(COL.up, 0.95));
+      const vgDn = ctx.createLinearGradient(0, volTop, 0, volBase); vgDn.addColorStop(0, hexA(COL.down, 0.28)); vgDn.addColorStop(1, hexA(COL.down, 0.95));
       for (let i = 0; i < vis.length; i++) {
         const gi = start + i, c = vis[i], vh = maxVol ? ((c.volume || 0) / maxVol) * (volBandH - 2) : 0;
         const a = atr[gi], vel = a && a > 0 ? Math.min(1, Math.abs(c.close - c.open) / (1.6 * a)) : 0.4;
-        const alpha = 0.2 + vel * 0.45;
-        ctx.fillStyle = c.close >= c.open ? hexA(COL.up, alpha) : hexA(COL.down, alpha);
+        ctx.globalAlpha = 0.34 + vel * 0.5;
+        ctx.fillStyle = c.close >= c.open ? vgUp : vgDn;
         ctx.fillRect(xOf(gi) - barW * 0.34, volBase - vh, barW * 0.68, vh);
       }
+      ctx.globalAlpha = 1;
     }
 
     // γ-LANE — clean net-gamma EXPOSURE profile in the right gutter. Gold (call-dominant) / violet
@@ -854,7 +871,9 @@ export const SlayerChart = memo(function SlayerChartImpl({ profile, decimals, ca
       const tagW = nameW + pctW + 17, tagR = plotR - 4, tagL = tagR - tagW, ty = L.off ? (L.dir < 0 ? priceTop + tagH / 2 + 2 : priceBottom - tagH / 2 - 2) : L.y;
       // connector from the line's right end back to the tag whenever the tag was nudged off its price
       if (!L.off && Math.abs(L.y - L.rawY) > 1) { ctx.strokeStyle = hexA(col, 0.55); ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(plotR - 3, px(L.rawY) - 0.5); ctx.lineTo(tagR - 2, px(ty) - 0.5); ctx.stroke(); }
-      rr(tagL, ty - tagH / 2, tagW, tagH, 3); ctx.fillStyle = isTop ? 'rgba(26,18,38,0.92)' : 'rgba(9,12,17,0.9)'; ctx.fill(); ctx.strokeStyle = hexA(col, isTop ? 1 : 0.85); ctx.lineWidth = isTop ? 1.3 : 1; ctx.stroke(); ctx.lineWidth = 1;
+      rr(tagL, ty - tagH / 2, tagW, tagH, 3);
+      ctx.save(); ctx.shadowColor = 'rgba(0,0,0,0.5)'; ctx.shadowBlur = 5; ctx.shadowOffsetY = 1; ctx.fillStyle = isTop ? 'rgba(26,18,38,0.92)' : 'rgba(9,12,17,0.9)'; ctx.fill(); ctx.restore();
+      ctx.strokeStyle = hexA(col, isTop ? 1 : 0.85); ctx.lineWidth = isTop ? 1.3 : 1; ctx.stroke(); ctx.lineWidth = 1;
       ctx.fillStyle = col; ctx.beginPath(); ctx.arc(tagL + 7, ty, 2.4, 0, Math.PI * 2); ctx.fill();
       ctx.textAlign = 'left'; ctx.fillText(nameLbl, tagL + 12, ty);
       if (pctLbl) { ctx.fillStyle = hexA(T.text, 0.72); ctx.fillText(pctLbl, tagL + 12 + nameW, ty); }
