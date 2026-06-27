@@ -342,7 +342,7 @@ export function LiveTerminalFlow({ profile: liveProfile, ticker, decimals }: Liv
         {r.isCW && <span className="w-1.5 h-1.5 rounded-full" style={{ background: 'var(--success)' }} title="Call Wall" />}
         {r.isPW && <span className="w-1.5 h-1.5 rounded-full" style={{ background: 'var(--danger)' }} title="Put Wall" />}
         {r.isFlip && <span className="w-1.5 h-1.5 rounded-sm" style={{ background: 'var(--warning)' }} title="GEX Flip" />}
-        <span className="font-black tracking-wider" style={{ color: r.isSpot ? 'var(--accent-color)' : 'var(--text-secondary)' }}>{fmtNum(r.strike)}</span>
+        <span className="font-black tracking-wider" style={{ color: r.isSpot ? 'var(--accent-color)' : 'var(--text-secondary)' }}>{fmtNum(r.strike, decimals)}</span>
       </div>
       <div className="relative flex items-center h-full">
         <div className="w-1/2 h-full flex items-center justify-end pr-0.5 border-r border-dotted border-[var(--border)]"><div className="h-[9px] rounded-sm" style={{ width: `${r.putPct}%`, background: 'color-mix(in srgb, var(--danger) 60%, transparent)', transition: 'width 0.45s cubic-bezier(0.16,1,0.3,1)' }} /></div>
@@ -543,7 +543,7 @@ export function LiveTerminalFlow({ profile: liveProfile, ticker, decimals }: Liv
                   {outlook.target != null && (
                     <div className="flex items-center gap-1.5 mt-1.5 pt-1.5 border-t" style={{ borderColor: 'color-mix(in srgb, var(--border) 80%, transparent)' }}>
                       <span className="text-[8.5px] font-mono uppercase tracking-widest text-[var(--text-tertiary)]">Path toward</span>
-                      <span className="text-[12px] font-mono font-black tabular-nums" style={{ color: outlookColor }}>{fmtNum(outlook.target)}</span>
+                      <span className="text-[12px] font-mono font-black tabular-nums" style={{ color: outlookColor }}>{fmtNum(outlook.target, decimals)}</span>
                       <span className="text-[9px] font-mono tabular-nums text-[var(--text-tertiary)] ml-auto">{distLabel(outlook.target)}</span>
                     </div>
                   )}
@@ -572,9 +572,9 @@ export function LiveTerminalFlow({ profile: liveProfile, ticker, decimals }: Liv
                       <div className="text-[8.5px] font-mono uppercase tracking-widest text-[var(--text-tertiary)] mb-1">Wall Strength · 0–100</div>
                       <div className="grid grid-cols-2 gap-2">
                         {[{ w: wallRes, lbl: 'Resistance', col: 'var(--danger)' }, { w: wallSup, lbl: 'Support', col: 'var(--success)' }].map(({ w, lbl, col }) => (
-                          <div key={lbl} className="min-w-0" title={w ? `${lbl} ${fmtNum(w.strike)} — strength ${w.score}/100 (gamma · OI · volume)` : `no ${lbl.toLowerCase()} wall`}>
+                          <div key={lbl} className="min-w-0" title={w ? `${lbl} ${fmtNum(w.strike, decimals)} — strength ${w.score}/100 (gamma · OI · volume)` : `no ${lbl.toLowerCase()} wall`}>
                             <div className="flex items-center justify-between">
-                              <span className="text-[9px] font-mono font-bold tabular-nums text-[var(--text-secondary)]">{lbl === 'Resistance' ? '▲ ' : '▼ '}{w ? fmtNum(w.strike) : '—'}</span>
+                              <span className="text-[9px] font-mono font-bold tabular-nums text-[var(--text-secondary)]">{lbl === 'Resistance' ? '▲ ' : '▼ '}{w ? fmtNum(w.strike, decimals) : '—'}</span>
                               <span className="text-[10px] font-mono font-black tabular-nums" style={{ color: w ? col : 'var(--text-tertiary)' }}>{w ? w.score : '—'}</span>
                             </div>
                             <div className="h-1 rounded-full bg-[var(--surface-3)] overflow-hidden mt-0.5"><div className="h-full rounded-full" style={{ width: `${w ? Math.min(100, w.score) : 0}%`, background: col }} /></div>
@@ -611,8 +611,8 @@ export function LiveTerminalFlow({ profile: liveProfile, ticker, decimals }: Liv
                     <div className="flex items-center justify-between mb-3">
                       <span className="text-[9px] font-black tracking-widest uppercase text-[var(--text-tertiary)]">Dealer Structure</span>
                       {migration && migration.direction !== 'STABLE' && (
-                        <span className="flex items-center gap-0.5 text-[8.5px] font-mono font-black uppercase tracking-wide tabular-nums" style={{ color: migration.direction === 'BULLISH' ? 'var(--success)' : 'var(--danger)' }} title={`Gamma center-of-mass migrating ${migration.direction.toLowerCase()} — the dealer pin is drifting toward ${fmtNum(migration.comCurrent)}`}>
-                          {migration.direction === 'BULLISH' ? <TrendingUp className="w-2.5 h-2.5" /> : <TrendingDown className="w-2.5 h-2.5" />} CoM {fmtNum(migration.comCurrent)}
+                        <span className="flex items-center gap-0.5 text-[8.5px] font-mono font-black uppercase tracking-wide tabular-nums" style={{ color: migration.direction === 'BULLISH' ? 'var(--success)' : 'var(--danger)' }} title={`Gamma center-of-mass migrating ${migration.direction.toLowerCase()} — the dealer pin is drifting toward ${fmtNum(migration.comCurrent, decimals)}`}>
+                          {migration.direction === 'BULLISH' ? <TrendingUp className="w-2.5 h-2.5" /> : <TrendingDown className="w-2.5 h-2.5" />} CoM {fmtNum(migration.comCurrent, decimals)}
                         </span>
                       )}
                     </div>
@@ -623,7 +623,7 @@ export function LiveTerminalFlow({ profile: liveProfile, ticker, decimals }: Liv
                       </motion.div>
                     </div>
                     <div className="relative h-7 mt-2">
-                      {structure.pts.map((pt, i) => (<div key={i} className="absolute -translate-x-1/2 text-center leading-tight" style={{ left: `${pt.x}%` }}><div className="text-[9px] font-mono font-black" style={{ color: pt.c }}>{pt.l}</div><div className="text-[9px] font-mono text-[var(--text-tertiary)] tabular-nums">{fmtNum(pt.p as number)}</div></div>))}
+                      {structure.pts.map((pt, i) => (<div key={i} className="absolute -translate-x-1/2 text-center leading-tight" style={{ left: `${pt.x}%` }}><div className="text-[9px] font-mono font-black" style={{ color: pt.c }}>{pt.l}</div><div className="text-[9px] font-mono text-[var(--text-tertiary)] tabular-nums">{fmtNum(pt.p as number, decimals)}</div></div>))}
                     </div>
                   </div>
                 )}
@@ -636,7 +636,7 @@ export function LiveTerminalFlow({ profile: liveProfile, ticker, decimals }: Liv
                       <div key={l.n} className="flex items-center gap-2 px-3 h-[26px] hover:bg-[var(--surface-3)] transition-colors" style={{ borderTop: i ? '1px solid var(--border)' : undefined }}>
                         <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ background: l.c }} />
                         <span className="text-[11px] font-mono font-bold flex-1 truncate text-[var(--text-secondary)] flex items-center gap-1">{l.n}{((l.n === 'GEX Flip' && !flipConfident) || ((l.n === 'Call Wall' || l.n === 'Put Wall') && !wallsConfident)) && <span className="px-1 rounded-sm text-[8px] font-black tracking-wide uppercase shrink-0" style={{ background: 'color-mix(in srgb, var(--warning) 16%, transparent)', color: 'var(--warning)' }} title="Statistically thin — the engine flags this level as a low-confidence estimate">est</span>}</span>
-                        <span className="text-[11px] font-mono font-black tabular-nums" style={{ color: l.c }}>{fmtNum(l.v as number)}</span>
+                        <span className="text-[11px] font-mono font-black tabular-nums" style={{ color: l.c }}>{fmtNum(l.v as number, decimals)}</span>
                         <span className="text-[10px] font-mono tabular-nums w-[42px] text-right text-[var(--text-tertiary)]">{distLabel(l.v)}</span>
                       </div>
                     ))}
@@ -708,8 +708,8 @@ export function LiveTerminalFlow({ profile: liveProfile, ticker, decimals }: Liv
             {(vacAbove || vacBelow) && (
               <div className="flex items-center gap-2 px-3 py-1 border-b border-[var(--border)] shrink-0 text-[9px] font-mono" style={{ background: 'color-mix(in srgb, var(--warning) 6%, transparent)' }} title="Liquidity vacuums — strike bands with little dealer gamma / OI / volume, where price tends to travel fast">
                 <span className="font-black tracking-widest uppercase shrink-0" style={{ color: 'var(--warning)' }}>Air Pockets</span>
-                {vacAbove && <span className="tabular-nums shrink-0" style={{ color: 'var(--text-secondary)' }}>▲ {fmtNum(vacAbove.lo)}–{fmtNum(vacAbove.hi)}</span>}
-                {vacBelow && <span className="tabular-nums shrink-0" style={{ color: 'var(--text-secondary)' }}>▼ {fmtNum(vacBelow.lo)}–{fmtNum(vacBelow.hi)}</span>}
+                {vacAbove && <span className="tabular-nums shrink-0" style={{ color: 'var(--text-secondary)' }}>▲ {fmtNum(vacAbove.lo, decimals)}–{fmtNum(vacAbove.hi, decimals)}</span>}
+                {vacBelow && <span className="tabular-nums shrink-0" style={{ color: 'var(--text-secondary)' }}>▼ {fmtNum(vacBelow.lo, decimals)}–{fmtNum(vacBelow.hi, decimals)}</span>}
                 <span className="ml-auto text-[var(--text-tertiary)] shrink-0 hidden sm:inline">fast-move zones</span>
               </div>
             )}
@@ -736,7 +736,7 @@ export function LiveTerminalFlow({ profile: liveProfile, ticker, decimals }: Liv
                       const mk = r.isCW ? 'var(--success)' : r.isPW ? 'var(--danger)' : r.isFlip ? 'var(--warning)' : null;
                       return (
                         <div key={r.strike} data-strike={r.strike} className="absolute left-0 right-0 flex items-center px-2" style={{ top: `${r.yPct}%`, height: `${rowHpct}%`, transform: 'translateY(-50%)', transition: 'top 0.3s cubic-bezier(0.22,1,0.36,1), height 0.3s cubic-bezier(0.22,1,0.36,1)', background: inVac ? 'color-mix(in srgb, var(--warning) 5%, transparent)' : undefined }}>
-                          {labels && <span className="w-[42px] shrink-0 text-right text-[9px] font-mono tabular-nums flex items-center justify-end gap-1" style={{ color: r.isSpot ? 'var(--accent-color)' : 'var(--text-tertiary)' }}>{mk && <span className="w-1 h-1 rounded-full shrink-0" style={{ background: mk }} />}{fmtNum(r.strike)}</span>}
+                          {labels && <span className="w-[42px] shrink-0 text-right text-[9px] font-mono tabular-nums flex items-center justify-end gap-1" style={{ color: r.isSpot ? 'var(--accent-color)' : 'var(--text-tertiary)' }}>{mk && <span className="w-1 h-1 rounded-full shrink-0" style={{ background: mk }} />}{fmtNum(r.strike, decimals)}</span>}
                           <div className="flex-1 h-full flex items-center mx-1.5">
                             <div className="w-1/2 h-full flex items-center justify-end pr-px border-r border-[var(--border)]"><div className="rounded-l-[2px]" style={{ width: `${r.putPct}%`, height: barH, background: 'color-mix(in srgb, var(--danger) 62%, transparent)', transition: 'width 0.42s cubic-bezier(0.22,1,0.36,1), height 0.3s ease' }} /></div>
                             <div className="w-1/2 h-full flex items-center justify-start pl-px"><div className="rounded-r-[2px]" style={{ width: `${r.callPct}%`, height: barH, background: 'color-mix(in srgb, var(--success) 62%, transparent)', transition: 'width 0.42s cubic-bezier(0.22,1,0.36,1), height 0.3s ease' }} /></div>

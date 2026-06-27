@@ -462,7 +462,7 @@ export function drawChart(deps: DrawDeps) {
       const tagBudget = Math.min(gexCount, Math.max(5, Math.round(priceAreaH / 44)));
       const cand = profile.strikes.filter(s => s.strike >= lo && s.strike <= hi && Math.abs(s.netGex || 0) > 0 && !named.some(nm => Math.abs(nm - s.strike) < 1e-6))
         .sort((a, b) => Math.abs(b.netGex || 0) - Math.abs(a.netGex || 0)).slice(0, tagBudget);
-      cand.forEach((s, i) => { const g = s.netGex || 0, rk = i < 3 ? `#${i + 1} ` : ''; pushLvl(s.strike, g >= 0 ? COL.up : COL.down, 'GEX', Math.abs(g), `${rk}${Math.round(s.strike)}  ${fmtGex(g)}`); });
+      cand.forEach((s, i) => { const g = s.netGex || 0, rk = i < 3 ? `#${i + 1} ` : ''; pushLvl(s.strike, g >= 0 ? COL.up : COL.down, 'GEX', Math.abs(g), `${rk}${nf(s.strike)}  ${fmtGex(g)}`); });
     }
     const maxLvlGex = Math.max(...lvls.map(L => L.gex || 0), 1e-9);
     const maxLoadedGex = Math.max(...lvls.filter(L => L.value).map(L => L.gex || 0), 1e-9);
@@ -544,7 +544,7 @@ export function drawChart(deps: DrawDeps) {
       if (pctLbl) { ctx.fillStyle = hexA(T.text, 0.72); ctx.fillText(pctLbl, tagL + 12 + nameW, ty); }
       if (deltaLbl) { ctx.fillStyle = deltaUp ? COL.up : COL.down; ctx.fillText(deltaLbl, tagL + 12 + nameW + pctW, ty); }
       // named levels print their exact price on the axis at the SAME size as the gridline scale (uniform)
-      if (!L.value) { ctx.textAlign = 'right'; ctx.font = '11px ui-monospace, monospace'; ctx.fillStyle = hexA(col, 0.95); ctx.fillText(nfT(L.price), W - 3, ty); }
+      if (!L.value) { ctx.textAlign = 'right'; ctx.font = '11px ui-monospace, monospace'; ctx.fillStyle = hexA(col, 0.95); ctx.fillText(nf(L.price), W - 3, ty); }
     }
     ctx.font = '11px ui-monospace, monospace';
 
@@ -662,7 +662,7 @@ export function drawChart(deps: DrawDeps) {
           if (Math.abs(g) > 0 && nd <= pr * 0.012) {
             const gc = g >= 0 ? COL.up : COL.down;
             const tag = ns.strike === profile.callWall ? ' CW' : ns.strike === profile.putWall ? ' PW' : ns.strike === profile.gammaFlip ? ' ⚑' : ns.strike === profile.magnet ? ' MAG' : '';
-            const lbl = `${Math.round(ns.strike)} · ${fmtGex(g)}γ${tag}`;
+            const lbl = `${nf(ns.strike)} · ${fmtGex(g)}γ${tag}`;
             ctx.font = '700 10px ui-monospace, monospace'; ctx.textAlign = 'right';
             const pw = ctx.measureText(lbl).width + 12, rEdge = plotR + axisW + gammaW - 1, py = hv.y + 11;
             ctx.beginPath(); (ctx as any).roundRect ? (ctx as any).roundRect(rEdge - pw, py, pw, 16, 3) : ctx.rect(rEdge - pw, py, pw, 16);
