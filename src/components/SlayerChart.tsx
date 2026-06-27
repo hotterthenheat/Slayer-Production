@@ -1378,7 +1378,7 @@ export const SlayerChart = memo(function SlayerChartImpl({ profile, decimals, ca
       <div ref={containerRef} className="relative flex-1 min-h-[300px]" style={{ position: 'relative', flex: 1, minHeight: 300 }}>
         <canvas ref={canvasRef} className="absolute inset-0 cursor-crosshair" style={{ position: 'absolute', inset: 0 }} />
         {showDealerBox && dealerStats && (
-          <div className="absolute top-[52px] left-2 z-10 w-[188px] rounded-md border border-[var(--border-strong)] bg-[var(--surface)] shadow-xl px-2.5 py-2 pointer-events-none select-none font-mono">
+          <div className="absolute top-[52px] left-2 z-10 w-[188px] px-2.5 py-2 pointer-events-none select-none font-mono" style={{ borderRadius: 10, background: 'linear-gradient(160deg, color-mix(in srgb, var(--surface) 90%, transparent), color-mix(in srgb, var(--surface) 78%, transparent))', border: '1px solid var(--border-strong)', backdropFilter: 'blur(8px)', WebkitBackdropFilter: 'blur(8px)', boxShadow: '0 14px 44px -10px rgba(0,0,0,0.72), inset 0 1px 0 rgba(255,255,255,0.07)' }}>
             <div className="text-[8px] font-black uppercase tracking-[0.2em] text-[var(--text-tertiary)] mb-1.5">Dealer Map</div>
             <div className="flex items-baseline justify-between mb-1">
               <span className="text-[9px] text-[var(--text-tertiary)] uppercase tracking-wider">Net GEX</span>
@@ -1388,6 +1388,12 @@ export const SlayerChart = memo(function SlayerChartImpl({ profile, decimals, ca
               <div className="text-[7.5px] uppercase tracking-[0.2em] text-[var(--text-tertiary)] mb-0.5">Dealer Bias</div>
               <div className="text-[16px] font-black uppercase tracking-wide leading-none" style={{ color: dealerStats.long ? 'var(--success)' : 'var(--danger)' }}>{dealerStats.long ? 'LONG γ' : 'SHORT γ'}</div>
             </div>
+            {typeof profile.spot === 'number' && typeof profile.gammaFlip === 'number' && (
+              <div className="flex items-baseline justify-between mb-2">
+                <span className="text-[8px] text-[var(--text-tertiary)] uppercase tracking-wider">Spot vs Flip</span>
+                <span className="text-[9.5px] font-black tabular-nums" style={{ color: profile.spot >= profile.gammaFlip ? 'var(--success)' : 'var(--danger)' }}>{profile.spot >= profile.gammaFlip ? '▲ +' : '▼ '}{(profile.spot - profile.gammaFlip).toLocaleString('en-US', { minimumFractionDigits: decimals, maximumFractionDigits: decimals })}</span>
+              </div>
+            )}
             <div className="flex items-center justify-between mb-1"><span className="text-[9px] text-[var(--text-tertiary)] uppercase tracking-wider">Dealer Pressure</span><span className="text-[9px] font-black tabular-nums" style={{ color: dealerStats.long ? 'var(--success)' : 'var(--danger)' }}>{dealerStats.callPct}%</span></div>
             <div className="h-2 rounded-full overflow-hidden mb-1" style={{ background: 'color-mix(in srgb, var(--danger) 45%, transparent)' }}><div className="h-full rounded-full" style={{ width: dealerStats.callPct + '%', background: 'var(--success)' }} /></div>
             <div className="flex justify-between text-[8px] mb-2"><span style={{ color: 'var(--success)' }}>{dealerStats.callPct}% calls</span><span style={{ color: 'var(--danger)' }}>{100 - dealerStats.callPct}% puts</span></div>
