@@ -1251,7 +1251,9 @@ export const SlayerChart = memo(function SlayerChartImpl({ profile, decimals, ca
         if (!tickerEditing && /^[a-zA-Z]$/.test(e.key)) { setTickerDraft(e.key.toUpperCase()); setTickerEditing(true); }
       } : undefined}
       style={{ width: '100%', height: '100%', display: 'flex', flexDirection: 'column', background: 'var(--bg-base)' }}>
-      <div className="flex flex-wrap items-center gap-1.5 px-2 py-1.5 border-b border-[var(--border)] shrink-0 relative">
+      {/* Hidden toolbar — recedes to a faint state and reveals on hover/focus, so the chart leads and the
+          retail tool-clutter disappears until you reach for it (institutional hotkey-first ethos). */}
+      <div className="flex flex-wrap items-center gap-1.5 px-2 py-1.5 border-b border-[var(--border)] shrink-0 relative opacity-40 hover:opacity-100 focus-within:opacity-100 transition-opacity duration-200">
         {/* ── Command palette (panel mode): symbol input · sync channel · expiry ── */}
         {panelId && (
           <>
