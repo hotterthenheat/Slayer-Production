@@ -178,26 +178,20 @@ export function drawChart(deps: DrawDeps) {
     // Slayer Terminal brand watermark — the ">slayer_terminal▌" logo lockup over the ticker · timeframe,
     // faint in the lower third behind the candles (the chart's own mark, à la a TradingView chart logo).
     // Authentic monospace brand font + glow caret block; theme-aware alpha so it also reads on light themes.
+    // Cornered, low-opacity brand mark (bottom-left of the price area) — a chart logo must never sit
+    // over the candles it's there to display, so it's kept small and out of the price path.
     if (showWatermark) {
       ctx.save();
-      const wmX = plotL + plotW / 2, wmY = priceTop + priceAreaH * 0.7;
-      const fs = Math.max(15, Math.min(40, plotW / 15));
+      const fs = Math.max(11, Math.min(18, plotW / 42));
       ctx.font = `800 ${fs}px "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace`;
       ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic';
       const prompt = '>', word = 'slayer_terminal';
       const pW = ctx.measureText(prompt).width, wW = ctx.measureText(word).width;
       const promptGap = fs * 0.06, caretGap = fs * 0.16, caretW = fs * 0.46;
-      const totalW = pW + promptGap + wW + caretGap + caretW;
-      let x = wmX - totalW / 2;
-      ctx.fillStyle = hexA(T.text, 0.055); ctx.fillText(prompt, x, wmY); x += pW + promptGap;   // ">" prompt
-      ctx.fillStyle = hexA(T.text, 0.08); ctx.fillText(word, x, wmY); x += wW + caretGap;        // wordmark
-      ctx.fillStyle = hexA(T.text, 0.12); ctx.fillRect(x, wmY - fs * 0.72, caretW, fs * 0.82);   // caret block
-      if (tickKey) {
-        ctx.textAlign = 'center';
-        ctx.font = `600 ${fs * 0.5}px ui-sans-serif, system-ui, sans-serif`;
-        ctx.fillStyle = hexA(T.text, 0.05);
-        ctx.fillText(`${tickKey}${tfKey ? '  ·  ' + tfKey : ''}`, wmX, wmY + fs * 0.72);
-      }
+      let x = plotL + 8, wmY = px(priceBottom) - 8;
+      ctx.fillStyle = hexA(T.text, 0.05); ctx.fillText(prompt, x, wmY); x += pW + promptGap;    // ">" prompt
+      ctx.fillStyle = hexA(T.text, 0.07); ctx.fillText(word, x, wmY); x += wW + caretGap;        // wordmark
+      ctx.fillStyle = hexA(T.text, 0.1); ctx.fillRect(x, wmY - fs * 0.72, caretW, fs * 0.82);    // caret block
       ctx.restore(); ctx.font = '11px ui-monospace, monospace';
     }
 
@@ -295,7 +289,9 @@ export function drawChart(deps: DrawDeps) {
         const eg = ctx.createLinearGradient(0, top, 0, top + h);
         eg.addColorStop(0, hexA(COL.em, 0.11)); eg.addColorStop(0.5, hexA(COL.em, 0.035)); eg.addColorStop(1, hexA(COL.em, 0.11));
         ctx.fillStyle = eg; ctx.fillRect(plotL, top, plotW, h);
-        if (h > 26) { ctx.font = '700 8px ui-monospace, monospace'; ctx.textAlign = 'left'; ctx.fillStyle = hexA(COL.em, 0.5); ctx.fillText(`EXPECTED MOVE · ±${(profile.expectedMovePct * 100).toFixed(2)}%`, plotL + 8, top + 9); ctx.font = '11px ui-monospace, monospace'; }
+        // In-band caption — only when the band's top clears the top-left status line (otherwise the
+        // "Exp Move" tag on the price axis labels it). Prevents "EXPECTED MOVE" colliding with "SPX · 5m".
+        if (h > 26 && top > priceTop + 18) { ctx.font = '700 8px ui-monospace, monospace'; ctx.textAlign = 'left'; ctx.fillStyle = hexA(COL.em, 0.5); ctx.fillText(`EXPECTED MOVE · ±${(profile.expectedMovePct * 100).toFixed(2)}%`, plotL + 8, top + 9); ctx.font = '11px ui-monospace, monospace'; }
       }
     }
 
@@ -456,13 +452,16 @@ export function drawChart(deps: DrawDeps) {
     // lines), so the dealer positioning BEHIND the walls is visible, not just the walls themselves.
     if (showLadder && profile.strikes && profile.strikes.length) {
       const named = [profile.callWall, profile.putWall, profile.gammaFlip, profile.magnet].filter((x): x is number => typeof x === 'number');
-      // How many loaded-strike tags to show scales with the price area's HEIGHT — a taller / expanded
-      // chart (more price levels on the axis) reveals more GEX strikes; a short one stays uncluttered.
-      // Always bounded by the user's gexCount ("Strikes shown"); walls / flip / magnet carry the rest.
-      const tagBudget = Math.min(gexCount, Math.max(5, Math.round(priceAreaH / 44)));
-      const cand = profile.strikes.filter(s => s.strike >= lo && s.strike <= hi && Math.abs(s.netGex || 0) > 0 && !named.some(nm => Math.abs(nm - s.strike) < 1e-6))
-        .sort((a, b) => Math.abs(b.netGex || 0) - Math.abs(a.netGex || 0)).slice(0, tagBudget);
-      cand.forEach((s, i) => { const g = s.netGex || 0, rk = i < 3 ? `#${i + 1} ` : ''; pushLvl(s.strike, g >= 0 ? COL.up : COL.down, 'GEX', Math.abs(g), `${rk}${nf(s.strike)}  ${fmtGex(g)}`); });
+      // The chart is the structural SUMMARY, not the full per-strike table — that's the Exposure Ladder's
+      // job, and labeling all ~20 strikes here just duplicates it. The 4 named levels (walls/flip/magnet)
+      // are drawn separately; here we add only the strongest gamma strike(s) on EACH side of price, so the
+      // two surfaces don't compete. "Strikes shown" (gexCount) scales how many per side for power users.
+      const perSide = Math.max(1, Math.round(gexCount / 2));
+      const byMag = (a: typeof profile.strikes[number], b: typeof profile.strikes[number]) => Math.abs(b.netGex || 0) - Math.abs(a.netGex || 0);
+      const eligible = profile.strikes.filter(s => Math.abs(s.netGex || 0) > 0 && !named.some(nm => Math.abs(nm - s.strike) < 1e-6));
+      const above = eligible.filter(s => s.strike > last && s.strike <= hi).sort(byMag).slice(0, perSide);
+      const below = eligible.filter(s => s.strike < last && s.strike >= lo).sort(byMag).slice(0, perSide);
+      [...above, ...below].forEach(s => { const g = s.netGex || 0; pushLvl(s.strike, g >= 0 ? COL.up : COL.down, 'GEX', Math.abs(g), `${nf(s.strike)}  ${fmtGex(g)}`); });
     }
     const maxLvlGex = Math.max(...lvls.map(L => L.gex || 0), 1e-9);
     const maxLoadedGex = Math.max(...lvls.filter(L => L.value).map(L => L.gex || 0), 1e-9);

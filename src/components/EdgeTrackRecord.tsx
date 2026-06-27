@@ -84,6 +84,10 @@ export function EdgeTrackRecord({ profile, ticker, candles, provenance }: Props)
     return gap < 0 ? { t: 'OVERCONF', c: 'var(--danger)' } : { t: 'UNDERCONF', c: 'var(--info)' };
   })() : null;
 
+  // Hidden until outcomes resolve — an empty "track record" only advertises that we have none yet. The
+  // recording effect above keeps logging in the background, so the panel appears the moment it has data. (P1-9)
+  if (scopedN === 0) return null;
+
   return (
     <div className="rounded-lg border border-[var(--border)] bg-[var(--surface)] overflow-hidden">
       <div className="flex items-center gap-2 px-3 h-8 border-b border-[var(--border)]">
@@ -97,12 +101,7 @@ export function EdgeTrackRecord({ profile, ticker, candles, provenance }: Props)
         )}
       </div>
 
-      {scopedN === 0 ? (
-        <div className="px-3 py-4 text-[10px] font-mono text-[var(--text-tertiary)] leading-relaxed">
-          Logging dealer reads… the edge proves itself as outcomes resolve over the next {HORIZON_BARS} bars.
-        </div>
-      ) : (
-        <div className="px-3 py-2.5">
+      <div className="px-3 py-2.5">
           {/* Killer line: how the CURRENTLY-CALLED regime has historically resolved */}
           <div className="flex items-baseline justify-between gap-2">
             <span className="text-[10px] font-mono uppercase tracking-wider text-[var(--text-secondary)] truncate">{outlook.regime} reads {here && here.n >= MIN_REGIME_N ? 'held' : ''}</span>
@@ -158,7 +157,6 @@ export function EdgeTrackRecord({ profile, ticker, candles, provenance }: Props)
             </div>
           )}
         </div>
-      )}
     </div>
   );
 }

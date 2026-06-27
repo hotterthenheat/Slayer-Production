@@ -1,5 +1,4 @@
 import { useMemo, useState, useRef, useEffect, CSSProperties } from 'react';
-import { motion } from 'motion/react';
 import { GexProfileData, OrderFlowData } from '../types';
 import { useContractStore } from '../lib/store';
 import { computeTerminalRead, computeGexOutlook } from '../lib/terminalRead';
@@ -240,21 +239,6 @@ export function LiveTerminalFlow({ profile: liveProfile, ticker, decimals }: Liv
     { n: 'Put Wall', v: profile.putWall, c: 'var(--danger)' },
   ] as { n: string; v?: number; c: string }[]).filter(l => typeof l.v === 'number' && (l.v as number) > 0).sort((a, b) => (b.v as number) - (a.v as number));
 
-  // Dealer-structure spectrum (spot position among the dealer walls).
-  const structure = useMemo(() => {
-    const pts = ([
-      { p: profile.putWall, c: 'var(--danger)', l: 'PW' },
-      { p: profile.gammaFlip, c: 'var(--warning)', l: 'γF' },
-      { p: profile.magnet, c: 'var(--info)', l: 'MAG' },
-      { p: profile.callWall, c: 'var(--success)', l: 'CW' },
-    ] as { p?: number; c: string; l: string }[]).filter(x => typeof x.p === 'number' && (x.p as number) > 0);
-    const all = [...pts.map(x => x.p as number), spot].filter(v => v > 0);
-    if (all.length < 2) return null;
-    const lo = Math.min(...all), hi = Math.max(...all), range = (hi - lo) || 1, pad = range * 0.12, L = lo - pad, Hh = hi + pad;
-    const pos = (p: number) => Math.max(2, Math.min(98, ((p - L) / (Hh - L)) * 100));
-    return { pts: pts.map(pt => ({ ...pt, x: pos(pt.p as number) })), spotPos: pos(spot) };
-  }, [profile, spot]);
-
   const hasDex = useMemo(() => (profile.strikes || []).some(s => s.callDex != null || s.putDex != null), [profile]);
   const hasVex = useMemo(() => (profile.strikes || []).some(s => s.callVex != null || s.putVex != null), [profile]);
   const hasOi = useMemo(() => (profile.strikes || []).some(s => (s.callOi || 0) + (s.putOi || 0) > 0), [profile]);
@@ -380,11 +364,32 @@ export function LiveTerminalFlow({ profile: liveProfile, ticker, decimals }: Liv
     return { text: `Net GEX ${rising ? 'climbed' : 'slid'} ${delta >= 0 ? '+' : '−'}${fmtBig(Math.abs(delta))} over the last ${mins} min. ${imp}`, conf: outlook.confidence, rising };
   }, [profile, gexHist, outlook]);
 
-  // Centred macro readout cell — one decision metric in clean stacked type (§2 header zone).
-  const macroStat = (label: string, value: string, color: string) => (
-    <div className="flex flex-col items-center leading-none">
-      <span className="text-[7.5px] font-black uppercase tracking-[0.16em] text-[var(--text-tertiary)]">{label}</span>
-      <span className="text-[12px] font-black tabular-nums mt-1" style={{ color }}>{value}</span>
+  // Confidence as a qualitative BAND, not fake two-sig-fig precision — the scoring weights are
+  // uncalibrated until the forward log resolves enough outcomes (the Edge · Track Record panel proves
+  // them). Neutral colours so a confidence band never reads as a bull/bear (green/red) signal.
+  const confBand = (n: number) => n >= 72 ? { t: 'High', c: 'var(--text-primary)' } : n >= 52 ? { t: 'Medium', c: 'var(--text-secondary)' } : { t: 'Low', c: 'var(--text-tertiary)' };
+
+  // One hero status-line segment: tiny label + bold value (the scannable read lives here, once).
+  const heroSeg = (label: string, value: string, color = 'var(--text-primary)') => (
+    <span className="flex items-baseline gap-1 shrink-0">
+      <span className="text-[8px] font-black uppercase tracking-[0.14em] text-[var(--text-tertiary)]">{label}</span>
+      <span className="text-[12.5px] font-mono font-black tabular-nums" style={{ color }}>{value}</span>
+    </span>
+  );
+  const heroDot = <span className="w-1 h-1 rounded-full bg-[var(--border-strong)] shrink-0" />;
+  // The lead read — regime · pin · gamma sign · (pin strength) · wall range · expected move. This is
+  // the one line a trader scans first; every value below it is detail/spatial, not a repeat at equal weight.
+  const heroLine = (
+    <div className="flex items-center gap-2.5 min-w-0 overflow-hidden">
+      <span className="flex items-center gap-1.5 shrink-0">
+        <span className="w-1.5 h-1.5 rounded-full" style={{ background: outlookColor }} />
+        <span className="text-[13px] font-sans font-black tracking-tight uppercase" style={{ color: outlookColor }}>{outlook.regime}</span>
+      </span>
+      {heroDot}{heroSeg('γ', longGamma ? 'Long' : 'Short', trend)}
+      {profile.magnet ? <>{heroDot}{heroSeg('pin', fmtNum(profile.magnet, decimals))}</> : null}
+      {read.regime === 'PIN' ? <>{heroDot}{heroSeg('str', `${read.pinStrength}`)}</> : null}
+      {(profile.putWall && profile.callWall) ? <>{heroDot}{heroSeg('walls', `${fmtNum(profile.putWall, decimals)} ↔ ${fmtNum(profile.callWall, decimals)}`)}</> : null}
+      {emPct != null ? <>{heroDot}{heroSeg('exp', `±${(emPct * 100).toFixed(2)}%`, 'var(--info)')}</> : null}
     </div>
   );
 
@@ -405,7 +410,7 @@ export function LiveTerminalFlow({ profile: liveProfile, ticker, decimals }: Liv
     <div className="bg-[var(--surface-2)] rounded-lg px-2.5 py-2">
       <div className="text-[9px] font-black tracking-widest uppercase text-[var(--text-tertiary)]">{label}</div>
       <div className="text-[14px] font-mono font-black tabular-nums leading-tight mt-0.5" style={{ color }}>{value}</div>
-      {sub && <div className="text-[10px] font-mono text-[var(--text-tertiary)] mt-0.5 truncate">{sub}</div>}
+      {sub && <div className="text-[10px] font-mono text-[var(--text-tertiary)] mt-0.5 leading-snug">{sub}</div>}
     </div>
   );
 
@@ -477,11 +482,6 @@ export function LiveTerminalFlow({ profile: liveProfile, ticker, decimals }: Liv
             <span className={`text-[19px] font-black tabular-nums leading-none text-[var(--text-primary)] ${flash === 'up' ? 'tick-up' : flash === 'down' ? 'tick-down' : ''}`}>{spot ? spot.toLocaleString('en-US', { minimumFractionDigits: decimals, maximumFractionDigits: decimals }) : '—'}</span>
             <span className="text-[11px] font-bold tabular-nums" style={{ color: dayChg >= 0 ? 'var(--success)' : 'var(--danger)' }}>{dayChg >= 0 ? '+' : ''}{dayChg.toFixed(2)}%</span>
           </div>
-          <span className="w-px h-6 bg-[var(--border)]" />
-          {macroStat('Regime', outlook.regime, outlookColor)}
-          {macroStat('Gamma', longGamma ? 'Long γ' : 'Short γ', trend)}
-          {macroStat('Exp Move', emPct != null ? `±${(emPct * 100).toFixed(2)}%` : '—', 'var(--info)')}
-          {macroStat('Conf', `${outlook.confidence}%`, outlookColor)}
         </div>
         <div className="flex items-center gap-2">
           {/* Honest feed status — provider name when the chain is live, MODEL on synthetic data,
@@ -500,8 +500,8 @@ export function LiveTerminalFlow({ profile: liveProfile, ticker, decimals }: Liv
         </div>
       </div>
 
-      {/* Dealer Pulse — descriptive picture of dealer positioning (force balance · net γ · range · motion · tape) */}
-      <DealerPulse read={read} trend={trend} netGex={netGex} showMotion={!!dyn} migration={migration} gammaMotion={gammaMotion} vannaFlow={vannaFlow} />
+      {/* Dealer Pulse — force balance · dealer motion · the hero status line (the one read first) */}
+      <DealerPulse read={read} showMotion={!!dyn} migration={migration} gammaMotion={gammaMotion} vannaFlow={vannaFlow} tail={heroLine} />
 
       {/* ── 0DTE session band: phase + live countdown to close ── */}
       <SessionBand sess={sess} clock={clock} />
@@ -532,7 +532,7 @@ export function LiveTerminalFlow({ profile: liveProfile, ticker, decimals }: Liv
                 <div className="rounded-lg border px-3 py-2 relative overflow-hidden" style={{ borderColor: `color-mix(in srgb, ${outlookColor} 40%, transparent)`, background: `linear-gradient(135deg, color-mix(in srgb, ${outlookColor} 13%, transparent), transparent)` }}>
                   <div className="flex items-center justify-between">
                     <span className="flex items-center gap-1.5 text-[9px] font-black tracking-widest uppercase text-[var(--text-tertiary)]"><Crosshair className="w-3 h-3" /> GEX Outlook</span>
-                    <span className="text-[9px] font-mono font-black tabular-nums" style={{ color: outlookColor }}>{outlook.confidence}% conf</span>
+                    <span className="flex items-center gap-1 text-[9px] font-mono font-black uppercase tracking-widest" style={{ color: confBand(outlook.confidence).c }} title="Conviction band (Low / Medium / High) from the weighted dealer signals. Shown qualitatively until the forward log calibrates it — the Edge · Track Record panel reports how these reads have actually resolved.">Conf <span style={{ color: confBand(outlook.confidence).c }}>{confBand(outlook.confidence).t}</span></span>
                   </div>
                   <div className="flex items-center gap-1.5 mt-1">
                     {outlook.bias === 'up' ? <TrendingUp className="w-4 h-4" style={{ color: 'var(--success)' }} /> : outlook.bias === 'down' ? <TrendingDown className="w-4 h-4" style={{ color: 'var(--danger)' }} /> : <Minus className="w-4 h-4 text-[var(--text-tertiary)]" />}
@@ -540,7 +540,9 @@ export function LiveTerminalFlow({ profile: liveProfile, ticker, decimals }: Liv
                   </div>
                   <div className="text-[11px] font-mono font-bold text-[var(--text-secondary)] mt-1.5 leading-snug">{outlook.headline}</div>
                   <div className="text-[9.5px] font-mono text-[var(--text-tertiary)] mt-0.5 leading-snug">{outlook.detail}</div>
-                  {outlook.target != null && (
+                  {/* Only show a path when the target is materially away from spot (≥0.1%) — "head toward
+                      where you already are, to a hundredth of a percent" is noise, not a read. */}
+                  {outlook.target != null && spot > 0 && Math.abs((outlook.target - spot) / spot) >= 0.001 && (
                     <div className="flex items-center gap-1.5 mt-1.5 pt-1.5 border-t" style={{ borderColor: 'color-mix(in srgb, var(--border) 80%, transparent)' }}>
                       <span className="text-[8.5px] font-mono uppercase tracking-widest text-[var(--text-tertiary)]">Path toward</span>
                       <span className="text-[12px] font-mono font-black tabular-nums" style={{ color: outlookColor }}>{fmtNum(outlook.target, decimals)}</span>
@@ -550,7 +552,7 @@ export function LiveTerminalFlow({ profile: liveProfile, ticker, decimals }: Liv
                   {narrative && (
                     <div className="flex gap-1.5 mt-1.5 pt-1.5 border-t" style={{ borderColor: 'color-mix(in srgb, var(--border) 70%, transparent)' }}>
                       <span className="mt-[3px] w-1 h-1 rounded-full shrink-0 animate-pulse" style={{ background: narrative.rising ? 'var(--success)' : 'var(--danger)' }} />
-                      <p className="text-[9.5px] font-mono leading-snug text-[var(--text-secondary)]">{narrative.text} <span className="text-[var(--text-tertiary)]">({narrative.conf}% conf)</span></p>
+                      <p className="text-[9.5px] font-mono leading-snug text-[var(--text-secondary)]">{narrative.text}</p>
                     </div>
                   )}
                 </div>
@@ -560,7 +562,10 @@ export function LiveTerminalFlow({ profile: liveProfile, ticker, decimals }: Liv
                 {/* Net gamma hero */}
                 <div className="rounded-lg border px-3 py-2 relative overflow-hidden" style={{ borderColor: longGamma ? 'color-mix(in srgb, var(--success) 32%, transparent)' : 'color-mix(in srgb, var(--danger) 32%, transparent)', background: `linear-gradient(135deg, color-mix(in srgb, ${longGamma ? 'var(--success)' : 'var(--danger)'} 9%, transparent), transparent)` }}>
                   <div className="flex items-center gap-1.5 text-[9px] font-black tracking-widest uppercase text-[var(--text-tertiary)]"><GaugeIcon className="w-3 h-3" /> Net Gamma Exposure</div>
-                  <div className="text-[26px] font-mono font-black tabular-nums leading-none mt-1" style={{ color: trend }}>{netGex >= 0 ? '+' : ''}{fmtBig(netGex)}</div>
+                  <div className="flex items-baseline gap-1.5 mt-1" title="Total dealer gamma in dollars of hedging per 1% move in the underlying. Positive = dealers buy dips / sell rips (vol-suppressing); negative = they chase the move (vol-amplifying). Same $/1% unit on every per-strike figure.">
+                    <span className="text-[26px] font-mono font-black tabular-nums leading-none" style={{ color: trend }}>{netGex >= 0 ? '+' : ''}{fmtBig(netGex)}</span>
+                    <span className="text-[9px] font-mono text-[var(--text-tertiary)] tracking-wide">$Γ / 1% move</span>
+                  </div>
                   <div className="flex items-center gap-1.5 mt-1.5">
                     <span className="px-1.5 py-0.5 rounded text-[9px] font-mono font-black uppercase tracking-widest" style={{ background: `color-mix(in srgb, ${trend} 14%, transparent)`, color: trend }}>{aboveFlip == null ? 'No Flip' : aboveFlip ? 'Above Flip' : 'Below Flip'}</span>
                     <span className="text-[9px] font-mono text-[var(--text-tertiary)]">{read.regimeLabel}</span>
@@ -593,40 +598,21 @@ export function LiveTerminalFlow({ profile: liveProfile, ticker, decimals }: Liv
                   </div>
                   <div className="py-0.5">
                     {read.signals.map(s => (
-                      <div key={s.key} className="flex items-center gap-2 px-3 h-[28px] hover:bg-[var(--surface-3)] transition-colors" title={s.detail}>
-                        {s.dir > 0 ? <TrendingUp className="w-3 h-3 shrink-0" style={{ color: 'var(--success)' }} /> : s.dir < 0 ? <TrendingDown className="w-3 h-3 shrink-0" style={{ color: 'var(--danger)' }} /> : <Minus className="w-3 h-3 shrink-0 text-[var(--text-tertiary)]" />}
+                      <div key={s.key} className="flex items-start gap-2 px-3 min-h-[28px] py-1 hover:bg-[var(--surface-3)] transition-colors" title={s.detail}>
+                        {s.dir > 0 ? <TrendingUp className="w-3 h-3 shrink-0 mt-0.5" style={{ color: 'var(--success)' }} /> : s.dir < 0 ? <TrendingDown className="w-3 h-3 shrink-0 mt-0.5" style={{ color: 'var(--danger)' }} /> : <Minus className="w-3 h-3 shrink-0 mt-0.5 text-[var(--text-tertiary)]" />}
                         <div className="flex-1 min-w-0">
                           <div className="text-[10px] font-mono font-bold text-[var(--text-secondary)] truncate leading-tight">{s.label}</div>
-                          <div className="text-[9px] font-mono text-[var(--text-tertiary)] truncate leading-tight">{s.detail}</div>
+                          <div className="text-[9px] font-mono text-[var(--text-tertiary)] leading-snug">{s.detail}</div>
                         </div>
-                        <div className="w-9 h-1 rounded-full bg-[var(--surface-3)] overflow-hidden shrink-0"><div className="h-full rounded-full" style={{ width: `${Math.min(100, (s.weight / 28) * 100)}%`, background: s.dir > 0 ? 'var(--success)' : s.dir < 0 ? 'var(--danger)' : 'var(--text-tertiary)' }} /></div>
+                        <div className="w-9 h-1 rounded-full bg-[var(--surface-3)] overflow-hidden shrink-0 mt-1"><div className="h-full rounded-full" style={{ width: `${Math.min(100, (s.weight / 28) * 100)}%`, background: s.dir > 0 ? 'var(--success)' : s.dir < 0 ? 'var(--danger)' : 'var(--text-tertiary)' }} /></div>
                       </div>
                     ))}
                   </div>
                 </div>
 
-                {/* dealer-structure spectrum */}
-                {structure && (
-                  <div className="bg-[var(--surface-2)] rounded-lg px-3 py-2.5">
-                    <div className="flex items-center justify-between mb-3">
-                      <span className="text-[9px] font-black tracking-widest uppercase text-[var(--text-tertiary)]">Dealer Structure</span>
-                      {migration && migration.direction !== 'STABLE' && (
-                        <span className="flex items-center gap-0.5 text-[8.5px] font-mono font-black uppercase tracking-wide tabular-nums" style={{ color: migration.direction === 'BULLISH' ? 'var(--success)' : 'var(--danger)' }} title={`Gamma center-of-mass migrating ${migration.direction.toLowerCase()} — the dealer pin is drifting toward ${fmtNum(migration.comCurrent, decimals)}`}>
-                          {migration.direction === 'BULLISH' ? <TrendingUp className="w-2.5 h-2.5" /> : <TrendingDown className="w-2.5 h-2.5" />} CoM {fmtNum(migration.comCurrent, decimals)}
-                        </span>
-                      )}
-                    </div>
-                    <div className="relative h-1.5 rounded-full" style={{ background: 'linear-gradient(90deg, color-mix(in srgb, var(--danger) 45%, transparent), color-mix(in srgb, var(--text-tertiary) 25%, transparent), color-mix(in srgb, var(--success) 45%, transparent))' }}>
-                      {structure.pts.map((pt, i) => (<div key={i} className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 w-[3px] h-3 rounded-full" style={{ left: `${pt.x}%`, background: pt.c }} title={pt.l} />))}
-                      <motion.div className="absolute -top-[5px] -translate-x-1/2 z-10" animate={{ left: `${structure.spotPos}%` }} transition={{ type: 'spring', stiffness: 90, damping: 18 }}>
-                        <div className="w-3 h-3 rotate-45" style={{ background: 'var(--text-primary)', boxShadow: '0 0 8px var(--accent-color)' }} />
-                      </motion.div>
-                    </div>
-                    <div className="relative h-7 mt-2">
-                      {structure.pts.map((pt, i) => (<div key={i} className="absolute -translate-x-1/2 text-center leading-tight" style={{ left: `${pt.x}%` }}><div className="text-[9px] font-mono font-black" style={{ color: pt.c }}>{pt.l}</div><div className="text-[9px] font-mono text-[var(--text-tertiary)] tabular-nums">{fmtNum(pt.p as number, decimals)}</div></div>))}
-                    </div>
-                  </div>
-                )}
+                {/* Dealer Structure mini-scale removed — the chart already plots PW / γ-flip / magnet / CW
+                    on the price axis spatially, and the hero status line carries the range; a 1-D copy here
+                    was a worse duplicate of both. (Ship-review P1-8.) */}
 
                 {/* key levels list */}
                 <div className="bg-[var(--surface-2)] rounded-lg overflow-hidden">
@@ -706,11 +692,16 @@ export function LiveTerminalFlow({ profile: liveProfile, ticker, decimals }: Liv
               ); })}
             </div>
             {(vacAbove || vacBelow) && (
-              <div className="flex items-center gap-2 px-3 py-1 border-b border-[var(--border)] shrink-0 text-[9px] font-mono" style={{ background: 'color-mix(in srgb, var(--warning) 6%, transparent)' }} title="Liquidity vacuums — strike bands with little dealer gamma / OI / volume, where price tends to travel fast">
-                <span className="font-black tracking-widest uppercase shrink-0" style={{ color: 'var(--warning)' }}>Air Pockets</span>
-                {vacAbove && <span className="tabular-nums shrink-0" style={{ color: 'var(--text-secondary)' }}>▲ {fmtNum(vacAbove.lo, decimals)}–{fmtNum(vacAbove.hi, decimals)}</span>}
-                {vacBelow && <span className="tabular-nums shrink-0" style={{ color: 'var(--text-secondary)' }}>▼ {fmtNum(vacBelow.lo, decimals)}–{fmtNum(vacBelow.hi, decimals)}</span>}
-                <span className="ml-auto text-[var(--text-tertiary)] shrink-0 hidden sm:inline">fast-move zones</span>
+              <div className="px-3 py-1.5 border-b border-[var(--border)] shrink-0" style={{ background: 'color-mix(in srgb, var(--warning) 7%, transparent)' }} title="Liquidity vacuums — strike bands with little dealer gamma / OI / volume, where price tends to travel fast once it enters them">
+                <div className="flex items-center gap-1.5 mb-1">
+                  <Zap className="w-3 h-3 fill-current shrink-0" style={{ color: 'var(--warning)' }} />
+                  <span className="text-[9px] font-black tracking-widest uppercase" style={{ color: 'var(--warning)' }}>Air Pockets</span>
+                  <span className="text-[8.5px] font-mono text-[var(--text-tertiary)] ml-auto">fast-move zones</span>
+                </div>
+                <div className="grid grid-cols-2 gap-x-3 gap-y-0.5 text-[10px] font-mono tabular-nums">
+                  {vacAbove && <span className="flex items-baseline gap-1"><span style={{ color: 'var(--success)' }}>▲</span><span style={{ color: 'var(--text-secondary)' }}>{fmtNum(vacAbove.lo, decimals)}–{fmtNum(vacAbove.hi, decimals)}</span></span>}
+                  {vacBelow && <span className="flex items-baseline gap-1"><span style={{ color: 'var(--danger)' }}>▼</span><span style={{ color: 'var(--text-secondary)' }}>{fmtNum(vacBelow.lo, decimals)}–{fmtNum(vacBelow.hi, decimals)}</span></span>}
+                </div>
               </div>
             )}
             <div className="grid grid-cols-[52px_1fr_64px] gap-2 px-3 py-1.5 border-b border-[var(--border)] shrink-0 text-[9px] font-mono font-black uppercase tracking-widest text-[var(--text-tertiary)]">

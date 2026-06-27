@@ -62,7 +62,7 @@ export const SlayerChart = memo(function SlayerChartImpl({ profile, decimals, ca
   // ORBS — focal gamma-concentration orbs in the right gutter (a clean alternative to the Γ-MAP diamonds). Opt-in.
   const [showOrbs, setShowOrbs] = useState<boolean>(gexMapV2 ? (initialPrefs.showOrbs ?? false) : false);
   // Dealer-map density — how many strikes the heatmap / orbs / exposure-lane render. Lower = cleaner.
-  const [gexCount, setGexCount] = useState<number>(typeof initialPrefs.gexCount === 'number' ? initialPrefs.gexCount : 16);
+  const [gexCount, setGexCount] = useState<number>(typeof initialPrefs.gexCount === 'number' ? initialPrefs.gexCount : 4);
   const [showLadder, setShowLadder] = useState<boolean>(initialPrefs.showLadder ?? true); // Loaded GEX Strikes (flagship)
   const [ctxMenu, setCtxMenu] = useState<{ x: number; y: number } | null>(null); // right-click "View" menu (reset to live, etc.)
   const [chartType, setChartType] = useState<ChartType>(initialPrefs.chartType || 'candles');
@@ -378,8 +378,8 @@ export const SlayerChart = memo(function SlayerChartImpl({ profile, decimals, ca
       <span className="w-1.5 h-1.5 rounded-full" style={{ background: color }} />{label}<span className="text-[var(--text-tertiary)] group-hover:text-[var(--danger)]">×</span>
     </button>
   );
-  const specChip = (active: boolean, label: string, onClick: () => void, tone = 'default') => (
-    <button onClick={onClick} className={`flex items-center gap-1 px-1.5 py-0.5 rounded-sm text-[10px] font-mono font-bold uppercase tracking-wide border transition-colors ${active ? (tone === 'warn' ? 'bg-[var(--warning)]/15 border-[var(--warning)]/40 text-[var(--warning)]' : 'bg-[var(--surface-2)] border-[var(--border)] text-[var(--text-secondary)]') : 'bg-transparent border-transparent text-[var(--text-tertiary)] opacity-50'}`}>{label}</button>
+  const specChip = (active: boolean, label: string, onClick: () => void, tone = 'default', tip?: string) => (
+    <button onClick={onClick} title={tip} className={`flex items-center gap-1 px-1.5 py-0.5 rounded-sm text-[10px] font-mono font-bold uppercase tracking-wide border transition-colors ${active ? (tone === 'warn' ? 'bg-[var(--warning)]/15 border-[var(--warning)]/40 text-[var(--warning)]' : 'bg-[var(--surface-2)] border-[var(--border)] text-[var(--text-secondary)]') : 'bg-transparent border-transparent text-[var(--text-tertiary)] opacity-50'}`}>{label}</button>
   );
   const pickTool = (k: DrawTool) => { setTool(t => (t === k ? 'cursor' : k)); draftRef.current = null; measureRef.current = null; measureDragRef.current = false; };
   const pickRange = (r: RangeKey) => {
@@ -494,11 +494,11 @@ export const SlayerChart = memo(function SlayerChartImpl({ profile, decimals, ca
             display={[['Grid', showGrid, setShowGrid], ['Volume', showVolume, setShowVolume], ['Watermark', showWatermark, setShowWatermark], ['Candle borders', candleBorders, setCandleBorders]]}
             dealer={[['Loaded strikes', showLadder, setShowLadder], ['Γ Heatmap', showHeat, setShowHeat], ['Orbs', showOrbs, setShowOrbs], ['γ Exposure lane', showGex, setShowGex], ['Displacement', showDisp, setShowDisp]]}
           />
-          {specChip(showLadder, '≣ STRIKES', () => setShowLadder(v => !v))}
-          {specChip(showHeat, 'Γ-MAP', () => setShowHeat(v => !v))}
-          {specChip(showOrbs, '◉ ORBS', () => setShowOrbs(v => !v))}
-          {specChip(showGex, 'γ-LANE', () => setShowGex(v => !v))}
-          {specChip(showDisp, '⚡ DISP', () => setShowDisp(v => !v), 'warn')}
+          {specChip(showLadder, '≣ STRIKES', () => setShowLadder(v => !v), 'default', 'STRIKES — labels the strongest dealer-gamma strike on each side of price. Each tag reads: strike, then net γ ($/1% move), then ↑/↓ its change since the ~45s checkpoint. e.g. "6,790  +574M ↓85M" = +574M net gamma, down 85M since checkpoint.')}
+          {specChip(showHeat, 'Γ-MAP', () => setShowHeat(v => !v), 'default', 'Γ-MAP — gamma-concentration heatmap shading behind price (where dealer gamma is densest)')}
+          {specChip(showOrbs, '◉ ORBS', () => setShowOrbs(v => !v), 'default', 'ORBS — focal markers on the strikes holding the most gamma (call-wall / put-wall magnets)')}
+          {specChip(showGex, 'γ-LANE', () => setShowGex(v => !v), 'default', 'γ-LANE — net-gamma profile in the right gutter (green = long-γ strikes, red = short-γ)')}
+          {specChip(showDisp, '⚡ DISP', () => setShowDisp(v => !v), 'warn', 'DISP — displacement / expected-move band around spot (the implied daily range)')}
           <button onClick={resetView} title="Reset view — smoothly refit zoom, pan and price scale (or double-click the chart)" className="px-1.5 py-0.5 rounded-sm text-[10px] font-mono font-bold uppercase tracking-wide border border-[var(--border)] bg-[var(--surface-2)] text-[var(--text-secondary)] hover:border-[var(--border-strong)] hover:text-[var(--text-primary)] transition-colors">⟲ RESET</button>
           {priceView && <button onClick={() => setPriceView(null)} title="Reset price scale to auto-fit (or double-click the price axis)" className="px-1.5 py-0.5 rounded-sm text-[10px] font-mono font-bold uppercase tracking-wide border border-[var(--border)] bg-[var(--surface-2)] text-[var(--text-secondary)] hover:border-[var(--border-strong)] transition-colors">⤢ AUTO Y</button>}
           {view.off !== 0 && <button onClick={() => tweenView({ bars: view.bars, off: 0 })} title="Jump back to the live edge (or double-click the chart)" className="px-1.5 py-0.5 rounded-sm text-[10px] font-mono font-bold uppercase tracking-wide border border-[var(--border)] bg-[var(--surface-2)] text-[var(--text-secondary)] hover:border-[var(--border-strong)] transition-colors">⟳ LIVE</button>}
