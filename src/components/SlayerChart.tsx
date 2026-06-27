@@ -870,7 +870,7 @@ export const SlayerChart = memo(function SlayerChartImpl({ profile, decimals, ca
       // Name + (for walls/magnet) the gamma-concentration %, so you read strength at a glance.
       const pct = (isWall || L.label === 'MAG') ? gexPctAt(L.price) : null;
       const nameLbl = (L.off ? (L.dir < 0 ? '↑ ' : '↓ ') : '') + (L.value || name), pctLbl = pct != null ? `  ${pct}%` : '';
-      ctx.font = major ? '800 9.5px ui-monospace, monospace' : '700 9px ui-monospace, monospace';
+      ctx.font = '700 10px ui-monospace, monospace'; // uniform tag text — importance reads from line weight/colour, not font size
       const nameW = ctx.measureText(nameLbl).width, pctW = pctLbl ? ctx.measureText(pctLbl).width : 0;
       const tagW = nameW + pctW + 17, tagR = plotR - 4, tagL = tagR - tagW, ty = L.off ? (L.dir < 0 ? priceTop + tagH / 2 + 2 : priceBottom - tagH / 2 - 2) : L.y;
       if (hovPt && hovPt.x >= tagL - 3 && hovPt.x <= tagR + 6 && Math.abs(hovPt.y - ty) <= tagH / 2 + 2) hoverTag = L;
@@ -882,17 +882,17 @@ export const SlayerChart = memo(function SlayerChartImpl({ profile, decimals, ca
       ctx.fillStyle = col; ctx.beginPath(); ctx.arc(tagL + 7, ty, 2.4, 0, Math.PI * 2); ctx.fill();
       ctx.textAlign = 'left'; ctx.fillText(nameLbl, tagL + 12, ty);
       if (pctLbl) { ctx.fillStyle = hexA(T.text, 0.72); ctx.fillText(pctLbl, tagL + 12 + nameW, ty); }
-      // loaded strikes carry their price in the tag; named levels show the exact price on the axis
-      if (!L.value) { ctx.textAlign = 'right'; ctx.fillStyle = hexA(col, 0.95); ctx.fillText(nfT(L.price), W - 3, ty); }
+      // named levels print their exact price on the axis at the SAME size as the gridline scale (uniform)
+      if (!L.value) { ctx.textAlign = 'right'; ctx.font = '11px ui-monospace, monospace'; ctx.fillStyle = hexA(col, 0.95); ctx.fillText(nfT(L.price), W - 3, ty); }
     }
     ctx.font = '11px ui-monospace, monospace';
 
     ctx.textAlign = 'right';
     for (const g of gridYs) {
       if (Math.abs(g.y - lastY) < tagH) continue;
-      if (placed.some(L => Math.abs(L.y - g.y) < tagH)) continue; // a tag already sits here — don't repeat the price on the axis
-      ctx.font = g.major ? '700 11px ui-monospace, monospace' : '11px ui-monospace, monospace';
-      ctx.fillStyle = g.major ? hexA(T.text, 0.62) : COL.axisDim;
+      if (placed.some(L => !L.value && Math.abs(L.y - g.y) < tagH)) continue; // named levels print their own price; loaded strikes keep the gridline scale
+      ctx.font = '11px ui-monospace, monospace'; // uniform scale — every price the same size; emphasis via brightness only
+      ctx.fillStyle = g.major ? hexA(T.text, 0.6) : COL.axisDim;
       ctx.fillText(g.label, W - 4, g.y);
     }
     ctx.font = '11px ui-monospace, monospace';
