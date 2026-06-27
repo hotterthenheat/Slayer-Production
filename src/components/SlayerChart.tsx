@@ -463,9 +463,9 @@ export const SlayerChart = memo(function SlayerChartImpl({ profile, decimals, ca
     const laneOn = !!(showGex && profile.strikes && profile.strikes.length);
     const heatOn = !!(showHeat && profile.strikes && profile.strikes.length);
     const orbsOn = !!(showOrbs && profile.strikes && profile.strikes.length);
-    // Reserve a right gutter for the γ-lane (wide) or the Γ-MAP diamonds (thin). ORBS need no gutter —
-    // they draw ON the chart at the right edge so each dot sits on its actual price level.
-    const gammaW = laneOn ? 46 : orbsOn ? 0 : heatOn ? 16 : 0;
+    // Reserve a right gutter only for the γ-lane (wide). The Γ-MAP landscape glow and the ORBS dots both
+    // render on the chart itself, so they need no gutter.
+    const gammaW = laneOn ? 46 : 0;
     const plotL = 2, plotR = W - axisW - gammaW, plotW = plotR - plotL, gammaR = plotR + gammaW;
     const availH = H - topPad - xAxisH;
     const subH = paneSeries.length ? Math.min(86, (availH * 0.42) / paneSeries.length) : 0;
@@ -570,33 +570,26 @@ export const SlayerChart = memo(function SlayerChartImpl({ profile, decimals, ca
       gridYs.push({ y, label: nf(g) });
     }
 
-    // Γ-MAP liquidity heatmap — every significant dealer strike as a full-width row, gold for
-    // call-dominant (positive net γ) / violet for put-dominant, intensity ∝ |net γ|. Walls render as
-    // bright solid bands; every strike also drops a gutter diamond sized by its gamma. Drawn behind
-    // the candles so price reads on top. (Γ-MAP toggle)
+    // Γ-MAP — the "Gamma Landscape" liquidity heatmap: each strike paints a soft vertical glow band
+    // behind the candles, brightness ∝ |net γ| and fading with distance from price, blended additively
+    // so concentrated GEX zones light up (Bookmap-style). Calls glow green, puts red. (Γ-MAP toggle)
     if (heatOn) {
-      const inRange = profile.strikes!.filter(s => { const y = yP(s.strike); return y >= priceTop + 2 && y <= priceBottom - 2 && Math.abs(s.netGex || 0) > 0; });
+      const inRange = profile.strikes!.filter(s => { const y = yP(s.strike); return y >= priceTop - 24 && y <= priceBottom + 24 && Math.abs(s.netGex || 0) > 0; });
       if (inRange.length) {
         const maxG = Math.max(...inRange.map(s => Math.abs(s.netGex || 0)), 1e-9);
-        const top = [...inRange].sort((a, b) => Math.abs(b.netGex || 0) - Math.abs(a.netGex || 0)).slice(0, gexCount);
-        const dxc = plotR + gammaW - 7; // diamond column, near the price axis (à la the dealer-map reference)
+        const top = [...inRange].sort((a, b) => Math.abs(b.netGex || 0) - Math.abs(a.netGex || 0)).slice(0, Math.max(gexCount, 26));
+        const spot = profile.spot || (candles[n - 1] ? candles[n - 1].close : 0), vspan = (hi - lo) || 1;
+        ctx.save(); ctx.globalCompositeOperation = 'lighter';
         for (const s of top) {
           const y = yP(s.strike), mag = Math.abs(s.netGex || 0) / maxG, pos = (s.netGex || 0) >= 0;
-          const isWall = s.strike === profile.callWall || s.strike === profile.putWall;
-          const col = pos ? HEAT_POS : HEAT_NEG;
-          // full-width level row — walls solid & bright, others dotted with alpha ∝ magnitude
-          ctx.strokeStyle = hexA(col, isWall ? 0.72 : 0.12 + mag * 0.5);
-          ctx.lineWidth = isWall ? 2.4 : 0.85 + mag * 1.5; ctx.setLineDash(isWall ? [] : [2, 5]);
-          ctx.beginPath(); ctx.moveTo(plotL, px(y) - 0.5); ctx.lineTo(plotR, px(y) - 0.5); ctx.stroke();
-          // gutter strike-diamond, sized by |γ| (walls largest + outlined)
-          if (gammaW && !orbsOn) {
-            const dm = isWall ? 5.5 : 2.3 + mag * 3.4;
-            ctx.setLineDash([]); ctx.fillStyle = hexA(col, isWall ? 0.98 : 0.42 + mag * 0.5);
-            ctx.beginPath(); ctx.moveTo(dxc, y - dm); ctx.lineTo(dxc + dm, y); ctx.lineTo(dxc, y + dm); ctx.lineTo(dxc - dm, y); ctx.closePath(); ctx.fill();
-            if (isWall) { ctx.strokeStyle = hexA(col, 0.95); ctx.lineWidth = 1; ctx.stroke(); }
-          }
+          const col = pos ? mixHex('#1f6f52', '#2fe6a0', mag) : mixHex('#7a3550', '#ff5470', mag);
+          const distFade = Math.max(0.18, 1 - Math.abs(s.strike - spot) / (vspan * 0.7));
+          const peak = (0.035 + Math.pow(mag, 1.2) * 0.4) * distFade, bandH = 6 + mag * 32;
+          const grad = ctx.createLinearGradient(0, y - bandH, 0, y + bandH);
+          grad.addColorStop(0, hexA(col, 0)); grad.addColorStop(0.5, hexA(col, peak)); grad.addColorStop(1, hexA(col, 0));
+          ctx.fillStyle = grad; ctx.fillRect(plotL, y - bandH, plotW, bandH * 2);
         }
-        ctx.setLineDash([]); ctx.lineWidth = 1;
+        ctx.restore();
       }
     }
 
