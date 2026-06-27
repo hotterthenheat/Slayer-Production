@@ -104,7 +104,10 @@ export function LiveTerminalFlow({ profile: liveProfile, ticker, decimals }: Liv
   const emPct = profile.expectedMovePct;
   const dist = (lvl?: number) => (lvl && spot ? ((lvl - spot) / spot) * 100 : null);
   const distLabel = (lvl?: number) => { const d = dist(lvl); return d == null ? '' : `${d >= 0 ? '+' : ''}${d.toFixed(2)}%`; };
-  const trend = longGamma ? 'var(--success)' : 'var(--danger)';
+  // Gamma SIGN rides its own colour axis — blue = long γ (dealers suppress vol), amber = short γ
+  // (dealers amplify vol) — so it never collides with green/red, which mean DIRECTION (bull/bear,
+  // call/put, up/down) everywhere else. Matches the ambient regime wash (info/warning). (P2-18)
+  const trend = longGamma ? 'var(--info)' : 'var(--warning)';
 
   // Market session (ET regular hours). A "LIVE" badge must never sit over a closed/frozen tape, so the
   // feed status below is gated on this: when the session is closed we show LAST CLOSE, not LIVE.
@@ -445,7 +448,9 @@ export function LiveTerminalFlow({ profile: liveProfile, ticker, decimals }: Liv
           <div className="leading-none hidden sm:block">
             <div className="flex items-center gap-1.5">
               <span className="text-[13px] font-sans font-black tracking-widest uppercase text-[var(--text-primary)]">Live Terminal</span>
-              <span className="relative flex h-1.5 w-1.5"><span className="animate-ping absolute inline-flex h-full w-full rounded-full opacity-60" style={{ background: 'var(--success)' }} /><span className="relative inline-flex rounded-full h-1.5 w-1.5" style={{ background: 'var(--success)' }} /></span>
+              {/* Status dot reflects the real feed — it only pulses when the stream is actually live, so it's
+                  never a decorative green light over a closed/frozen tape. (P2-21) */}
+              <span className="relative flex h-1.5 w-1.5" title={feedLabel}>{liveFeed && <span className="animate-ping absolute inline-flex h-full w-full rounded-full opacity-60" style={{ background: feedColor }} />}<span className="relative inline-flex rounded-full h-1.5 w-1.5" style={{ background: feedColor }} /></span>
             </div>
             <div className="text-[9px] font-mono uppercase tracking-[0.28em] mt-0.5 text-[var(--text-tertiary)]">Dealer Flow Engine</div>
           </div>
@@ -494,7 +499,7 @@ export function LiveTerminalFlow({ profile: liveProfile, ticker, decimals }: Liv
           </span>
           <div className="hidden md:block">{segToggle(TF.map(t => t.val), selectedTimeframe, setSelectedTimeframe)}</div>
           {segToggle(['0DTE', 'ALL'], scope, v => setScope(v as '0DTE' | 'ALL'), true)}
-          <span className="flex items-center gap-1.5 px-2.5 py-1 rounded-md border text-[10px] font-mono font-black uppercase tracking-widest lg:hidden" style={{ borderColor: longGamma ? 'color-mix(in srgb, var(--success) 40%, transparent)' : 'color-mix(in srgb, var(--danger) 40%, transparent)', background: longGamma ? 'color-mix(in srgb, var(--success) 10%, transparent)' : 'color-mix(in srgb, var(--danger) 10%, transparent)', color: trend, boxShadow: `0 0 16px ${longGamma ? 'color-mix(in srgb, var(--success) 18%, transparent)' : 'color-mix(in srgb, var(--danger) 18%, transparent)'}` }}>
+          <span className="flex items-center gap-1.5 px-2.5 py-1 rounded-md border text-[10px] font-mono font-black uppercase tracking-widest lg:hidden" style={{ borderColor: longGamma ? 'color-mix(in srgb, var(--info) 40%, transparent)' : 'color-mix(in srgb, var(--warning) 40%, transparent)', background: longGamma ? 'color-mix(in srgb, var(--info) 10%, transparent)' : 'color-mix(in srgb, var(--warning) 10%, transparent)', color: trend, boxShadow: `0 0 16px ${longGamma ? 'color-mix(in srgb, var(--info) 18%, transparent)' : 'color-mix(in srgb, var(--warning) 18%, transparent)'}` }}>
             {longGamma ? <Activity className="w-3 h-3" /> : <Zap className="w-3 h-3 fill-current" />}{longGamma ? 'Long γ' : 'Short γ'} · {read.regime === 'PIN' ? `Pin ${read.pinStrength}` : 'Trend'}
           </span>
         </div>
@@ -560,7 +565,7 @@ export function LiveTerminalFlow({ profile: liveProfile, ticker, decimals }: Liv
                     Turns the regime call from an assertion into a measured, falsifiable hit-rate. */}
                 <EdgeTrackRecord profile={profile} ticker={selectedAsset.ticker} candles={candles} provenance={realFeed ? 'live' : 'model'} />
                 {/* Net gamma hero */}
-                <div className="rounded-lg border px-3 py-2 relative overflow-hidden" style={{ borderColor: longGamma ? 'color-mix(in srgb, var(--success) 32%, transparent)' : 'color-mix(in srgb, var(--danger) 32%, transparent)', background: `linear-gradient(135deg, color-mix(in srgb, ${longGamma ? 'var(--success)' : 'var(--danger)'} 9%, transparent), transparent)` }}>
+                <div className="rounded-lg border px-3 py-2 relative overflow-hidden" style={{ borderColor: longGamma ? 'color-mix(in srgb, var(--info) 32%, transparent)' : 'color-mix(in srgb, var(--warning) 32%, transparent)', background: `linear-gradient(135deg, color-mix(in srgb, ${longGamma ? 'var(--info)' : 'var(--warning)'} 9%, transparent), transparent)` }}>
                   <div className="flex items-center gap-1.5 text-[9px] font-black tracking-widest uppercase text-[var(--text-tertiary)]"><GaugeIcon className="w-3 h-3" /> Net Gamma Exposure</div>
                   <div className="flex items-baseline gap-1.5 mt-1" title="Total dealer gamma in dollars of hedging per 1% move in the underlying. Positive = dealers buy dips / sell rips (vol-suppressing); negative = they chase the move (vol-amplifying). Same $/1% unit on every per-strike figure.">
                     <span className="text-[26px] font-mono font-black tabular-nums leading-none" style={{ color: trend }}>{netGex >= 0 ? '+' : ''}{fmtBig(netGex)}</span>
