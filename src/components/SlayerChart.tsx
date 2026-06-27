@@ -456,6 +456,8 @@ export const SlayerChart = memo(function SlayerChartImpl({ profile, decimals, ca
 
     // Thousands-separated price formatter for every axis / level / readout label.
     const nf = (v: number) => v.toLocaleString('en-US', { minimumFractionDigits: decimals, maximumFractionDigits: decimals });
+    // Trimmed variant for the price axis — drops trailing ".00" so whole-number strikes read clean (7,390 not 7,390.00).
+    const nfT = (v: number) => { const s = nf(v); return s.indexOf('.') >= 0 ? s.replace(/\.?0+$/, '') : s; };
 
     if (candles.length === 0) { ctx.fillStyle = T.dim; ctx.textAlign = 'center'; ctx.fillText('Awaiting candle stream…', W / 2, H / 2); return; }
 
@@ -581,7 +583,7 @@ export const SlayerChart = memo(function SlayerChartImpl({ profile, decimals, ca
       const y = yP(g); if (y < priceTop + 4 || y > priceBottom - 2) continue;
       const major = Math.abs(g / majorStep - Math.round(g / majorStep)) < 1e-6;
       if (showGrid) { ctx.strokeStyle = major ? hexA(T.text, 0.07) : COL.grid; ctx.beginPath(); ctx.moveTo(plotL, px(y) - 0.5); ctx.lineTo(plotR, px(y) - 0.5); ctx.stroke(); }
-      gridYs.push({ y, label: nf(g), major });
+      gridYs.push({ y, label: nfT(g), major });
     }
 
     // Γ-MAP — the "Gamma Landscape" liquidity heatmap: each strike paints a soft vertical glow band
@@ -881,14 +883,14 @@ export const SlayerChart = memo(function SlayerChartImpl({ profile, decimals, ca
       ctx.textAlign = 'left'; ctx.fillText(nameLbl, tagL + 12, ty);
       if (pctLbl) { ctx.fillStyle = hexA(T.text, 0.72); ctx.fillText(pctLbl, tagL + 12 + nameW, ty); }
       // loaded strikes carry their price in the tag; named levels show the exact price on the axis
-      if (!L.value) { ctx.textAlign = 'right'; ctx.fillStyle = hexA(col, 0.95); ctx.fillText(nf(L.price), W - 3, ty); }
+      if (!L.value) { ctx.textAlign = 'right'; ctx.fillStyle = hexA(col, 0.95); ctx.fillText(nfT(L.price), W - 3, ty); }
     }
     ctx.font = '11px ui-monospace, monospace';
 
     ctx.textAlign = 'right';
     for (const g of gridYs) {
       if (Math.abs(g.y - lastY) < tagH) continue;
-      if (placed.some(L => !L.value && Math.abs(L.y - g.y) < tagH)) continue; // only named levels draw on the axis
+      if (placed.some(L => Math.abs(L.y - g.y) < tagH)) continue; // a tag already sits here — don't repeat the price on the axis
       ctx.font = g.major ? '700 11px ui-monospace, monospace' : '11px ui-monospace, monospace';
       ctx.fillStyle = g.major ? hexA(T.text, 0.62) : COL.axisDim;
       ctx.fillText(g.label, W - 4, g.y);
