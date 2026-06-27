@@ -38,10 +38,18 @@ export function DealerPulse({ read, trend, netGex, showMotion, migration, gammaM
           </div>
           <div className="flex items-center justify-between text-[9px] font-mono uppercase tracking-widest"><span style={{ color: 'var(--danger)' }}>Bearish book</span><span style={{ color: 'var(--success)' }}>Bullish book</span></div>
         </div>
-        {/* Net gamma + regime */}
-        <div className="flex flex-col justify-center px-4 border-r border-[var(--border)] shrink-0">
-          <span className="text-[9px] font-black tracking-widest uppercase text-[var(--text-tertiary)]">Net γ · {read.regime === 'PIN' ? `Pin ${read.pinStrength}` : 'Trend'}</span>
+        {/* Net gamma + a pin-STRENGTH meter. The regime word lives once, in the top ribbon — here we
+            show the magnitude (net γ) and, in a pinning regime, how tight the pin is (0–100). */}
+        <div className="flex flex-col justify-center px-4 border-r border-[var(--border)] shrink-0 w-[150px]">
+          <span className="text-[9px] font-black tracking-widest uppercase text-[var(--text-tertiary)]">Net γ</span>
           <span className="text-[16px] font-mono font-black tabular-nums leading-tight mt-0.5" style={{ color: trend }}>{netGex >= 0 ? '+' : ''}{fmtBig(netGex)}</span>
+          {read.regime === 'PIN' && (
+            <div className="flex items-center gap-1 mt-1" title={`Pin strength ${read.pinStrength}/100 — concentration × proximity of dealer gamma`}>
+              <span className="text-[8px] font-mono uppercase tracking-wider text-[var(--text-tertiary)] shrink-0">Pin str</span>
+              <div className="flex-1 h-1 rounded-full overflow-hidden bg-[var(--surface-3)]"><div className="h-full rounded-full" style={{ width: `${Math.max(3, Math.min(100, read.pinStrength))}%`, background: 'var(--accent-color)' }} /></div>
+              <span className="text-[8px] font-mono font-black tabular-nums text-[var(--text-secondary)] shrink-0">{read.pinStrength}</span>
+            </div>
+          )}
         </div>
         {/* Dealer MOTION — how the book is CHANGING right now: gamma hedging state, vanna
             hedge-flow, and which way the gamma center-of-mass (the pin) is drifting. */}

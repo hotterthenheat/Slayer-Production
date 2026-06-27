@@ -281,11 +281,17 @@ export function drawChart(deps: DrawDeps) {
       if (priceBottom - fy > 18) { ctx.fillStyle = hexA(COL.down, 0.46); ctx.fillText('NEGATIVE γ · UNSTABLE', plotL + 8, fy + 13); }
     }
 
-    // Expected-move ±1σ channel — shade the band between EM+ and EM- (dealer-implied day range).
+    // Expected-move ±1σ channel — shade the band between EM+ and EM- (dealer-implied day range) and
+    // label it, so the space around price reads as "the implied range" rather than empty headroom.
     if (profile.spot && profile.expectedMovePct) {
       const emHi = yP(profile.spot * (1 + profile.expectedMovePct)), emLo = yP(profile.spot * (1 - profile.expectedMovePct));
       const top = Math.max(priceTop, Math.min(emHi, emLo)), h = Math.min(priceBottom, Math.max(emHi, emLo)) - top;
-      if (h > 0) { ctx.fillStyle = hexA(COL.em, 0.06); ctx.fillRect(plotL, top, plotW, h); }
+      if (h > 0) {
+        const eg = ctx.createLinearGradient(0, top, 0, top + h);
+        eg.addColorStop(0, hexA(COL.em, 0.11)); eg.addColorStop(0.5, hexA(COL.em, 0.035)); eg.addColorStop(1, hexA(COL.em, 0.11));
+        ctx.fillStyle = eg; ctx.fillRect(plotL, top, plotW, h);
+        if (h > 26) { ctx.font = '700 8px ui-monospace, monospace'; ctx.textAlign = 'left'; ctx.fillStyle = hexA(COL.em, 0.5); ctx.fillText(`EXPECTED MOVE · ±${(profile.expectedMovePct * 100).toFixed(2)}%`, plotL + 8, top + 9); ctx.font = '11px ui-monospace, monospace'; }
+      }
     }
 
     // Volume strip — opacity scales with price velocity (|Δ| vs ATR) so impulse bars read louder.

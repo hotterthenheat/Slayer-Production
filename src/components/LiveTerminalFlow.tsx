@@ -15,10 +15,10 @@ import { SystemStatus } from './terminal/StatusBar';
 import { ReplayScrubber } from './terminal/ReplayScrubber';
 import { DealerPulse } from './terminal/DealerPulse';
 import { SessionBand } from './terminal/SessionBand';
-import { fmtBig, toneColor } from './terminal/format';
+import { fmtBig } from './terminal/format';
 import { CROSSHAIR_EVENT, CrosshairDetail } from '../lib/chartSync';
 import { EdgeTrackRecord } from './EdgeTrackRecord';
-import { Crosshair, Activity, Zap, Layers, ChevronDown, Gauge as GaugeIcon, Radio, TrendingUp, TrendingDown, Minus, Clock } from 'lucide-react';
+import { Crosshair, Activity, Zap, Layers, ChevronDown, Gauge as GaugeIcon, TrendingUp, TrendingDown, Minus, Clock } from 'lucide-react';
 import { ASSET_LIST, TIMEFRAMES } from '../data';
 
 // Tight, legible type scale (raised the floor off 7.5/8px so dense data stays readable).
@@ -413,10 +413,10 @@ export function LiveTerminalFlow({ profile: liveProfile, ticker, decimals }: Liv
             ) : leftTab === 'flow' ? (
               <div className="flex-1 min-h-0"><OrderFlow data={orderFlow} decimals={decimals} /></div>
             ) : (
-              <div className="flex-1 overflow-y-auto p-2.5 space-y-2.5">
+              <div className="flex-1 overflow-y-auto p-2 space-y-2">
                 {/* GEX OUTLOOK — the regime read + where price is being drawn (pinning / gamma
                     squeeze / short squeeze / trend / range). Describes the path, not a trade. */}
-                <div className="rounded-lg border px-3 py-2.5 relative overflow-hidden" style={{ borderColor: `color-mix(in srgb, ${outlookColor} 40%, transparent)`, background: `linear-gradient(135deg, color-mix(in srgb, ${outlookColor} 13%, transparent), transparent)` }}>
+                <div className="rounded-lg border px-3 py-2 relative overflow-hidden" style={{ borderColor: `color-mix(in srgb, ${outlookColor} 40%, transparent)`, background: `linear-gradient(135deg, color-mix(in srgb, ${outlookColor} 13%, transparent), transparent)` }}>
                   <div className="flex items-center justify-between">
                     <span className="flex items-center gap-1.5 text-[9px] font-black tracking-widest uppercase text-[var(--text-tertiary)]"><Crosshair className="w-3 h-3" /> GEX Outlook</span>
                     <span className="text-[9px] font-mono font-black tabular-nums" style={{ color: outlookColor }}>{outlook.confidence}% conf</span>
@@ -445,7 +445,7 @@ export function LiveTerminalFlow({ profile: liveProfile, ticker, decimals }: Liv
                     Turns the regime call from an assertion into a measured, falsifiable hit-rate. */}
                 <EdgeTrackRecord profile={profile} ticker={selectedAsset.ticker} candles={candles} provenance={liveFeed ? 'live' : 'model'} />
                 {/* Net gamma hero */}
-                <div className="rounded-lg border px-3 py-2.5 relative overflow-hidden" style={{ borderColor: longGamma ? 'color-mix(in srgb, var(--success) 32%, transparent)' : 'color-mix(in srgb, var(--danger) 32%, transparent)', background: `linear-gradient(135deg, color-mix(in srgb, ${longGamma ? 'var(--success)' : 'var(--danger)'} 9%, transparent), transparent)` }}>
+                <div className="rounded-lg border px-3 py-2 relative overflow-hidden" style={{ borderColor: longGamma ? 'color-mix(in srgb, var(--success) 32%, transparent)' : 'color-mix(in srgb, var(--danger) 32%, transparent)', background: `linear-gradient(135deg, color-mix(in srgb, ${longGamma ? 'var(--success)' : 'var(--danger)'} 9%, transparent), transparent)` }}>
                   <div className="flex items-center gap-1.5 text-[9px] font-black tracking-widest uppercase text-[var(--text-tertiary)]"><GaugeIcon className="w-3 h-3" /> Net Gamma Exposure</div>
                   <div className="text-[26px] font-mono font-black tabular-nums leading-none mt-1" style={{ color: trend }}>{netGex >= 0 ? '+' : ''}{fmtBig(netGex)}</div>
                   <div className="flex items-center gap-1.5 mt-1.5">
@@ -494,7 +494,7 @@ export function LiveTerminalFlow({ profile: liveProfile, ticker, decimals }: Liv
 
                 {/* dealer-structure spectrum */}
                 {structure && (
-                  <div className="bg-[var(--surface-2)] rounded-lg px-3 py-3">
+                  <div className="bg-[var(--surface-2)] rounded-lg px-3 py-2.5">
                     <div className="flex items-center justify-between mb-3">
                       <span className="text-[9px] font-black tracking-widest uppercase text-[var(--text-tertiary)]">Dealer Structure</span>
                       {migration && migration.direction !== 'STABLE' && (
@@ -572,13 +572,6 @@ export function LiveTerminalFlow({ profile: liveProfile, ticker, decimals }: Liv
                 : multiChart
                 ? <ChartPanelGrid profile={profile} decimals={decimals} candles={candles} baseTicker={selectedAsset.ticker} timeframe={selectedTimeframe} />
                 : <SlayerChart profile={profile} decimals={decimals} />}
-            </div>
-            {/* Live tape — streaming narrative of the dealer read */}
-            <div className="border-t border-[var(--border)] bg-[var(--surface)] h-7 shrink-0 flex items-center gap-2 px-3 overflow-hidden">
-              <span className="flex items-center gap-1 text-[9px] font-black tracking-widest uppercase shrink-0" style={{ color: 'var(--accent-color)' }}><Radio className="w-3 h-3" /> Tape</span>
-              <div className="flex items-center gap-5 overflow-hidden whitespace-nowrap">
-                {read.events.map((e, i) => (<span key={i} className="flex items-center gap-1.5 text-[10px] font-mono shrink-0" style={{ color: toneColor(e.tone) }}><span className="w-1 h-1 rounded-full shrink-0" style={{ background: toneColor(e.tone) }} />{e.text}</span>))}
-              </div>
             </div>
           </main>
 
