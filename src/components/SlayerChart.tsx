@@ -452,7 +452,7 @@ export const SlayerChart = memo(function SlayerChartImpl({ profile, decimals, ca
     const upCol = colors.up || DEFAULT_COLORS.up, downCol = colors.down || DEFAULT_COLORS.down, lineCol = colors.line || DEFAULT_COLORS.line;
     const COL = {
       up: upCol, down: downCol, upVol: hexA(upCol, 0.3), downVol: hexA(downCol, 0.3),
-      grid: colors.grid || 'rgba(255,255,255,0.05)', axis: T.dim, axisDim: hexA(T.dim, 0.7),
+      grid: colors.grid || 'rgba(255,255,255,0.028)', axis: T.dim, axisDim: hexA(T.dim, 0.7),
       callWall: upCol, putWall: downCol, flip: T.warning, magnet: T.accent, em: T.info,
     };
 
@@ -584,7 +584,7 @@ export const SlayerChart = memo(function SlayerChartImpl({ profile, decimals, ca
     for (let g = Math.ceil(lo / step) * step; g <= hi; g += step) {
       const y = yP(g); if (y < priceTop + 4 || y > priceBottom - 2) continue;
       const major = Math.abs(g / majorStep - Math.round(g / majorStep)) < 1e-6;
-      if (showGrid) { ctx.strokeStyle = major ? hexA(T.text, 0.07) : COL.grid; ctx.beginPath(); ctx.moveTo(plotL, px(y) - 0.5); ctx.lineTo(plotR, px(y) - 0.5); ctx.stroke(); }
+      if (showGrid) { ctx.strokeStyle = major ? hexA(T.text, 0.045) : COL.grid; ctx.beginPath(); ctx.moveTo(plotL, px(y) - 0.5); ctx.lineTo(plotR, px(y) - 0.5); ctx.stroke(); }
       gridYs.push({ y, label: nfT(g), major });
     }
 
@@ -741,7 +741,7 @@ export const SlayerChart = memo(function SlayerChartImpl({ profile, decimals, ca
         ctx.fillRect(Math.round(x - w / 2), Math.min(y, baseY), Math.round(w), Math.max(1, Math.abs(baseY - y)));
       }
     } else {
-      const wickW = Math.max(1, Math.min(1.6, barW * 0.14));      // wick scales subtly with bar width
+      const wickW = Math.max(0.75, Math.min(1, barW * 0.1));      // razor-thin wick — barely there, lets the bodies lead
       const border = candleBorders && barW >= 3.4;                // crisp edge only when bars are wide enough
       for (let i = 0; i < vis.length; i++) {
         const c = vis[i], x = xOf(start + i), up = c.close >= c.open, col = up ? upCol : downCol, wickCol = colors.wick || col;
@@ -749,7 +749,7 @@ export const SlayerChart = memo(function SlayerChartImpl({ profile, decimals, ca
         ctx.strokeStyle = wickCol; ctx.lineWidth = wickW;
         ctx.beginPath(); ctx.moveTo(px(x), Math.round(yP(c.high))); ctx.lineTo(px(x), Math.round(yP(c.low))); ctx.stroke();
         // body — fuller (0.78 of the slot), pixel-snapped, optional darker crisp border for depth
-        const yO = yP(c.open), yC = yP(c.close), bw = Math.max(1, barW * 0.78), w = Math.round(bw), bx = Math.round(x - bw / 2), by = Math.round(Math.min(yO, yC)), bh = Math.max(1, Math.round(Math.abs(yC - yO)));
+        const yO = yP(c.open), yC = yP(c.close), bw = Math.max(1, barW * 0.62), w = Math.round(bw), bx = Math.round(x - bw / 2), by = Math.round(Math.min(yO, yC)), bh = Math.max(1, Math.round(Math.abs(yC - yO)));
         if (chartType === 'hollow' && up) { ctx.strokeStyle = col; ctx.lineWidth = 1.3; ctx.strokeRect(bx + 0.5, by + 0.5, w - 1, Math.max(1, bh - 1)); }
         else { ctx.fillStyle = col; ctx.fillRect(bx, by, w, bh); if (border) { ctx.strokeStyle = shade(col, 0.72); ctx.lineWidth = 1; ctx.strokeRect(bx + 0.5, by + 0.5, w - 1, Math.max(1, bh - 1)); } }
       }
@@ -867,7 +867,8 @@ export const SlayerChart = memo(function SlayerChartImpl({ profile, decimals, ca
       if (!L.off && !(heatOn && isWall)) {
         const act = !!(L.value && L.price === activeStrike);
         if (act) { ctx.fillStyle = hexA(col, 0.07); ctx.fillRect(plotL, px(L.rawY) - 4, plotW, 8); }
-        ctx.strokeStyle = col; ctx.globalAlpha = L.value ? (act ? 0.95 : 0.1 + Math.pow(lrel, 1.3) * 0.75) : 0.5; ctx.lineWidth = L.value ? (act ? 2.6 : 0.6 + lrel * 3) : 1; ctx.setLineDash(!L.value ? [5, 4] : minor ? [2, 4] : []);
+        const p1 = !L.value && (L.label === 'CW' || L.label === 'PW' || L.label === 'γF'); // Priority-1 levels: walls + gamma flip read crisp; EM / magnet stay softer (P2).
+        ctx.strokeStyle = col; ctx.globalAlpha = L.value ? (act ? 0.95 : 0.1 + Math.pow(lrel, 1.3) * 0.75) : (p1 ? 0.72 : 0.32); ctx.lineWidth = L.value ? (act ? 2.6 : 0.6 + lrel * 3) : (p1 ? 1.5 : 1); ctx.setLineDash(!L.value ? (p1 && L.label !== 'γF' ? [] : [5, 4]) : minor ? [2, 4] : []);
         ctx.beginPath(); ctx.moveTo(plotL, px(L.rawY) - 0.5); ctx.lineTo(plotR, px(L.rawY) - 0.5); ctx.stroke();
         ctx.setLineDash([]); ctx.globalAlpha = 1; ctx.lineWidth = 1;
       }
