@@ -40,7 +40,7 @@ export function LiveTerminalFlow({ profile, ticker, decimals }: LiveTerminalFlow
   const [leftTab, setLeftTab] = useState<'levels' | 'flow'>('levels');
   const [scope, setScope] = useState<'0DTE' | 'ALL'>('0DTE');
   const [multiChart, setMultiChart] = useState(false); // opt-in movable/resizable multi-chart grid
-  const [ladderMetric, setLadderMetric] = useState<'GAMMA' | 'DELTA' | 'VANNA'>('GAMMA');
+  const [ladderMetric, setLadderMetric] = useState<'GAMMA' | 'DELTA' | 'VANNA' | 'OI' | 'VOL'>('GAMMA');
   const [now, setNow] = useState(() => new Date());
   useEffect(() => { const t = setInterval(() => setNow(new Date()), 1000); return () => clearInterval(t); }, []);
   // Feed heartbeat — stamp every SSE frame; if the stream goes quiet the UI must SAY so
@@ -187,20 +187,24 @@ export function LiveTerminalFlow({ profile, ticker, decimals }: LiveTerminalFlow
 
   const hasDex = useMemo(() => (profile.strikes || []).some(s => s.callDex != null || s.putDex != null), [profile]);
   const hasVex = useMemo(() => (profile.strikes || []).some(s => s.callVex != null || s.putVex != null), [profile]);
+  const hasOi = useMemo(() => (profile.strikes || []).some(s => (s.callOi || 0) + (s.putOi || 0) > 0), [profile]);
+  const hasVol = useMemo(() => (profile.strikes || []).some(s => (s.callVolume || 0) + (s.putVolume || 0) > 0), [profile]);
   const ladder = useMemo(() => {
     let ss = [...(profile.strikes || [])];
     if (profile.spot) ss = ss.sort((a, b) => Math.abs(a.strike - spot) - Math.abs(b.strike - spot)).slice(0, 30);
-    const pick = (s: typeof ss[number]): [number, number] => ladderMetric === 'DELTA' ? [s.callDex || 0, s.putDex || 0] : ladderMetric === 'VANNA' ? [s.callVex || 0, s.putVex || 0] : [s.callGex || 0, s.putGex || 0];
+    const oiLike = ladderMetric === 'OI' || ladderMetric === 'VOL';
+    const pick = (s: typeof ss[number]): [number, number] => ladderMetric === 'DELTA' ? [s.callDex || 0, s.putDex || 0] : ladderMetric === 'VANNA' ? [s.callVex || 0, s.putVex || 0] : ladderMetric === 'OI' ? [s.callOi || 0, s.putOi || 0] : ladderMetric === 'VOL' ? [s.callVolume || 0, s.putVolume || 0] : [s.callGex || 0, s.putGex || 0];
     const maxM = Math.max(...ss.map(s => { const [c, p] = pick(s); return Math.max(Math.abs(c), Math.abs(p)); }), 1);
     const maxV = Math.max(...ss.map(s => (s.callVolume || 0) + (s.putVolume || 0)), 1);
-    return ss.sort((a, b) => b.strike - a.strike).map(s => { const [c, p] = pick(s); return ({
-      strike: s.strike, net: c + p,
+    return ss.sort((a, b) => b.strike - a.strike).map(s => { const [c, p] = pick(s); const net = c + p; return ({
+      strike: s.strike, net, netUp: oiLike ? c >= p : net >= 0,
       callPct: (Math.abs(c) / maxM) * 100, putPct: (Math.abs(p) / maxM) * 100,
       vol: (s.callVolume || 0) + (s.putVolume || 0), volPct: (((s.callVolume || 0) + (s.putVolume || 0)) / maxV) * 100,
       isSpot: Math.abs(s.strike - spot) < spot * 0.0008, isCW: s.strike === profile.callWall, isPW: s.strike === profile.putWall, isFlip: s.strike === profile.gammaFlip,
     }); });
   }, [profile, spot, ladderMetric]);
 
+  const mSym = ladderMetric === 'GAMMA' ? 'γ' : ladderMetric === 'DELTA' ? 'Δ' : ladderMetric === 'VANNA' ? 'V' : ladderMetric === 'OI' ? 'OI' : 'Vol';
   const gammaPin = profile.magnet || spot; // where dealer gamma pins price — descriptive, not a call
 
   // Descriptive read of dealer structure (regime, pin strength, force breakdown, observations).
@@ -566,7 +570,7 @@ export function LiveTerminalFlow({ profile, ticker, decimals }: LiveTerminalFlow
             {/* GAMMA / DELTA / VANNA exposure metric */}
             <div className="flex items-center gap-1 px-3 py-1.5 border-b border-[var(--border)] shrink-0">
               <span className="text-[9px] font-black tracking-widest uppercase text-[var(--text-tertiary)] mr-1">Metric</span>
-              {(['GAMMA', 'DELTA', 'VANNA'] as const).map(m => { const dis = (m === 'DELTA' && !hasDex) || (m === 'VANNA' && !hasVex); return (
+              {(['GAMMA', 'DELTA', 'VANNA', 'OI', 'VOL'] as const).map(m => { const dis = (m === 'DELTA' && !hasDex) || (m === 'VANNA' && !hasVex) || (m === 'OI' && !hasOi) || (m === 'VOL' && !hasVol); return (
                 <button key={m} disabled={dis} onClick={() => setLadderMetric(m)} title={dis ? `No ${m.toLowerCase()} data in this feed` : `Show per-strike ${m.toLowerCase()}`} className="px-2 py-0.5 text-[9px] font-mono font-black tracking-wider rounded transition-colors" style={ladderMetric === m ? { background: 'var(--surface-3)', color: 'var(--text-primary)' } : { color: dis ? 'color-mix(in srgb, var(--text-tertiary) 40%, transparent)' : 'var(--text-tertiary)', cursor: dis ? 'not-allowed' : 'pointer' }}>{m}</button>
               ); })}
             </div>
@@ -580,8 +584,8 @@ export function LiveTerminalFlow({ profile, ticker, decimals }: LiveTerminalFlow
             )}
             <div className="grid grid-cols-[52px_1fr_64px] gap-2 px-3 py-1.5 border-b border-[var(--border)] shrink-0 text-[9px] font-mono font-black uppercase tracking-widest text-[var(--text-tertiary)]">
               <div className="text-right">Strike</div>
-              <div className="flex justify-between"><span style={{ color: 'var(--danger)' }}>◄ Put {ladderMetric === 'GAMMA' ? 'γ' : ladderMetric === 'DELTA' ? 'Δ' : 'V'}</span><span style={{ color: 'var(--success)' }}>{ladderMetric === 'GAMMA' ? 'γ' : ladderMetric === 'DELTA' ? 'Δ' : 'V'} Call ►</span></div>
-              <div className="text-right">Net</div>
+              <div className="flex justify-between"><span style={{ color: 'var(--danger)' }}>◄ Put {mSym}</span><span style={{ color: 'var(--success)' }}>{mSym} Call ►</span></div>
+              <div className="text-right">{ladderMetric === 'OI' || ladderMetric === 'VOL' ? 'Total' : 'Net'}</div>
             </div>
             <div ref={ladderScrollRef} className="flex-1 overflow-y-auto">
               {ladder.map(r => {
@@ -598,7 +602,7 @@ export function LiveTerminalFlow({ profile, ticker, decimals }: LiveTerminalFlow
                     <div className="w-1/2 h-full flex items-center justify-end pr-0.5 border-r border-dotted border-[var(--border)]"><div className="h-[9px] rounded-sm" style={{ width: `${r.putPct}%`, background: 'color-mix(in srgb, var(--danger) 60%, transparent)' }} /></div>
                     <div className="w-1/2 h-full flex items-center pl-0.5"><div className="h-[9px] rounded-sm" style={{ width: `${r.callPct}%`, background: 'color-mix(in srgb, var(--success) 60%, transparent)' }} /></div>
                   </div>
-                  <div className="text-right font-black" style={{ color: r.net >= 0 ? 'var(--success)' : 'var(--danger)' }}>{fmtBig(r.net)}</div>
+                  <div className="text-right font-black" style={{ color: r.netUp ? 'var(--success)' : 'var(--danger)' }}>{fmtBig(r.net)}</div>
                 </div>
               ); })}
               {ladder.length === 0 && <div className="flex items-center justify-center py-12 text-[11px] font-mono text-[var(--text-tertiary)]">Awaiting dealer chain…</div>}
