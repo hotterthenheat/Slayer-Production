@@ -46,7 +46,6 @@ export type DrawDeps = {
   showVolume: boolean; showGrid: boolean; showWatermark: boolean; candleBorders: boolean;
   showGex: boolean; showHeat: boolean; showOrbs: boolean; showDisp: boolean; showLadder: boolean;
   tickKey: string; tfKey: string;
-  onScale?: (lo: number, hi: number, priceTop: number, priceAreaH: number) => void;   // report the live visible price range + price-area box (for the price-aligned ladder)
 };
 
 export function drawChart(deps: DrawDeps) {
@@ -55,7 +54,7 @@ export function drawChart(deps: DrawDeps) {
     hoverRef, gexDeltaRef, draftRef, measureRef, drawingsRef, toolRef, selectedRef,
     candles, ha, atr, profile, colors, decimals, chartType, ovOn, overlaySeries, paneSeries,
     displacements, gexCount, showVolume, showGrid, showWatermark, candleBorders,
-    showGex, showHeat, showOrbs, showDisp, showLadder, tickKey, tfKey, onScale,
+    showGex, showHeat, showOrbs, showDisp, showLadder, tickKey, tfKey,
   } = deps;
     const canvas = canvasRef.current, container = containerRef.current;
     if (!canvas || !container) return;
@@ -163,7 +162,6 @@ export function drawChart(deps: DrawDeps) {
     const yP = (p: number) => priceTop + priceAreaH - ((p - lo) / (hi - lo)) * priceAreaH;
     const pOfY = (y: number) => lo + (1 - (y - priceTop) / priceAreaH) * (hi - lo);
     geomRef.current = { plotL, plotR, barW, start, end, n, priceTop, priceAreaH, lo, hi };
-    onScale?.(lo, hi, priceTop, priceAreaH);   // publish the live visible price range + price-area box so the Exposure Ladder aligns to the chart
 
     // TradingView-style axis frame — a faint strip behind the right price axis and the bottom time
     // axis, with thin dividers, so the scales read as framed panels instead of floating on the chart.

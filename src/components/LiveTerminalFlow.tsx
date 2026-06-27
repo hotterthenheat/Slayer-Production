@@ -16,7 +16,7 @@ import { ReplayScrubber } from './terminal/ReplayScrubber';
 import { DealerPulse } from './terminal/DealerPulse';
 import { SessionBand } from './terminal/SessionBand';
 import { fmtBig } from './terminal/format';
-import { CROSSHAIR_EVENT, CrosshairDetail, PRICE_SCALE_EVENT, PriceScaleDetail } from '../lib/chartSync';
+import { CROSSHAIR_EVENT, CrosshairDetail } from '../lib/chartSync';
 import { EdgeTrackRecord } from './EdgeTrackRecord';
 import { Crosshair, Activity, Zap, Layers, ChevronDown, Gauge as GaugeIcon, TrendingUp, TrendingDown, Minus, Clock } from 'lucide-react';
 import { ASSET_LIST, TIMEFRAMES } from '../data';
@@ -72,10 +72,6 @@ export function LiveTerminalFlow({ profile: liveProfile, ticker, decimals }: Liv
   const [multiChart, setMultiChart] = useState(false); // opt-in movable/resizable multi-chart grid
   const [gexLines, setGexLines] = useState(false); // center toggle — multi-strike GEX line chart
   const [ladderMetric, setLadderMetric] = useState<'GAMMA' | 'DELTA' | 'VANNA' | 'OI' | 'VOL'>('GAMMA');
-  // Live price scale the chart is showing — lo/hi plus the price-area's VIEWPORT box (top/height in px)
-  // so the Exposure Ladder can place each strike at the exact same screen-y as that price on the chart.
-  // null until the chart broadcasts, in which case the ladder falls back to its evenly-spaced list.
-  const [syncScale, setSyncScale] = useState<{ lo: number; hi: number; top: number; height: number } | null>(null);
   const [now, setNow] = useState(() => new Date());
   useEffect(() => { const t = setInterval(() => setNow(new Date()), 1000); return () => clearInterval(t); }, []);
   // Feed heartbeat — stamp every SSE frame; if the stream goes quiet the UI must SAY so
@@ -170,18 +166,6 @@ export function LiveTerminalFlow({ profile: liveProfile, ticker, decimals }: Liv
     };
     window.addEventListener(CROSSHAIR_EVENT, onXhair as EventListener);
     return () => { window.removeEventListener(CROSSHAIR_EVENT, onXhair as EventListener); if (raf) cancelAnimationFrame(raf); clearLit(); };
-  }, []);
-
-  // ── Price-scale bridge — the Exposure Ladder follows the chart's live visible range ──
-  // rAF-throttled so a pan/zoom/tick storm never thrashes React state; the setState compare drops
-  // no-op frames so the ladder only re-renders when the range actually moves.
-  useEffect(() => {
-    let raf = 0, pending: { lo: number; hi: number; top: number; height: number } | null = null;
-    const same = (a: NonNullable<typeof pending>, b: NonNullable<typeof pending>) => Math.abs(a.lo - b.lo) < 1e-6 && Math.abs(a.hi - b.hi) < 1e-6 && Math.abs(a.top - b.top) < 0.5 && Math.abs(a.height - b.height) < 0.5;
-    const flush = () => { raf = 0; const p = pending; if (p) setSyncScale(prev => (prev && same(prev, p)) ? prev : p); };
-    const onScale = (e: Event) => { const d = (e as CustomEvent<PriceScaleDetail>).detail; if (!d || !(d.hi > d.lo) || !(d.height > 0)) return; pending = { lo: d.lo, hi: d.hi, top: d.top, height: d.height }; if (!raf) raf = requestAnimationFrame(flush); };
-    window.addEventListener(PRICE_SCALE_EVENT, onScale as EventListener);
-    return () => { window.removeEventListener(PRICE_SCALE_EVENT, onScale as EventListener); if (raf) cancelAnimationFrame(raf); };
   }, []);
 
   // ── TASK 4 — GEX regime theming ──────────────────────────────────────────────
@@ -639,41 +623,15 @@ export function LiveTerminalFlow({ profile: liveProfile, ticker, decimals }: Liv
               <div className="flex justify-between"><span style={{ color: 'var(--danger)' }}>◄ Put {mSym}</span><span style={{ color: 'var(--success)' }}>{mSym} Call ►</span></div>
               <div className="text-right">{ladderMetric === 'OI' || ladderMetric === 'VOL' ? 'Total' : 'Net'}</div>
             </div>
-            {/* In LIVE-ALIGNED mode the rows are positioned by PRICE on the chart's exact visible range,
-                so a strike here sits at the same height as that price on the chart and tracks every
-                pan / zoom / tick. Falls back to the evenly-spaced scroll list before the chart syncs. */}
-            <div ref={ladderScrollRef} className={`flex-1 relative ${syncScale ? 'overflow-hidden' : 'overflow-y-auto'}`}>
+            {/* Dense strike ladder — the 30 strikes around spot, packed tight. It re-centers on spot as
+                price moves and the bars animate on every GEX refresh, so you follow the action live
+                without it sprawling down the whole panel. */}
+            <div ref={ladderScrollRef} className="flex-1 overflow-y-auto">
               {ladder.length === 0 && <div className="flex items-center justify-center py-12 text-[11px] font-mono text-[var(--text-tertiary)]">Awaiting dealer chain…</div>}
-              {syncScale && syncScale.hi > syncScale.lo ? (() => {
-                const { lo, hi, top, height } = syncScale, span = hi - lo;
-                // Map a price to a y in the ladder's OWN coordinates that lands at the same viewport-y as
-                // that price on the chart: (chart price-area top − ladder list top) + price offset.
-                const listTop = ladderScrollRef.current ? ladderScrollRef.current.getBoundingClientRect().top : top;
-                const yPx = (p: number) => (top - listTop) + (1 - (p - lo) / span) * height;
-                const pad = span * 0.04;
-                const vis = ladder.filter(r => r.strike >= lo - pad && r.strike <= hi + pad);
-                return (
-                  <>
-                    {spot >= lo && spot <= hi && (
-                      <div className="absolute left-0 right-0 z-20 pointer-events-none flex items-center px-1" style={{ top: `${yPx(spot)}px`, transform: 'translateY(-50%)', transition: 'top 0.2s linear' }} title={`Spot ${fmtNum(spot, decimals)}`}>
-                        <div className="flex-1 h-px" style={{ background: 'var(--accent-color)', boxShadow: '0 0 6px var(--accent-color)' }} />
-                        <span className="text-[8px] font-mono font-black px-1 rounded-sm leading-none py-px" style={{ background: 'var(--accent-color)', color: '#06090d' }}>{fmtNum(spot, decimals)}</span>
-                      </div>
-                    )}
-                    {vis.map(r => {
-                      const inVac = !!((vacAbove && r.strike >= vacAbove.lo && r.strike <= vacAbove.hi) || (vacBelow && r.strike >= vacBelow.lo && r.strike <= vacBelow.hi));
-                      return (
-                        <div key={r.strike} data-strike={r.strike} className="absolute left-0 right-0 grid grid-cols-[52px_1fr_64px] gap-2 px-3 items-center text-[10px] font-mono tabular-nums" style={{ top: `${yPx(r.strike)}px`, transform: 'translateY(-50%)', height: 18, transition: 'top 0.2s linear', ...(r.isSpot ? { boxShadow: 'inset 2px 0 0 var(--accent-color)' } : inVac ? { background: 'color-mix(in srgb, var(--warning) 6%, transparent)' } : undefined) }}>
-                          {ladderRowCells(r)}
-                        </div>
-                      );
-                    })}
-                  </>
-                );
-              })() : ladder.map(r => {
+              {ladder.map(r => {
                 const inVac = !!((vacAbove && r.strike >= vacAbove.lo && r.strike <= vacAbove.hi) || (vacBelow && r.strike >= vacBelow.lo && r.strike <= vacBelow.hi));
                 return (
-                  <div key={r.strike} data-strike={r.strike} className="grid grid-cols-[52px_1fr_64px] gap-2 px-3 h-[24px] items-center text-[10px] font-mono tabular-nums hover:bg-[var(--surface-2)]" style={r.isSpot ? { background: 'color-mix(in srgb, var(--accent-color) 12%, transparent)', boxShadow: 'inset 2px 0 0 var(--accent-color)' } : inVac ? { background: 'color-mix(in srgb, var(--warning) 6%, transparent)' } : undefined}>
+                  <div key={r.strike} data-strike={r.strike} className="grid grid-cols-[52px_1fr_64px] gap-2 px-3 h-[22px] items-center text-[10px] font-mono tabular-nums hover:bg-[var(--surface-2)]" style={r.isSpot ? { background: 'color-mix(in srgb, var(--accent-color) 12%, transparent)', boxShadow: 'inset 2px 0 0 var(--accent-color)' } : inVac ? { background: 'color-mix(in srgb, var(--warning) 6%, transparent)' } : undefined}>
                     {ladderRowCells(r)}
                   </div>
                 );
