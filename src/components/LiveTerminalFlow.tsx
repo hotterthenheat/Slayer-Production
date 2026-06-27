@@ -234,7 +234,7 @@ export function LiveTerminalFlow({ profile, ticker, decimals }: LiveTerminalFlow
   const SEGS = [{ k: 'o', sess: 'OPEN', l: 'Open Drive', w: 0.154 }, { k: 'm', sess: 'MIDDAY', l: 'Midday', w: 0.615 }, { k: 'p', sess: 'POWER_HOUR', l: 'Power Hour', w: 0.154 }, { k: 'c', sess: 'CLOSE', l: 'Into Close', w: 0.077 }] as const;
 
   const Tile = ({ label, value, sub, color }: { label: string; value: string; sub?: string; color: string }) => (
-    <div className="bg-[var(--surface-2)] border border-[var(--border)] rounded-md px-2.5 py-2">
+    <div className="bg-[var(--surface-2)] border border-[var(--border)] rounded-md shadow-[inset_0_1px_0_rgba(255,255,255,0.05)] px-2.5 py-2">
       <div className="text-[9px] font-black tracking-widest uppercase text-[var(--text-tertiary)]">{label}</div>
       <div className="text-[14px] font-mono font-black tabular-nums leading-tight mt-0.5" style={{ color }}>{value}</div>
       {sub && <div className="text-[10px] font-mono text-[var(--text-tertiary)] mt-0.5 truncate">{sub}</div>}
@@ -459,7 +459,7 @@ export function LiveTerminalFlow({ profile, ticker, decimals }: LiveTerminalFlow
                 </div>
 
                 {/* Dealer Forces — each mechanic's lean, shown so the trader reads it themselves */}
-                <div className="bg-[var(--surface-2)] border border-[var(--border)] rounded-md overflow-hidden">
+                <div className="bg-[var(--surface-2)] border border-[var(--border)] rounded-md shadow-[inset_0_1px_0_rgba(255,255,255,0.05)] overflow-hidden">
                   <div className="flex items-center justify-between px-3 pt-2 pb-1.5 border-b border-[var(--border)]">
                     <span className="text-[9px] font-sans font-black tracking-widest uppercase text-[var(--text-secondary)]">Dealer Forces</span>
                     <span className="text-[9px] font-mono uppercase tracking-widest text-[var(--text-tertiary)]">what's driving structure</span>
@@ -480,7 +480,7 @@ export function LiveTerminalFlow({ profile, ticker, decimals }: LiveTerminalFlow
 
                 {/* dealer-structure spectrum */}
                 {structure && (
-                  <div className="bg-[var(--surface-2)] border border-[var(--border)] rounded-md px-3 py-3">
+                  <div className="bg-[var(--surface-2)] border border-[var(--border)] rounded-md shadow-[inset_0_1px_0_rgba(255,255,255,0.05)] px-3 py-3">
                     <div className="flex items-center justify-between mb-3">
                       <span className="text-[9px] font-black tracking-widest uppercase text-[var(--text-tertiary)]">Dealer Structure</span>
                       {migration && migration.direction !== 'STABLE' && (
@@ -502,7 +502,7 @@ export function LiveTerminalFlow({ profile, ticker, decimals }: LiveTerminalFlow
                 )}
 
                 {/* key levels list */}
-                <div className="bg-[var(--surface-2)] border border-[var(--border)] rounded-md overflow-hidden">
+                <div className="bg-[var(--surface-2)] border border-[var(--border)] rounded-md shadow-[inset_0_1px_0_rgba(255,255,255,0.05)] overflow-hidden">
                   <div className="px-3 pt-2 pb-1.5 text-[9px] font-sans font-black tracking-widest uppercase text-[var(--text-secondary)] border-b border-[var(--border)]">Key Levels</div>
                   <div className="stagger-children">
                     {levels.map((l, i) => (

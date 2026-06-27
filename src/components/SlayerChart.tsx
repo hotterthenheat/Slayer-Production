@@ -840,6 +840,8 @@ export const SlayerChart = memo(function SlayerChartImpl({ profile, decimals, ca
       ctx.fillStyle = hexA(T.text, 0.018); ctx.fillRect(nowX, priceTop, plotR - nowX, priceBottom - priceTop);
       ctx.strokeStyle = hexA(T.text, 0.16); ctx.setLineDash([2, 4]); ctx.beginPath(); ctx.moveTo(px(nowX), priceTop); ctx.lineTo(px(nowX), priceBottom); ctx.stroke(); ctx.setLineDash([]);
     }
+    let hoverTag: (typeof placed)[number] | null = null;
+    const hovPt = hoverRef.current;
     for (const L of placed) {
       const name = NAMES[L.label] || L.label, isWall = L.label === 'CW' || L.label === 'PW';
       const lrel = L.value ? Math.min(1, (L.gex || 0) / maxLoadedGex) : 0;
@@ -869,6 +871,7 @@ export const SlayerChart = memo(function SlayerChartImpl({ profile, decimals, ca
       ctx.font = major ? '800 9.5px ui-monospace, monospace' : '700 9px ui-monospace, monospace';
       const nameW = ctx.measureText(nameLbl).width, pctW = pctLbl ? ctx.measureText(pctLbl).width : 0;
       const tagW = nameW + pctW + 17, tagR = plotR - 4, tagL = tagR - tagW, ty = L.off ? (L.dir < 0 ? priceTop + tagH / 2 + 2 : priceBottom - tagH / 2 - 2) : L.y;
+      if (hovPt && hovPt.x >= tagL - 3 && hovPt.x <= tagR + 6 && Math.abs(hovPt.y - ty) <= tagH / 2 + 2) hoverTag = L;
       // connector from the line's right end back to the tag whenever the tag was nudged off its price
       if (!L.off && Math.abs(L.y - L.rawY) > 1) { ctx.strokeStyle = hexA(col, 0.55); ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(plotR - 3, px(L.rawY) - 0.5); ctx.lineTo(tagR - 2, px(ty) - 0.5); ctx.stroke(); }
       rr(tagL, ty - tagH / 2, tagW, tagH, 3);
@@ -911,6 +914,20 @@ export const SlayerChart = memo(function SlayerChartImpl({ profile, decimals, ca
       if (tkr) { ctx.fillStyle = shade(lc, 0.46); (ctx as any).roundRect ? (ctx.beginPath(), (ctx as any).roundRect(priceX - tkrW, lastY - 8, tkrW, 16, 3), ctx.fill()) : ctx.fillRect(priceX - tkrW, lastY - 8, tkrW, 16); ctx.fillStyle = hexA('#ffffff', 0.92); ctx.fillText(tkr, priceX - tkrW + 6, lastY); }
       ctx.fillStyle = lc; (ctx as any).roundRect ? (ctx.beginPath(), (ctx as any).roundRect(priceX, lastY - 8, priceW, 16, 3), ctx.fill()) : ctx.fillRect(priceX, lastY - 8, priceW, 16);
       ctx.fillStyle = '#06090d'; ctx.fillText(nf(last), priceX + 6, lastY); ctx.font = '11px ui-monospace, monospace';
+    }
+
+    // Magnet pull cue — a short tether on the left showing price being drawn toward the magnet (pin) level.
+    if (typeof profile.magnet === 'number' && profile.magnet > 0 && lastY >= priceTop && lastY <= priceBottom) {
+      const my = yP(profile.magnet);
+      if (my >= priceTop + 6 && my <= priceBottom - 6 && Math.abs(my - lastY) > 16) {
+        const tx = plotL + 24, dir = my > lastY ? 1 : -1;
+        ctx.strokeStyle = hexA(COL.magnet, 0.4); ctx.setLineDash([1, 4]); ctx.lineWidth = 1.5;
+        ctx.beginPath(); ctx.moveTo(px(tx), lastY + dir * 5); ctx.lineTo(px(tx), my - dir * 6); ctx.stroke();
+        ctx.setLineDash([]); ctx.lineWidth = 1;
+        ctx.fillStyle = hexA(COL.magnet, 0.85); ctx.beginPath(); ctx.moveTo(tx, my - dir * 1); ctx.lineTo(tx - 3.4, my - dir * 7); ctx.lineTo(tx + 3.4, my - dir * 7); ctx.closePath(); ctx.fill();
+        ctx.fillStyle = hexA(COL.magnet, 0.7); ctx.beginPath(); ctx.arc(tx, lastY + dir * 5, 1.9, 0, Math.PI * 2); ctx.fill();
+        ctx.font = '700 7.5px ui-monospace, monospace'; ctx.textAlign = 'left'; ctx.fillStyle = hexA(COL.magnet, 0.7); ctx.fillText('PULL', tx + 6, (lastY + my) / 2);
+      }
     }
 
     // ── Sub-panes (registry-driven) ──
@@ -997,6 +1014,34 @@ export const SlayerChart = memo(function SlayerChartImpl({ profile, decimals, ca
       const txt = `O ${nf(c.open)}   H ${nf(c.high)}   L ${nf(c.low)}   C ${nf(c.close)}   ${dC >= 0 ? '+' : ''}${dPct.toFixed(2)}%   V ${(c.volume || 0) >= 1e6 ? ((c.volume || 0) / 1e6).toFixed(2) + 'M' : (c.volume || 0).toLocaleString("en-US")}`;
       ctx.font = '11px ui-monospace, monospace'; ctx.textAlign = 'left'; const wTxt = ctx.measureText(txt).width + 14;
       ctx.fillStyle = 'rgba(8,10,14,0.82)'; ctx.fillRect(plotL + 2, priceTop + 2, wTxt, 16); ctx.fillStyle = up ? COL.up : COL.down; ctx.fillText(txt, plotL + 9, priceTop + 10);
+      // Loaded-strike hover tooltip — full call/put γ + OI/vol breakdown for the dealer level under the cursor.
+      if (hoverTag && profile.strikes && profile.strikes.length) {
+        const tp = hoverTag.price; let sd = profile.strikes[0], bd = Infinity;
+        for (const s of profile.strikes) { const d = Math.abs(s.strike - tp); if (d < bd) { bd = d; sd = s; } }
+        const fK = (v: number) => { const a = Math.abs(v); return a >= 1e3 ? (a / 1e3).toFixed(a >= 1e4 ? 0 : 1) + 'K' : Math.round(a) + ''; };
+        const rows: [string, string, string][] = [
+          ['Call γ', fmtGex(sd.callGex || 0), COL.up],
+          ['Put γ', fmtGex(sd.putGex || 0), COL.down],
+          ['Net γ', fmtGex(sd.netGex || 0), (sd.netGex || 0) >= 0 ? COL.up : COL.down],
+        ];
+        if ((sd.callOi || 0) || (sd.putOi || 0)) rows.push(['OI C/P', `${fK(sd.callOi || 0)} / ${fK(sd.putOi || 0)}`, hexA(T.text, 0.85)]);
+        if ((sd.callVolume || 0) || (sd.putVolume || 0)) rows.push(['Vol C/P', `${fK(sd.callVolume || 0)} / ${fK(sd.putVolume || 0)}`, hexA(T.text, 0.85)]);
+        ctx.font = '600 10px ui-monospace, monospace';
+        let keyW = 0, valW = 0; for (const [k, v] of rows) { keyW = Math.max(keyW, ctx.measureText(k).width); valW = Math.max(valW, ctx.measureText(v).width); }
+        const lab = hoverTag.value ? '' : (NAMES[hoverTag.label] || hoverTag.label).toUpperCase();
+        ctx.font = '800 11px ui-monospace, monospace'; const headW = ctx.measureText(nf(sd.strike)).width + (lab ? ctx.measureText(lab).width + 16 : 0);
+        const padX = 9, gap = 16, rowH = 14, boxW = Math.max(keyW + gap + valW + padX * 2, headW + padX * 2, 126), boxH = 16 + rows.length * rowH + 7;
+        const bx = Math.max(plotL + 6, Math.min(hv.x - 14 - boxW, plotR - boxW - 6));
+        const by = Math.max(priceTop + 4, Math.min(priceBottom - boxH - 4, hv.y - boxH / 2));
+        ctx.save(); ctx.shadowColor = 'rgba(0,0,0,0.55)'; ctx.shadowBlur = 13; ctx.shadowOffsetY = 3; rr(bx, by, boxW, boxH, 5); ctx.fillStyle = T.surf; ctx.fill(); ctx.restore();
+        ctx.strokeStyle = hexA(hoverTag.color, 0.9); ctx.lineWidth = 1; ctx.stroke();
+        ctx.textAlign = 'left'; ctx.font = '800 11px ui-monospace, monospace'; ctx.fillStyle = hoverTag.color; ctx.fillText(nf(sd.strike), bx + padX, by + 9);
+        if (lab) { ctx.textAlign = 'right'; ctx.font = '700 8px ui-monospace, monospace'; ctx.fillStyle = hexA(T.text, 0.5); ctx.fillText(lab, bx + boxW - padX, by + 9); }
+        ctx.strokeStyle = hexA(T.text, 0.12); ctx.beginPath(); ctx.moveTo(bx + 6, by + 16.5); ctx.lineTo(bx + boxW - 6, by + 16.5); ctx.stroke();
+        ctx.font = '600 10px ui-monospace, monospace'; let ry = by + 16 + 7;
+        for (const [k, v, c] of rows) { ctx.textAlign = 'left'; ctx.fillStyle = hexA(T.text, 0.5); ctx.fillText(k, bx + padX, ry); ctx.textAlign = 'right'; ctx.fillStyle = c; ctx.fillText(v, bx + boxW - padX, ry); ry += rowH; }
+        ctx.textAlign = 'left';
+      }
     } else {
       ctx.textAlign = 'left'; ctx.font = '11px ui-monospace, monospace';
       const segs: { t: string; c: string }[] = [];
