@@ -13,12 +13,14 @@ import { StrikeMatrix } from './StrikeMatrix';
 import { OrderFlow } from './OrderFlow';
 import { SystemStatus } from './terminal/StatusBar';
 import { ReplayScrubber } from './terminal/ReplayScrubber';
+import { DealerPulse } from './terminal/DealerPulse';
+import { SessionBand } from './terminal/SessionBand';
+import { fmtBig, toneColor } from './terminal/format';
 import { CROSSHAIR_EVENT, CrosshairDetail } from '../lib/chartSync';
 import { EdgeTrackRecord } from './EdgeTrackRecord';
 import { Crosshair, Activity, Zap, Layers, ChevronDown, Gauge as GaugeIcon, Radio, TrendingUp, TrendingDown, Minus, Clock } from 'lucide-react';
 import { ASSET_LIST, TIMEFRAMES } from '../data';
 
-const toneColor = (t: string) => (t === 'pos' ? 'var(--success)' : t === 'neg' ? 'var(--danger)' : 'var(--text-tertiary)');
 // Tight, legible type scale (raised the floor off 7.5/8px so dense data stays readable).
 
 interface LiveTerminalFlowProps {
@@ -27,7 +29,6 @@ interface LiveTerminalFlowProps {
   decimals: number;
 }
 
-const fmtBig = (v: number) => { const a = Math.abs(v), s = v < 0 ? '−' : ''; return a >= 1e9 ? s + (a / 1e9).toFixed(2) + 'B' : a >= 1e6 ? s + (a / 1e6).toFixed(1) + 'M' : a >= 1e3 ? s + (a / 1e3).toFixed(1) + 'K' : s + a.toFixed(0); };
 
 export function LiveTerminalFlow({ profile: liveProfile, ticker, decimals }: LiveTerminalFlowProps) {
   // ── Market Replay (§3.2) — append-only buffer of the full dealer state over the session; a scrubber
@@ -386,71 +387,11 @@ export function LiveTerminalFlow({ profile: liveProfile, ticker, decimals }: Liv
         </div>
       </div>
 
-      {/* ── Dealer Pulse: a descriptive, at-a-glance picture of dealer positioning. It SHOWS
-          the mechanics (a force balance, net γ, the implied range, a live observation tape) —
-          it does NOT issue a trade. The trader reads it and decides. ── */}
-      <div className="flex items-stretch h-[58px] border-b border-[var(--border)] shrink-0 bg-[var(--surface)] overflow-hidden">
-        {/* Dealer positioning force balance — a picture of the dealer book, not a call */}
-        <div className="flex flex-col justify-center gap-1 px-4 border-r border-[var(--border)] shrink-0 w-[214px]">
-          <div className="flex items-center justify-between">
-            <span className="text-[9px] font-black tracking-widest uppercase text-[var(--text-tertiary)]">Dealer Positioning</span>
-            <span className="text-[9px] font-mono font-black tabular-nums" style={{ color: read.score > 8 ? 'var(--success)' : read.score < -8 ? 'var(--danger)' : 'var(--text-tertiary)' }}>{read.score > 0 ? '+' : ''}{read.score}</span>
-          </div>
-          <div className="relative h-1.5 rounded-full bg-[var(--surface-3)] overflow-hidden">
-            <div className="absolute top-0 bottom-0 left-1/2 w-px z-10" style={{ background: 'var(--border-strong)' }} />
-            {read.score >= 0
-              ? <motion.div className="absolute top-0 bottom-0 left-1/2" style={{ background: 'var(--success)' }} animate={{ width: `${Math.min(50, read.score / 2)}%` }} transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }} />
-              : <motion.div className="absolute top-0 bottom-0 right-1/2" style={{ background: 'var(--danger)' }} animate={{ width: `${Math.min(50, -read.score / 2)}%` }} transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }} />}
-          </div>
-          <div className="flex items-center justify-between text-[9px] font-mono uppercase tracking-widest"><span style={{ color: 'var(--danger)' }}>Bearish book</span><span style={{ color: 'var(--success)' }}>Bullish book</span></div>
-        </div>
-        {/* Net gamma + regime */}
-        <div className="flex flex-col justify-center px-4 border-r border-[var(--border)] shrink-0">
-          <span className="text-[9px] font-black tracking-widest uppercase text-[var(--text-tertiary)]">Net γ · {read.regime === 'PIN' ? `Pin ${read.pinStrength}` : 'Trend'}</span>
-          <span className="text-[16px] font-mono font-black tabular-nums leading-tight mt-0.5" style={{ color: trend }}>{netGex >= 0 ? '+' : ''}{fmtBig(netGex)}</span>
-        </div>
-        {/* Implied range */}
-        <div className="flex flex-col justify-center px-4 border-r border-[var(--border)] shrink-0">
-          <span className="text-[9px] font-black tracking-widest uppercase text-[var(--text-tertiary)]">Implied Range</span>
-          <span className="text-[16px] font-mono font-black tabular-nums leading-tight mt-0.5" style={{ color: 'var(--info)' }}>{emPct != null ? `±${(emPct * 100).toFixed(2)}%` : '—'}</span>
-        </div>
-        {/* Dealer MOTION — how the book is CHANGING right now: gamma hedging state, vanna
-            hedge-flow, and which way the gamma center-of-mass (the pin) is drifting. */}
-        {dyn && (
-          <div className="flex flex-col justify-center px-4 border-r border-[var(--border)] shrink-0 w-[188px]">
-            <div className="flex items-center justify-between">
-              <span className="text-[9px] font-black tracking-widest uppercase text-[var(--text-tertiary)]">Dealer Motion</span>
-              {migration && migration.direction !== 'STABLE' && (
-                <span className="flex items-center gap-0.5 text-[9px] font-mono font-black" style={{ color: migration.direction === 'BULLISH' ? 'var(--success)' : 'var(--danger)' }} title={`Gamma center-of-mass drifting ${migration.direction.toLowerCase()}${migration.comCurrent ? ` toward ${fmtNum(migration.comCurrent)}` : ''}`}>
-                  {migration.direction === 'BULLISH' ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}PIN
-                </span>
-              )}
-            </div>
-            <span className="text-[13px] font-mono font-black leading-tight mt-0.5" style={{ color: gammaMotion ? gammaMotion.color : 'var(--text-tertiary)' }}>{gammaMotion ? gammaMotion.label : '—'}</span>
-            <span className="text-[9px] font-mono tracking-wide text-[var(--text-tertiary)] truncate">{gammaMotion?.sub ?? 'awaiting dynamics'}{vannaFlow && vannaFlow !== 'NEUTRAL' ? ` · vanna ${vannaFlow.toLowerCase()}` : ''}</span>
-          </div>
-        )}
-        {/* Live observation tape — what's happening, never what to do */}
-        <div className="flex-1 min-w-0 flex items-center gap-2 px-4 overflow-hidden">
-          <span className="flex items-center gap-1 text-[9px] font-black tracking-widest uppercase shrink-0" style={{ color: 'var(--accent-color)' }}><Radio className="w-3 h-3" /> Tape</span>
-          <div className="flex-1 overflow-hidden">
-            <div className="flex gap-8 whitespace-nowrap animate-ticker-marquee">
-              {[...read.events, ...read.events].map((e, i) => (<span key={i} className="text-[10px] font-mono inline-flex items-center gap-1.5" style={{ color: toneColor(e.tone) }}><span className="w-1 h-1 rounded-full shrink-0" style={{ background: toneColor(e.tone) }} />{e.text}</span>))}
-            </div>
-          </div>
-        </div>
-      </div>
+      {/* Dealer Pulse — descriptive picture of dealer positioning (force balance · net γ · range · motion · tape) */}
+      <DealerPulse read={read} trend={trend} netGex={netGex} emPct={emPct} showMotion={!!dyn} migration={migration} gammaMotion={gammaMotion} vannaFlow={vannaFlow} />
 
       {/* ── 0DTE session band: phase + live countdown to close ── */}
-      <div className="flex items-center gap-2.5 h-6 px-3 border-b border-[var(--border)] shrink-0" style={{ background: 'var(--bg-base)' }}>
-        <Clock className="w-3 h-3 shrink-0" style={{ color: sess.live ? 'var(--accent-color)' : 'var(--text-tertiary)' }} />
-        <div className="relative flex-1 h-1.5 rounded-full overflow-hidden flex" style={{ background: 'var(--surface-2)' }}>
-          {SEGS.map(s => (<div key={s.k} className="h-full" style={{ width: `${s.w * 100}%`, borderRight: '1px solid var(--bg-base)', background: clock.session === s.sess ? 'color-mix(in srgb, var(--accent-color) 55%, transparent)' : 'transparent' }} title={s.l} />))}
-          {sess.live && <div className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 w-2 h-2 rounded-full" style={{ left: `${sess.prog * 100}%`, background: 'var(--accent-color)', boxShadow: '0 0 6px var(--accent-color)' }} />}
-        </div>
-        <span className="text-[9px] font-mono font-black uppercase tracking-widest shrink-0" style={{ color: sess.live ? 'var(--text-secondary)' : 'var(--text-tertiary)' }}>{SEGS.find(s => s.sess === clock.session)?.l ?? (sess.live ? 'Session' : 'Closed')}</span>
-        <span className="text-[10px] font-mono font-black tabular-nums shrink-0 w-[88px] text-right" style={{ color: sess.cd !== 'CLOSED' && sess.prog > 0.77 ? 'var(--warning)' : sess.live ? 'var(--text-secondary)' : 'var(--text-tertiary)' }}>{sess.cd !== 'CLOSED' ? `${sess.cd} to close` : 'Market closed'}</span>
-      </div>
+      <SessionBand sess={sess} clock={clock} />
 
       {/* ── 3-column workspace (full-bleed — fills the whole screen) ── */}
       <div className="flex-1 w-full overflow-hidden flex">
