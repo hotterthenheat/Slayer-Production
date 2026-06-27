@@ -11,6 +11,8 @@ import { StrikeGexChart } from './StrikeGexChart';
 import { useGexHistory } from '../lib/gexHistory';
 import { StrikeMatrix } from './StrikeMatrix';
 import { OrderFlow } from './OrderFlow';
+import { SystemStatus } from './terminal/StatusBar';
+import { ReplayScrubber } from './terminal/ReplayScrubber';
 import { CROSSHAIR_EVENT, CrosshairDetail } from '../lib/chartSync';
 import { EdgeTrackRecord } from './EdgeTrackRecord';
 import { Crosshair, Activity, Zap, Layers, ChevronDown, Gauge as GaugeIcon, Radio, TrendingUp, TrendingDown, Minus, Clock } from 'lucide-react';
@@ -701,65 +703,6 @@ export function LiveTerminalFlow({ profile: liveProfile, ticker, decimals }: Liv
       </div>
       {profileHist.length > 2 && <ReplayScrubber hist={profileHist} replayT={replayT} setReplayT={setReplayT} decimals={decimals} />}
       <SystemStatus feedLabel={feedLabel} live={liveFeed} feedColor={feedColor} cd={sess.cd} />
-    </div>
-  );
-}
-
-/**
- * SystemStatus — institutional telemetry footer. Isolated component so its 1 Hz FPS/memory
- * updates re-render only this strip, never the whole terminal. FPS + heap are measured live;
- * Feed reflects the real chain status. (Latency / cache wire in once the live WS is connected.)
- */
-function SystemStatus({ feedLabel, live, feedColor, cd }: { feedLabel: string; live: boolean; feedColor: string; cd: string }) {
-  const [t, setT] = useState<{ fps: number; mem: number | null }>({ fps: 0, mem: null });
-  useEffect(() => {
-    let frames = 0, raf = 0, last = performance.now();
-    const loop = () => { frames++; const n = performance.now(); if (n - last >= 1000) { const m = (performance as unknown as { memory?: { usedJSHeapSize: number } }).memory?.usedJSHeapSize; setT({ fps: Math.round((frames * 1000) / (n - last)), mem: m != null ? m / 1048576 : null }); frames = 0; last = n; } raf = requestAnimationFrame(loop); };
-    raf = requestAnimationFrame(loop);
-    return () => cancelAnimationFrame(raf);
-  }, []);
-  const Cell = ({ label, value, color, dot }: { label: string; value: string; color: string; dot?: string }) => (
-    <div className="flex items-center gap-1.5 shrink-0">
-      {dot && <span className="w-1.5 h-1.5 rounded-full" style={{ background: dot }} />}
-      <span className="text-[8px] font-black uppercase tracking-[0.18em] text-[var(--text-tertiary)]">{label}</span>
-      <span className="text-[10px] font-mono font-bold tabular-nums" style={{ color }}>{value}</span>
-    </div>
-  );
-  return (
-    <div className="shrink-0 h-7 border-t border-[var(--border)] bg-[var(--surface)] flex items-center gap-5 px-4 overflow-hidden">
-      <Cell label="Feed" value={live ? feedLabel.replace('LIVE · ', '') : 'IDLE'} color={feedColor} dot={feedColor} />
-      <Cell label="FPS" value={t.fps ? String(t.fps) : '—'} color={t.fps >= 50 ? 'var(--success)' : t.fps ? 'var(--warning)' : 'var(--text-tertiary)'} />
-      {t.mem != null && <Cell label="Mem" value={t.mem >= 1024 ? (t.mem / 1024).toFixed(2) + 'GB' : Math.round(t.mem) + 'MB'} color="var(--text-secondary)" />}
-      <Cell label="Session" value={cd} color={cd === 'CLOSED' ? 'var(--text-tertiary)' : 'var(--text-secondary)'} />
-      <div className="ml-auto text-[8px] font-black uppercase tracking-[0.22em] text-[var(--text-tertiary)] shrink-0">Slayer Terminal</div>
-    </div>
-  );
-}
-
-/**
- * ReplayScrubber — Market Replay timeline (§3.2). Drag (or click) to rewind the entire dealer state
- * to any buffered moment; LIVE snaps back to the latest. The buffer keeps filling in the background,
- * so you can study a turning point and rejoin the live tape without losing data.
- */
-function ReplayScrubber({ hist, replayT, setReplayT }: { hist: { t: number; p: GexProfileData }[]; replayT: number | null; setReplayT: (t: number | null) => void; decimals: number }) {
-  const t0 = hist[0].t, t1 = hist[hist.length - 1].t, span = Math.max(1, t1 - t0);
-  const live = replayT == null;
-  const pos = live ? 100 : Math.max(0, Math.min(100, ((replayT - t0) / span) * 100));
-  const fmt = (t: number) => new Date(t).toLocaleTimeString('en-US', { hour12: false });
-  const scrub = (e: { currentTarget: HTMLElement; clientX: number }) => { const r = e.currentTarget.getBoundingClientRect(); setReplayT(t0 + span * Math.max(0, Math.min(1, (e.clientX - r.left) / r.width))); };
-  const accent = live ? 'var(--success)' : 'var(--warning)';
-  return (
-    <div className="shrink-0 h-9 border-t border-[var(--border)] bg-[var(--surface)] flex items-center gap-3 px-4 font-mono select-none">
-      <button onClick={() => setReplayT(live ? t0 + span * 0.5 : null)} className="px-2 py-0.5 rounded text-[9px] font-black uppercase tracking-widest border transition-colors shrink-0" style={{ borderColor: `color-mix(in srgb, ${accent} 45%, transparent)`, color: accent, background: `color-mix(in srgb, ${accent} 11%, transparent)` }}>{live ? '● LIVE' : '⏸ REPLAY'}</button>
-      <span className="text-[8px] uppercase tracking-[0.18em] text-[var(--text-tertiary)] shrink-0 hidden md:block">Time Travel</span>
-      <span className="text-[9px] tabular-nums text-[var(--text-tertiary)] w-[58px] shrink-0">{fmt(t0)}</span>
-      <div className="relative flex-1 h-4 flex items-center cursor-pointer" onMouseDown={scrub} onMouseMove={e => { if (e.buttons === 1) scrub(e); }}>
-        <div className="absolute inset-x-0 h-[3px] rounded-full bg-[var(--surface-3)]" />
-        <div className="absolute left-0 h-[3px] rounded-full" style={{ width: `${pos}%`, background: accent }} />
-        <div className="absolute w-3 h-3 rounded-full -translate-x-1/2 border-2 border-[var(--surface)]" style={{ left: `${pos}%`, background: accent, boxShadow: `0 0 8px color-mix(in srgb, ${accent} 60%, transparent)` }} />
-      </div>
-      <span className="text-[9px] tabular-nums text-[var(--text-tertiary)] w-[58px] text-right shrink-0">{fmt(t1)}</span>
-      <span className="text-[10px] font-black tabular-nums w-[68px] text-right shrink-0" style={{ color: accent }}>{live ? 'NOW' : fmt(replayT)}</span>
     </div>
   );
 }
