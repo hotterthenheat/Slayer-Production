@@ -220,6 +220,26 @@ export function LiveTerminalFlow({ profile, ticker, decimals }: LiveTerminalFlow
   const outlook = useMemo(() => computeGexOutlook(profile, candles.slice(-12).map(c => c.close)), [profile, candles]);
   const outlookColor = outlook.bias === 'up' ? 'var(--success)' : outlook.bias === 'down' ? 'var(--danger)' : outlook.regime === 'PINNING' ? 'var(--info)' : 'var(--text-secondary)';
 
+  // Narrative Engine — translates the live net-γ trend into one readable sentence instead of a raw number.
+  // Pure synthesis of real data (Δ net GEX over the session window + the regime); confidence reuses the
+  // already-derived outlook score rather than inventing a new one.
+  const narrative = useMemo(() => {
+    const cur = (profile.strikes || []).reduce((a, s) => a + (s.netGex || 0), 0) || (profile.netGex ?? 0);
+    if (gexHist.length < 3) return null;
+    const last = gexHist[gexHist.length - 1].t, windowMs = 15 * 60 * 1000;
+    let past = gexHist[0];
+    for (const sn of gexHist) { if (last - sn.t <= windowMs) { past = sn; break; } }
+    const pastNet = Object.values(past.m).reduce((a, v) => a + (v as number), 0);
+    const delta = cur - pastNet, mins = Math.max(1, Math.round((last - past.t) / 60000));
+    if (Math.abs(delta) < 1e6) return null;
+    const longG = cur >= 0, rising = delta >= 0;
+    const imp = longG && rising ? 'Dealers are growing more long gamma — historically this dampens intraday volatility and favours mean-reversion around the pin.'
+      : longG && !rising ? 'Dealers stay long gamma but are bleeding it — the volatility pin is weakening; watch the flip.'
+      : !longG && !rising ? 'Dealers are pushing deeper short gamma — hedging amplifies the move, so expect trend continuation and wider ranges.'
+      : 'Dealers are short gamma but covering — downside acceleration is easing.';
+    return { text: `Net GEX ${rising ? 'climbed' : 'slid'} ${delta >= 0 ? '+' : '−'}${fmtBig(Math.abs(delta))} over the last ${mins} min. ${imp}`, conf: outlook.confidence, rising };
+  }, [profile, gexHist, outlook]);
+
   // 0DTE session clock — time is the dominant risk; surface session phase + live countdown.
   const clock = useMemo(() => computeDealerClock(0, profile.netVex || 0, now), [profile.netVex, now]);
   const sess = useMemo(() => {
@@ -424,6 +444,12 @@ export function LiveTerminalFlow({ profile, ticker, decimals }: LiveTerminalFlow
                       <span className="text-[8.5px] font-mono uppercase tracking-widest text-[var(--text-tertiary)]">Path toward</span>
                       <span className="text-[12px] font-mono font-black tabular-nums" style={{ color: outlookColor }}>{fmtNum(outlook.target)}</span>
                       <span className="text-[9px] font-mono tabular-nums text-[var(--text-tertiary)] ml-auto">{distLabel(outlook.target)}</span>
+                    </div>
+                  )}
+                  {narrative && (
+                    <div className="flex gap-1.5 mt-1.5 pt-1.5 border-t" style={{ borderColor: 'color-mix(in srgb, var(--border) 70%, transparent)' }}>
+                      <span className="mt-[3px] w-1 h-1 rounded-full shrink-0 animate-pulse" style={{ background: narrative.rising ? 'var(--success)' : 'var(--danger)' }} />
+                      <p className="text-[9.5px] font-mono leading-snug text-[var(--text-secondary)]">{narrative.text} <span className="text-[var(--text-tertiary)]">({narrative.conf}% conf)</span></p>
                     </div>
                   )}
                 </div>
