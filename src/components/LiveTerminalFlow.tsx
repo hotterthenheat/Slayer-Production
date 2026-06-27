@@ -95,13 +95,19 @@ export function LiveTerminalFlow({ profile: liveProfile, ticker, decimals }: Liv
   const distLabel = (lvl?: number) => { const d = dist(lvl); return d == null ? '' : `${d >= 0 ? '+' : ''}${d.toFixed(2)}%`; };
   const trend = longGamma ? 'var(--success)' : 'var(--danger)';
 
+  // Market session (ET regular hours). A "LIVE" badge must never sit over a closed/frozen tape, so the
+  // feed status below is gated on this: when the session is closed we show LAST CLOSE, not LIVE.
+  const marketOpen = useMemo(() => { const et = new Date(now.toLocaleString('en-US', { timeZone: 'America/New_York' })); const secs = et.getHours() * 3600 + et.getMinutes() * 60 + et.getSeconds(); const dow = et.getDay(); return dow >= 1 && dow <= 5 && secs >= 9.5 * 3600 && secs <= 16 * 3600; }, [now]);
   // Honest feed status from the server's own source label — provider when the options chain
   // is live, MODEL on synthetic data, STALE if the heartbeat stalls. Never a hardcoded "LIVE".
   const feedRaw = (profile.feed || serverState?.data_source || '').toUpperCase();
   const feedProvider = feedRaw.includes('THETA') ? 'THETADATA' : feedRaw.includes('TRADIER') ? 'TRADIER' : feedRaw.includes('POLYGON') ? 'POLYGON' : null;
-  const liveFeed = !isStale && (feedRaw.startsWith('LIVE') || (!!feedProvider && !feedRaw.includes('DETERMINISTIC') && !feedRaw.includes('SANDBOX') && !feedRaw.includes('MODEL')));
-  const feedColor = isStale ? 'var(--danger)' : liveFeed ? 'var(--success)' : 'var(--warning)';
-  const feedLabel = isStale ? `STALE ${staleSecs}s` : liveFeed ? (feedProvider ? `LIVE · ${feedProvider}` : 'LIVE') : 'MODEL';
+  // Provenance: real provider data present & fresh (used for the Proven-Edge ledger). A closed market is
+  // still REAL provider data (last close), so this stays true — but it is NOT "live" for the badge.
+  const realFeed = !isStale && (feedRaw.startsWith('LIVE') || (!!feedProvider && !feedRaw.includes('DETERMINISTIC') && !feedRaw.includes('SANDBOX') && !feedRaw.includes('MODEL')));
+  const liveFeed = realFeed && marketOpen;   // streaming live, market open
+  const feedColor = !marketOpen ? 'var(--text-tertiary)' : isStale ? 'var(--danger)' : liveFeed ? 'var(--success)' : 'var(--warning)';
+  const feedLabel = !marketOpen ? (feedProvider ? `LAST CLOSE · ${feedProvider}` : 'LAST CLOSE') : isStale ? `STALE ${staleSecs}s` : liveFeed ? (feedProvider ? `LIVE · ${feedProvider}` : 'LIVE') : 'MODEL';
   // Level confidence — the engine flags when a flip/wall is statistically thin. Undefined ⇒
   // treat as confident (don't cry wolf on older payloads); only an explicit false marks it.
   const flipConfident = profile.gammaFlipConfident !== false;
@@ -460,7 +466,7 @@ export function LiveTerminalFlow({ profile: liveProfile, ticker, decimals }: Liv
         <div className="flex items-center gap-2">
           {/* Honest feed status — provider name when the chain is live, MODEL on synthetic data,
               STALE if the SSE heartbeat stalls. Replaces the old hardcoded "LIVE". */}
-          <span className="flex items-center gap-1.5 px-2 py-1 rounded-md border text-[10px] font-mono font-black uppercase tracking-widest shrink-0" title={liveFeed ? `Live options feed (${feedProvider}) · updated ${staleSecs}s ago` : isStale ? `Feed stalled — last update ${staleSecs}s ago` : 'Synthetic model data — connect a provider API key for a live feed'} style={{ borderColor: `color-mix(in srgb, ${feedColor} 42%, transparent)`, background: `color-mix(in srgb, ${feedColor} 10%, transparent)`, color: feedColor }}>
+          <span className="flex items-center gap-1.5 px-2 py-1 rounded-md border text-[10px] font-mono font-black uppercase tracking-widest shrink-0" title={!marketOpen ? `Market closed — last-close snapshot${feedProvider ? ' from ' + feedProvider : ''} (updated ${staleSecs}s ago); data is frozen, not live` : liveFeed ? `Live options feed (${feedProvider}) · updated ${staleSecs}s ago` : isStale ? `Feed stalled — last update ${staleSecs}s ago` : 'Synthetic model data — connect a provider API key for a live feed'} style={{ borderColor: `color-mix(in srgb, ${feedColor} 42%, transparent)`, background: `color-mix(in srgb, ${feedColor} 10%, transparent)`, color: feedColor }}>
             {liveFeed
               ? <span className="relative flex h-1.5 w-1.5"><span className="animate-ping absolute inline-flex h-full w-full rounded-full opacity-60" style={{ background: feedColor }} /><span className="relative inline-flex rounded-full h-1.5 w-1.5" style={{ background: feedColor }} /></span>
               : <span className="w-1.5 h-1.5 rounded-full" style={{ background: feedColor }} />}
@@ -530,7 +536,7 @@ export function LiveTerminalFlow({ profile: liveProfile, ticker, decimals }: Liv
                 </div>
                 {/* PROVEN EDGE — the GEX outlook above, scored against what price actually did.
                     Turns the regime call from an assertion into a measured, falsifiable hit-rate. */}
-                <EdgeTrackRecord profile={profile} ticker={selectedAsset.ticker} candles={candles} provenance={liveFeed ? 'live' : 'model'} />
+                <EdgeTrackRecord profile={profile} ticker={selectedAsset.ticker} candles={candles} provenance={realFeed ? 'live' : 'model'} />
                 {/* Net gamma hero */}
                 <div className="rounded-lg border px-3 py-2 relative overflow-hidden" style={{ borderColor: longGamma ? 'color-mix(in srgb, var(--success) 32%, transparent)' : 'color-mix(in srgb, var(--danger) 32%, transparent)', background: `linear-gradient(135deg, color-mix(in srgb, ${longGamma ? 'var(--success)' : 'var(--danger)'} 9%, transparent), transparent)` }}>
                   <div className="flex items-center gap-1.5 text-[9px] font-black tracking-widest uppercase text-[var(--text-tertiary)]"><GaugeIcon className="w-3 h-3" /> Net Gamma Exposure</div>
@@ -639,13 +645,14 @@ export function LiveTerminalFlow({ profile: liveProfile, ticker, decimals }: Liv
                   <span className="flex items-center gap-1" style={{ color: 'var(--accent-color)' }}><Activity className="w-3 h-3" /> Flow</span>
                   <span className="text-[var(--text-primary)]">{selectedAsset.ticker}</span>
                   <span className="px-1.5 py-0.5 rounded text-[10px]" style={{ background: 'color-mix(in srgb, var(--accent-color) 14%, transparent)', color: 'var(--accent-color)' }}>{scope}</span>
-                  <span className="hidden sm:inline" style={{ color: isStale ? 'var(--danger)' : 'var(--text-tertiary)' }}>· {selectedTimeframe} · {liveFeed ? 'LIVE' : isStale ? `STALE ${staleSecs}s` : 'MODEL'}</span>
+                  <span className="hidden sm:inline" style={{ color: isStale && marketOpen ? 'var(--danger)' : 'var(--text-tertiary)' }}>· {selectedTimeframe} · {!marketOpen ? 'LAST CLOSE' : liveFeed ? 'LIVE' : isStale ? `STALE ${staleSecs}s` : 'MODEL'}</span>
                 </div>
                 <div className="flex items-center gap-2 text-[9px] font-mono font-black tabular-nums shrink-0">
                   <button onClick={() => setGexLines(m => !m)} title="Strike GEX line chart — top strikes' net gamma tracked over the session" className={`flex items-center gap-1 px-1.5 py-0.5 rounded-sm text-[9px] font-mono font-black uppercase tracking-wide border transition-colors ${gexLines ? 'border-[var(--accent-color)] text-black' : 'border-[var(--border)] bg-[var(--surface-2)] text-[var(--text-tertiary)] hover:text-[var(--text-primary)]'}`} style={gexLines ? { background: 'var(--accent-color)' } : undefined}><Activity className="w-3 h-3" /> GEX</button>
                   <button onClick={() => setMultiChart(m => !m)} title="Toggle the movable multi-chart grid" className={`flex items-center gap-1 px-1.5 py-0.5 rounded-sm text-[9px] font-mono font-black uppercase tracking-wide border transition-colors ${multiChart ? 'border-[var(--accent-color)] text-black' : 'border-[var(--border)] bg-[var(--surface-2)] text-[var(--text-tertiary)] hover:text-[var(--text-primary)]'}`} style={multiChart ? { background: 'var(--accent-color)' } : undefined}><Layers className="w-3 h-3" /> Multi</button>
-                  <span style={{ color: 'var(--success)' }}>BULL {bullPct.toFixed(0)}%</span>
-                  <span style={{ color: 'var(--danger)' }}>BEAR {(100 - bullPct).toFixed(0)}%</span>
+                  {/* Round ONCE and derive the complement so the two halves always sum to 100 (no 101%). */}
+                  <span style={{ color: 'var(--success)' }}>BULL {Math.round(bullPct)}%</span>
+                  <span style={{ color: 'var(--danger)' }}>BEAR {100 - Math.round(bullPct)}%</span>
                 </div>
               </div>
               <div className="h-1.5 rounded-full overflow-hidden flex" style={{ background: 'var(--surface-3)' }}>
@@ -719,9 +726,11 @@ export function LiveTerminalFlow({ profile: liveProfile, ticker, decimals }: Liv
                       );
                     })}
                     {spot >= lo && spot <= hi && (
-                      <div className="absolute left-0 right-0 z-20 pointer-events-none flex items-center" style={{ top: `${(1 - (spot - lo) / span) * 100}%`, transform: 'translateY(-50%)', transition: 'top 0.3s cubic-bezier(0.22,1,0.36,1)' }} title={`Spot ${fmtNum(spot, decimals)}`}>
+                      // Current price = an overlay LINE across the profile with its tag on the LEFT (the
+                      // strike/axis side) and a "SPOT" prefix, so it can never be mistaken for a NET value.
+                      <div className="absolute left-0 right-0 z-20 pointer-events-none flex items-center gap-1" style={{ top: `${(1 - (spot - lo) / span) * 100}%`, transform: 'translateY(-50%)', transition: 'top 0.3s cubic-bezier(0.22,1,0.36,1)' }} title={`Spot ${fmtNum(spot, decimals)}`}>
+                        <span className="ml-1 shrink-0 text-[8px] font-mono font-black px-1 rounded-sm leading-none py-px" style={{ background: 'var(--accent-color)', color: '#06090d' }}>SPOT {fmtNum(spot, decimals)}</span>
                         <div className="flex-1 h-px" style={{ background: 'var(--accent-color)', boxShadow: '0 0 7px var(--accent-color)' }} />
-                        <span className="text-[8px] font-mono font-black px-1 rounded-sm leading-none py-px mr-1" style={{ background: 'var(--accent-color)', color: '#06090d' }}>{fmtNum(spot, decimals)}</span>
                       </div>
                     )}
                   </>

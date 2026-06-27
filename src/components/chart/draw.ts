@@ -278,9 +278,12 @@ export function drawChart(deps: DrawDeps) {
       const fy = Math.max(priceTop, Math.min(priceBottom, yP(profile.gammaFlip)));
       if (fy > priceTop + 0.5) { const gp = ctx.createLinearGradient(0, priceTop, 0, fy); gp.addColorStop(0, hexA(COL.up, 0.014)); gp.addColorStop(1, hexA(COL.up, 0.065)); ctx.fillStyle = gp; ctx.fillRect(plotL, priceTop, plotW, fy - priceTop); }
       if (fy < priceBottom - 0.5) { const gn = ctx.createLinearGradient(0, fy, 0, priceBottom); gn.addColorStop(0, hexA(COL.down, 0.07)); gn.addColorStop(1, hexA(COL.down, 0.014)); ctx.fillStyle = gn; ctx.fillRect(plotL, fy, plotW, priceBottom - fy); }
+      // The flip line is the CUMULATIVE zero-gamma crossing (Σγ, SqueezeMetrics convention) — not the
+      // per-strike sign. Label the zones with Σγ so a negative individual strike inside the upper zone
+      // is not read as a contradiction: the zone describes aggregate dealer positioning, not one strike.
       ctx.font = '700 8.5px ui-monospace, monospace'; ctx.textAlign = 'left';
-      if (fy - priceTop > 18) { ctx.fillStyle = hexA(COL.up, 0.46); ctx.fillText('POSITIVE γ · PINNED', plotL + 8, fy - 8); }
-      if (priceBottom - fy > 18) { ctx.fillStyle = hexA(COL.down, 0.46); ctx.fillText('NEGATIVE γ · UNSTABLE', plotL + 8, fy + 13); }
+      if (fy - priceTop > 18) { ctx.fillStyle = hexA(COL.up, 0.6); ctx.fillText('Σγ POSITIVE · DEALERS LONG · PINNED', plotL + 8, fy - 8); }
+      if (priceBottom - fy > 18) { ctx.fillStyle = hexA(COL.down, 0.6); ctx.fillText('Σγ NEGATIVE · DEALERS SHORT · UNSTABLE', plotL + 8, fy + 13); }
     }
 
     // Expected-move ±1σ channel — shade the band between EM+ and EM- (dealer-implied day range) and
