@@ -257,6 +257,7 @@ export const SlayerChart = memo(function SlayerChartImpl({ profile, decimals, ca
   // Dealer-map density — how many strikes the heatmap / orbs / exposure-lane render. Lower = cleaner.
   const [gexCount, setGexCount] = useState<number>(typeof initialPrefs.gexCount === 'number' ? initialPrefs.gexCount : 16);
   const [showLadder, setShowLadder] = useState<boolean>(initialPrefs.showLadder ?? true); // Loaded GEX Strikes (flagship)
+  const [showDealerBox, setShowDealerBox] = useState<boolean>(initialPrefs.showDealerBox ?? true); // Dealer Positioning panel
   const [ctxMenu, setCtxMenu] = useState<{ x: number; y: number } | null>(null); // right-click "View" menu (reset to live, etc.)
   const [chartType, setChartType] = useState<ChartType>(initialPrefs.chartType || 'candles');
   const [colors, setColors] = useState<{ up?: string; down?: string; line?: string; wick?: string; bg?: string; grid?: string }>(initialPrefs.colors || {});
@@ -394,13 +395,21 @@ export const SlayerChart = memo(function SlayerChartImpl({ profile, decimals, ca
   // Persist chart prefs (type, colors, indicator selection, GEX/disp toggles) so a user's
   // setup survives a reload. Saving the initial (already-stored) values once is harmless.
   useEffect(() => {
-    try { localStorage.setItem('slayerchart.prefs.v1' + keySuffix, JSON.stringify({ chartType, colors, ovOn, paneOn, showGex, showDisp, showHeat, showOrbs, gexCount, showLadder, showGrid, showVolume, showWatermark, candleBorders, gexMapV2: true, ...(panelId ? { ticker: panelTicker, timeframe: localTf, channel, expiry } : {}) })); } catch { /* storage unavailable */ }
-  }, [chartType, colors, ovOn, paneOn, showGex, showDisp, showHeat, showOrbs, gexCount, showLadder, showGrid, showVolume, showWatermark, candleBorders, panelId, panelTicker, localTf, channel, expiry]);
+    try { localStorage.setItem('slayerchart.prefs.v1' + keySuffix, JSON.stringify({ chartType, colors, ovOn, paneOn, showGex, showDisp, showHeat, showOrbs, gexCount, showLadder, showDealerBox, showGrid, showVolume, showWatermark, candleBorders, gexMapV2: true, ...(panelId ? { ticker: panelTicker, timeframe: localTf, channel, expiry } : {}) })); } catch { /* storage unavailable */ }
+  }, [chartType, colors, ovOn, paneOn, showGex, showDisp, showHeat, showOrbs, gexCount, showLadder, showDealerBox, showGrid, showVolume, showWatermark, candleBorders, panelId, panelTicker, localTf, channel, expiry]);
 
   // Only enabled indicators are computed, and only when the selection or candles change
   // (NOT on pan/hover) — keeps interaction cheap.
   const overlaySeries = useMemo(() => { const out: Record<string, Series[]> = {}; for (const d of OVERLAY_DEFS) if (ovOn[d.key]) out[d.key] = d.build(ohlcv); return out; }, [ohlcv, ovOn]);
   const paneSeries = useMemo(() => { const out: { def: typeof PANE_DEFS[number]; data: PaneData }[] = []; for (const d of PANE_DEFS) if (paneOn[d.key]) out.push({ def: d, data: d.build(ohlcv) }); return out; }, [ohlcv, paneOn]);
+  // Dealer Positioning summary for the corner dashboard — net γ, call/put dominance, largest strikes.
+  const dealerStats = useMemo(() => {
+    const ss = profile.strikes; if (!ss || !ss.length) return null;
+    let pos = 0, neg = 0, lc: (typeof ss)[number] | null = null, lp: (typeof ss)[number] | null = null;
+    for (const s of ss) { const g = s.netGex || 0; if (g > 0) { pos += g; if (!lc || g > (lc.netGex || 0)) lc = s; } else if (g < 0) { neg += -g; if (!lp || g < (lp.netGex || 0)) lp = s; } }
+    const total = pos + neg;
+    return { net: pos - neg, callPct: total ? Math.round((pos / total) * 100) : 50, long: pos >= neg, largestCall: lc?.strike, largestPut: lp?.strike };
+  }, [profile]);
 
   const displacements = useMemo(() => {
     const levels = [profile.callWall, profile.putWall, profile.gammaFlip, profile.magnet, profile.spot].filter(x => typeof x === 'number' && (x as number) > 0) as number[];
@@ -1268,7 +1277,7 @@ export const SlayerChart = memo(function SlayerChartImpl({ profile, decimals, ca
                   </div>
                   <div className="text-[8.5px] font-mono font-black uppercase tracking-[0.18em] text-[var(--text-tertiary)] mt-3 mb-1.5">Dealer Map</div>
                   <div className="space-y-1.5">
-                    {([['Loaded strikes', showLadder, setShowLadder], ['Γ Heatmap', showHeat, setShowHeat], ['Orbs', showOrbs, setShowOrbs], ['γ Exposure lane', showGex, setShowGex], ['Displacement', showDisp, setShowDisp]] as const).map(([label, val, set]) => (
+                    {([['Loaded strikes', showLadder, setShowLadder], ['Positioning panel', showDealerBox, setShowDealerBox], ['Γ Heatmap', showHeat, setShowHeat], ['Orbs', showOrbs, setShowOrbs], ['γ Exposure lane', showGex, setShowGex], ['Displacement', showDisp, setShowDisp]] as const).map(([label, val, set]) => (
                       <button key={label} onClick={() => set(v => !v)} className="w-full flex items-center justify-between gap-2">
                         <span className="text-[11px] font-mono text-[var(--text-secondary)]">{label}</span>
                         <span className={`relative w-7 h-4 rounded-full transition-colors shrink-0 ${val ? '' : 'bg-[var(--surface-3)]'}`} style={val ? { background: 'var(--accent-color)' } : undefined}>
@@ -1302,6 +1311,26 @@ export const SlayerChart = memo(function SlayerChartImpl({ profile, decimals, ca
       </div>
       <div ref={containerRef} className="relative flex-1 min-h-[300px]" style={{ position: 'relative', flex: 1, minHeight: 300 }}>
         <canvas ref={canvasRef} className="absolute inset-0 cursor-crosshair" style={{ position: 'absolute', inset: 0 }} />
+        {showDealerBox && dealerStats && (
+          <div className="absolute top-[52px] left-2 z-10 w-[188px] rounded-md border border-[var(--border-strong)] bg-[var(--surface)] shadow-xl px-2.5 py-2 pointer-events-none select-none font-mono">
+            <div className="text-[8px] font-black uppercase tracking-[0.2em] text-[var(--text-tertiary)] mb-1.5">Dealer Map</div>
+            <div className="flex items-baseline justify-between mb-1">
+              <span className="text-[9px] text-[var(--text-tertiary)] uppercase tracking-wider">Net GEX</span>
+              <span className="text-[12px] font-black tabular-nums" style={{ color: dealerStats.net >= 0 ? 'var(--success)' : 'var(--danger)' }}>{fmtGex(dealerStats.net)}</span>
+            </div>
+            <div className="flex items-center justify-between mb-1.5">
+              <span className="text-[9px] text-[var(--text-tertiary)] uppercase tracking-wider">Bias</span>
+              <span className="text-[8.5px] font-black uppercase tracking-wide px-1.5 py-0.5 rounded" style={{ color: dealerStats.long ? 'var(--success)' : 'var(--danger)', background: `color-mix(in srgb, ${dealerStats.long ? 'var(--success)' : 'var(--danger)'} 16%, transparent)` }}>{dealerStats.long ? 'Long γ' : 'Short γ'}</span>
+            </div>
+            <div className="h-1.5 rounded-full overflow-hidden mb-1" style={{ background: 'color-mix(in srgb, var(--danger) 55%, transparent)' }}><div className="h-full rounded-full" style={{ width: dealerStats.callPct + '%', background: 'var(--success)' }} /></div>
+            <div className="flex justify-between text-[8px] mb-2"><span style={{ color: 'var(--success)' }}>{dealerStats.callPct}% calls</span><span style={{ color: 'var(--danger)' }}>{100 - dealerStats.callPct}% puts</span></div>
+            <div className="space-y-1 border-t border-[var(--border)] pt-1.5">
+              {([['Call Wall', profile.callWall], ['Gamma Flip', profile.gammaFlip], ['Put Wall', profile.putWall], ['Largest Call', dealerStats.largestCall], ['Largest Put', dealerStats.largestPut]] as const).map(([k, v]) => (
+                <div key={k} className="flex justify-between gap-3 text-[9.5px] leading-none"><span className="text-[var(--text-tertiary)] whitespace-nowrap">{k}</span><span className="text-[var(--text-secondary)] font-bold tabular-nums">{typeof v === 'number' ? Math.round(v).toLocaleString() : '—'}</span></div>
+              ))}
+            </div>
+          </div>
+        )}
         {ctxMenu && (
           <>
             <div className="fixed inset-0 z-40" onClick={() => setCtxMenu(null)} onContextMenu={e => { e.preventDefault(); setCtxMenu(null); }} onWheel={() => setCtxMenu(null)} />
