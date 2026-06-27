@@ -953,6 +953,24 @@ export const SlayerChart = memo(function SlayerChartImpl({ profile, decimals, ca
       if (hv.y >= priceTop && hv.y <= priceBottom - volBandH) {
         const pr = pOfY(hv.y);
         bubble(plotR + 1, hv.y - 9, axisW + gammaW - 2, 18, hexA(pr >= last ? COL.up : COL.down, 0.9), nf(pr), 'left', plotR + 6);
+        // Dealer context at the cursor: net γ of the strike nearest this price — the terminal's signature read.
+        // Hover anywhere and instantly see how heavily, and which side, dealers are positioned at that level.
+        const ss = profile.strikes;
+        if (ss && ss.length) {
+          let ns = ss[0], nd = Infinity;
+          for (const s of ss) { const d = Math.abs(s.strike - pr); if (d < nd) { nd = d; ns = s; } }
+          const g = ns.netGex || 0;
+          if (Math.abs(g) > 0 && nd <= pr * 0.012) {
+            const gc = g >= 0 ? COL.up : COL.down;
+            const tag = ns.strike === profile.callWall ? ' CW' : ns.strike === profile.putWall ? ' PW' : ns.strike === profile.gammaFlip ? ' ⚑' : ns.strike === profile.magnet ? ' MAG' : '';
+            const lbl = `${Math.round(ns.strike)} · ${fmtGex(g)}γ${tag}`;
+            ctx.font = '700 10px ui-monospace, monospace'; ctx.textAlign = 'right';
+            const pw = ctx.measureText(lbl).width + 12, rEdge = plotR + axisW + gammaW - 1, py = hv.y + 11;
+            ctx.beginPath(); (ctx as any).roundRect ? (ctx as any).roundRect(rEdge - pw, py, pw, 16, 3) : ctx.rect(rEdge - pw, py, pw, 16);
+            ctx.fillStyle = T.surf; ctx.fill(); ctx.strokeStyle = hexA(gc, 0.85); ctx.lineWidth = 1; ctx.stroke();
+            ctx.fillStyle = gc; ctx.fillText(lbl, rEdge - 6, py + 8);
+          }
+        }
       }
       const c = candles[gi]; const tlbl = fmtTime(c.timestamp), tbw = ctx.measureText(tlbl).width + 14;
       bubble(cx - tbw / 2, H - xAxisH + 1, tbw, xAxisH - 2, hexA(T.accent, 0.55), tlbl, 'center', cx);
