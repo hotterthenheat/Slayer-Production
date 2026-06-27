@@ -506,7 +506,7 @@ export function LiveTerminalFlow({ profile: liveProfile, ticker, decimals }: Liv
       </div>
 
       {/* Dealer Pulse — force balance · dealer motion · the hero status line (the one read first) */}
-      <DealerPulse read={read} showMotion={!!dyn} migration={migration} gammaMotion={gammaMotion} vannaFlow={vannaFlow} tail={heroLine} />
+      <DealerPulse read={read} showMotion={!!dyn} migration={migration} gammaMotion={gammaMotion} vannaFlow={vannaFlow} decimals={decimals} tail={heroLine} />
 
       {/* ── 0DTE session band: phase + live countdown to close ── */}
       <SessionBand sess={sess} clock={clock} />

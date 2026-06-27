@@ -13,12 +13,13 @@ type GammaMotion = { label: string; sub: string; color: string } | null;
  * issues a trade. Net γ lives once in the left "Net Gamma Exposure" hero, the regime/levels once in
  * the status line — so nothing here repeats a number that already has a home.
  */
-export function DealerPulse({ read, showMotion, migration, gammaMotion, vannaFlow, tail }: {
+export function DealerPulse({ read, showMotion, migration, gammaMotion, vannaFlow, decimals, tail }: {
   read: Read;
   showMotion: boolean;
   migration: Migration;
   gammaMotion: GammaMotion;
   vannaFlow: string | null;
+  decimals: number;
   tail?: ReactNode;
 }) {
   return (
@@ -45,7 +46,7 @@ export function DealerPulse({ read, showMotion, migration, gammaMotion, vannaFlo
             <div className="flex items-center justify-between">
               <span className="text-[9px] font-black tracking-widest uppercase text-[var(--text-tertiary)]">Dealer Motion</span>
               {migration && migration.direction !== 'STABLE' && (
-                <span className="flex items-center gap-0.5 text-[9px] font-mono font-black" style={{ color: migration.direction === 'BULLISH' ? 'var(--success)' : 'var(--danger)' }} title={`Gamma center-of-mass drifting ${migration.direction.toLowerCase()}${migration.comCurrent ? ` toward ${fmtNum(migration.comCurrent)}` : ''}`}>
+                <span className="flex items-center gap-0.5 text-[9px] font-mono font-black" style={{ color: migration.direction === 'BULLISH' ? 'var(--success)' : 'var(--danger)' }} title={`Gamma center-of-mass drifting ${migration.direction.toLowerCase()}${migration.comCurrent ? ` toward ${fmtNum(migration.comCurrent, decimals)}` : ''}`}>
                   {migration.direction === 'BULLISH' ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}PIN
                 </span>
               )}
