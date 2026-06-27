@@ -14,8 +14,9 @@ const fmtOi = (v: number) => v >= 1000 ? `${(v / 1000).toFixed(v >= 10000 ? 0 : 
 const tint = (token: string, mag: number) => `color-mix(in srgb, var(${token}) ${Math.round(8 + Math.pow(mag, 0.85) * 60)}%, transparent)`;
 
 export function StrikeMatrix({ profile, decimals = 0 }: { profile: GexProfileData; decimals?: number }) {
-  const rows = useMemo(() => {
-    const ss = (profile.strikes || []).filter(s => Math.abs(s.netGex || 0) > 0 || (s.callOi || 0) + (s.putOi || 0) > 0);
+  const { rows, totals } = useMemo(() => {
+    const all = profile.strikes || [];
+    const ss = all.filter(s => Math.abs(s.netGex || 0) > 0 || (s.callOi || 0) + (s.putOi || 0) > 0);
     const spot = profile.spot || 0;
     const near = spot ? [...ss].sort((a, b) => Math.abs(a.strike - spot) - Math.abs(b.strike - spot)).slice(0, 36) : ss.slice(0, 36);
     const maxC = Math.max(...near.map(s => Math.abs(s.callGex || 0)), 1);
@@ -24,7 +25,7 @@ export function StrikeMatrix({ profile, decimals = 0 }: { profile: GexProfileDat
     // Spotlight strikes: biggest call γ, biggest put γ, busiest by volume.
     let topCallK = NaN, topPutK = NaN, topVolK = NaN, mc = 0, mp = 0, mv = 0;
     for (const s of near) { if ((s.callGex || 0) > mc) { mc = s.callGex || 0; topCallK = s.strike; } if (Math.abs(s.putGex || 0) > mp) { mp = Math.abs(s.putGex || 0); topPutK = s.strike; } const v = (s.callVolume || 0) + (s.putVolume || 0); if (v > mv) { mv = v; topVolK = s.strike; } }
-    return near.sort((a, b) => b.strike - a.strike).map(s => ({
+    const rows = near.sort((a, b) => b.strike - a.strike).map(s => ({
       strike: s.strike, callGex: s.callGex || 0, putGex: s.putGex || 0, net: s.netGex || 0,
       cMag: Math.abs(s.callGex || 0) / maxC, pMag: Math.abs(s.putGex || 0) / maxP,
       vol: (s.callVolume || 0) + (s.putVolume || 0), volMag: ((s.callVolume || 0) + (s.putVolume || 0)) / maxV,
@@ -32,6 +33,12 @@ export function StrikeMatrix({ profile, decimals = 0 }: { profile: GexProfileDat
       isCW: s.strike === profile.callWall, isPW: s.strike === profile.putWall, isFlip: s.strike === profile.gammaFlip,
       topCall: s.strike === topCallK, topPut: s.strike === topPutK, topVol: s.strike === topVolK,
     }));
+    const totals = {
+      callGex: all.reduce((a, s) => a + Math.max(0, s.callGex || 0), 0),
+      putGex: all.reduce((a, s) => a + Math.min(0, s.putGex || 0), 0),
+      vol: all.reduce((a, s) => a + (s.callVolume || 0) + (s.putVolume || 0), 0),
+    };
+    return { rows, totals };
   }, [profile]);
 
   if (!rows.length) return <div className="flex items-center justify-center py-12 text-[11px] font-mono text-[var(--text-tertiary)]">Awaiting dealer chain…</div>;
@@ -61,6 +68,12 @@ export function StrikeMatrix({ profile, decimals = 0 }: { profile: GexProfileDat
             </div>
           </div>
         ))}
+      </div>
+      <div className="sticky bottom-0 grid grid-cols-[58px_1fr_1fr_56px] gap-px px-2 py-1.5 bg-[var(--surface)] border-t border-[var(--border-strong)] text-[9px] font-black tabular-nums z-10">
+        <div className="text-right text-[var(--text-tertiary)] uppercase tracking-[0.14em] text-[8px] self-center">Total</div>
+        <div className="text-center" style={{ color: 'var(--success)' }}>{fmtG(totals.callGex)}</div>
+        <div className="text-center" style={{ color: 'var(--danger)' }}>{fmtG(totals.putGex)}</div>
+        <div className="text-right text-[var(--text-secondary)]">{fmtOi(totals.vol)}</div>
       </div>
     </div>
   );
