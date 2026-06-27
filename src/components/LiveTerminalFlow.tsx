@@ -11,6 +11,8 @@ import { StrikeGexChart } from './StrikeGexChart';
 import { useGexHistory } from '../lib/gexHistory';
 import { StrikeMatrix } from './StrikeMatrix';
 import { OrderFlow } from './OrderFlow';
+import { SystemStatus } from './terminal/StatusBar';
+import { ReplayScrubber } from './terminal/ReplayScrubber';
 import { CROSSHAIR_EVENT, CrosshairDetail } from '../lib/chartSync';
 import { EdgeTrackRecord } from './EdgeTrackRecord';
 import { Crosshair, Activity, Zap, Layers, ChevronDown, Gauge as GaugeIcon, Radio, TrendingUp, TrendingDown, Minus, Clock } from 'lucide-react';
@@ -27,7 +29,31 @@ interface LiveTerminalFlowProps {
 
 const fmtBig = (v: number) => { const a = Math.abs(v), s = v < 0 ? '−' : ''; return a >= 1e9 ? s + (a / 1e9).toFixed(2) + 'B' : a >= 1e6 ? s + (a / 1e6).toFixed(1) + 'M' : a >= 1e3 ? s + (a / 1e3).toFixed(1) + 'K' : s + a.toFixed(0); };
 
-export function LiveTerminalFlow({ profile, ticker, decimals }: LiveTerminalFlowProps) {
+export function LiveTerminalFlow({ profile: liveProfile, ticker, decimals }: LiveTerminalFlowProps) {
+  // ── Market Replay (§3.2) — append-only buffer of the full dealer state over the session; a scrubber
+  //    rewinds the WHOLE terminal (walls, ladder, vanna, narrative) to any past moment. LIVE keeps
+  //    buffering in the background while you're scrubbed back. Every panel below reads `profile`, which
+  //    is the live state in LIVE mode and the reconstructed historical snapshot in REPLAY mode. ──
+  const profileHistRef = useRef<{ t: number; p: GexProfileData }[]>([]);
+  const profileHistTick = useRef('');
+  const [replayT, setReplayT] = useState<number | null>(null);
+  const [, bumpHist] = useState(0);
+  useEffect(() => {
+    if (profileHistTick.current !== ticker) { profileHistTick.current = ticker; profileHistRef.current = []; setReplayT(null); }
+    if (!liveProfile?.strikes?.length) return;
+    const t = Date.now(), buf = profileHistRef.current, last = buf[buf.length - 1];
+    if (last && t - last.t < 2000) return; // ~1 snapshot / 2s, ring-buffered
+    buf.push({ t, p: liveProfile });
+    if (buf.length > 600) buf.splice(0, buf.length - 600);
+    bumpHist(n => n + 1);
+  }, [liveProfile, ticker]);
+  const profileHist = profileHistRef.current;
+  const profile = useMemo(() => {
+    if (replayT == null || !profileHist.length) return liveProfile;
+    let best = profileHist[0];
+    for (const s of profileHist) { if (s.t <= replayT) best = s; else break; }
+    return best.p;
+  }, [replayT, liveProfile, profileHist.length]);
   const selectedAsset = useContractStore(s => s.selectedAsset);
   const setSelectedAsset = useContractStore(s => s.setSelectedAsset);
   const selectedTimeframe = useContractStore(s => s.selectedTimeframe);
@@ -193,7 +219,7 @@ export function LiveTerminalFlow({ profile, ticker, decimals }: LiveTerminalFlow
   const hasVex = useMemo(() => (profile.strikes || []).some(s => s.callVex != null || s.putVex != null), [profile]);
   const hasOi = useMemo(() => (profile.strikes || []).some(s => (s.callOi || 0) + (s.putOi || 0) > 0), [profile]);
   const hasVol = useMemo(() => (profile.strikes || []).some(s => (s.callVolume || 0) + (s.putVolume || 0) > 0), [profile]);
-  const gexHist = useGexHistory(profile, selectedAsset.ticker);
+  const gexHist = useGexHistory(liveProfile, selectedAsset.ticker); // GEX line history always tracks LIVE, even while scrubbed back
   const ladder = useMemo(() => {
     let ss = [...(profile.strikes || [])];
     if (profile.spot) ss = ss.sort((a, b) => Math.abs(a.strike - spot) - Math.abs(b.strike - spot)).slice(0, 30);
@@ -675,38 +701,8 @@ export function LiveTerminalFlow({ profile, ticker, decimals }: LiveTerminalFlow
 
         </div>
       </div>
+      {profileHist.length > 2 && <ReplayScrubber hist={profileHist} replayT={replayT} setReplayT={setReplayT} decimals={decimals} />}
       <SystemStatus feedLabel={feedLabel} live={liveFeed} feedColor={feedColor} cd={sess.cd} />
-    </div>
-  );
-}
-
-/**
- * SystemStatus — institutional telemetry footer. Isolated component so its 1 Hz FPS/memory
- * updates re-render only this strip, never the whole terminal. FPS + heap are measured live;
- * Feed reflects the real chain status. (Latency / cache wire in once the live WS is connected.)
- */
-function SystemStatus({ feedLabel, live, feedColor, cd }: { feedLabel: string; live: boolean; feedColor: string; cd: string }) {
-  const [t, setT] = useState<{ fps: number; mem: number | null }>({ fps: 0, mem: null });
-  useEffect(() => {
-    let frames = 0, raf = 0, last = performance.now();
-    const loop = () => { frames++; const n = performance.now(); if (n - last >= 1000) { const m = (performance as unknown as { memory?: { usedJSHeapSize: number } }).memory?.usedJSHeapSize; setT({ fps: Math.round((frames * 1000) / (n - last)), mem: m != null ? m / 1048576 : null }); frames = 0; last = n; } raf = requestAnimationFrame(loop); };
-    raf = requestAnimationFrame(loop);
-    return () => cancelAnimationFrame(raf);
-  }, []);
-  const Cell = ({ label, value, color, dot }: { label: string; value: string; color: string; dot?: string }) => (
-    <div className="flex items-center gap-1.5 shrink-0">
-      {dot && <span className="w-1.5 h-1.5 rounded-full" style={{ background: dot }} />}
-      <span className="text-[8px] font-black uppercase tracking-[0.18em] text-[var(--text-tertiary)]">{label}</span>
-      <span className="text-[10px] font-mono font-bold tabular-nums" style={{ color }}>{value}</span>
-    </div>
-  );
-  return (
-    <div className="shrink-0 h-7 border-t border-[var(--border)] bg-[var(--surface)] flex items-center gap-5 px-4 overflow-hidden">
-      <Cell label="Feed" value={live ? feedLabel.replace('LIVE · ', '') : 'IDLE'} color={feedColor} dot={feedColor} />
-      <Cell label="FPS" value={t.fps ? String(t.fps) : '—'} color={t.fps >= 50 ? 'var(--success)' : t.fps ? 'var(--warning)' : 'var(--text-tertiary)'} />
-      {t.mem != null && <Cell label="Mem" value={t.mem >= 1024 ? (t.mem / 1024).toFixed(2) + 'GB' : Math.round(t.mem) + 'MB'} color="var(--text-secondary)" />}
-      <Cell label="Session" value={cd} color={cd === 'CLOSED' ? 'var(--text-tertiary)' : 'var(--text-secondary)'} />
-      <div className="ml-auto text-[8px] font-black uppercase tracking-[0.22em] text-[var(--text-tertiary)] shrink-0">Slayer Terminal</div>
     </div>
   );
 }

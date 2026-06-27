@@ -1,0 +1,108 @@
+// Indicator registry — price-pane overlays + oscillator sub-panes, grouped for the menu.
+// Extracted from SlayerChart so the chart component stays lean. Pure (no React).
+import * as TI from '../../lib/indicators';
+
+export type OHLCV = { o: number[]; h: number[]; l: number[]; c: number[]; v: number[] };
+export type Series = { vals: TI.Num[]; color: string; w?: number; dots?: boolean };
+export type PaneData = { lines: Series[]; hist?: { vals: TI.Num[] }; range?: [number, number]; guides?: { v: number; strong?: boolean }[]; readout: string };
+
+// Price-pane overlays — each builds 1+ aligned series from the OHLCV bundle. Grouped for the menu.
+export const OVERLAY_DEFS: { key: string; label: string; group: string; build: (o: OHLCV) => Series[] }[] = [
+  { key: 'ema20', label: 'EMA 20', group: 'Moving Averages', build: o => [{ vals: TI.ema(o.c, 20), color: '#3b9bff' }] },
+  { key: 'ema50', label: 'EMA 50', group: 'Moving Averages', build: o => [{ vals: TI.ema(o.c, 50), color: '#b070ff' }] },
+  { key: 'sma200', label: 'SMA 200', group: 'Moving Averages', build: o => [{ vals: TI.sma(o.c, 200), color: '#ff8a3d' }] },
+  { key: 'wma20', label: 'WMA 20', group: 'Moving Averages', build: o => [{ vals: TI.wma(o.c, 20), color: '#22d3ee' }] },
+  { key: 'hma', label: 'Hull MA 16', group: 'Moving Averages', build: o => [{ vals: TI.hma(o.c, 16), color: '#f472b6' }] },
+  { key: 'vwma', label: 'VWMA 20', group: 'Moving Averages', build: o => [{ vals: TI.vwma(o.c, o.v, 20), color: '#34d399' }] },
+  { key: 'mcg', label: 'McGinley Dyn', group: 'Moving Averages', build: o => [{ vals: TI.mcginleyDynamic(o.c, 14), color: '#facc15' }] },
+  { key: 'vwap', label: 'VWAP', group: 'Moving Averages', build: o => [{ vals: TI.vwap(o.h, o.l, o.c, o.v), color: '#f5b300', w: 2 }] },
+  { key: 'bb', label: 'Bollinger', group: 'Bands & Channels', build: o => { const b = TI.bollingerBands(o.c, 20, 2); return [{ vals: b.upper, color: 'rgba(99,160,255,0.55)' }, { vals: b.middle, color: 'rgba(99,160,255,0.3)' }, { vals: b.lower, color: 'rgba(99,160,255,0.55)' }]; } },
+  { key: 'keltner', label: 'Keltner', group: 'Bands & Channels', build: o => { const k = TI.keltnerChannels(o.h, o.l, o.c, 20, 2); return [{ vals: k.upper, color: 'rgba(52,211,153,0.5)' }, { vals: k.lower, color: 'rgba(52,211,153,0.5)' }]; } },
+  { key: 'donchian', label: 'Donchian', group: 'Bands & Channels', build: o => { const d = TI.donchianChannels(o.h, o.l, 20); return [{ vals: d.upper, color: 'rgba(192,132,252,0.5)' }, { vals: d.lower, color: 'rgba(192,132,252,0.5)' }]; } },
+  { key: 'stderr', label: 'Std Error Bands', group: 'Bands & Channels', build: o => { const s = TI.standardErrorBands(o.c, 20, 2); return [{ vals: s.upper, color: 'rgba(244,114,182,0.5)' }, { vals: s.middle, color: 'rgba(244,114,182,0.3)' }, { vals: s.lower, color: 'rgba(244,114,182,0.5)' }]; } },
+  { key: 'supertrend', label: 'SuperTrend', group: 'Trend Overlays', build: o => [{ vals: TI.superTrend(o.h, o.l, o.c, 10, 3).trend, color: '#10b981', w: 1.6 }] },
+  { key: 'psar', label: 'Parabolic SAR', group: 'Trend Overlays', build: o => [{ vals: TI.parabolicSAR(o.h, o.l), color: '#e5e7eb', dots: true }] },
+  { key: 'linreg', label: 'Linear Reg', group: 'Trend Overlays', build: o => [{ vals: TI.linearRegression(o.c, 20).value, color: '#fbbf24', w: 1.4 }] },
+  { key: 'ichimoku', label: 'Ichimoku', group: 'Trend Overlays', build: o => { const ic = TI.ichimoku(o.h, o.l, o.c); return [{ vals: ic.tenkan, color: '#60a5fa' }, { vals: ic.kijun, color: '#f87171' }]; } },
+  // ── Expanded moving-average / band / trend variants ──
+  { key: 'ema9', label: 'EMA 9', group: 'Moving Averages', build: o => [{ vals: TI.ema(o.c, 9), color: '#22d3ee' }] },
+  { key: 'ema21', label: 'EMA 21', group: 'Moving Averages', build: o => [{ vals: TI.ema(o.c, 21), color: '#818cf8' }] },
+  { key: 'ema100', label: 'EMA 100', group: 'Moving Averages', build: o => [{ vals: TI.ema(o.c, 100), color: '#fb923c' }] },
+  { key: 'ema200', label: 'EMA 200', group: 'Moving Averages', build: o => [{ vals: TI.ema(o.c, 200), color: '#ef4444' }] },
+  { key: 'sma9', label: 'SMA 9', group: 'Moving Averages', build: o => [{ vals: TI.sma(o.c, 9), color: '#a3e635' }] },
+  { key: 'sma20', label: 'SMA 20', group: 'Moving Averages', build: o => [{ vals: TI.sma(o.c, 20), color: '#38bdf8' }] },
+  { key: 'sma50', label: 'SMA 50', group: 'Moving Averages', build: o => [{ vals: TI.sma(o.c, 50), color: '#facc15' }] },
+  { key: 'sma100', label: 'SMA 100', group: 'Moving Averages', build: o => [{ vals: TI.sma(o.c, 100), color: '#fb7185' }] },
+  { key: 'wma50', label: 'WMA 50', group: 'Moving Averages', build: o => [{ vals: TI.wma(o.c, 50), color: '#2dd4bf' }] },
+  { key: 'hma9', label: 'Hull MA 9', group: 'Moving Averages', build: o => [{ vals: TI.hma(o.c, 9), color: '#f0abfc' }] },
+  { key: 'hma32', label: 'Hull MA 32', group: 'Moving Averages', build: o => [{ vals: TI.hma(o.c, 32), color: '#c084fc' }] },
+  { key: 'vwma50', label: 'VWMA 50', group: 'Moving Averages', build: o => [{ vals: TI.vwma(o.c, o.v, 50), color: '#4ade80' }] },
+  { key: 'rma14', label: 'RMA 14 (Wilder)', group: 'Moving Averages', build: o => [{ vals: TI.rma(o.c, 14), color: '#fcd34d' }] },
+  { key: 'rma21', label: 'RMA 21 (Wilder)', group: 'Moving Averages', build: o => [{ vals: TI.rma(o.c, 21), color: '#fca5a5' }] },
+  { key: 'bb50', label: 'Bollinger 50·2', group: 'Bands & Channels', build: o => { const b = TI.bollingerBands(o.c, 50, 2); return [{ vals: b.upper, color: 'rgba(99,160,255,0.5)' }, { vals: b.lower, color: 'rgba(99,160,255,0.5)' }]; } },
+  { key: 'bbTight', label: 'Bollinger 20·1', group: 'Bands & Channels', build: o => { const b = TI.bollingerBands(o.c, 20, 1); return [{ vals: b.upper, color: 'rgba(168,85,247,0.5)' }, { vals: b.lower, color: 'rgba(168,85,247,0.5)' }]; } },
+  { key: 'keltner15', label: 'Keltner 20·1.5', group: 'Bands & Channels', build: o => { const k = TI.keltnerChannels(o.h, o.l, o.c, 20, 1.5); return [{ vals: k.upper, color: 'rgba(52,211,153,0.45)' }, { vals: k.lower, color: 'rgba(52,211,153,0.45)' }]; } },
+  { key: 'donchian50', label: 'Donchian 50', group: 'Bands & Channels', build: o => { const d = TI.donchianChannels(o.h, o.l, 50); return [{ vals: d.upper, color: 'rgba(192,132,252,0.45)' }, { vals: d.lower, color: 'rgba(192,132,252,0.45)' }]; } },
+  { key: 'linreg50', label: 'Linear Reg 50', group: 'Trend Overlays', build: o => [{ vals: TI.linearRegression(o.c, 50).value, color: '#fbbf24', w: 1.4 }] },
+  { key: 'linreg100', label: 'Linear Reg 100', group: 'Trend Overlays', build: o => [{ vals: TI.linearRegression(o.c, 100).value, color: '#f59e0b', w: 1.4 }] },
+  { key: 'supertrend7', label: 'SuperTrend 7·3', group: 'Trend Overlays', build: o => [{ vals: TI.superTrend(o.h, o.l, o.c, 7, 3).trend, color: '#10b981', w: 1.6 }] },
+  { key: 'supertrend14', label: 'SuperTrend 14·2', group: 'Trend Overlays', build: o => [{ vals: TI.superTrend(o.h, o.l, o.c, 14, 2).trend, color: '#06b6d4', w: 1.6 }] },
+];
+
+// Oscillator sub-panes — each builds render-ready data (lines / histogram / guides / range).
+export const PANE_DEFS: { key: string; label: string; group: string; build: (o: OHLCV) => PaneData }[] = [
+  { key: 'rsi', label: 'RSI 14', group: 'Momentum', build: o => ({ lines: [{ vals: TI.rsi(o.c, 14), color: '#e879f9' }], range: [0, 100], guides: [{ v: 30 }, { v: 50, strong: true }, { v: 70 }], readout: 'RSI 14' }) },
+  { key: 'stochrsi', label: 'Stoch RSI', group: 'Momentum', build: o => { const s = TI.stochRsi(o.c); return { lines: [{ vals: s.k, color: '#38bdf8' }, { vals: s.d, color: '#ff8a3d' }], range: [0, 100], guides: [{ v: 20 }, { v: 80 }], readout: 'STOCH RSI' }; } },
+  { key: 'stoch', label: 'Stochastic', group: 'Momentum', build: o => { const s = TI.stochastic(o.h, o.l, o.c, 14, 3); return { lines: [{ vals: s.k, color: '#38bdf8' }, { vals: s.d, color: '#ff8a3d' }], range: [0, 100], guides: [{ v: 20 }, { v: 80 }], readout: 'STOCH 14·3' }; } },
+  { key: 'macd', label: 'MACD', group: 'Momentum', build: o => { const m = TI.macd(o.c); return { lines: [{ vals: m.macd, color: '#3b9bff' }, { vals: m.signal, color: '#f5b300' }], hist: { vals: m.histogram }, guides: [{ v: 0, strong: true }], readout: 'MACD 12·26·9' }; } },
+  { key: 'tsi', label: 'TSI', group: 'Momentum', build: o => { const t = TI.tsi(o.c); return { lines: [{ vals: t.tsi, color: '#a78bfa' }, { vals: t.signal, color: '#f5b300' }], guides: [{ v: 0, strong: true }], readout: 'TSI 25·13' }; } },
+  { key: 'cci', label: 'CCI 20', group: 'Momentum', build: o => ({ lines: [{ vals: TI.cci(o.h, o.l, o.c, 20), color: '#22d3ee' }], guides: [{ v: 100 }, { v: 0, strong: true }, { v: -100 }], readout: 'CCI 20' }) },
+  { key: 'willr', label: 'Williams %R', group: 'Momentum', build: o => ({ lines: [{ vals: TI.williamsR(o.h, o.l, o.c, 14), color: '#f472b6' }], range: [-100, 0], guides: [{ v: -20 }, { v: -80 }], readout: 'WILLIAMS %R' }) },
+  { key: 'roc', label: 'ROC 12', group: 'Momentum', build: o => ({ lines: [{ vals: TI.roc(o.c, 12), color: '#60a5fa' }], guides: [{ v: 0, strong: true }], readout: 'ROC 12' }) },
+  { key: 'ultimate', label: 'Ultimate Osc', group: 'Momentum', build: o => ({ lines: [{ vals: TI.ultimateOscillator(o.h, o.l, o.c), color: '#c084fc' }], range: [0, 100], guides: [{ v: 30 }, { v: 70 }], readout: 'ULTIMATE' }) },
+  { key: 'awesome', label: 'Awesome Osc', group: 'Momentum', build: o => ({ lines: [], hist: { vals: TI.awesomeOscillator(o.h, o.l) }, guides: [{ v: 0, strong: true }], readout: 'AWESOME' }) },
+  { key: 'trix', label: 'TRIX 15', group: 'Momentum', build: o => ({ lines: [{ vals: TI.trix(o.c, 15), color: '#f59e0b' }], guides: [{ v: 0, strong: true }], readout: 'TRIX 15' }) },
+  { key: 'dpo', label: 'DPO 20', group: 'Momentum', build: o => ({ lines: [{ vals: TI.dpo(o.c, 20), color: '#94a3b8' }], guides: [{ v: 0, strong: true }], readout: 'DPO 20' }) },
+  { key: 'fisher', label: 'Fisher Transform', group: 'Momentum', build: o => { const f = TI.fisherTransform(o.h, o.l, 9); return { lines: [{ vals: f.fisher, color: '#22d3ee' }, { vals: f.trigger, color: '#f5b300' }], guides: [{ v: 0, strong: true }], readout: 'FISHER 9' }; } },
+  { key: 'adx', label: 'ADX (+DI/-DI)', group: 'Trend Strength', build: o => { const a = TI.adx(o.h, o.l, o.c, 14); return { lines: [{ vals: a.adx, color: '#e5e7eb' }, { vals: a.plusDI, color: '#26d07c' }, { vals: a.minusDI, color: '#ff4d5e' }], range: [0, 100], guides: [{ v: 25 }], readout: 'ADX 14' }; } },
+  { key: 'aroon', label: 'Aroon', group: 'Trend Strength', build: o => { const a = TI.aroon(o.h, o.l, 25); return { lines: [{ vals: a.up, color: '#26d07c' }, { vals: a.down, color: '#ff4d5e' }], range: [0, 100], guides: [{ v: 50, strong: true }], readout: 'AROON 25' }; } },
+  { key: 'atr', label: 'ATR 14', group: 'Volatility', build: o => ({ lines: [{ vals: TI.atr(o.h, o.l, o.c, 14), color: '#fbbf24' }], readout: 'ATR 14' }) },
+  { key: 'histvol', label: 'Hist Volatility', group: 'Volatility', build: o => ({ lines: [{ vals: TI.historicalVolatility(o.c, 20), color: '#f472b6' }], readout: 'HV 20' }) },
+  { key: 'chaikinvol', label: 'Chaikin Vol', group: 'Volatility', build: o => ({ lines: [{ vals: TI.chaikinVolatility(o.h, o.l, 10), color: '#c084fc' }], guides: [{ v: 0, strong: true }], readout: 'CHAIKIN VOL' }) },
+  { key: 'mfi', label: 'MFI 14', group: 'Volume', build: o => ({ lines: [{ vals: TI.mfi(o.h, o.l, o.c, o.v, 14), color: '#34d399' }], range: [0, 100], guides: [{ v: 20 }, { v: 80 }], readout: 'MFI 14' }) },
+  { key: 'obv', label: 'OBV', group: 'Volume', build: o => ({ lines: [{ vals: TI.obv(o.c, o.v), color: '#60a5fa' }], readout: 'OBV' }) },
+  { key: 'cmf', label: 'CMF 20', group: 'Volume', build: o => ({ lines: [{ vals: TI.cmf(o.h, o.l, o.c, o.v, 20), color: '#34d399' }], guides: [{ v: 0, strong: true }], readout: 'CMF 20' }) },
+  { key: 'vroc', label: 'Volume ROC', group: 'Volume', build: o => ({ lines: [{ vals: TI.vroc(o.v, 14), color: '#22d3ee' }], guides: [{ v: 0, strong: true }], readout: 'VOL ROC 14' }) },
+  { key: 'evm', label: 'Ease of Movement', group: 'Volume', build: o => ({ lines: [{ vals: TI.easeOfMovement(o.h, o.l, o.v, 14), color: '#a78bfa' }], guides: [{ v: 0, strong: true }], readout: 'EOM 14' }) },
+  // ── Expanded oscillator / strength / volatility / volume variants ──
+  { key: 'rsi7', label: 'RSI 7', group: 'Momentum', build: o => ({ lines: [{ vals: TI.rsi(o.c, 7), color: '#f0abfc' }], range: [0, 100], guides: [{ v: 30 }, { v: 50, strong: true }, { v: 70 }], readout: 'RSI 7' }) },
+  { key: 'rsi21', label: 'RSI 21', group: 'Momentum', build: o => ({ lines: [{ vals: TI.rsi(o.c, 21), color: '#d946ef' }], range: [0, 100], guides: [{ v: 30 }, { v: 50, strong: true }, { v: 70 }], readout: 'RSI 21' }) },
+  { key: 'rsi28', label: 'RSI 28', group: 'Momentum', build: o => ({ lines: [{ vals: TI.rsi(o.c, 28), color: '#c026d3' }], range: [0, 100], guides: [{ v: 30 }, { v: 70 }], readout: 'RSI 28' }) },
+  { key: 'stochFast', label: 'Stochastic 5·3', group: 'Momentum', build: o => { const s = TI.stochastic(o.h, o.l, o.c, 5, 3); return { lines: [{ vals: s.k, color: '#38bdf8' }, { vals: s.d, color: '#ff8a3d' }], range: [0, 100], guides: [{ v: 20 }, { v: 80 }], readout: 'STOCH 5·3' }; } },
+  { key: 'stochSlow', label: 'Stochastic 21·5', group: 'Momentum', build: o => { const s = TI.stochastic(o.h, o.l, o.c, 21, 5); return { lines: [{ vals: s.k, color: '#0ea5e9' }, { vals: s.d, color: '#f59e0b' }], range: [0, 100], guides: [{ v: 20 }, { v: 80 }], readout: 'STOCH 21·5' }; } },
+  { key: 'cci50', label: 'CCI 50', group: 'Momentum', build: o => ({ lines: [{ vals: TI.cci(o.h, o.l, o.c, 50), color: '#2dd4bf' }], guides: [{ v: 100 }, { v: 0, strong: true }, { v: -100 }], readout: 'CCI 50' }) },
+  { key: 'willr7', label: 'Williams %R 7', group: 'Momentum', build: o => ({ lines: [{ vals: TI.williamsR(o.h, o.l, o.c, 7), color: '#f472b6' }], range: [-100, 0], guides: [{ v: -20 }, { v: -80 }], readout: 'WILLIAMS %R 7' }) },
+  { key: 'willr28', label: 'Williams %R 28', group: 'Momentum', build: o => ({ lines: [{ vals: TI.williamsR(o.h, o.l, o.c, 28), color: '#ec4899' }], range: [-100, 0], guides: [{ v: -20 }, { v: -80 }], readout: 'WILLIAMS %R 28' }) },
+  { key: 'roc5', label: 'ROC 5', group: 'Momentum', build: o => ({ lines: [{ vals: TI.roc(o.c, 5), color: '#60a5fa' }], guides: [{ v: 0, strong: true }], readout: 'ROC 5' }) },
+  { key: 'roc25', label: 'ROC 25', group: 'Momentum', build: o => ({ lines: [{ vals: TI.roc(o.c, 25), color: '#3b82f6' }], guides: [{ v: 0, strong: true }], readout: 'ROC 25' }) },
+  { key: 'mom10', label: 'Momentum 10', group: 'Momentum', build: o => ({ lines: [{ vals: TI.momentum(o.c, 10), color: '#a78bfa' }], guides: [{ v: 0, strong: true }], readout: 'MOMENTUM 10' }) },
+  { key: 'mom20', label: 'Momentum 20', group: 'Momentum', build: o => ({ lines: [{ vals: TI.momentum(o.c, 20), color: '#8b5cf6' }], guides: [{ v: 0, strong: true }], readout: 'MOMENTUM 20' }) },
+  { key: 'trix9', label: 'TRIX 9', group: 'Momentum', build: o => ({ lines: [{ vals: TI.trix(o.c, 9), color: '#fbbf24' }], guides: [{ v: 0, strong: true }], readout: 'TRIX 9' }) },
+  { key: 'adx7', label: 'ADX 7', group: 'Trend Strength', build: o => { const a = TI.adx(o.h, o.l, o.c, 7); return { lines: [{ vals: a.adx, color: '#e5e7eb' }, { vals: a.plusDI, color: '#26d07c' }, { vals: a.minusDI, color: '#ff4d5e' }], range: [0, 100], guides: [{ v: 25 }], readout: 'ADX 7' }; } },
+  { key: 'adx28', label: 'ADX 28', group: 'Trend Strength', build: o => { const a = TI.adx(o.h, o.l, o.c, 28); return { lines: [{ vals: a.adx, color: '#cbd5e1' }, { vals: a.plusDI, color: '#26d07c' }, { vals: a.minusDI, color: '#ff4d5e' }], range: [0, 100], guides: [{ v: 25 }], readout: 'ADX 28' }; } },
+  { key: 'aroon14', label: 'Aroon 14', group: 'Trend Strength', build: o => { const a = TI.aroon(o.h, o.l, 14); return { lines: [{ vals: a.up, color: '#26d07c' }, { vals: a.down, color: '#ff4d5e' }], range: [0, 100], guides: [{ v: 50, strong: true }], readout: 'AROON 14' }; } },
+  { key: 'atr7', label: 'ATR 7', group: 'Volatility', build: o => ({ lines: [{ vals: TI.atr(o.h, o.l, o.c, 7), color: '#fbbf24' }], readout: 'ATR 7' }) },
+  { key: 'atr21', label: 'ATR 21', group: 'Volatility', build: o => ({ lines: [{ vals: TI.atr(o.h, o.l, o.c, 21), color: '#f59e0b' }], readout: 'ATR 21' }) },
+  { key: 'hv10', label: 'Hist Volatility 10', group: 'Volatility', build: o => ({ lines: [{ vals: TI.historicalVolatility(o.c, 10), color: '#f472b6' }], readout: 'HV 10' }) },
+  { key: 'hv50', label: 'Hist Volatility 50', group: 'Volatility', build: o => ({ lines: [{ vals: TI.historicalVolatility(o.c, 50), color: '#db2777' }], readout: 'HV 50' }) },
+  { key: 'ttm', label: 'TTM Squeeze', group: 'Volatility', build: o => { const t = TI.ttmSqueeze(o.h, o.l, o.c); return { lines: [], hist: { vals: t.momentum }, guides: [{ v: 0, strong: true }], readout: 'TTM SQUEEZE' }; } },
+  { key: 'mfi7', label: 'MFI 7', group: 'Volume', build: o => ({ lines: [{ vals: TI.mfi(o.h, o.l, o.c, o.v, 7), color: '#34d399' }], range: [0, 100], guides: [{ v: 20 }, { v: 80 }], readout: 'MFI 7' }) },
+  { key: 'vroc25', label: 'Volume ROC 25', group: 'Volume', build: o => ({ lines: [{ vals: TI.vroc(o.v, 25), color: '#22d3ee' }], guides: [{ v: 0, strong: true }], readout: 'VOL ROC 25' }) },
+  { key: 'cmf10', label: 'CMF 10', group: 'Volume', build: o => ({ lines: [{ vals: TI.cmf(o.h, o.l, o.c, o.v, 10), color: '#10b981' }], guides: [{ v: 0, strong: true }], readout: 'CMF 10' }) },
+  { key: 'accdist', label: 'Accum / Dist', group: 'Volume', build: o => ({ lines: [{ vals: TI.accumDist(o.h, o.l, o.c, o.v), color: '#5eead4' }], readout: 'ACC/DIST' }) },
+  { key: 'nvi', label: 'Neg Volume Index', group: 'Volume', build: o => ({ lines: [{ vals: TI.nvi(o.c, o.v), color: '#f87171' }], readout: 'NVI' }) },
+  { key: 'pvi', label: 'Pos Volume Index', group: 'Volume', build: o => ({ lines: [{ vals: TI.pvi(o.c, o.v), color: '#4ade80' }], readout: 'PVI' }) },
+];
+
+export const OVERLAY_GROUPS = ['Moving Averages', 'Bands & Channels', 'Trend Overlays'];
+export const PANE_GROUPS = ['Momentum', 'Trend Strength', 'Volatility', 'Volume'];
