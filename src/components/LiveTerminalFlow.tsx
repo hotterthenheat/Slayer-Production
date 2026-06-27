@@ -240,6 +240,14 @@ export function LiveTerminalFlow({ profile, ticker, decimals }: LiveTerminalFlow
     return { text: `Net GEX ${rising ? 'climbed' : 'slid'} ${delta >= 0 ? '+' : '−'}${fmtBig(Math.abs(delta))} over the last ${mins} min. ${imp}`, conf: outlook.confidence, rising };
   }, [profile, gexHist, outlook]);
 
+  // Centred macro readout cell — one decision metric in clean stacked type (§2 header zone).
+  const macroStat = (label: string, value: string, color: string) => (
+    <div className="flex flex-col items-center leading-none">
+      <span className="text-[7.5px] font-black uppercase tracking-[0.16em] text-[var(--text-tertiary)]">{label}</span>
+      <span className="text-[12px] font-black tabular-nums mt-1" style={{ color }}>{value}</span>
+    </div>
+  );
+
   // 0DTE session clock — time is the dominant risk; surface session phase + live countdown.
   const clock = useMemo(() => computeDealerClock(0, profile.netVex || 0, now), [profile.netVex, now]);
   const sess = useMemo(() => {
@@ -284,7 +292,7 @@ export function LiveTerminalFlow({ profile, ticker, decimals }: LiveTerminalFlow
       } as CSSProperties}
     >
       {/* ── Top bar ── */}
-      <div className="flex items-center justify-between px-3 sm:px-4 h-12 border-b border-[var(--border)] shrink-0 bg-[var(--surface)]">
+      <div className="flex items-center justify-between px-3 sm:px-4 h-12 border-b border-[var(--border)] shrink-0 bg-[var(--surface)] relative">
         <div className="flex items-center gap-2.5 min-w-0">
           <div className="w-8 h-8 rounded-md flex items-center justify-center shrink-0 bg-[var(--surface-2)] border border-[var(--border)]">
             <Crosshair className="w-4 h-4" style={{ color: 'var(--accent-color)' }} />
@@ -316,11 +324,24 @@ export function LiveTerminalFlow({ profile, ticker, decimals }: LiveTerminalFlow
               </>
             )}
           </div>
-          {/* spot */}
-          <div className="flex items-baseline gap-1.5 shrink-0">
+          {/* spot — compact (small screens); the centred macro readout takes over on lg+ */}
+          <div className="flex items-baseline gap-1.5 shrink-0 lg:hidden">
             <span className={`text-[18px] font-mono font-black tabular-nums leading-none text-[var(--text-primary)] ${flash === 'up' ? 'tick-up' : flash === 'down' ? 'tick-down' : ''}`}>{spot ? spot.toLocaleString('en-US', { minimumFractionDigits: decimals, maximumFractionDigits: decimals }) : '—'}</span>
             <span className="text-[11px] font-mono font-bold tabular-nums" style={{ color: dayChg >= 0 ? 'var(--success)' : 'var(--danger)' }}>{dayChg >= 0 ? '+' : ''}{dayChg.toFixed(2)}%</span>
           </div>
+        </div>
+        {/* Centred macro readout — Asset · Price · Δ · Regime · Gamma · Exp Move · Confidence (§2) */}
+        <div className="absolute left-1/2 -translate-x-1/2 hidden lg:flex items-center gap-3.5 font-mono">
+          <div className="flex items-baseline gap-1.5">
+            <span className="text-[12px] font-black tracking-wider text-[var(--text-tertiary)]">{selectedAsset.ticker}</span>
+            <span className={`text-[19px] font-black tabular-nums leading-none text-[var(--text-primary)] ${flash === 'up' ? 'tick-up' : flash === 'down' ? 'tick-down' : ''}`}>{spot ? spot.toLocaleString('en-US', { minimumFractionDigits: decimals, maximumFractionDigits: decimals }) : '—'}</span>
+            <span className="text-[11px] font-bold tabular-nums" style={{ color: dayChg >= 0 ? 'var(--success)' : 'var(--danger)' }}>{dayChg >= 0 ? '+' : ''}{dayChg.toFixed(2)}%</span>
+          </div>
+          <span className="w-px h-6 bg-[var(--border)]" />
+          {macroStat('Regime', outlook.regime, outlookColor)}
+          {macroStat('Gamma', longGamma ? 'Long γ' : 'Short γ', trend)}
+          {macroStat('Exp Move', emPct != null ? `±${(emPct * 100).toFixed(2)}%` : '—', 'var(--info)')}
+          {macroStat('Conf', `${outlook.confidence}%`, outlookColor)}
         </div>
         <div className="flex items-center gap-2">
           {/* Honest feed status — provider name when the chain is live, MODEL on synthetic data,
@@ -333,7 +354,7 @@ export function LiveTerminalFlow({ profile, ticker, decimals }: LiveTerminalFlow
           </span>
           <div className="hidden md:block">{segToggle(TF.map(t => t.val), selectedTimeframe, setSelectedTimeframe)}</div>
           {segToggle(['0DTE', 'ALL'], scope, v => setScope(v as '0DTE' | 'ALL'), true)}
-          <span className="flex items-center gap-1.5 px-2.5 py-1 rounded-md border text-[10px] font-mono font-black uppercase tracking-widest" style={{ borderColor: longGamma ? 'color-mix(in srgb, var(--success) 40%, transparent)' : 'color-mix(in srgb, var(--danger) 40%, transparent)', background: longGamma ? 'color-mix(in srgb, var(--success) 10%, transparent)' : 'color-mix(in srgb, var(--danger) 10%, transparent)', color: trend, boxShadow: `0 0 16px ${longGamma ? 'color-mix(in srgb, var(--success) 18%, transparent)' : 'color-mix(in srgb, var(--danger) 18%, transparent)'}` }}>
+          <span className="flex items-center gap-1.5 px-2.5 py-1 rounded-md border text-[10px] font-mono font-black uppercase tracking-widest lg:hidden" style={{ borderColor: longGamma ? 'color-mix(in srgb, var(--success) 40%, transparent)' : 'color-mix(in srgb, var(--danger) 40%, transparent)', background: longGamma ? 'color-mix(in srgb, var(--success) 10%, transparent)' : 'color-mix(in srgb, var(--danger) 10%, transparent)', color: trend, boxShadow: `0 0 16px ${longGamma ? 'color-mix(in srgb, var(--success) 18%, transparent)' : 'color-mix(in srgb, var(--danger) 18%, transparent)'}` }}>
             {longGamma ? <Activity className="w-3 h-3" /> : <Zap className="w-3 h-3 fill-current" />}{longGamma ? 'Long γ' : 'Short γ'} · {read.regime === 'PIN' ? `Pin ${read.pinStrength}` : 'Trend'}
           </span>
         </div>

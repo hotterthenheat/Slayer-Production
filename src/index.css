@@ -70,6 +70,8 @@ html, body, #root {
   --warning: #FBBF24;
   --danger: #F87171;
   --info: #60A5FA;
+  --greek: #B06FE6;              /* §9 — mathematical Greeks (GEX / Vanna / Charm) */
+  --dealer: #29B6F6;             /* §9 — dealer / market-maker tracking */
   /* Brand default accent is monochrome (black & white identity). The 73 theme
      presets each override --accent-color with their own hue, so picking a theme
      is what introduces color — the default stays on-brand. */
@@ -831,6 +833,8 @@ body.light-theme ::-webkit-scrollbar-thumb:hover {
   --warning: #B45309;
   --danger: #DC2626;
   --info: #2563EB;
+  --greek: #8E24AA;              /* §9 — mathematical Greeks (GEX / Vanna / Charm) */
+  --dealer: #0288D1;             /* §9 — dealer / market-maker tracking */
   --accent-color: #18181B;     /* monochrome brand accent (near-black on white) */
 
   /* Redefine Tailwind's custom theme variables for light mode */
