@@ -27,7 +27,31 @@ interface LiveTerminalFlowProps {
 
 const fmtBig = (v: number) => { const a = Math.abs(v), s = v < 0 ? '−' : ''; return a >= 1e9 ? s + (a / 1e9).toFixed(2) + 'B' : a >= 1e6 ? s + (a / 1e6).toFixed(1) + 'M' : a >= 1e3 ? s + (a / 1e3).toFixed(1) + 'K' : s + a.toFixed(0); };
 
-export function LiveTerminalFlow({ profile, ticker, decimals }: LiveTerminalFlowProps) {
+export function LiveTerminalFlow({ profile: liveProfile, ticker, decimals }: LiveTerminalFlowProps) {
+  // ── Market Replay (§3.2) — append-only buffer of the full dealer state over the session; a scrubber
+  //    rewinds the WHOLE terminal (walls, ladder, vanna, narrative) to any past moment. LIVE keeps
+  //    buffering in the background while you're scrubbed back. Every panel below reads `profile`, which
+  //    is the live state in LIVE mode and the reconstructed historical snapshot in REPLAY mode. ──
+  const profileHistRef = useRef<{ t: number; p: GexProfileData }[]>([]);
+  const profileHistTick = useRef('');
+  const [replayT, setReplayT] = useState<number | null>(null);
+  const [, bumpHist] = useState(0);
+  useEffect(() => {
+    if (profileHistTick.current !== ticker) { profileHistTick.current = ticker; profileHistRef.current = []; setReplayT(null); }
+    if (!liveProfile?.strikes?.length) return;
+    const t = Date.now(), buf = profileHistRef.current, last = buf[buf.length - 1];
+    if (last && t - last.t < 2000) return; // ~1 snapshot / 2s, ring-buffered
+    buf.push({ t, p: liveProfile });
+    if (buf.length > 600) buf.splice(0, buf.length - 600);
+    bumpHist(n => n + 1);
+  }, [liveProfile, ticker]);
+  const profileHist = profileHistRef.current;
+  const profile = useMemo(() => {
+    if (replayT == null || !profileHist.length) return liveProfile;
+    let best = profileHist[0];
+    for (const s of profileHist) { if (s.t <= replayT) best = s; else break; }
+    return best.p;
+  }, [replayT, liveProfile, profileHist.length]);
   const selectedAsset = useContractStore(s => s.selectedAsset);
   const setSelectedAsset = useContractStore(s => s.setSelectedAsset);
   const selectedTimeframe = useContractStore(s => s.selectedTimeframe);
@@ -193,7 +217,7 @@ export function LiveTerminalFlow({ profile, ticker, decimals }: LiveTerminalFlow
   const hasVex = useMemo(() => (profile.strikes || []).some(s => s.callVex != null || s.putVex != null), [profile]);
   const hasOi = useMemo(() => (profile.strikes || []).some(s => (s.callOi || 0) + (s.putOi || 0) > 0), [profile]);
   const hasVol = useMemo(() => (profile.strikes || []).some(s => (s.callVolume || 0) + (s.putVolume || 0) > 0), [profile]);
-  const gexHist = useGexHistory(profile, selectedAsset.ticker);
+  const gexHist = useGexHistory(liveProfile, selectedAsset.ticker); // GEX line history always tracks LIVE, even while scrubbed back
   const ladder = useMemo(() => {
     let ss = [...(profile.strikes || [])];
     if (profile.spot) ss = ss.sort((a, b) => Math.abs(a.strike - spot) - Math.abs(b.strike - spot)).slice(0, 30);
@@ -675,6 +699,7 @@ export function LiveTerminalFlow({ profile, ticker, decimals }: LiveTerminalFlow
 
         </div>
       </div>
+      {profileHist.length > 2 && <ReplayScrubber hist={profileHist} replayT={replayT} setReplayT={setReplayT} decimals={decimals} />}
       <SystemStatus feedLabel={feedLabel} live={liveFeed} feedColor={feedColor} cd={sess.cd} />
     </div>
   );
@@ -707,6 +732,34 @@ function SystemStatus({ feedLabel, live, feedColor, cd }: { feedLabel: string; l
       {t.mem != null && <Cell label="Mem" value={t.mem >= 1024 ? (t.mem / 1024).toFixed(2) + 'GB' : Math.round(t.mem) + 'MB'} color="var(--text-secondary)" />}
       <Cell label="Session" value={cd} color={cd === 'CLOSED' ? 'var(--text-tertiary)' : 'var(--text-secondary)'} />
       <div className="ml-auto text-[8px] font-black uppercase tracking-[0.22em] text-[var(--text-tertiary)] shrink-0">Slayer Terminal</div>
+    </div>
+  );
+}
+
+/**
+ * ReplayScrubber — Market Replay timeline (§3.2). Drag (or click) to rewind the entire dealer state
+ * to any buffered moment; LIVE snaps back to the latest. The buffer keeps filling in the background,
+ * so you can study a turning point and rejoin the live tape without losing data.
+ */
+function ReplayScrubber({ hist, replayT, setReplayT }: { hist: { t: number; p: GexProfileData }[]; replayT: number | null; setReplayT: (t: number | null) => void; decimals: number }) {
+  const t0 = hist[0].t, t1 = hist[hist.length - 1].t, span = Math.max(1, t1 - t0);
+  const live = replayT == null;
+  const pos = live ? 100 : Math.max(0, Math.min(100, ((replayT - t0) / span) * 100));
+  const fmt = (t: number) => new Date(t).toLocaleTimeString('en-US', { hour12: false });
+  const scrub = (e: { currentTarget: HTMLElement; clientX: number }) => { const r = e.currentTarget.getBoundingClientRect(); setReplayT(t0 + span * Math.max(0, Math.min(1, (e.clientX - r.left) / r.width))); };
+  const accent = live ? 'var(--success)' : 'var(--warning)';
+  return (
+    <div className="shrink-0 h-9 border-t border-[var(--border)] bg-[var(--surface)] flex items-center gap-3 px-4 font-mono select-none">
+      <button onClick={() => setReplayT(live ? t0 + span * 0.5 : null)} className="px-2 py-0.5 rounded text-[9px] font-black uppercase tracking-widest border transition-colors shrink-0" style={{ borderColor: `color-mix(in srgb, ${accent} 45%, transparent)`, color: accent, background: `color-mix(in srgb, ${accent} 11%, transparent)` }}>{live ? '● LIVE' : '⏸ REPLAY'}</button>
+      <span className="text-[8px] uppercase tracking-[0.18em] text-[var(--text-tertiary)] shrink-0 hidden md:block">Time Travel</span>
+      <span className="text-[9px] tabular-nums text-[var(--text-tertiary)] w-[58px] shrink-0">{fmt(t0)}</span>
+      <div className="relative flex-1 h-4 flex items-center cursor-pointer" onMouseDown={scrub} onMouseMove={e => { if (e.buttons === 1) scrub(e); }}>
+        <div className="absolute inset-x-0 h-[3px] rounded-full bg-[var(--surface-3)]" />
+        <div className="absolute left-0 h-[3px] rounded-full" style={{ width: `${pos}%`, background: accent }} />
+        <div className="absolute w-3 h-3 rounded-full -translate-x-1/2 border-2 border-[var(--surface)]" style={{ left: `${pos}%`, background: accent, boxShadow: `0 0 8px color-mix(in srgb, ${accent} 60%, transparent)` }} />
+      </div>
+      <span className="text-[9px] tabular-nums text-[var(--text-tertiary)] w-[58px] text-right shrink-0">{fmt(t1)}</span>
+      <span className="text-[10px] font-black tabular-nums w-[68px] text-right shrink-0" style={{ color: accent }}>{live ? 'NOW' : fmt(replayT)}</span>
     </div>
   );
 }
