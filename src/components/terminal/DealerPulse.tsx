@@ -13,11 +13,10 @@ type GammaMotion = { label: string; sub: string; color: string } | null;
  * net γ + regime, the implied range, the live dealer-MOTION read, and a streaming observation tape.
  * It SHOWS the mechanics; it never issues a trade. Pure view-model presentation.
  */
-export function DealerPulse({ read, trend, netGex, emPct, showMotion, migration, gammaMotion, vannaFlow }: {
+export function DealerPulse({ read, trend, netGex, showMotion, migration, gammaMotion, vannaFlow }: {
   read: Read;
   trend: string;
   netGex: number;
-  emPct?: number;
   showMotion: boolean;
   migration: Migration;
   gammaMotion: GammaMotion;
@@ -43,11 +42,6 @@ export function DealerPulse({ read, trend, netGex, emPct, showMotion, migration,
         <div className="flex flex-col justify-center px-4 border-r border-[var(--border)] shrink-0">
           <span className="text-[9px] font-black tracking-widest uppercase text-[var(--text-tertiary)]">Net γ · {read.regime === 'PIN' ? `Pin ${read.pinStrength}` : 'Trend'}</span>
           <span className="text-[16px] font-mono font-black tabular-nums leading-tight mt-0.5" style={{ color: trend }}>{netGex >= 0 ? '+' : ''}{fmtBig(netGex)}</span>
-        </div>
-        {/* Implied range */}
-        <div className="flex flex-col justify-center px-4 border-r border-[var(--border)] shrink-0">
-          <span className="text-[9px] font-black tracking-widest uppercase text-[var(--text-tertiary)]">Implied Range</span>
-          <span className="text-[16px] font-mono font-black tabular-nums leading-tight mt-0.5" style={{ color: 'var(--info)' }}>{emPct != null ? `±${(emPct * 100).toFixed(2)}%` : '—'}</span>
         </div>
         {/* Dealer MOTION — how the book is CHANGING right now: gamma hedging state, vanna
             hedge-flow, and which way the gamma center-of-mass (the pin) is drifting. */}

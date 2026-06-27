@@ -445,8 +445,10 @@ export function drawChart(deps: DrawDeps) {
     // lines), so the dealer positioning BEHIND the walls is visible, not just the walls themselves.
     if (showLadder && profile.strikes && profile.strikes.length) {
       const named = [profile.callWall, profile.putWall, profile.gammaFlip, profile.magnet].filter((x): x is number => typeof x === 'number');
+      // Cap the on-chart loaded-strike tags so the right edge stays readable — walls / flip / magnet
+      // already carry the structure. gexCount still governs heatmap / γ-lane / orbs / ladder density.
       const cand = profile.strikes.filter(s => s.strike >= lo && s.strike <= hi && Math.abs(s.netGex || 0) > 0 && !named.some(nm => Math.abs(nm - s.strike) < 1e-6))
-        .sort((a, b) => Math.abs(b.netGex || 0) - Math.abs(a.netGex || 0)).slice(0, gexCount);
+        .sort((a, b) => Math.abs(b.netGex || 0) - Math.abs(a.netGex || 0)).slice(0, Math.min(gexCount, 6));
       cand.forEach((s, i) => { const g = s.netGex || 0, rk = i < 3 ? `#${i + 1} ` : ''; pushLvl(s.strike, g >= 0 ? COL.up : COL.down, 'GEX', Math.abs(g), `${rk}${Math.round(s.strike)}  ${fmtGex(g)}`); });
     }
     const maxLvlGex = Math.max(...lvls.map(L => L.gex || 0), 1e-9);

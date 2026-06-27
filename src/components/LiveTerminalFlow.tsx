@@ -388,7 +388,7 @@ export function LiveTerminalFlow({ profile: liveProfile, ticker, decimals }: Liv
       </div>
 
       {/* Dealer Pulse — descriptive picture of dealer positioning (force balance · net γ · range · motion · tape) */}
-      <DealerPulse read={read} trend={trend} netGex={netGex} emPct={emPct} showMotion={!!dyn} migration={migration} gammaMotion={gammaMotion} vannaFlow={vannaFlow} />
+      <DealerPulse read={read} trend={trend} netGex={netGex} showMotion={!!dyn} migration={migration} gammaMotion={gammaMotion} vannaFlow={vannaFlow} />
 
       {/* ── 0DTE session band: phase + live countdown to close ── */}
       <SessionBand sess={sess} clock={clock} />
