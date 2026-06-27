@@ -9,6 +9,7 @@ import { SlayerChart } from './SlayerChart';
 import { ChartPanelGrid } from './ChartPanelGrid';
 import { StrikeGexChart } from './StrikeGexChart';
 import { useGexHistory } from '../lib/gexHistory';
+import { StrikeMatrix } from './StrikeMatrix';
 import { OrderFlow } from './OrderFlow';
 import { CROSSHAIR_EVENT, CrosshairDetail } from '../lib/chartSync';
 import { EdgeTrackRecord } from './EdgeTrackRecord';
@@ -39,7 +40,7 @@ export function LiveTerminalFlow({ profile, ticker, decimals }: LiveTerminalFlow
   const serverState = useContractStore(s => s.serverState);
   const dyn = serverState?.dealer_dynamics ?? null;
   const [tickerOpen, setTickerOpen] = useState(false);
-  const [leftTab, setLeftTab] = useState<'levels' | 'flow'>('levels');
+  const [leftTab, setLeftTab] = useState<'levels' | 'matrix' | 'flow'>('levels');
   const [scope, setScope] = useState<'0DTE' | 'ALL'>('0DTE');
   const [multiChart, setMultiChart] = useState(false); // opt-in movable/resizable multi-chart grid
   const [gexLines, setGexLines] = useState(false); // center toggle — multi-strike GEX line chart
@@ -391,15 +392,17 @@ export function LiveTerminalFlow({ profile, ticker, decimals }: LiveTerminalFlow
           {/* ░ LEFT — Key Levels / Flow ░ */}
           <aside className="order-2 xl:order-1 w-full xl:w-[276px] shrink-0 border-r border-[var(--border)] flex flex-col min-h-[360px] xl:min-h-0 bg-[var(--surface)]">
             <div className="flex items-center gap-4 px-3 h-9 border-b border-[var(--border)] shrink-0">
-              {(['levels', 'flow'] as const).map(t => (
+              {(['levels', 'matrix', 'flow'] as const).map(t => (
                 <button key={t} onClick={() => setLeftTab(t)} className="relative text-[11px] font-sans font-black tracking-widest uppercase transition-colors py-2" style={{ color: leftTab === t ? 'var(--text-primary)' : 'var(--text-tertiary)' }}>
-                  {t === 'levels' ? 'Key Levels' : 'Order Flow'}
+                  {t === 'levels' ? 'Key Levels' : t === 'matrix' ? 'Matrix' : 'Order Flow'}
                   {leftTab === t && <span className="absolute -bottom-px left-0 right-0 h-[2px]" style={{ background: 'var(--accent-color)' }} />}
                 </button>
               ))}
             </div>
 
-            {leftTab === 'flow' ? (
+            {leftTab === 'matrix' ? (
+              <div className="flex-1 min-h-0 overflow-y-auto"><StrikeMatrix profile={profile} decimals={decimals} /></div>
+            ) : leftTab === 'flow' ? (
               <div className="flex-1 min-h-0"><OrderFlow data={orderFlow} decimals={decimals} /></div>
             ) : (
               <div className="flex-1 overflow-y-auto p-2.5 space-y-2.5">
