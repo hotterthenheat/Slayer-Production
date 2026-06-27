@@ -181,6 +181,10 @@ const RANGE_PRESETS: { k: RangeKey; tf: TimeframeVal; bars: number }[] = [
 // GEX level-heatmap palette — call-dominant strikes in gold, put-dominant in violet. A
 // deliberately distinct, candle-independent pair (our own take on a liquidity heatmap).
 const HEAT_POS = '#e0a93b', HEAT_NEG = '#9b6dff';
+// Compact dealer-gamma value: +2.8B / -1.74B / +940M / -310K.
+const fmtGex = (v: number) => { const a = Math.abs(v), s = v >= 0 ? '+' : '-'; if (a >= 1e9) return s + (a / 1e9).toFixed(a >= 1e10 ? 1 : 2) + 'B'; if (a >= 1e6) return s + (a / 1e6).toFixed(0) + 'M'; if (a >= 1e3) return s + (a / 1e3).toFixed(0) + 'K'; return s + Math.round(a); };
+// Linear blend of two #rrggbb hex colors (t in 0..1) — drives the loaded-strike intensity scale.
+const mixHex = (a: string, b: string, t: number) => { const pa = parseInt(a.slice(1), 16), pb = parseInt(b.slice(1), 16), k = Math.max(0, Math.min(1, t)); const r = Math.round(((pa >> 16) & 255) + (((pb >> 16) & 255) - ((pa >> 16) & 255)) * k), g = Math.round(((pa >> 8) & 255) + (((pb >> 8) & 255) - ((pa >> 8) & 255)) * k), bl = Math.round((pa & 255) + ((pb & 255) - (pa & 255)) * k); return '#' + ((1 << 24) + (r << 16) + (g << 8) + bl).toString(16).slice(1); };
 // Interval (timeframe) options offered directly on the chart toolbar.
 const CHART_TFS: TimeframeVal[] = ['1m', '2m', '3m', '5m', '15m', '30m', '1h', '4h', '1D', '1W'];
 
@@ -249,9 +253,14 @@ export const SlayerChart = memo(function SlayerChartImpl({ profile, decimals, ca
   const gexMapV2 = initialPrefs.gexMapV2 === true;
   const [showGex, setShowGex] = useState<boolean>(gexMapV2 ? (initialPrefs.showGex ?? false) : false);
   const [showDisp, setShowDisp] = useState<boolean>(initialPrefs.showDisp ?? false);
-  const [showHeat, setShowHeat] = useState<boolean>(gexMapV2 ? (initialPrefs.showHeat ?? true) : true);
+  const [showHeat, setShowHeat] = useState<boolean>(gexMapV2 ? (initialPrefs.showHeat ?? false) : false); // ladder is the default dealer map now
   // ORBS — focal gamma-concentration orbs in the right gutter (a clean alternative to the Γ-MAP diamonds). Opt-in.
   const [showOrbs, setShowOrbs] = useState<boolean>(gexMapV2 ? (initialPrefs.showOrbs ?? false) : false);
+  // Dealer-map density — how many strikes the heatmap / orbs / exposure-lane render. Lower = cleaner.
+  const [gexCount, setGexCount] = useState<number>(typeof initialPrefs.gexCount === 'number' ? initialPrefs.gexCount : 16);
+  const [showLadder, setShowLadder] = useState<boolean>(initialPrefs.showLadder ?? true); // Loaded GEX Strikes (flagship)
+  const [showDealerBox, setShowDealerBox] = useState<boolean>(initialPrefs.showDealerBox ?? true); // Dealer Positioning panel
+  const [ctxMenu, setCtxMenu] = useState<{ x: number; y: number } | null>(null); // right-click "View" menu (reset to live, etc.)
   const [chartType, setChartType] = useState<ChartType>(initialPrefs.chartType || 'candles');
   const [colors, setColors] = useState<{ up?: string; down?: string; line?: string; wick?: string; bg?: string; grid?: string }>(initialPrefs.colors || {});
   const [showGrid, setShowGrid] = useState<boolean>(initialPrefs.showGrid ?? true);
@@ -334,6 +343,8 @@ export const SlayerChart = memo(function SlayerChartImpl({ profile, decimals, ca
   useEffect(() => { try { localStorage.setItem('slayerchart.draw.' + (panelId ? panelId + '.' : '') + (tickKey || '_'), JSON.stringify(drawings)); } catch { /* storage unavailable */ } }, [drawings, tickKey, panelId]);
 
   const hoverRef = useRef<{ x: number; y: number } | null>(null);
+  // Per-strike GEX baseline (snapshot from ~45s ago) so each loaded strike can show its ΔGEX (↑/↓ since checkpoint).
+  const gexDeltaRef = useRef<{ base: Map<number, number>; ts: number; tick: string }>({ base: new Map(), ts: 0, tick: '' });
   const dragRef = useRef<{ x: number; off: number } | null>(null);
   const priceDragRef = useRef<{ y: number; factor: number; offset: number } | null>(null);
   const draftRef = useRef<Anchor | null>(null);          // first point of a 2-point drawing
@@ -369,7 +380,7 @@ export const SlayerChart = memo(function SlayerChartImpl({ profile, decimals, ca
   // Smooth auto-scale: the displayed price range eases toward its target so the candles AND the
   // side level tags glide together when the user scales/zooms, instead of snapping each frame.
   const dispRangeRef = useRef<{ lo: number; hi: number } | null>(null);
-  const scheduleRef = useRef<() => void>(() => {});
+  const scaleViewRef = useRef<{ bars: number; off: number } | null>(null);
 
   const ohlcv = useMemo<OHLCV>(() => ({ o: candles.map(c => c.open), h: candles.map(c => c.high), l: candles.map(c => c.low), c: candles.map(c => c.close), v: candles.map(c => c.volume) }), [candles]);
   const atr = useMemo(() => TI.atr(ohlcv.h, ohlcv.l, ohlcv.c, 14), [ohlcv]);
@@ -388,13 +399,21 @@ export const SlayerChart = memo(function SlayerChartImpl({ profile, decimals, ca
   // Persist chart prefs (type, colors, indicator selection, GEX/disp toggles) so a user's
   // setup survives a reload. Saving the initial (already-stored) values once is harmless.
   useEffect(() => {
-    try { localStorage.setItem('slayerchart.prefs.v1' + keySuffix, JSON.stringify({ chartType, colors, ovOn, paneOn, showGex, showDisp, showHeat, showOrbs, showGrid, showVolume, showWatermark, candleBorders, gexMapV2: true, ...(panelId ? { ticker: panelTicker, timeframe: localTf, channel, expiry } : {}) })); } catch { /* storage unavailable */ }
-  }, [chartType, colors, ovOn, paneOn, showGex, showDisp, showHeat, showOrbs, showGrid, showVolume, showWatermark, candleBorders, panelId, panelTicker, localTf, channel, expiry]);
+    try { localStorage.setItem('slayerchart.prefs.v1' + keySuffix, JSON.stringify({ chartType, colors, ovOn, paneOn, showGex, showDisp, showHeat, showOrbs, gexCount, showLadder, showDealerBox, showGrid, showVolume, showWatermark, candleBorders, gexMapV2: true, ...(panelId ? { ticker: panelTicker, timeframe: localTf, channel, expiry } : {}) })); } catch { /* storage unavailable */ }
+  }, [chartType, colors, ovOn, paneOn, showGex, showDisp, showHeat, showOrbs, gexCount, showLadder, showDealerBox, showGrid, showVolume, showWatermark, candleBorders, panelId, panelTicker, localTf, channel, expiry]);
 
   // Only enabled indicators are computed, and only when the selection or candles change
   // (NOT on pan/hover) — keeps interaction cheap.
   const overlaySeries = useMemo(() => { const out: Record<string, Series[]> = {}; for (const d of OVERLAY_DEFS) if (ovOn[d.key]) out[d.key] = d.build(ohlcv); return out; }, [ohlcv, ovOn]);
   const paneSeries = useMemo(() => { const out: { def: typeof PANE_DEFS[number]; data: PaneData }[] = []; for (const d of PANE_DEFS) if (paneOn[d.key]) out.push({ def: d, data: d.build(ohlcv) }); return out; }, [ohlcv, paneOn]);
+  // Dealer Positioning summary for the corner dashboard — net γ, call/put dominance, largest strikes.
+  const dealerStats = useMemo(() => {
+    const ss = profile.strikes; if (!ss || !ss.length) return null;
+    let pos = 0, neg = 0, lc: (typeof ss)[number] | null = null, lp: (typeof ss)[number] | null = null;
+    for (const s of ss) { const g = s.netGex || 0; if (g > 0) { pos += g; if (!lc || g > (lc.netGex || 0)) lc = s; } else if (g < 0) { neg += -g; if (!lp || g < (lp.netGex || 0)) lp = s; } }
+    const total = pos + neg;
+    return { net: pos - neg, callPct: total ? Math.round((pos / total) * 100) : 50, long: pos >= neg, largestCall: lc?.strike, largestPut: lp?.strike };
+  }, [profile]);
 
   const displacements = useMemo(() => {
     const levels = [profile.callWall, profile.putWall, profile.gammaFlip, profile.magnet, profile.spot].filter(x => typeof x === 'number' && (x as number) > 0) as number[];
@@ -439,6 +458,8 @@ export const SlayerChart = memo(function SlayerChartImpl({ profile, decimals, ca
 
     // Thousands-separated price formatter for every axis / level / readout label.
     const nf = (v: number) => v.toLocaleString('en-US', { minimumFractionDigits: decimals, maximumFractionDigits: decimals });
+    // Trimmed variant for the price axis — drops trailing ".00" so whole-number strikes read clean (7,390 not 7,390.00).
+    const nfT = (v: number) => { const s = nf(v); return s.indexOf('.') >= 0 ? s.replace(/\.?0+$/, '') : s; };
 
     if (candles.length === 0) { ctx.fillStyle = T.dim; ctx.textAlign = 'center'; ctx.fillText('Awaiting candle stream…', W / 2, H / 2); return; }
 
@@ -446,9 +467,9 @@ export const SlayerChart = memo(function SlayerChartImpl({ profile, decimals, ca
     const laneOn = !!(showGex && profile.strikes && profile.strikes.length);
     const heatOn = !!(showHeat && profile.strikes && profile.strikes.length);
     const orbsOn = !!(showOrbs && profile.strikes && profile.strikes.length);
-    // Reserve a right gutter for the γ-lane (wide) or the Γ-MAP diamonds (thin). ORBS need no gutter —
-    // they draw ON the chart at the right edge so each dot sits on its actual price level.
-    const gammaW = laneOn ? 46 : orbsOn ? 0 : heatOn ? 16 : 0;
+    // Reserve a right gutter only for the γ-lane (wide). The Γ-MAP landscape glow and the ORBS dots both
+    // render on the chart itself, so they need no gutter.
+    const gammaW = laneOn ? 46 : 0;
     const plotL = 2, plotR = W - axisW - gammaW, plotW = plotR - plotL, gammaR = plotR + gammaW;
     const availH = H - topPad - xAxisH;
     const subH = paneSeries.length ? Math.min(86, (availH * 0.42) / paneSeries.length) : 0;
@@ -481,35 +502,50 @@ export const SlayerChart = memo(function SlayerChartImpl({ profile, decimals, ca
     // ~30% of the candle range beyond the price action. Farther levels (e.g. EM±, a distant wall)
     // stay off-screen and are surfaced by their ↑/↓ tags — otherwise they squash price into a thin
     // band of whitespace. (Manual price-scale drag/scroll still overrides this.)
+    // Pull in only the STRUCTURAL dealer levels that sit near the price action (walls / flip / magnet /
+    // EM) — never the live spot, which would chase every tick and make the scale shiver. The candles
+    // already carry the latest price, so the frame stays anchored to real bars.
+    const candLo = lo, candHi = hi;
     const capLo = lo - cRange * 0.30, capHi = hi + cRange * 0.30;
-    const levelPrices = [profile.spot, profile.callWall, profile.putWall, profile.gammaFlip, profile.magnet];
+    const levelPrices: number[] = [profile.callWall, profile.putWall, profile.gammaFlip, profile.magnet].filter((p): p is number => typeof p === 'number' && p > 0);
     if (profile.spot && profile.expectedMovePct) levelPrices.push(profile.spot * (1 + profile.expectedMovePct), profile.spot * (1 - profile.expectedMovePct));
-    for (const p of levelPrices) { if (typeof p === 'number' && p > 0 && p >= capLo && p <= capHi) { lo = Math.min(lo, p); hi = Math.max(hi, p); } }
+    for (const p of levelPrices) { if (p >= capLo && p <= capHi) { lo = Math.min(lo, p); hi = Math.max(hi, p); } }
     const pad = ((hi - lo) || 1) * 0.07; lo -= pad; hi += pad;
-    // Manual vertical scale (drag the price axis): scale the auto range about its center + shift.
-    const pv = priceViewRef.current;
-    if (pv) { const center = (lo + hi) / 2, half = Math.max(1e-6, ((hi - lo) / 2) * pv.factor); lo = center - half + pv.offset; hi = center + half + pv.offset; }
-    // Glide the displayed range toward the target each frame, but SNAP (no animation) on a big jump
-    // — a ticker/timeframe switch to a totally different price band — and on tiny per-tick noise, so
-    // a live feed doesn't visibly "breathe". Only meaningful changes (zoom/scale/reset) ease.
+    // Dead-band auto-scale: HOLD the displayed range steady while the candles still fit inside it with a
+    // margin, so a live feed never visibly "breathes". Re-fit (snap, no per-frame easing) only when the
+    // view is actively zoomed/panned, price nears an edge, the frame drifts too loose/tight, or the band
+    // jumps (ticker/timeframe switch). No continuous animation → no jitter.
+    const sv = scaleViewRef.current;
+    const viewChanged = !sv || sv.bars !== bars || sv.off !== off;
+    scaleViewRef.current = { bars, off };
     const disp = dispRangeRef.current;
     if (!disp) { dispRangeRef.current = { lo, hi }; }
     else {
-      const span = (hi - lo) || 1, diff = Math.abs(disp.lo - lo) + Math.abs(disp.hi - hi);
-      const bigJump = Math.abs((lo + hi) / 2 - (disp.lo + disp.hi) / 2) > Math.max(hi - lo, disp.hi - disp.lo) * 0.6;
-      if (bigJump || diff < span * 0.02) { disp.lo = lo; disp.hi = hi; }
-      else {
-        const k = 0.32;
-        disp.lo += (lo - disp.lo) * k; disp.hi += (hi - disp.hi) * k;
-        if (Math.abs(disp.lo - lo) + Math.abs(disp.hi - hi) < span * 0.003) { disp.lo = lo; disp.hi = hi; }
-        else scheduleRef.current();
-      }
+      const dSpan = (disp.hi - disp.lo) || 1, tSpan = (hi - lo) || 1, margin = dSpan * 0.06;
+      const bigJump = Math.abs((lo + hi) / 2 - (disp.lo + disp.hi) / 2) > Math.max(tSpan, dSpan) * 0.6;
+      const fits = candLo >= disp.lo + margin && candHi <= disp.hi - margin;
+      const looseOrTight = (candHi - candLo) < dSpan * 0.42 || tSpan > dSpan * 1.6 || tSpan < dSpan * 0.62;
+      if (viewChanged || bigJump || !fits || looseOrTight) { disp.lo = lo; disp.hi = hi; }
       lo = disp.lo; hi = disp.hi;
     }
+    // Manual vertical scale (drag the price axis): scale the held range about its center + shift — applied
+    // AFTER the dead-band hold so a manual price-scale drag always responds immediately.
+    const pv = priceViewRef.current;
+    if (pv) { const center = (lo + hi) / 2, half = Math.max(1e-6, ((hi - lo) / 2) * pv.factor); lo = center - half + pv.offset; hi = center + half + pv.offset; }
     const volBandH = showVolume ? priceH * 0.13 : 0, priceAreaH = priceH - volBandH;
     const yP = (p: number) => priceTop + priceAreaH - ((p - lo) / (hi - lo)) * priceAreaH;
     const pOfY = (y: number) => lo + (1 - (y - priceTop) / priceAreaH) * (hi - lo);
     geomRef.current = { plotL, plotR, barW, start, end, n, priceTop, priceAreaH, lo, hi };
+
+    // TradingView-style axis frame — a faint strip behind the right price axis and the bottom time
+    // axis, with thin dividers, so the scales read as framed panels instead of floating on the chart.
+    const axisX = gammaR;
+    ctx.fillStyle = hexA(T.text, 0.022);
+    ctx.fillRect(axisX, priceTop, W - axisX, priceBottom - priceTop);
+    ctx.fillRect(plotL, priceBottom, W - plotL, H - priceBottom);
+    ctx.strokeStyle = hexA(T.text, 0.09); ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(px(axisX), priceTop); ctx.lineTo(px(axisX), priceBottom); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(plotL, px(priceBottom)); ctx.lineTo(W, px(priceBottom)); ctx.stroke();
 
     // Slayer Terminal brand watermark — the ">slayer_terminal▌" logo lockup over the ticker · timeframe,
     // faint in the lower third behind the candles (the chart's own mark, à la a TradingView chart logo).
@@ -539,42 +575,39 @@ export const SlayerChart = memo(function SlayerChartImpl({ profile, decimals, ca
 
     // Price-grid density scales with pane height — drag the price axis taller (or scale it)
     // and more price levels appear for finer read accuracy.
-    const targetGrid = Math.max(5, Math.min(18, Math.round(priceAreaH / 44)));
+    // Denser, TradingView-style price grid: every 5th step is a round-number "major" line — a brighter
+    // gridline + a bold, brighter label — so the eye anchors on round prices and the scale reads finer.
+    const targetGrid = Math.max(6, Math.min(26, Math.round(priceAreaH / 30)));
     const step = niceStep((hi - lo) / targetGrid);
-    const gridYs: { y: number; label: string }[] = [];
+    const majorStep = step * 5;
+    const gridYs: { y: number; label: string; major: boolean }[] = [];
     for (let g = Math.ceil(lo / step) * step; g <= hi; g += step) {
       const y = yP(g); if (y < priceTop + 4 || y > priceBottom - 2) continue;
-      if (showGrid) { ctx.strokeStyle = COL.grid; ctx.beginPath(); ctx.moveTo(plotL, px(y) - 0.5); ctx.lineTo(plotR, px(y) - 0.5); ctx.stroke(); }
-      gridYs.push({ y, label: nf(g) });
+      const major = Math.abs(g / majorStep - Math.round(g / majorStep)) < 1e-6;
+      if (showGrid) { ctx.strokeStyle = major ? hexA(T.text, 0.07) : COL.grid; ctx.beginPath(); ctx.moveTo(plotL, px(y) - 0.5); ctx.lineTo(plotR, px(y) - 0.5); ctx.stroke(); }
+      gridYs.push({ y, label: nfT(g), major });
     }
 
-    // Γ-MAP liquidity heatmap — every significant dealer strike as a full-width row, gold for
-    // call-dominant (positive net γ) / violet for put-dominant, intensity ∝ |net γ|. Walls render as
-    // bright solid bands; every strike also drops a gutter diamond sized by its gamma. Drawn behind
-    // the candles so price reads on top. (Γ-MAP toggle)
+    // Γ-MAP — the "Gamma Landscape" liquidity heatmap: each strike paints a soft vertical glow band
+    // behind the candles, brightness ∝ |net γ| and fading with distance from price, blended additively
+    // so concentrated GEX zones light up (Bookmap-style). Calls glow green, puts red. (Γ-MAP toggle)
     if (heatOn) {
-      const inRange = profile.strikes!.filter(s => { const y = yP(s.strike); return y >= priceTop + 2 && y <= priceBottom - 2 && Math.abs(s.netGex || 0) > 0; });
+      const inRange = profile.strikes!.filter(s => { const y = yP(s.strike); return y >= priceTop - 24 && y <= priceBottom + 24 && Math.abs(s.netGex || 0) > 0; });
       if (inRange.length) {
         const maxG = Math.max(...inRange.map(s => Math.abs(s.netGex || 0)), 1e-9);
-        const top = [...inRange].sort((a, b) => Math.abs(b.netGex || 0) - Math.abs(a.netGex || 0)).slice(0, 30);
-        const dxc = plotR + gammaW - 7; // diamond column, near the price axis (à la the dealer-map reference)
+        const top = [...inRange].sort((a, b) => Math.abs(b.netGex || 0) - Math.abs(a.netGex || 0)).slice(0, Math.max(gexCount, 26));
+        const spot = profile.spot || (candles[n - 1] ? candles[n - 1].close : 0), vspan = (hi - lo) || 1;
+        ctx.save(); ctx.globalCompositeOperation = 'lighter';
         for (const s of top) {
           const y = yP(s.strike), mag = Math.abs(s.netGex || 0) / maxG, pos = (s.netGex || 0) >= 0;
-          const isWall = s.strike === profile.callWall || s.strike === profile.putWall;
-          const col = pos ? HEAT_POS : HEAT_NEG;
-          // full-width level row — walls solid & bright, others dotted with alpha ∝ magnitude
-          ctx.strokeStyle = hexA(col, isWall ? 0.72 : 0.12 + mag * 0.5);
-          ctx.lineWidth = isWall ? 2.4 : 0.85 + mag * 1.5; ctx.setLineDash(isWall ? [] : [2, 5]);
-          ctx.beginPath(); ctx.moveTo(plotL, px(y) - 0.5); ctx.lineTo(plotR, px(y) - 0.5); ctx.stroke();
-          // gutter strike-diamond, sized by |γ| (walls largest + outlined)
-          if (gammaW && !orbsOn) {
-            const dm = isWall ? 5.5 : 2.3 + mag * 3.4;
-            ctx.setLineDash([]); ctx.fillStyle = hexA(col, isWall ? 0.98 : 0.42 + mag * 0.5);
-            ctx.beginPath(); ctx.moveTo(dxc, y - dm); ctx.lineTo(dxc + dm, y); ctx.lineTo(dxc, y + dm); ctx.lineTo(dxc - dm, y); ctx.closePath(); ctx.fill();
-            if (isWall) { ctx.strokeStyle = hexA(col, 0.95); ctx.lineWidth = 1; ctx.stroke(); }
-          }
+          const col = pos ? mixHex('#1f6f52', '#2fe6a0', mag) : mixHex('#7a3550', '#ff5470', mag);
+          const distFade = Math.max(0.18, 1 - Math.abs(s.strike - spot) / (vspan * 0.7));
+          const peak = (0.035 + Math.pow(mag, 1.2) * 0.4) * distFade, bandH = 6 + mag * 32;
+          const grad = ctx.createLinearGradient(0, y - bandH, 0, y + bandH);
+          grad.addColorStop(0, hexA(col, 0)); grad.addColorStop(0.5, hexA(col, peak)); grad.addColorStop(1, hexA(col, 0));
+          ctx.fillStyle = grad; ctx.fillRect(plotL, y - bandH, plotW, bandH * 2);
         }
-        ctx.setLineDash([]); ctx.lineWidth = 1;
+        ctx.restore();
       }
     }
 
@@ -586,7 +619,7 @@ export const SlayerChart = memo(function SlayerChartImpl({ profile, decimals, ca
       const inR = profile.strikes!.filter(s => { const y = yP(s.strike); return y >= priceTop + 2 && y <= priceBottom - 2 && Math.abs(s.netGex || 0) > 0; });
       if (inR.length) {
         const maxG = Math.max(...inR.map(s => Math.abs(s.netGex || 0)), 1e-9);
-        const top = [...inR].sort((a, b) => Math.abs(b.netGex || 0) - Math.abs(a.netGex || 0)).slice(0, 24);
+        const top = [...inR].sort((a, b) => Math.abs(b.netGex || 0) - Math.abs(a.netGex || 0)).slice(0, gexCount);
         const cx = plotR - 14; // on-chart, hugging the right edge so each dot lands on its accurate level
         for (const s of top) {
           const y = yP(s.strike), mag = Math.abs(s.netGex || 0) / maxG, pos = (s.netGex || 0) >= 0;
@@ -609,6 +642,19 @@ export const SlayerChart = memo(function SlayerChartImpl({ profile, decimals, ca
       if (prev && !sameDay(prev.timestamp, c.timestamp)) { const x = xOf(gi); ctx.strokeStyle = 'rgba(255,255,255,0.10)'; ctx.beginPath(); ctx.moveTo(px(x - barW / 2), priceTop); ctx.lineTo(px(x - barW / 2), priceBottom); ctx.stroke(); lastDayTickX = x; }
     }
 
+    // Gamma regime backdrop — the single most important GEX read. ABOVE the flip dealers are LONG γ
+    // (hedge against the move → suppressive, price pins / mean-reverts); BELOW it they're SHORT γ
+    // (hedge with the move → accelerant, trend / high-vol). A faint split tint that blooms from the
+    // flip line makes the regime obvious before you read a single number.
+    if (typeof profile.gammaFlip === 'number' && profile.gammaFlip > 0) {
+      const fy = Math.max(priceTop, Math.min(priceBottom, yP(profile.gammaFlip)));
+      if (fy > priceTop + 0.5) { const gp = ctx.createLinearGradient(0, priceTop, 0, fy); gp.addColorStop(0, hexA(COL.up, 0.014)); gp.addColorStop(1, hexA(COL.up, 0.065)); ctx.fillStyle = gp; ctx.fillRect(plotL, priceTop, plotW, fy - priceTop); }
+      if (fy < priceBottom - 0.5) { const gn = ctx.createLinearGradient(0, fy, 0, priceBottom); gn.addColorStop(0, hexA(COL.down, 0.07)); gn.addColorStop(1, hexA(COL.down, 0.014)); ctx.fillStyle = gn; ctx.fillRect(plotL, fy, plotW, priceBottom - fy); }
+      ctx.font = '700 8.5px ui-monospace, monospace'; ctx.textAlign = 'left';
+      if (fy - priceTop > 18) { ctx.fillStyle = hexA(COL.up, 0.46); ctx.fillText('POSITIVE γ · PINNED', plotL + 8, fy - 8); }
+      if (priceBottom - fy > 18) { ctx.fillStyle = hexA(COL.down, 0.46); ctx.fillText('NEGATIVE γ · UNSTABLE', plotL + 8, fy + 13); }
+    }
+
     // Expected-move ±1σ channel — shade the band between EM+ and EM- (dealer-implied day range).
     if (profile.spot && profile.expectedMovePct) {
       const emHi = yP(profile.spot * (1 + profile.expectedMovePct)), emLo = yP(profile.spot * (1 - profile.expectedMovePct));
@@ -619,30 +665,42 @@ export const SlayerChart = memo(function SlayerChartImpl({ profile, decimals, ca
     // Volume strip — opacity scales with price velocity (|Δ| vs ATR) so impulse bars read louder.
     if (showVolume && volBandH > 0) {
       let maxVol = 0; for (const c of vis) maxVol = Math.max(maxVol, c.volume || 0);
-      const volBase = priceBottom;
-      ctx.strokeStyle = 'rgba(255,255,255,0.06)'; ctx.beginPath(); ctx.moveTo(plotL, px(priceBottom - volBandH - 1)); ctx.lineTo(plotR, px(priceBottom - volBandH - 1)); ctx.stroke();
+      const volBase = priceBottom, volTop = priceBottom - volBandH;
+      ctx.strokeStyle = 'rgba(255,255,255,0.06)'; ctx.beginPath(); ctx.moveTo(plotL, px(volTop - 1)); ctx.lineTo(plotR, px(volTop - 1)); ctx.stroke();
+      // Gradient bars — brighter at the base, fading up — so the strip reads with depth, not flat blocks.
+      const vgUp = ctx.createLinearGradient(0, volTop, 0, volBase); vgUp.addColorStop(0, hexA(COL.up, 0.28)); vgUp.addColorStop(1, hexA(COL.up, 0.95));
+      const vgDn = ctx.createLinearGradient(0, volTop, 0, volBase); vgDn.addColorStop(0, hexA(COL.down, 0.28)); vgDn.addColorStop(1, hexA(COL.down, 0.95));
       for (let i = 0; i < vis.length; i++) {
         const gi = start + i, c = vis[i], vh = maxVol ? ((c.volume || 0) / maxVol) * (volBandH - 2) : 0;
         const a = atr[gi], vel = a && a > 0 ? Math.min(1, Math.abs(c.close - c.open) / (1.6 * a)) : 0.4;
-        const alpha = 0.2 + vel * 0.45;
-        ctx.fillStyle = c.close >= c.open ? hexA(COL.up, alpha) : hexA(COL.down, alpha);
+        ctx.globalAlpha = 0.34 + vel * 0.5;
+        ctx.fillStyle = c.close >= c.open ? vgUp : vgDn;
         ctx.fillRect(xOf(gi) - barW * 0.34, volBase - vh, barW * 0.68, vh);
       }
+      ctx.globalAlpha = 1;
     }
 
-    // GEX gamma-profile lane (γ-LANE — opt-in green/red exposure bars)
+    // γ-LANE — clean net-gamma EXPOSURE profile in the right gutter. Gold (call-dominant) / violet
+    // (put-dominant) horizontal bars by strike, brightest at the zero baseline and fading outward, walls
+    // tipped — one coherent profile (capped to the chosen strike density) instead of a jumble of bars.
     if (laneOn) {
-      ctx.strokeStyle = 'rgba(255,255,255,0.07)'; ctx.beginPath(); ctx.moveTo(px(plotR), priceTop); ctx.lineTo(px(plotR), priceBottom); ctx.stroke();
-      const inView = profile.strikes.filter(r => { const y = yP(r.strike); return y >= priceTop && y <= priceBottom; });
-      const maxAbs = Math.max(...inView.map(r => Math.abs(r.netGex || 0)), 1e-9);
+      const x0 = plotR + 3;
+      ctx.strokeStyle = hexA(T.text, 0.10); ctx.beginPath(); ctx.moveTo(px(x0), priceTop); ctx.lineTo(px(x0), priceBottom); ctx.stroke();
+      const allIn = profile.strikes.filter(r => { const y = yP(r.strike); return y >= priceTop + 9 && y <= priceBottom; });
+      const keep = new Set([...allIn].sort((a, b) => Math.abs(b.netGex || 0) - Math.abs(a.netGex || 0)).slice(0, gexCount).map(r => r.strike));
+      const inView = allIn.filter(r => keep.has(r.strike));
+      const maxAbs = Math.max(...inView.map(r => Math.abs(r.netGex || 0)), 1e-9), laneW = gammaW - 6;
       let thick = 6;
-      if (inView.length > 1) { const span = Math.abs(yP(inView[0].strike) - yP(inView[inView.length - 1].strike)); thick = Math.max(2, Math.min(11, (span / (inView.length - 1)) * 0.82)); }
+      if (inView.length > 1) { const span = Math.abs(yP(inView[0].strike) - yP(inView[inView.length - 1].strike)); thick = Math.max(2.5, Math.min(10, (span / (inView.length - 1)) * 0.78)); }
       for (const r of inView) {
-        const y = yP(r.strike), len = Math.max(1, (Math.abs(r.netGex || 0) / maxAbs) * (gammaW - 5)), isWall = r.strike === profile.callWall || r.strike === profile.putWall;
-        ctx.fillStyle = (r.netGex || 0) >= 0 ? hexA(COL.up, isWall ? 0.95 : 0.6) : hexA(COL.down, isWall ? 0.95 : 0.6);
-        ctx.fillRect(plotR + 2, y - thick / 2, len, thick);
+        const y = yP(r.strike), len = Math.max(1.5, (Math.abs(r.netGex || 0) / maxAbs) * laneW), pos = (r.netGex || 0) >= 0;
+        const isWall = r.strike === profile.callWall || r.strike === profile.putWall, col = pos ? HEAT_POS : HEAT_NEG;
+        const grad = ctx.createLinearGradient(x0, 0, x0 + len, 0);
+        grad.addColorStop(0, hexA(col, isWall ? 0.95 : 0.55)); grad.addColorStop(1, hexA(col, isWall ? 0.55 : 0.14));
+        ctx.fillStyle = grad; ctx.fillRect(x0, y - thick / 2, len, Math.max(1.5, thick));
+        if (isWall) { ctx.fillStyle = hexA(col, 0.98); ctx.fillRect(x0 + len, y - thick / 2 - 1, 2, thick + 2); }
       }
-      ctx.fillStyle = COL.axisDim; ctx.textAlign = 'left'; ctx.font = '8px ui-monospace, monospace'; ctx.fillText('γ', plotR + 3, priceTop + 7); ctx.font = '11px ui-monospace, monospace';
+      ctx.fillStyle = hexA(T.text, 0.38); ctx.textAlign = 'left'; ctx.font = '700 8px ui-monospace, monospace'; ctx.fillText('γ EXPOSURE', x0 + 1, priceTop + 7); ctx.font = '11px ui-monospace, monospace';
     }
 
     // price series — five chart types (TradingView-style)
@@ -751,11 +809,30 @@ export const SlayerChart = memo(function SlayerChartImpl({ profile, decimals, ca
     const last = candles[n - 1].close, lastUp = candles[n - 1].close >= candles[n - 1].open, lastY = yP(last);
     const tagH = 15;
     const NAMES: Record<string, string> = { CW: 'Call Wall', PW: 'Put Wall', 'γF': 'Gamma Flip', MAG: 'Magnet', 'EM+': 'Exp Move ↑', 'EM-': 'Exp Move ↓' };
-    const lvls: { price: number; color: string; label: string }[] = [];
-    const pushLvl = (price: any, color: string, label: string) => { if (typeof price === 'number' && price > 0) lvls.push({ price, color, label }); };
-    pushLvl(profile.callWall, COL.callWall, 'CW'); pushLvl(profile.putWall, COL.putWall, 'PW');
-    pushLvl(profile.gammaFlip, COL.flip, 'γF'); pushLvl(profile.magnet, COL.magnet, 'MAG');
+    const lvls: { price: number; color: string; label: string; gex?: number; value?: string }[] = [];
+    const pushLvl = (price: any, color: string, label: string, gex?: number, value?: string) => { if (typeof price === 'number' && price > 0) lvls.push({ price, color, label, gex, value }); };
+    const gexAt = (price: any): number => { const ss = profile.strikes; if (typeof price !== 'number' || !ss || !ss.length) return 0; let best = 0, bd = Infinity; for (const s of ss) { const d = Math.abs(s.strike - price); if (d < bd) { bd = d; best = s.netGex || 0; } } return bd <= price * 0.0015 ? best : 0; };
+    pushLvl(profile.callWall, COL.callWall, 'CW', Math.abs(gexAt(profile.callWall))); pushLvl(profile.putWall, COL.putWall, 'PW', Math.abs(gexAt(profile.putWall)));
+    pushLvl(profile.gammaFlip, COL.flip, 'γF'); pushLvl(profile.magnet, COL.magnet, 'MAG', Math.abs(gexAt(profile.magnet)));
     if (profile.spot && profile.expectedMovePct) { pushLvl(profile.spot * (1 + profile.expectedMovePct), COL.em, 'EM+'); pushLvl(profile.spot * (1 - profile.expectedMovePct), COL.em, 'EM-'); }
+    // Loaded GEX Strikes — the actual top gamma strikes around price (with their $ values + size-weighted
+    // lines), so the dealer positioning BEHIND the walls is visible, not just the walls themselves.
+    if (showLadder && profile.strikes && profile.strikes.length) {
+      const named = [profile.callWall, profile.putWall, profile.gammaFlip, profile.magnet].filter((x): x is number => typeof x === 'number');
+      const cand = profile.strikes.filter(s => s.strike >= lo && s.strike <= hi && Math.abs(s.netGex || 0) > 0 && !named.some(nm => Math.abs(nm - s.strike) < 1e-6))
+        .sort((a, b) => Math.abs(b.netGex || 0) - Math.abs(a.netGex || 0)).slice(0, gexCount);
+      cand.forEach((s, i) => { const g = s.netGex || 0, rk = i < 3 ? `#${i + 1} ` : ''; pushLvl(s.strike, g >= 0 ? COL.up : COL.down, 'GEX', Math.abs(g), `${rk}${Math.round(s.strike)}  ${fmtGex(g)}`); });
+    }
+    const maxLvlGex = Math.max(...lvls.map(L => L.gex || 0), 1e-9);
+    const maxLoadedGex = Math.max(...lvls.filter(L => L.value).map(L => L.gex || 0), 1e-9);
+    // ΔGEX vs a rolling ~45s checkpoint — lets each loaded strike show how its net γ is building (↑) or bleeding (↓).
+    const gd = gexDeltaRef.current, nowMs = Date.now();
+    if (gd.ts === 0 || nowMs - gd.ts > 45000 || gd.tick !== (tickKey || '')) {
+      gd.base = new Map((profile.strikes || []).map(s => [s.strike, s.netGex || 0])); gd.ts = nowMs; gd.tick = tickKey || '';
+    }
+    const gexDeltaAt = (price: number): number => { const ss = profile.strikes; if (!ss) return 0; let best = ss[0], bd = Infinity; for (const s of ss) { const d = Math.abs(s.strike - price); if (d < bd) { bd = d; best = s; } } if (bd > price * 0.0015) return 0; const b = gd.base.get(best.strike); return b == null ? 0 : (best.netGex || 0) - b; };
+    // The loaded strike nearest the current price gets a static "active" emphasis (no pulse → no jitter).
+    let activeStrike = NaN; { let bd = Infinity; for (const L of lvls) if (L.value && Math.abs(L.price - last) < bd) { bd = Math.abs(L.price - last); activeStrike = L.price; } }
     const placed = lvls.map(L => { const rawY = yP(L.price); const off2 = L.price < lo || L.price > hi; return { ...L, rawY, off: off2, dir: off2 ? (L.price > hi ? -1 : 1) : 0, y: Math.max(priceTop + tagH / 2, Math.min(priceBottom - tagH / 2, rawY)) }; }).sort((a, b) => a.y - b.y);
     for (let i = 1; i < placed.length; i++) if (placed[i].y - placed[i - 1].y < tagH + 2) placed[i].y = placed[i - 1].y + tagH + 2;
     const rr = (x: number, y: number, w: number, h: number, r: number) => { ctx.beginPath(); if ((ctx as any).roundRect) (ctx as any).roundRect(x, y, w, h, r); else ctx.rect(x, y, w, h); };
@@ -773,41 +850,70 @@ export const SlayerChart = memo(function SlayerChartImpl({ profile, decimals, ca
       ctx.fillStyle = hexA(T.text, 0.018); ctx.fillRect(nowX, priceTop, plotR - nowX, priceBottom - priceTop);
       ctx.strokeStyle = hexA(T.text, 0.16); ctx.setLineDash([2, 4]); ctx.beginPath(); ctx.moveTo(px(nowX), priceTop); ctx.lineTo(px(nowX), priceBottom); ctx.stroke(); ctx.setLineDash([]);
     }
+    // Importance colour tiers (#14): weak→strong reads as a hue shift (gray→cyan→emerald→bright / gray→amber→red→hot), not just brightness.
+    const tierCol = (isCall: boolean, t: number) => isCall
+      ? (t < 0.4 ? mixHex('#5f8a73', '#37c19a', t / 0.4) : t < 0.72 ? mixHex('#37c19a', '#2fe6a0', (t - 0.4) / 0.32) : mixHex('#2fe6a0', '#74ffbb', (t - 0.72) / 0.28))
+      : (t < 0.4 ? mixHex('#7a6f68', '#e89042', t / 0.4) : t < 0.72 ? mixHex('#e89042', '#ff5a72', (t - 0.4) / 0.32) : mixHex('#ff5a72', '#ff3556', (t - 0.72) / 0.28));
+    let hoverTag: (typeof placed)[number] | null = null;
+    const hovPt = hoverRef.current;
     for (const L of placed) {
       const name = NAMES[L.label] || L.label, isWall = L.label === 'CW' || L.label === 'PW';
-      // level line at the true price — skip walls when the Γ-MAP band already draws them (no double line)
-      if (!L.off && !(heatOn && isWall)) { ctx.strokeStyle = L.color; ctx.globalAlpha = 0.5; ctx.setLineDash([5, 4]); ctx.beginPath(); ctx.moveTo(plotL, px(L.rawY) - 0.5); ctx.lineTo(plotR, px(L.rawY) - 0.5); ctx.stroke(); ctx.setLineDash([]); ctx.globalAlpha = 1; }
+      const lrel = L.value ? Math.min(1, (L.gex || 0) / maxLoadedGex) : 0;
+      const isTop = !!(L.value && (L.gex || 0) === maxLoadedGex), major = !!(L.value && lrel > 0.5), minor = !!(L.value && lrel <= 0.22);
+      // Color: named levels keep their hue; loaded strikes scale gray-green→bright emerald (calls) /
+      // muted→bright red (puts); the single largest GEX strike is purple so THE level is unmistakable.
+      const col = !L.value ? L.color : isTop ? '#b98cff' : tierCol(L.color === COL.up, lrel);
+      // level line — named dashed; loaded strikes solid & size-weighted (minor ones thin, faint, dashed)
+      if (!L.off && !(heatOn && isWall)) {
+        const act = !!(L.value && L.price === activeStrike);
+        if (act) { ctx.fillStyle = hexA(col, 0.07); ctx.fillRect(plotL, px(L.rawY) - 4, plotW, 8); }
+        ctx.strokeStyle = col; ctx.globalAlpha = L.value ? (act ? 0.95 : 0.1 + Math.pow(lrel, 1.3) * 0.75) : 0.5; ctx.lineWidth = L.value ? (act ? 2.6 : 0.6 + lrel * 3) : 1; ctx.setLineDash(!L.value ? [5, 4] : minor ? [2, 4] : []);
+        ctx.beginPath(); ctx.moveTo(plotL, px(L.rawY) - 0.5); ctx.lineTo(plotR, px(L.rawY) - 0.5); ctx.stroke();
+        ctx.setLineDash([]); ctx.globalAlpha = 1; ctx.lineWidth = 1;
+      }
       // Forward projection: brighten this wall's segment in the future zone + a soft glow toward the
       // axis, so the dealer walls visibly extend to where price is heading. (EM± stay plain.)
       if (!L.off && projBars && L.label !== 'EM+' && L.label !== 'EM-') {
         const gy = px(L.rawY) - 0.5, grad = ctx.createLinearGradient(nowX, 0, plotR, 0);
-        grad.addColorStop(0, hexA(L.color, 0)); grad.addColorStop(1, hexA(L.color, 0.18));
+        grad.addColorStop(0, hexA(col, 0)); grad.addColorStop(1, hexA(col, 0.18));
         ctx.fillStyle = grad; ctx.fillRect(nowX, px(L.rawY) - 4, plotR - nowX, 8);
-        ctx.strokeStyle = hexA(L.color, 0.92); ctx.lineWidth = 1.6; ctx.beginPath(); ctx.moveTo(nowX, gy); ctx.lineTo(plotR, gy); ctx.stroke(); ctx.lineWidth = 1;
+        ctx.strokeStyle = hexA(col, 0.92); ctx.lineWidth = 1.6; ctx.beginPath(); ctx.moveTo(nowX, gy); ctx.lineTo(plotR, gy); ctx.stroke(); ctx.lineWidth = 1;
       }
       // Name + (for walls/magnet) the gamma-concentration %, so you read strength at a glance.
       const pct = (isWall || L.label === 'MAG') ? gexPctAt(L.price) : null;
-      const nameLbl = (L.off ? (L.dir < 0 ? '↑ ' : '↓ ') : '') + name, pctLbl = pct != null ? `  ${pct}%` : '';
-      ctx.font = '700 9px ui-monospace, monospace';
-      const nameW = ctx.measureText(nameLbl).width, pctW = pctLbl ? ctx.measureText(pctLbl).width : 0;
-      const tagW = nameW + pctW + 17, tagR = plotR - 4, tagL = tagR - tagW, ty = L.off ? (L.dir < 0 ? priceTop + tagH / 2 + 2 : priceBottom - tagH / 2 - 2) : L.y;
+      const nameLbl = (L.off ? (L.dir < 0 ? '↑ ' : '↓ ') : '') + (L.value || name), pctLbl = pct != null ? `  ${pct}%` : '';
+      // ΔGEX beside the value (#1): how this strike's net γ has moved since the ~45s checkpoint (↑ building / ↓ bleeding).
+      let deltaLbl = '', deltaUp = true;
+      if (L.value) { const dv = gexDeltaAt(L.price); if (Math.abs(dv) >= 1e6) { deltaUp = dv >= 0; deltaLbl = `  ${deltaUp ? '↑' : '↓'}${fmtGex(Math.abs(dv)).replace(/^\+/, '')}`; } }
+      ctx.font = '700 10px ui-monospace, monospace'; // uniform tag text — importance reads from line weight/colour, not font size
+      const nameW = ctx.measureText(nameLbl).width, pctW = pctLbl ? ctx.measureText(pctLbl).width : 0, deltaW = deltaLbl ? ctx.measureText(deltaLbl).width : 0;
+      const tagW = nameW + pctW + deltaW + 17, tagR = plotR - 4, tagL = tagR - tagW, ty = L.off ? (L.dir < 0 ? priceTop + tagH / 2 + 2 : priceBottom - tagH / 2 - 2) : L.y;
+      if (hovPt && hovPt.x >= tagL - 3 && hovPt.x <= tagR + 6 && Math.abs(hovPt.y - ty) <= tagH / 2 + 2) hoverTag = L;
       // connector from the line's right end back to the tag whenever the tag was nudged off its price
-      if (!L.off && Math.abs(L.y - L.rawY) > 1) { ctx.strokeStyle = hexA(L.color, 0.55); ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(plotR - 3, px(L.rawY) - 0.5); ctx.lineTo(tagR - 2, px(ty) - 0.5); ctx.stroke(); }
-      rr(tagL, ty - tagH / 2, tagW, tagH, 3); ctx.fillStyle = 'rgba(9,12,17,0.9)'; ctx.fill(); ctx.strokeStyle = hexA(L.color, 0.85); ctx.lineWidth = 1; ctx.stroke();
-      ctx.fillStyle = L.color; ctx.beginPath(); ctx.arc(tagL + 7, ty, 2.4, 0, Math.PI * 2); ctx.fill();
+      if (!L.off && Math.abs(L.y - L.rawY) > 1) { ctx.strokeStyle = hexA(col, 0.55); ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(plotR - 3, px(L.rawY) - 0.5); ctx.lineTo(tagR - 2, px(ty) - 0.5); ctx.stroke(); }
+      rr(tagL, ty - tagH / 2, tagW, tagH, 3);
+      ctx.save(); ctx.shadowColor = 'rgba(0,0,0,0.5)'; ctx.shadowBlur = 5; ctx.shadowOffsetY = 1; ctx.fillStyle = isTop ? 'rgba(26,18,38,0.92)' : 'rgba(9,12,17,0.9)'; ctx.fill(); ctx.restore();
+      ctx.strokeStyle = hexA(col, isTop ? 1 : 0.85); ctx.lineWidth = isTop ? 1.3 : 1; ctx.stroke(); ctx.lineWidth = 1;
+      // Magnitude bar (#3): faint colour fill from the left, width ∝ this strike's share of peak GEX — bars read faster than numbers.
+      if (L.value && lrel > 0) { rr(tagL + 1, ty - tagH / 2 + 1, (tagW - 2) * Math.max(0.05, lrel), tagH - 2, 2.5); ctx.fillStyle = hexA(col, 0.17); ctx.fill(); }
+      ctx.fillStyle = col; ctx.beginPath(); ctx.arc(tagL + 7, ty, 2.4, 0, Math.PI * 2); ctx.fill();
       ctx.textAlign = 'left'; ctx.fillText(nameLbl, tagL + 12, ty);
       if (pctLbl) { ctx.fillStyle = hexA(T.text, 0.72); ctx.fillText(pctLbl, tagL + 12 + nameW, ty); }
-      // exact level price on the axis, in the level colour
-      ctx.textAlign = 'right'; ctx.fillStyle = hexA(L.color, 0.95); ctx.fillText(nf(L.price), W - 3, ty);
+      if (deltaLbl) { ctx.fillStyle = deltaUp ? COL.up : COL.down; ctx.fillText(deltaLbl, tagL + 12 + nameW + pctW, ty); }
+      // named levels print their exact price on the axis at the SAME size as the gridline scale (uniform)
+      if (!L.value) { ctx.textAlign = 'right'; ctx.font = '11px ui-monospace, monospace'; ctx.fillStyle = hexA(col, 0.95); ctx.fillText(nfT(L.price), W - 3, ty); }
     }
     ctx.font = '11px ui-monospace, monospace';
 
     ctx.textAlign = 'right';
     for (const g of gridYs) {
       if (Math.abs(g.y - lastY) < tagH) continue;
-      if (placed.some(L => Math.abs(L.y - g.y) < tagH)) continue;
-      ctx.fillStyle = COL.axisDim; ctx.fillText(g.label, W - 4, g.y);
+      if (placed.some(L => !L.value && Math.abs(L.y - g.y) < tagH)) continue; // named levels print their own price; loaded strikes keep the gridline scale
+      ctx.font = '11px ui-monospace, monospace'; // uniform scale — every price the same size; emphasis via brightness only
+      ctx.fillStyle = g.major ? hexA(T.text, 0.6) : COL.axisDim;
+      ctx.fillText(g.label, W - 4, g.y);
     }
+    ctx.font = '11px ui-monospace, monospace';
 
     if (showDisp) for (const d of displacements) {
       if (d.i < start || d.i >= end) continue; const c = candles[d.i], x = xOf(d.i);
@@ -821,9 +927,27 @@ export const SlayerChart = memo(function SlayerChartImpl({ profile, decimals, ca
 
     if (lastY >= priceTop && lastY <= priceBottom) {
       ctx.strokeStyle = lastUp ? hexA(COL.up, 0.55) : hexA(COL.down, 0.55); ctx.setLineDash([2, 3]); ctx.beginPath(); ctx.moveTo(plotL, px(lastY) - 0.5); ctx.lineTo(plotR, px(lastY) - 0.5); ctx.stroke(); ctx.setLineDash([]);
-      ctx.fillStyle = lastUp ? COL.up : COL.down; const tagW = axisW + gammaW - 1;
-      (ctx as any).roundRect ? (ctx.beginPath(), (ctx as any).roundRect(plotR + 1, lastY - 8, tagW, 16, 3), ctx.fill()) : ctx.fillRect(plotR + 1, lastY - 8, tagW, 16);
-      ctx.fillStyle = '#06090d'; ctx.textAlign = 'left'; ctx.font = '700 11px ui-monospace, monospace'; ctx.fillText(nf(last), plotR + 6, lastY); ctx.font = '11px ui-monospace, monospace';
+      const lc = lastUp ? COL.up : COL.down, priceW = axisW + gammaW - 1, priceX = plotR + 1;
+      ctx.font = '700 11px ui-monospace, monospace'; ctx.textAlign = 'left';
+      // ticker badge (darker) to the LEFT of the price badge, extending into the chart — TradingView style
+      const tkr = (tickKey || '').toUpperCase(), tkrW = tkr ? ctx.measureText(tkr).width + 11 : 0;
+      if (tkr) { ctx.fillStyle = shade(lc, 0.46); (ctx as any).roundRect ? (ctx.beginPath(), (ctx as any).roundRect(priceX - tkrW, lastY - 8, tkrW, 16, 3), ctx.fill()) : ctx.fillRect(priceX - tkrW, lastY - 8, tkrW, 16); ctx.fillStyle = hexA('#ffffff', 0.92); ctx.fillText(tkr, priceX - tkrW + 6, lastY); }
+      ctx.fillStyle = lc; (ctx as any).roundRect ? (ctx.beginPath(), (ctx as any).roundRect(priceX, lastY - 8, priceW, 16, 3), ctx.fill()) : ctx.fillRect(priceX, lastY - 8, priceW, 16);
+      ctx.fillStyle = '#06090d'; ctx.fillText(nf(last), priceX + 6, lastY); ctx.font = '11px ui-monospace, monospace';
+    }
+
+    // Magnet pull cue — a short tether on the left showing price being drawn toward the magnet (pin) level.
+    if (typeof profile.magnet === 'number' && profile.magnet > 0 && lastY >= priceTop && lastY <= priceBottom) {
+      const my = yP(profile.magnet);
+      if (my >= priceTop + 6 && my <= priceBottom - 6 && Math.abs(my - lastY) > 16) {
+        const tx = plotL + 24, dir = my > lastY ? 1 : -1;
+        ctx.strokeStyle = hexA(COL.magnet, 0.4); ctx.setLineDash([1, 4]); ctx.lineWidth = 1.5;
+        ctx.beginPath(); ctx.moveTo(px(tx), lastY + dir * 5); ctx.lineTo(px(tx), my - dir * 6); ctx.stroke();
+        ctx.setLineDash([]); ctx.lineWidth = 1;
+        ctx.fillStyle = hexA(COL.magnet, 0.85); ctx.beginPath(); ctx.moveTo(tx, my - dir * 1); ctx.lineTo(tx - 3.4, my - dir * 7); ctx.lineTo(tx + 3.4, my - dir * 7); ctx.closePath(); ctx.fill();
+        ctx.fillStyle = hexA(COL.magnet, 0.7); ctx.beginPath(); ctx.arc(tx, lastY + dir * 5, 1.9, 0, Math.PI * 2); ctx.fill();
+        ctx.font = '700 7.5px ui-monospace, monospace'; ctx.textAlign = 'left'; ctx.fillStyle = hexA(COL.magnet, 0.7); ctx.fillText('PULL', tx + 6, (lastY + my) / 2);
+      }
     }
 
     // ── Sub-panes (registry-driven) ──
@@ -855,9 +979,17 @@ export const SlayerChart = memo(function SlayerChartImpl({ profile, decimals, ca
     };
     paneSeries.forEach((entry, idx) => drawPane(entry, priceBottom + idx * subH, subH));
 
-    const axisY = H - xAxisH; ctx.fillStyle = COL.axisDim; ctx.textAlign = 'center';
-    const ticks = Math.max(2, Math.floor(plotW / 96));
-    for (let t = 0; t <= ticks; t++) { const gi = start + Math.round(((end - 1 - start) * t) / ticks); if (gi < start || gi >= end || !candles[gi]) continue; const c = candles[gi]; const lbl = (lastDayTickX > 0 && Math.abs(xOf(gi) - lastDayTickX) < 40) ? `${new Date(c.timestamp).getMonth() + 1}/${new Date(c.timestamp).getDate()}` : fmtTime(c.timestamp); ctx.fillText(lbl, xOf(gi), axisY + 11); }
+    // Time axis (TradingView-style): denser ticks; the first tick of each new day shows a bold, brighter
+    // DATE label, intraday ticks show the time — so day boundaries anchor the eye.
+    const axisY = H - xAxisH; ctx.textAlign = 'center';
+    const ticks = Math.max(2, Math.floor(plotW / 84));
+    let prevTickDay = -1;
+    for (let t = 0; t <= ticks; t++) {
+      const gi = start + Math.round(((end - 1 - start) * t) / ticks); if (gi < start || gi >= end || !candles[gi]) continue;
+      const c = candles[gi], d = new Date(c.timestamp), day = d.getDate(), isNewDay = prevTickDay !== -1 && day !== prevTickDay; prevTickDay = day;
+      if (isNewDay) { ctx.fillStyle = hexA(T.text, 0.58); ctx.font = '700 10px ui-monospace, monospace'; ctx.fillText(`${d.getMonth() + 1}/${day}`, xOf(gi), axisY + 11); ctx.font = '11px ui-monospace, monospace'; }
+      else { ctx.fillStyle = COL.axisDim; ctx.fillText(fmtTime(c.timestamp), xOf(gi), axisY + 11); }
+    }
 
     const hv = hoverRef.current;
     if (hv && hv.x >= plotL && hv.x <= plotR) {
@@ -877,6 +1009,24 @@ export const SlayerChart = memo(function SlayerChartImpl({ profile, decimals, ca
       if (hv.y >= priceTop && hv.y <= priceBottom - volBandH) {
         const pr = pOfY(hv.y);
         bubble(plotR + 1, hv.y - 9, axisW + gammaW - 2, 18, hexA(pr >= last ? COL.up : COL.down, 0.9), nf(pr), 'left', plotR + 6);
+        // Dealer context at the cursor: net γ of the strike nearest this price — the terminal's signature read.
+        // Hover anywhere and instantly see how heavily, and which side, dealers are positioned at that level.
+        const ss = profile.strikes;
+        if (ss && ss.length) {
+          let ns = ss[0], nd = Infinity;
+          for (const s of ss) { const d = Math.abs(s.strike - pr); if (d < nd) { nd = d; ns = s; } }
+          const g = ns.netGex || 0;
+          if (Math.abs(g) > 0 && nd <= pr * 0.012) {
+            const gc = g >= 0 ? COL.up : COL.down;
+            const tag = ns.strike === profile.callWall ? ' CW' : ns.strike === profile.putWall ? ' PW' : ns.strike === profile.gammaFlip ? ' ⚑' : ns.strike === profile.magnet ? ' MAG' : '';
+            const lbl = `${Math.round(ns.strike)} · ${fmtGex(g)}γ${tag}`;
+            ctx.font = '700 10px ui-monospace, monospace'; ctx.textAlign = 'right';
+            const pw = ctx.measureText(lbl).width + 12, rEdge = plotR + axisW + gammaW - 1, py = hv.y + 11;
+            ctx.beginPath(); (ctx as any).roundRect ? (ctx as any).roundRect(rEdge - pw, py, pw, 16, 3) : ctx.rect(rEdge - pw, py, pw, 16);
+            ctx.fillStyle = T.surf; ctx.fill(); ctx.strokeStyle = hexA(gc, 0.85); ctx.lineWidth = 1; ctx.stroke();
+            ctx.fillStyle = gc; ctx.fillText(lbl, rEdge - 6, py + 8);
+          }
+        }
       }
       const c = candles[gi]; const tlbl = fmtTime(c.timestamp), tbw = ctx.measureText(tlbl).width + 14;
       bubble(cx - tbw / 2, H - xAxisH + 1, tbw, xAxisH - 2, hexA(T.accent, 0.55), tlbl, 'center', cx);
@@ -884,6 +1034,34 @@ export const SlayerChart = memo(function SlayerChartImpl({ profile, decimals, ca
       const txt = `O ${nf(c.open)}   H ${nf(c.high)}   L ${nf(c.low)}   C ${nf(c.close)}   ${dC >= 0 ? '+' : ''}${dPct.toFixed(2)}%   V ${(c.volume || 0) >= 1e6 ? ((c.volume || 0) / 1e6).toFixed(2) + 'M' : (c.volume || 0).toLocaleString("en-US")}`;
       ctx.font = '11px ui-monospace, monospace'; ctx.textAlign = 'left'; const wTxt = ctx.measureText(txt).width + 14;
       ctx.fillStyle = 'rgba(8,10,14,0.82)'; ctx.fillRect(plotL + 2, priceTop + 2, wTxt, 16); ctx.fillStyle = up ? COL.up : COL.down; ctx.fillText(txt, plotL + 9, priceTop + 10);
+      // Loaded-strike hover tooltip — full call/put γ + OI/vol breakdown for the dealer level under the cursor.
+      if (hoverTag && profile.strikes && profile.strikes.length) {
+        const tp = hoverTag.price; let sd = profile.strikes[0], bd = Infinity;
+        for (const s of profile.strikes) { const d = Math.abs(s.strike - tp); if (d < bd) { bd = d; sd = s; } }
+        const fK = (v: number) => { const a = Math.abs(v); return a >= 1e3 ? (a / 1e3).toFixed(a >= 1e4 ? 0 : 1) + 'K' : Math.round(a) + ''; };
+        const rows: [string, string, string][] = [
+          ['Call γ', fmtGex(sd.callGex || 0), COL.up],
+          ['Put γ', fmtGex(sd.putGex || 0), COL.down],
+          ['Net γ', fmtGex(sd.netGex || 0), (sd.netGex || 0) >= 0 ? COL.up : COL.down],
+        ];
+        if ((sd.callOi || 0) || (sd.putOi || 0)) rows.push(['OI C/P', `${fK(sd.callOi || 0)} / ${fK(sd.putOi || 0)}`, hexA(T.text, 0.85)]);
+        if ((sd.callVolume || 0) || (sd.putVolume || 0)) rows.push(['Vol C/P', `${fK(sd.callVolume || 0)} / ${fK(sd.putVolume || 0)}`, hexA(T.text, 0.85)]);
+        ctx.font = '600 10px ui-monospace, monospace';
+        let keyW = 0, valW = 0; for (const [k, v] of rows) { keyW = Math.max(keyW, ctx.measureText(k).width); valW = Math.max(valW, ctx.measureText(v).width); }
+        const lab = hoverTag.value ? '' : (NAMES[hoverTag.label] || hoverTag.label).toUpperCase();
+        ctx.font = '800 11px ui-monospace, monospace'; const headW = ctx.measureText(nf(sd.strike)).width + (lab ? ctx.measureText(lab).width + 16 : 0);
+        const padX = 9, gap = 16, rowH = 14, boxW = Math.max(keyW + gap + valW + padX * 2, headW + padX * 2, 126), boxH = 16 + rows.length * rowH + 7;
+        const bx = Math.max(plotL + 6, Math.min(hv.x - 14 - boxW, plotR - boxW - 6));
+        const by = Math.max(priceTop + 4, Math.min(priceBottom - boxH - 4, hv.y - boxH / 2));
+        ctx.save(); ctx.shadowColor = 'rgba(0,0,0,0.55)'; ctx.shadowBlur = 13; ctx.shadowOffsetY = 3; rr(bx, by, boxW, boxH, 5); ctx.fillStyle = T.surf; ctx.fill(); ctx.restore();
+        ctx.strokeStyle = hexA(hoverTag.color, 0.9); ctx.lineWidth = 1; ctx.stroke();
+        ctx.textAlign = 'left'; ctx.font = '800 11px ui-monospace, monospace'; ctx.fillStyle = hoverTag.color; ctx.fillText(nf(sd.strike), bx + padX, by + 9);
+        if (lab) { ctx.textAlign = 'right'; ctx.font = '700 8px ui-monospace, monospace'; ctx.fillStyle = hexA(T.text, 0.5); ctx.fillText(lab, bx + boxW - padX, by + 9); }
+        ctx.strokeStyle = hexA(T.text, 0.12); ctx.beginPath(); ctx.moveTo(bx + 6, by + 16.5); ctx.lineTo(bx + boxW - 6, by + 16.5); ctx.stroke();
+        ctx.font = '600 10px ui-monospace, monospace'; let ry = by + 16 + 7;
+        for (const [k, v, c] of rows) { ctx.textAlign = 'left'; ctx.fillStyle = hexA(T.text, 0.5); ctx.fillText(k, bx + padX, ry); ctx.textAlign = 'right'; ctx.fillStyle = c; ctx.fillText(v, bx + boxW - padX, ry); ry += rowH; }
+        ctx.textAlign = 'left';
+      }
     } else {
       ctx.textAlign = 'left'; ctx.font = '11px ui-monospace, monospace';
       const segs: { t: string; c: string }[] = [];
@@ -900,7 +1078,6 @@ export const SlayerChart = memo(function SlayerChartImpl({ profile, decimals, ca
     const canvas = canvasRef.current, container = containerRef.current; if (!canvas || !container) return;
     let rafPending = false;
     const schedule = () => { if (rafPending) return; rafPending = true; requestAnimationFrame(() => { rafPending = false; drawRef.current(); }); };
-    scheduleRef.current = schedule; // let drawRef re-schedule itself while the auto-scale eases
     themeRef.current = readTheme();
     drawRef.current();
     const ro = new ResizeObserver(() => schedule()); ro.observe(container);
@@ -946,6 +1123,8 @@ export const SlayerChart = memo(function SlayerChartImpl({ profile, decimals, ca
       return best;
     };
     const onDown = (e: MouseEvent) => {
+      if (e.button !== 0) return; // left button only — right-click opens the view context menu
+      setCtxMenu(null);
       if (tweenRef.current) { cancelAnimationFrame(tweenRef.current); tweenRef.current = 0; }
       const r = canvas.getBoundingClientRect(), mx = e.clientX - r.left, my = e.clientY - r.top, g = geomRef.current, tl = toolRef.current;
       if (!g) return;
@@ -994,6 +1173,8 @@ export const SlayerChart = memo(function SlayerChartImpl({ profile, decimals, ca
     const onLeave = () => { hoverRef.current = null; broadcastCrosshair(null, panelId ?? 'main'); schedule(); };
     // Double-click (cursor mode): price gutter → auto-fit; elsewhere → snap back to the live edge.
     const onDbl = (e: MouseEvent) => { if (toolRef.current !== 'cursor') return; const r = canvas.getBoundingClientRect(), mx = e.clientX - r.left, g = geomRef.current; if (g && mx >= g.plotR) setPriceView(null); else tweenView({ bars: 110, off: 0 }); };
+    // Right-click anywhere on the chart → a small "View" menu (reset to the live view, jump to live, auto-fit Y).
+    const onCtx = (e: MouseEvent) => { e.preventDefault(); const r = canvas.getBoundingClientRect(); setCtxMenu({ x: Math.max(6, Math.min(e.clientX - r.left, r.width - 192)), y: Math.max(6, Math.min(e.clientY - r.top, r.height - 128)) }); };
     const onKey = (e: KeyboardEvent) => {
       const tgt = e.target as HTMLElement | null; if (tgt && (tgt.tagName === 'INPUT' || tgt.tagName === 'TEXTAREA')) return;
       if (e.key === 'Delete' && selectedRef.current) { const id = selectedRef.current; setDrawings(a => a.filter(d => d.id !== id)); setSelectedId(null); }
@@ -1005,8 +1186,9 @@ export const SlayerChart = memo(function SlayerChartImpl({ profile, decimals, ca
     window.addEventListener('mouseup', onUp);
     canvas.addEventListener('mouseleave', onLeave);
     canvas.addEventListener('dblclick', onDbl);
+    canvas.addEventListener('contextmenu', onCtx);
     window.addEventListener('keydown', onKey);
-    return () => { ro.disconnect(); mo.disconnect(); canvas.removeEventListener('wheel', onWheel); canvas.removeEventListener('mousedown', onDown); window.removeEventListener('mousemove', onMove); window.removeEventListener('mouseup', onUp); canvas.removeEventListener('mouseleave', onLeave); canvas.removeEventListener('dblclick', onDbl); window.removeEventListener('keydown', onKey); };
+    return () => { ro.disconnect(); mo.disconnect(); canvas.removeEventListener('wheel', onWheel); canvas.removeEventListener('mousedown', onDown); window.removeEventListener('mousemove', onMove); window.removeEventListener('mouseup', onUp); canvas.removeEventListener('mouseleave', onLeave); canvas.removeEventListener('dblclick', onDbl); canvas.removeEventListener('contextmenu', onCtx); window.removeEventListener('keydown', onKey); };
   }, []);
 
   // Data/view-driven repaints are rAF-coalesced and do NOT re-read the theme (the MutationObserver
@@ -1015,7 +1197,7 @@ export const SlayerChart = memo(function SlayerChartImpl({ profile, decimals, ca
   useEffect(() => {
     if (redrawRafRef.current) return;
     redrawRafRef.current = requestAnimationFrame(() => { redrawRafRef.current = 0; drawRef.current(); });
-  }, [candles, overlaySeries, paneSeries, displacements, showGex, showDisp, showHeat, showOrbs, chartType, colors, ha, view, priceView, drawings, tool, selectedId, showGrid, showVolume, showWatermark, candleBorders, profile, decimals, tfKey, tickKey]);
+  }, [candles, overlaySeries, paneSeries, displacements, showGex, showDisp, showHeat, showOrbs, gexCount, showLadder, chartType, colors, ha, view, priceView, drawings, tool, selectedId, showGrid, showVolume, showWatermark, candleBorders, profile, decimals, tfKey, tickKey]);
   // Cancel any frame still queued when the panel unmounts (closing a grid panel mid-redraw):
   // an unmount-only cleanup, so it never disturbs the per-change coalescing above. Without it a
   // pending rAF fires on a torn-down panel and calls drawRef on detached refs → crash on churn.
@@ -1224,11 +1406,31 @@ export const SlayerChart = memo(function SlayerChartImpl({ profile, decimals, ca
                       </button>
                     ))}
                   </div>
+                  <div className="text-[8.5px] font-mono font-black uppercase tracking-[0.18em] text-[var(--text-tertiary)] mt-3 mb-1.5">Dealer Map</div>
+                  <div className="space-y-1.5">
+                    {([['Loaded strikes', showLadder, setShowLadder], ['Positioning panel', showDealerBox, setShowDealerBox], ['Γ Heatmap', showHeat, setShowHeat], ['Orbs', showOrbs, setShowOrbs], ['γ Exposure lane', showGex, setShowGex], ['Displacement', showDisp, setShowDisp]] as const).map(([label, val, set]) => (
+                      <button key={label} onClick={() => set(v => !v)} className="w-full flex items-center justify-between gap-2">
+                        <span className="text-[11px] font-mono text-[var(--text-secondary)]">{label}</span>
+                        <span className={`relative w-7 h-4 rounded-full transition-colors shrink-0 ${val ? '' : 'bg-[var(--surface-3)]'}`} style={val ? { background: 'var(--accent-color)' } : undefined}>
+                          <span className={`absolute top-0.5 w-3 h-3 rounded-full bg-white transition-all ${val ? 'left-3.5' : 'left-0.5'}`} />
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+                  <div className="flex items-center justify-between gap-2 mt-2.5">
+                    <span className="text-[11px] font-mono text-[var(--text-secondary)]">Strikes shown</span>
+                    <div className="flex items-center gap-0.5">
+                      {([['8', 8], ['16', 16], ['24', 24], ['Max', 40]] as const).map(([lbl, num]) => (
+                        <button key={lbl} onClick={() => setGexCount(num)} className={`px-1.5 py-0.5 rounded-sm text-[9px] font-mono font-bold transition-colors ${gexCount === num ? 'text-black' : 'text-[var(--text-tertiary)] border border-[var(--border)] hover:text-[var(--text-primary)]'}`} style={gexCount === num ? { background: 'var(--accent-color)' } : undefined}>{lbl}</button>
+                      ))}
+                    </div>
+                  </div>
                   <button onClick={() => setColors({})} className="w-full mt-3 py-1 rounded text-[10px] font-mono font-bold uppercase tracking-widest border border-[var(--border)] text-[var(--text-tertiary)] hover:text-[var(--text-primary)] hover:border-[var(--border-strong)] transition-colors">Reset colors</button>
                 </div>
               </>
             )}
           </div>
+          {specChip(showLadder, '≣ STRIKES', () => setShowLadder(v => !v))}
           {specChip(showHeat, 'Γ-MAP', () => setShowHeat(v => !v))}
           {specChip(showOrbs, '◉ ORBS', () => setShowOrbs(v => !v))}
           {specChip(showGex, 'γ-LANE', () => setShowGex(v => !v))}
@@ -1240,6 +1442,63 @@ export const SlayerChart = memo(function SlayerChartImpl({ profile, decimals, ca
       </div>
       <div ref={containerRef} className="relative flex-1 min-h-[300px]" style={{ position: 'relative', flex: 1, minHeight: 300 }}>
         <canvas ref={canvasRef} className="absolute inset-0 cursor-crosshair" style={{ position: 'absolute', inset: 0 }} />
+        {showDealerBox && dealerStats && (
+          <div className="absolute top-[52px] left-2 z-10 w-[188px] px-2.5 py-2 pointer-events-none select-none font-mono" style={{ borderRadius: 10, background: 'linear-gradient(160deg, color-mix(in srgb, var(--surface) 90%, transparent), color-mix(in srgb, var(--surface) 78%, transparent))', border: '1px solid var(--border-strong)', backdropFilter: 'blur(8px)', WebkitBackdropFilter: 'blur(8px)', boxShadow: '0 14px 44px -10px rgba(0,0,0,0.72), inset 0 1px 0 rgba(255,255,255,0.07)' }}>
+            <div className="text-[8px] font-black uppercase tracking-[0.2em] text-[var(--text-tertiary)] mb-1.5">Dealer Map</div>
+            <div className="flex items-baseline justify-between mb-1">
+              <span className="text-[9px] text-[var(--text-tertiary)] uppercase tracking-wider">Net GEX</span>
+              <span className="text-[12px] font-black tabular-nums" style={{ color: dealerStats.net >= 0 ? 'var(--success)' : 'var(--danger)' }}>{fmtGex(dealerStats.net)}</span>
+            </div>
+            <div className="rounded px-2 py-1.5 mb-2 text-center" style={{ background: `color-mix(in srgb, ${dealerStats.long ? 'var(--success)' : 'var(--danger)'} 14%, transparent)`, border: `1px solid color-mix(in srgb, ${dealerStats.long ? 'var(--success)' : 'var(--danger)'} 45%, transparent)` }}>
+              <div className="text-[7.5px] uppercase tracking-[0.2em] text-[var(--text-tertiary)] mb-0.5">Dealer Bias</div>
+              <div className="text-[16px] font-black uppercase tracking-wide leading-none" style={{ color: dealerStats.long ? 'var(--success)' : 'var(--danger)' }}>{dealerStats.long ? 'LONG γ' : 'SHORT γ'}</div>
+            </div>
+            {typeof profile.spot === 'number' && typeof profile.gammaFlip === 'number' && (
+              <div className="flex items-baseline justify-between mb-2">
+                <span className="text-[8px] text-[var(--text-tertiary)] uppercase tracking-wider">Spot vs Flip</span>
+                <span className="text-[9.5px] font-black tabular-nums" style={{ color: profile.spot >= profile.gammaFlip ? 'var(--success)' : 'var(--danger)' }}>{profile.spot >= profile.gammaFlip ? '▲ +' : '▼ '}{(profile.spot - profile.gammaFlip).toLocaleString('en-US', { minimumFractionDigits: decimals, maximumFractionDigits: decimals })}</span>
+              </div>
+            )}
+            {/* Dealer greeks (#10): net delta + vanna exposure beside gamma, so the whole hedging picture reads in one card. */}
+            {(profile.netDex != null || profile.netVex != null) && (
+              <div className="grid grid-cols-2 gap-1.5 mb-2">
+                {([['Net Δ', profile.netDex], ['Net Vanna', profile.netVex]] as const).map(([k, v]) => (
+                  <div key={k} className="rounded px-1.5 py-1" style={{ background: 'color-mix(in srgb, var(--text-primary) 4%, transparent)' }}>
+                    <div className="text-[7.5px] uppercase tracking-wider text-[var(--text-tertiary)] leading-none mb-0.5">{k}</div>
+                    <div className="text-[10px] font-black tabular-nums leading-none" style={{ color: v == null ? 'var(--text-tertiary)' : v >= 0 ? 'var(--success)' : 'var(--danger)' }}>{v == null ? '—' : fmtGex(v)}</div>
+                  </div>
+                ))}
+              </div>
+            )}
+            <div className="flex items-center justify-between mb-1"><span className="text-[9px] text-[var(--text-tertiary)] uppercase tracking-wider">Dealer Pressure</span><span className="text-[9px] font-black tabular-nums" style={{ color: dealerStats.long ? 'var(--success)' : 'var(--danger)' }}>{dealerStats.callPct}%</span></div>
+            <div className="h-2 rounded-full overflow-hidden mb-1" style={{ background: 'color-mix(in srgb, var(--danger) 45%, transparent)' }}><div className="h-full rounded-full" style={{ width: dealerStats.callPct + '%', background: 'var(--success)' }} /></div>
+            <div className="flex justify-between text-[8px] mb-2"><span style={{ color: 'var(--success)' }}>{dealerStats.callPct}% calls</span><span style={{ color: 'var(--danger)' }}>{100 - dealerStats.callPct}% puts</span></div>
+            <div className="space-y-1 border-t border-[var(--border)] pt-1.5">
+              {([['Call Wall', profile.callWall], ['Gamma Flip', profile.gammaFlip], ['Put Wall', profile.putWall], ['Largest Call', dealerStats.largestCall], ['Largest Put', dealerStats.largestPut]] as const).map(([k, v]) => (
+                <div key={k} className="flex justify-between gap-3 text-[9.5px] leading-none"><span className="text-[var(--text-tertiary)] whitespace-nowrap">{k}</span><span className="text-[var(--text-secondary)] font-bold tabular-nums">{typeof v === 'number' ? Math.round(v).toLocaleString() : '—'}</span></div>
+              ))}
+            </div>
+          </div>
+        )}
+        {/* Market-regime chip (#20) — the one-glance read, top-right, driven by the live net-γ sign. */}
+        {showDealerBox && dealerStats && (
+          <div className="absolute top-1.5 z-10 pointer-events-none select-none flex items-center gap-1.5 rounded-md px-2 py-1 font-mono" style={{ left: '50%', transform: 'translateX(-50%)', background: 'linear-gradient(160deg, color-mix(in srgb, var(--surface) 90%, transparent), color-mix(in srgb, var(--surface) 78%, transparent))', border: `1px solid color-mix(in srgb, ${dealerStats.long ? 'var(--success)' : 'var(--danger)'} 42%, transparent)`, backdropFilter: 'blur(6px)', WebkitBackdropFilter: 'blur(6px)', boxShadow: '0 8px 24px -8px rgba(0,0,0,0.6)' }}>
+            <span className="w-1.5 h-1.5 rounded-full" style={{ background: dealerStats.long ? 'var(--success)' : 'var(--danger)' }} />
+            <span className="text-[8px] font-black uppercase tracking-[0.15em]" style={{ color: dealerStats.long ? 'var(--success)' : 'var(--danger)' }}>{dealerStats.long ? 'Positive γ' : 'Negative γ'}</span>
+            <span className="text-[8px] font-bold uppercase tracking-[0.12em] text-[var(--text-tertiary)]">{dealerStats.long ? 'Mean-Revert' : 'Trend · Vol'}</span>
+          </div>
+        )}
+        {ctxMenu && (
+          <>
+            <div className="fixed inset-0 z-40" onClick={() => setCtxMenu(null)} onContextMenu={e => { e.preventDefault(); setCtxMenu(null); }} onWheel={() => setCtxMenu(null)} />
+            <div className="absolute z-50 min-w-[182px] bg-[var(--surface)] border border-[var(--border-strong)] rounded-md shadow-2xl py-1 select-none" style={{ left: ctxMenu.x, top: ctxMenu.y }}>
+              <div className="px-3 pt-1 pb-1 text-[8.5px] font-mono font-black uppercase tracking-[0.18em] text-[var(--text-tertiary)]">View</div>
+              <button onClick={() => { resetView(); setCtxMenu(null); }} className="w-full flex items-center gap-2 px-3 py-1.5 text-left text-[11px] font-mono text-[var(--text-secondary)] hover:bg-white/[0.05] hover:text-[var(--text-primary)] transition-colors"><span className="text-[var(--accent-color)]">⟳</span> Reset to live view</button>
+              {view.off !== 0 && <button onClick={() => { tweenView({ bars: view.bars, off: 0 }); setCtxMenu(null); }} className="w-full flex items-center gap-2 px-3 py-1.5 text-left text-[11px] font-mono text-[var(--text-secondary)] hover:bg-white/[0.05] hover:text-[var(--text-primary)] transition-colors"><span className="text-[var(--accent-color)]">⟲</span> Jump to live edge</button>}
+              {priceView && <button onClick={() => { setPriceView(null); setCtxMenu(null); }} className="w-full flex items-center gap-2 px-3 py-1.5 text-left text-[11px] font-mono text-[var(--text-secondary)] hover:bg-white/[0.05] hover:text-[var(--text-primary)] transition-colors"><span className="text-[var(--accent-color)]">⤢</span> Auto-fit price scale</button>}
+            </div>
+          </>
+        )}
       </div>
     </div>
   );
