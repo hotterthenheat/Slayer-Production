@@ -571,13 +571,17 @@ export const SlayerChart = memo(function SlayerChartImpl({ profile, decimals, ca
 
     // Price-grid density scales with pane height — drag the price axis taller (or scale it)
     // and more price levels appear for finer read accuracy.
-    const targetGrid = Math.max(5, Math.min(18, Math.round(priceAreaH / 44)));
+    // Denser, TradingView-style price grid: every 5th step is a round-number "major" line — a brighter
+    // gridline + a bold, brighter label — so the eye anchors on round prices and the scale reads finer.
+    const targetGrid = Math.max(6, Math.min(26, Math.round(priceAreaH / 30)));
     const step = niceStep((hi - lo) / targetGrid);
-    const gridYs: { y: number; label: string }[] = [];
+    const majorStep = step * 5;
+    const gridYs: { y: number; label: string; major: boolean }[] = [];
     for (let g = Math.ceil(lo / step) * step; g <= hi; g += step) {
       const y = yP(g); if (y < priceTop + 4 || y > priceBottom - 2) continue;
-      if (showGrid) { ctx.strokeStyle = COL.grid; ctx.beginPath(); ctx.moveTo(plotL, px(y) - 0.5); ctx.lineTo(plotR, px(y) - 0.5); ctx.stroke(); }
-      gridYs.push({ y, label: nf(g) });
+      const major = Math.abs(g / majorStep - Math.round(g / majorStep)) < 1e-6;
+      if (showGrid) { ctx.strokeStyle = major ? hexA(T.text, 0.07) : COL.grid; ctx.beginPath(); ctx.moveTo(plotL, px(y) - 0.5); ctx.lineTo(plotR, px(y) - 0.5); ctx.stroke(); }
+      gridYs.push({ y, label: nf(g), major });
     }
 
     // Γ-MAP — the "Gamma Landscape" liquidity heatmap: each strike paints a soft vertical glow band
@@ -862,9 +866,12 @@ export const SlayerChart = memo(function SlayerChartImpl({ profile, decimals, ca
     ctx.textAlign = 'right';
     for (const g of gridYs) {
       if (Math.abs(g.y - lastY) < tagH) continue;
-      if (placed.some(L => Math.abs(L.y - g.y) < tagH)) continue;
-      ctx.fillStyle = COL.axisDim; ctx.fillText(g.label, W - 4, g.y);
+      if (placed.some(L => !L.value && Math.abs(L.y - g.y) < tagH)) continue; // only named levels draw on the axis
+      ctx.font = g.major ? '700 11px ui-monospace, monospace' : '11px ui-monospace, monospace';
+      ctx.fillStyle = g.major ? hexA(T.text, 0.62) : COL.axisDim;
+      ctx.fillText(g.label, W - 4, g.y);
     }
+    ctx.font = '11px ui-monospace, monospace';
 
     if (showDisp) for (const d of displacements) {
       if (d.i < start || d.i >= end) continue; const c = candles[d.i], x = xOf(d.i);
@@ -878,9 +885,13 @@ export const SlayerChart = memo(function SlayerChartImpl({ profile, decimals, ca
 
     if (lastY >= priceTop && lastY <= priceBottom) {
       ctx.strokeStyle = lastUp ? hexA(COL.up, 0.55) : hexA(COL.down, 0.55); ctx.setLineDash([2, 3]); ctx.beginPath(); ctx.moveTo(plotL, px(lastY) - 0.5); ctx.lineTo(plotR, px(lastY) - 0.5); ctx.stroke(); ctx.setLineDash([]);
-      ctx.fillStyle = lastUp ? COL.up : COL.down; const tagW = axisW + gammaW - 1;
-      (ctx as any).roundRect ? (ctx.beginPath(), (ctx as any).roundRect(plotR + 1, lastY - 8, tagW, 16, 3), ctx.fill()) : ctx.fillRect(plotR + 1, lastY - 8, tagW, 16);
-      ctx.fillStyle = '#06090d'; ctx.textAlign = 'left'; ctx.font = '700 11px ui-monospace, monospace'; ctx.fillText(nf(last), plotR + 6, lastY); ctx.font = '11px ui-monospace, monospace';
+      const lc = lastUp ? COL.up : COL.down, priceW = axisW + gammaW - 1, priceX = plotR + 1;
+      ctx.font = '700 11px ui-monospace, monospace'; ctx.textAlign = 'left';
+      // ticker badge (darker) to the LEFT of the price badge, extending into the chart — TradingView style
+      const tkr = (tickKey || '').toUpperCase(), tkrW = tkr ? ctx.measureText(tkr).width + 11 : 0;
+      if (tkr) { ctx.fillStyle = shade(lc, 0.46); (ctx as any).roundRect ? (ctx.beginPath(), (ctx as any).roundRect(priceX - tkrW, lastY - 8, tkrW, 16, 3), ctx.fill()) : ctx.fillRect(priceX - tkrW, lastY - 8, tkrW, 16); ctx.fillStyle = hexA('#ffffff', 0.92); ctx.fillText(tkr, priceX - tkrW + 6, lastY); }
+      ctx.fillStyle = lc; (ctx as any).roundRect ? (ctx.beginPath(), (ctx as any).roundRect(priceX, lastY - 8, priceW, 16, 3), ctx.fill()) : ctx.fillRect(priceX, lastY - 8, priceW, 16);
+      ctx.fillStyle = '#06090d'; ctx.fillText(nf(last), priceX + 6, lastY); ctx.font = '11px ui-monospace, monospace';
     }
 
     // ── Sub-panes (registry-driven) ──

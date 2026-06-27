@@ -20,13 +20,17 @@ export function StrikeMatrix({ profile, decimals = 0 }: { profile: GexProfileDat
     const near = spot ? [...ss].sort((a, b) => Math.abs(a.strike - spot) - Math.abs(b.strike - spot)).slice(0, 36) : ss.slice(0, 36);
     const maxC = Math.max(...near.map(s => Math.abs(s.callGex || 0)), 1);
     const maxP = Math.max(...near.map(s => Math.abs(s.putGex || 0)), 1);
-    const maxOi = Math.max(...near.map(s => (s.callOi || 0) + (s.putOi || 0)), 1);
+    const maxV = Math.max(...near.map(s => (s.callVolume || 0) + (s.putVolume || 0)), 1);
+    // Spotlight strikes: biggest call γ, biggest put γ, busiest by volume.
+    let topCallK = NaN, topPutK = NaN, topVolK = NaN, mc = 0, mp = 0, mv = 0;
+    for (const s of near) { if ((s.callGex || 0) > mc) { mc = s.callGex || 0; topCallK = s.strike; } if (Math.abs(s.putGex || 0) > mp) { mp = Math.abs(s.putGex || 0); topPutK = s.strike; } const v = (s.callVolume || 0) + (s.putVolume || 0); if (v > mv) { mv = v; topVolK = s.strike; } }
     return near.sort((a, b) => b.strike - a.strike).map(s => ({
       strike: s.strike, callGex: s.callGex || 0, putGex: s.putGex || 0, net: s.netGex || 0,
       cMag: Math.abs(s.callGex || 0) / maxC, pMag: Math.abs(s.putGex || 0) / maxP,
-      oi: (s.callOi || 0) + (s.putOi || 0), oiMag: ((s.callOi || 0) + (s.putOi || 0)) / maxOi,
+      vol: (s.callVolume || 0) + (s.putVolume || 0), volMag: ((s.callVolume || 0) + (s.putVolume || 0)) / maxV,
       isSpot: !!spot && Math.abs(s.strike - spot) < spot * 0.0008,
       isCW: s.strike === profile.callWall, isPW: s.strike === profile.putWall, isFlip: s.strike === profile.gammaFlip,
+      topCall: s.strike === topCallK, topPut: s.strike === topPutK, topVol: s.strike === topVolK,
     }));
   }, [profile]);
 
@@ -38,7 +42,7 @@ export function StrikeMatrix({ profile, decimals = 0 }: { profile: GexProfileDat
         <div className="text-right">Strike</div>
         <div className="text-center" style={{ color: 'var(--success)' }}>Call γ</div>
         <div className="text-center" style={{ color: 'var(--danger)' }}>Put γ</div>
-        <div className="text-right">OI</div>
+        <div className="text-right">Vol</div>
       </div>
       <div>
         {rows.map(r => (
@@ -49,11 +53,11 @@ export function StrikeMatrix({ profile, decimals = 0 }: { profile: GexProfileDat
               {r.isFlip && <span className="w-1.5 h-1.5 rounded-sm shrink-0" style={{ background: 'var(--warning)' }} title="Gamma Flip" />}
               <span className="font-black tracking-wide" style={{ color: r.isSpot ? 'var(--accent-color)' : 'var(--text-secondary)' }}>{r.strike.toLocaleString(undefined, { minimumFractionDigits: decimals, maximumFractionDigits: decimals })}</span>
             </div>
-            <div className="flex items-center justify-center font-bold" style={{ background: tint('--success', r.cMag), color: r.cMag > 0.18 ? 'var(--success)' : 'var(--text-tertiary)' }}>{r.callGex ? fmtG(r.callGex) : '·'}</div>
-            <div className="flex items-center justify-center font-bold" style={{ background: tint('--danger', r.pMag), color: r.pMag > 0.18 ? 'var(--danger)' : 'var(--text-tertiary)' }}>{r.putGex ? fmtG(r.putGex) : '·'}</div>
+            <div className="flex items-center justify-center" style={{ background: tint('--success', r.cMag), color: r.cMag > 0.18 ? 'var(--success)' : 'var(--text-tertiary)', fontWeight: r.topCall ? 900 : 700, boxShadow: r.topCall ? 'inset 0 0 0 1.5px color-mix(in srgb, var(--success) 75%, transparent)' : undefined }}>{r.callGex ? fmtG(r.callGex) : '·'}</div>
+            <div className="flex items-center justify-center" style={{ background: tint('--danger', r.pMag), color: r.pMag > 0.18 ? 'var(--danger)' : 'var(--text-tertiary)', fontWeight: r.topPut ? 900 : 700, boxShadow: r.topPut ? 'inset 0 0 0 1.5px color-mix(in srgb, var(--danger) 75%, transparent)' : undefined }}>{r.putGex ? fmtG(r.putGex) : '·'}</div>
             <div className="relative flex items-center justify-end pr-1.5 overflow-hidden">
-              <div className="absolute inset-y-[3px] right-0 rounded-sm" style={{ width: `${Math.max(3, r.oiMag * 100)}%`, background: 'color-mix(in srgb, var(--text-tertiary) 16%, transparent)' }} />
-              <span className="relative font-bold text-[var(--text-secondary)]">{fmtOi(r.oi)}</span>
+              <div className="absolute inset-y-[3px] right-0 rounded-sm" style={{ width: `${Math.max(3, r.volMag * 100)}%`, background: r.topVol ? 'color-mix(in srgb, var(--accent-color) 40%, transparent)' : 'color-mix(in srgb, var(--accent-color) 15%, transparent)' }} />
+              <span className="relative" style={{ fontWeight: r.topVol ? 900 : 700, color: r.topVol ? 'var(--text-primary)' : 'var(--text-secondary)' }}>{fmtOi(r.vol)}</span>
             </div>
           </div>
         ))}
