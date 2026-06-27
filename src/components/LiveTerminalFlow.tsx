@@ -385,9 +385,9 @@ export function LiveTerminalFlow({ profile, ticker, decimals }: LiveTerminalFlow
         <span className="text-[10px] font-mono font-black tabular-nums shrink-0 w-[88px] text-right" style={{ color: sess.cd !== 'CLOSED' && sess.prog > 0.77 ? 'var(--warning)' : sess.live ? 'var(--text-secondary)' : 'var(--text-tertiary)' }}>{sess.cd !== 'CLOSED' ? `${sess.cd} to close` : 'Market closed'}</span>
       </div>
 
-      {/* ── 3-column workspace (centered on ultrawide) ── */}
-      <div className="flex-1 w-full overflow-hidden flex justify-center">
-        <div className="flex flex-col xl:flex-row w-full max-w-[2280px] h-full overflow-hidden">
+      {/* ── 3-column workspace (full-bleed — fills the whole screen) ── */}
+      <div className="flex-1 w-full overflow-hidden flex">
+        <div className="flex flex-col xl:flex-row w-full h-full overflow-hidden">
 
           {/* ░ LEFT — Key Levels / Flow ░ */}
           <aside className="order-2 xl:order-1 w-full xl:w-[276px] shrink-0 border-r border-[var(--border)] flex flex-col min-h-[360px] xl:min-h-0 bg-[var(--surface)]">
