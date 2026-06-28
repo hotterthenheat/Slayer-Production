@@ -306,14 +306,20 @@ export function LiveTerminalFlow({ profile: liveProfile, ticker, decimals }: Liv
     const steps = sorted.slice(1).map((s, i) => s.strike - sorted[i].strike).filter(x => x > 0).sort((a, b) => a - b);
     const step = steps.length ? steps[Math.floor(steps.length / 2)] : span / sorted.length;  // median strike gap
     const rowHpct = Math.min(14, (step / span) * 100);
+    // Only LABEL rows tall enough to read. When the panel packs many strikes into a short height
+    // (mobile), labeling every row smears the strike/net text into an unreadable column — so the bars
+    // still draw for every row, but text shows on a sparse subset (~>=4.6% apart) plus every named level.
+    const labelEveryN = rowHpct >= 4.6 ? 1 : Math.max(1, Math.ceil(4.6 / rowHpct));
     return {
       lo, hi, span, rowHpct,
-      rows: sorted.map(s => { const [c, p] = pick(s); const net = c + p; return {
+      rows: sorted.map((s, i) => { const [c, p] = pick(s); const net = c + p;
+        const isCW = s.strike === profile.callWall, isPW = s.strike === profile.putWall, isFlip = s.strike === profile.gammaFlip, isSpot = Math.abs(s.strike - spot) < spot * 0.0008;
+        return {
         strike: s.strike, net, netUp: oiLike ? c >= p : net >= 0,
         callPct: (Math.abs(c) / maxM) * 100, putPct: (Math.abs(p) / maxM) * 100,
         yPct: (1 - (s.strike - lo) / span) * 100,
-        isCW: s.strike === profile.callWall, isPW: s.strike === profile.putWall, isFlip: s.strike === profile.gammaFlip,
-        isSpot: Math.abs(s.strike - spot) < spot * 0.0008,
+        isCW, isPW, isFlip, isSpot,
+        showLabel: (i % labelEveryN === 0) || isCW || isPW || isFlip || isSpot,
       }; }),
     };
   }, [syncScale, profile, ladderMetric, spot]);
@@ -725,8 +731,8 @@ export function LiveTerminalFlow({ profile: liveProfile, ticker, decimals }: Liv
               {ladder.length === 0 && <div className="flex items-center justify-center py-12 text-[11px] font-mono text-[var(--text-tertiary)]">Awaiting dealer chain…</div>}
               {gammaProfile ? (() => {
                 const { lo, hi, span, rowHpct, rows } = gammaProfile;
-                const labels = rowHpct >= 3.1;            // show strike/value text only when rows are tall enough
-                const barH = labels ? '68%' : 'calc(100% - 1px)';
+                const dense = rowHpct < 4.6;              // many strikes packed short → solid profile + sparse labels (per-row showLabel)
+                const barH = dense ? 'calc(100% - 1px)' : '68%';
                 const greek = ladderMetric === 'GAMMA' || ladderMetric === 'DELTA' || ladderMetric === 'VANNA';
                 return (
                   <>
@@ -735,12 +741,12 @@ export function LiveTerminalFlow({ profile: liveProfile, ticker, decimals }: Liv
                       const mk = r.isCW ? 'var(--success)' : r.isPW ? 'var(--danger)' : r.isFlip ? 'var(--warning)' : null;
                       return (
                         <div key={r.strike} data-strike={r.strike} className="absolute left-0 right-0 flex items-center px-2" style={{ top: `${r.yPct}%`, height: `${rowHpct}%`, transform: 'translateY(-50%)', transition: 'top 0.3s cubic-bezier(0.22,1,0.36,1), height 0.3s cubic-bezier(0.22,1,0.36,1)', background: inVac ? 'color-mix(in srgb, var(--warning) 5%, transparent)' : undefined }}>
-                          {labels && <span className="w-[42px] shrink-0 text-right text-[9px] font-mono tabular-nums flex items-center justify-end gap-1" style={{ color: r.isSpot ? 'var(--accent-color)' : 'var(--text-tertiary)' }}>{mk && <span className="w-1 h-1 rounded-full shrink-0" style={{ background: mk }} />}{fmtNum(r.strike, decimals)}</span>}
+                          {r.showLabel && <span className="w-[42px] shrink-0 text-right text-[9px] font-mono tabular-nums flex items-center justify-end gap-1" style={{ color: r.isSpot ? 'var(--accent-color)' : 'var(--text-tertiary)' }}>{mk && <span className="w-1 h-1 rounded-full shrink-0" style={{ background: mk }} />}{fmtNum(r.strike, decimals)}</span>}
                           <div className="flex-1 h-full flex items-center mx-1.5">
                             <div className="w-1/2 h-full flex items-center justify-end pr-px border-r border-[var(--border)]"><div className="rounded-l-[2px]" style={{ width: `${r.putPct}%`, height: barH, background: 'color-mix(in srgb, var(--danger) 62%, transparent)', transition: 'width 0.42s cubic-bezier(0.22,1,0.36,1), height 0.3s ease' }} /></div>
                             <div className="w-1/2 h-full flex items-center justify-start pl-px"><div className="rounded-r-[2px]" style={{ width: `${r.callPct}%`, height: barH, background: 'color-mix(in srgb, var(--success) 62%, transparent)', transition: 'width 0.42s cubic-bezier(0.22,1,0.36,1), height 0.3s ease' }} /></div>
                           </div>
-                          {labels && <span className="w-[56px] shrink-0 text-right text-[9px] font-mono font-black tabular-nums" style={{ color: greek ? 'var(--greek)' : (r.netUp ? 'var(--success)' : 'var(--danger)') }}>{fmtBig(r.net)}</span>}
+                          {r.showLabel && <span className="w-[56px] shrink-0 text-right text-[9px] font-mono font-black tabular-nums" style={{ color: greek ? 'var(--greek)' : (r.netUp ? 'var(--success)' : 'var(--danger)') }}>{fmtBig(r.net)}</span>}
                         </div>
                       );
                     })}
