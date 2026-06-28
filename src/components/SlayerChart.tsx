@@ -154,7 +154,12 @@ export const SlayerChart = memo(function SlayerChartImpl({ profile, decimals, ca
     try { const raw = localStorage.getItem('slayerchart.draw.' + (panelId ? panelId + '.' : '') + (tickKey || '_')); setDrawings(raw ? JSON.parse(raw) : []); } catch { setDrawings([]); }
     setSelectedId(null); draftRef.current = null; measureRef.current = null; measureDragRef.current = false;
   }, [tickKey]);
-  useEffect(() => { try { localStorage.setItem('slayerchart.draw.' + (panelId ? panelId + '.' : '') + (tickKey || '_'), JSON.stringify(drawings)); } catch { /* storage unavailable */ } }, [drawings, tickKey, panelId]);
+  // Debounced persist — dragging a drawing fires setDrawings every frame; coalesce those into one
+  // localStorage write ~300ms after the last change so a drag doesn't serialize the set per mouse-move.
+  useEffect(() => {
+    const id = setTimeout(() => { try { localStorage.setItem('slayerchart.draw.' + (panelId ? panelId + '.' : '') + (tickKey || '_'), JSON.stringify(drawings)); } catch { /* storage unavailable */ } }, 300);
+    return () => clearTimeout(id);
+  }, [drawings, tickKey, panelId]);
 
   const hoverRef = useRef<{ x: number; y: number } | null>(null);
   // Per-strike GEX baseline (snapshot from ~45s ago) so each loaded strike can show its ΔGEX (↑/↓ since checkpoint).
@@ -168,6 +173,7 @@ export const SlayerChart = memo(function SlayerChartImpl({ profile, decimals, ca
   const draftRef = useRef<Anchor | null>(null);          // first point of a 2-point drawing
   const measureRef = useRef<{ a: Anchor; b: Anchor } | null>(null);
   const measureDragRef = useRef(false);
+  const editRef = useRef<{ id: string; handle: 'a' | 'b' | 'price' | 'move'; downT: number; downPrice: number; orig: Drawing } | null>(null); // dragging a placed drawing
   const pinchRef = useRef<{ d0: number; bars0: number; gi: number; ax: number } | null>(null); // 2-finger pinch-zoom anchor
   const touchRef = useRef<{ x: number; y: number; t: number; moved: boolean } | null>(null);    // tap-vs-pan discriminator
   const viewRef = useRef(view); viewRef.current = view;
@@ -413,10 +419,21 @@ export const SlayerChart = memo(function SlayerChartImpl({ profile, decimals, ca
       for (const d of drawingsRef.current) {
         let dist: number;
         if (d.kind === 'hline') dist = (mx >= g.plotL && mx <= g.plotR) ? Math.abs(my - yOfP(d.price)) : 999;
+        else if (d.kind === 'rect') { const x1 = xOfT(d.a.t), y1 = yOfP(d.a.price), x2 = xOfT(d.b.t), y2 = yOfP(d.b.price); const L = Math.min(x1, x2), R = Math.max(x1, x2), T = Math.min(y1, y2), B = Math.max(y1, y2); dist = Math.min(distToSeg(mx, my, L, T, R, T), distToSeg(mx, my, L, B, R, B), distToSeg(mx, my, L, T, L, B), distToSeg(mx, my, R, T, R, B)); }
         else { const x1 = xOfT(d.a.t), y1 = yOfP(d.a.price); let x2 = xOfT(d.b.t), y2 = yOfP(d.b.price); if (d.kind === 'ray') { const dx = x2 - x1; if (Math.abs(dx) > 0.01) { const m = (y2 - y1) / dx, ex = dx >= 0 ? g.plotR : g.plotL; y2 = y1 + m * (ex - x1); x2 = ex; } } dist = distToSeg(mx, my, x1, y1, x2, y2); }
         if (dist < bestD) { bestD = dist; best = d.id; }
       }
       return best;
+    };
+    // Which part of a placed drawing is under the cursor — an endpoint handle (a/b), the hline's price,
+    // else 'move' (translate the whole thing). Endpoint grab radius is generous for easy editing.
+    const grabHandle = (mx: number, my: number, g: Geom, d: Drawing): 'a' | 'b' | 'price' | 'move' => {
+      if (d.kind === 'hline') return 'price';
+      const yOfP = (p: number) => g.priceTop + g.priceAreaH - ((p - g.lo) / (g.hi - g.lo)) * g.priceAreaH;
+      const xOfT = (t: number) => g.plotL + (idxOfTime(candlesRef.current, t) - g.start) * g.barW + g.barW / 2;
+      if (Math.hypot(mx - xOfT(d.a.t), my - yOfP(d.a.price)) <= 9) return 'a';
+      if (Math.hypot(mx - xOfT(d.b.t), my - yOfP(d.b.price)) <= 9) return 'b';
+      return 'move';
     };
     // Momentum glide after a flick-release — shared by mouse-up and touch-end. Keeps panning with
     // decaying friction until it slows or hits an edge, then settles to the bar grid. Same off/panPx
@@ -447,7 +464,12 @@ export const SlayerChart = memo(function SlayerChartImpl({ profile, decimals, ca
       if (tl === 'cursor') {
         if (mx >= g.plotR) { const cur = priceViewRef.current; priceDragRef.current = { y: e.clientY, factor: cur?.factor ?? 1, offset: cur?.offset ?? 0 }; canvas.style.cursor = 'ns-resize'; return; }
         const hit = hitTest(mx, my, g);
-        if (hit) { setSelectedId(hit); schedule(); return; }
+        if (hit) {
+          setSelectedId(hit);
+          const d = drawingsRef.current.find(x => x.id === hit);
+          if (d) { editRef.current = { id: hit, handle: grabHandle(mx, my, g, d), downT: tAtX(mx, g), downPrice: priceAtY(my, g), orig: d }; canvas.style.cursor = 'grabbing'; }
+          schedule(); return;
+        }
         if (selectedRef.current) setSelectedId(null);
         dragRef.current = { x: e.clientX, off: viewRef.current.off }; canvas.style.cursor = 'grabbing'; return;
       }
@@ -455,7 +477,7 @@ export const SlayerChart = memo(function SlayerChartImpl({ profile, decimals, ca
       const t = tAtX(mx, g), price = priceAtY(my, g);
       if (tl === 'hline') { setDrawings(a => [...a, { id: newId(), kind: 'hline', price, color: DRAW_COLOR }]); setTool('cursor'); return; }
       if (tl === 'measure') { measureRef.current = { a: { t, price }, b: { t, price } }; measureDragRef.current = true; schedule(); return; }
-      if (tl === 'trend' || tl === 'ray') {
+      if (tl === 'trend' || tl === 'ray' || tl === 'rect') {
         if (!draftRef.current) { draftRef.current = { t, price }; schedule(); }
         else { const a = draftRef.current!; setDrawings(arr => [...arr, { id: newId(), kind: tl, a, b: { t, price }, color: DRAW_COLOR }]); draftRef.current = null; setTool('cursor'); }
       }
@@ -464,6 +486,21 @@ export const SlayerChart = memo(function SlayerChartImpl({ profile, decimals, ca
       const r = canvas.getBoundingClientRect(); hoverRef.current = { x: e.clientX - r.left, y: e.clientY - r.top };
       const g = geomRef.current;
       if (measureDragRef.current && g && measureRef.current) { measureRef.current.b = { t: tAtX(hoverRef.current.x, g), price: priceAtY(hoverRef.current.y, g) }; schedule(); return; }
+      // Editing a placed drawing — drag an endpoint handle, the hline's price, or translate the whole mark.
+      const ed = editRef.current;
+      if (ed && g) {
+        const curT = tAtX(hoverRef.current.x, g), curPrice = priceAtY(hoverRef.current.y, g);
+        const dt = curT - ed.downT, dp = curPrice - ed.downPrice, o = ed.orig;
+        setDrawings(arr => arr.map(d => {
+          if (d.id !== ed.id) return d;
+          if (o.kind === 'hline') return { ...o, price: curPrice };
+          if (ed.handle === 'a') return { ...o, a: { t: curT, price: curPrice } };
+          if (ed.handle === 'b') return { ...o, b: { t: curT, price: curPrice } };
+          return { ...o, a: { t: o.a.t + dt, price: o.a.price + dp }, b: { t: o.b.t + dt, price: o.b.price + dp } };
+        }));
+        schedule();
+        return;
+      }
       const pd = priceDragRef.current;
       if (pd) { const dy = e.clientY - pd.y; const factor = Math.max(0.2, Math.min(6, pd.factor * Math.exp(dy / 240))); setPriceView({ factor, offset: pd.offset }); return; }
       const drag = dragRef.current;
@@ -498,6 +535,7 @@ export const SlayerChart = memo(function SlayerChartImpl({ profile, decimals, ca
     };
     const onUp = () => {
       const drag = dragRef.current, g = geomRef.current;
+      if (editRef.current) { editRef.current = null; canvas.style.cursor = 'crosshair'; return; }   // finished editing a drawing — no pan momentum
       dragRef.current = null; priceDragRef.current = null; measureDragRef.current = false; canvas.style.cursor = 'crosshair';
       if (drag && g && drag.vx && Math.abs(drag.vx) > 0.08) startMomentum(drag.vx, g);
       else if (panPxRef.current !== 0) { panPxRef.current = 0; drawRef.current(); }
