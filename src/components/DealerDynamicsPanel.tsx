@@ -74,7 +74,7 @@ export function DealerDynamicsPanel() {
             <div key={label} className="flex items-center gap-2">
               <span className="text-[10px] font-bold w-20 shrink-0" style={{ color: tone }}>{label} {x ? num(x.strike, decimals) : ''}</span>
               <div className="flex-1 h-2 rounded-sm bg-[var(--surface-3)] overflow-hidden">
-                <div className="h-full rounded-sm" style={{ width: `${x ? x.score : 0}%`, background: tone }} />
+                <div className="h-full rounded-sm" style={{ width: `${x ? x.score : 0}%`, background: tone, transition: 'width 400ms cubic-bezier(0.16,1,0.3,1)' }} />
               </div>
               <span className="text-[10px] tabular-nums w-8 text-right" style={{ color: tone }}>{x ? x.score : '—'}</span>
             </div>

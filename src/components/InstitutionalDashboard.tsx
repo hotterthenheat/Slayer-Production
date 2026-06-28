@@ -159,7 +159,7 @@ export function InstitutionalDashboard() {
             </div>
             <div className="flex items-center justify-between px-2 mt-1">
               <div>
-                <span className={`text-[18px] font-black uppercase tracking-tight ${
+                <span className={`text-[18px] font-black uppercase tracking-tight transition-colors duration-300 ${
                   dynamics?.charm?.bias === 'BULLISH' ? 'text-[var(--success)]' : dynamics?.charm?.bias === 'BEARISH' ? 'text-[var(--danger)]' : 'text-[var(--text-tertiary)]'
                 }`}>{dynamics?.charm?.bias ?? 'N/A'}</span>
                 <span className="text-[10px] text-[var(--text-tertiary)] font-medium block mt-0.5 tracking-wider">{dynamics?.charm?.note ?? 'Time-decay hedging flow.'}</span>
@@ -243,11 +243,11 @@ export function InstitutionalDashboard() {
             <div className="flex gap-2">
               <button
                 onClick={() => setSimulatorStrike((s) => s - 25)}
-                className="flex-1 text-[11px] font-bold text-[var(--text-secondary)] border border-[var(--border)] rounded-sm py-1.5 hover:border-[var(--border-strong)] transition-colors tabular-nums"
+                className="flex-1 text-[11px] font-bold text-[var(--text-secondary)] border border-[var(--border)] rounded-sm py-1.5 hover:border-[var(--border-strong)] hover:text-[var(--text-primary)] focus-visible:ring-1 focus-visible:ring-[var(--accent-color)] focus:outline-none transition-colors tabular-nums"
               >− 25</button>
               <button
                 onClick={() => setSimulatorStrike((s) => s + 25)}
-                className="flex-1 text-[11px] font-bold text-[var(--text-secondary)] border border-[var(--border)] rounded-sm py-1.5 hover:border-[var(--border-strong)] transition-colors tabular-nums"
+                className="flex-1 text-[11px] font-bold text-[var(--text-secondary)] border border-[var(--border)] rounded-sm py-1.5 hover:border-[var(--border-strong)] hover:text-[var(--text-primary)] focus-visible:ring-1 focus-visible:ring-[var(--accent-color)] focus:outline-none transition-colors tabular-nums"
               >+ 25</button>
             </div>
             {[
@@ -339,7 +339,7 @@ export function InstitutionalDashboard() {
               </div>
               <div className="bg-[var(--surface-2)] border border-[var(--border)] p-2 rounded-sm">
                 <span className="text-[10px] text-[var(--text-tertiary)] uppercase tracking-widest font-black block mb-1">Migration</span>
-                <span className={`font-black font-mono text-[14px] ${
+                <span className={`font-black font-mono text-[14px] tabular-nums transition-colors duration-300 ${
                   dynamics?.migration?.direction === 'BULLISH' ? 'text-[var(--success)]' : dynamics?.migration?.direction === 'BEARISH' ? 'text-[var(--danger)]' : 'text-[var(--text-tertiary)]'
                 }`}>{dynamics?.migration?.direction ?? 'N/A'}</span>
               </div>

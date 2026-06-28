@@ -16,8 +16,8 @@ function Flag({ label, value, active, tone = '#4ADE80' }: { label: string; value
       }}
     >
       <span className="text-[10px] font-black uppercase tracking-widest text-[var(--text-tertiary)] leading-tight">{label}</span>
-      <span className="text-[13px] font-bold tabular-nums leading-none" style={{ color: active ? tone : 'var(--text-primary)' }}>{value}</span>
-      <span className="text-[10px] font-black tracking-widest" style={{ color: active ? tone : 'var(--text-tertiary)' }}>
+      <span className="text-[13px] font-bold tabular-nums leading-none transition-colors duration-300" style={{ color: active ? tone : 'var(--text-primary)' }}>{value}</span>
+      <span className="text-[10px] font-black tracking-widest transition-colors duration-300" style={{ color: active ? tone : 'var(--text-tertiary)' }}>
         {active ? '● ACTIVE' : '○ INACTIVE'}
       </span>
     </div>

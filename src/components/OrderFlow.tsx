@@ -49,7 +49,7 @@ export function OrderFlow({ data, decimals }: { data?: OrderFlowData | null; dec
           <div className="p-3 border-b border-[var(--border)]">
             <div className="flex items-center justify-between mb-2">
               <span className="text-[9px] font-mono font-bold uppercase tracking-[0.15em] text-[var(--text-tertiary)]">Book Imbalance</span>
-              <span className="text-[11px] font-mono font-black tabular-nums" style={{ color: imb >= 0 ? K.up : K.down }}>{imb >= 0 ? '+' : ''}{(imb * 100).toFixed(0)}%</span>
+              <span className="text-[11px] font-mono font-black tabular-nums transition-colors duration-300" style={{ color: imb >= 0 ? K.up : K.down }}>{imb >= 0 ? '+' : ''}{(imb * 100).toFixed(0)}%</span>
             </div>
             <div className="relative h-3 rounded-sm overflow-hidden flex bg-white/[0.03]">
               <div className="h-full" style={{ width: `${buyPct}%`, background: `linear-gradient(90deg, ${mix('var(--success)', 25)}, ${mix('var(--success)', 70)})` }} />
@@ -67,7 +67,7 @@ export function OrderFlow({ data, decimals }: { data?: OrderFlowData | null; dec
           <div className="p-3 border-b border-[var(--border)]">
             <div className="flex items-center justify-between mb-2">
               <span className="flex items-center gap-1 text-[9px] font-mono font-bold uppercase tracking-[0.15em] text-[var(--text-tertiary)]"><Activity className="w-3 h-3" /> Cumulative Delta</span>
-              <span className="text-[11px] font-mono font-black tabular-nums" style={{ color: cdLast >= 0 ? K.up : K.down }}>{cdLast >= 0 ? '+' : ''}{fmtVol(cdLast)}</span>
+              <span className="text-[11px] font-mono font-black tabular-nums transition-colors duration-300" style={{ color: cdLast >= 0 ? K.up : K.down }}>{cdLast >= 0 ? '+' : ''}{fmtVol(cdLast)}</span>
             </div>
             <svg viewBox="0 0 100 30" preserveAspectRatio="none" className="w-full h-9">
               <line x1="0" y1={30 - ((0 - cdMin) / cdRange) * 28 - 1} x2="100" y2={30 - ((0 - cdMin) / cdRange) * 28 - 1} stroke="rgba(255,255,255,0.08)" strokeWidth="0.5" />
@@ -85,10 +85,10 @@ export function OrderFlow({ data, decimals }: { data?: OrderFlowData | null; dec
             {foot.map((f, i) => {
               const net = f.buyVol - f.sellVol;
               return (
-                <div key={i} className="grid grid-cols-[1fr_58px_1fr] items-center gap-1 px-3 h-[22px] text-[10px] font-mono font-medium tabular-nums hover:bg-white/[0.03]">
-                  <div className="flex justify-end items-center gap-1"><span className="text-[9px]" style={{ color: K.down }}>{fmtVol(f.sellVol)}</span><div className="h-[8px] rounded-sm" style={{ width: `${(f.sellVol / maxFoot) * 100}%`, maxWidth: '100%', background: mix('var(--danger)', 55) }} /></div>
-                  <div className="text-center font-black tracking-wider" style={{ color: net >= 0 ? K.up : K.down }}>{f.price.toFixed(decimals)}</div>
-                  <div className="flex justify-start items-center gap-1"><div className="h-[8px] rounded-sm" style={{ width: `${(f.buyVol / maxFoot) * 100}%`, maxWidth: '100%', background: mix('var(--success)', 55) }} /><span className="text-[9px]" style={{ color: K.up }}>{fmtVol(f.buyVol)}</span></div>
+                <div key={i} className="grid grid-cols-[1fr_58px_1fr] items-center gap-1 px-3 h-[22px] text-[10px] font-mono font-medium tabular-nums hover:bg-white/[0.03] transition-colors duration-150">
+                  <div className="flex justify-end items-center gap-1"><span className="text-[9px]" style={{ color: K.down }}>{fmtVol(f.sellVol)}</span><div className="h-[8px] rounded-sm" style={{ width: `${(f.sellVol / maxFoot) * 100}%`, maxWidth: '100%', background: mix('var(--danger)', 55), transition: 'width 300ms ease-out' }} /></div>
+                  <div className="text-center font-black tracking-wider transition-colors duration-300" style={{ color: net >= 0 ? K.up : K.down }}>{f.price.toFixed(decimals)}</div>
+                  <div className="flex justify-start items-center gap-1"><div className="h-[8px] rounded-sm" style={{ width: `${(f.buyVol / maxFoot) * 100}%`, maxWidth: '100%', background: mix('var(--success)', 55), transition: 'width 300ms ease-out' }} /><span className="text-[9px]" style={{ color: K.up }}>{fmtVol(f.buyVol)}</span></div>
                 </div>
               );
             })}
