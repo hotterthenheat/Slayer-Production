@@ -83,7 +83,7 @@ export function StrikeMatrix({ profile, decimals = 0, size = 'compact' }: { prof
           const cMag = Math.abs(r.call) / maxCall, pMag = Math.abs(r.put) / maxPut, vHot = r.vol / maxVol > 0.55;
           return (
             <div key={r.strike} className={`${grid} gap-x-1 px-2 items-center ${rowH} hover:bg-white/[0.03] transition-colors duration-150`}
-              style={r.isSpot ? { boxShadow: 'inset 3px 0 0 var(--accent-color)' } : undefined}>
+              style={r.isSpot ? { boxShadow: 'inset 3px 0 0 var(--accent-color)', background: 'color-mix(in srgb, var(--accent-color) 9%, transparent)' } : undefined}>
               <div className="text-right font-bold" style={{ color: r.isSpot ? 'var(--accent-color)' : 'var(--text-secondary)', fontWeight: r.isSpot ? 800 : 600 }}>{nf(r.strike)}</div>
               {/* CALL Γ */}
               <div className="h-full flex items-center justify-center rounded-[2px] transition-colors duration-300"

@@ -615,7 +615,7 @@ export function LiveTerminalFlow({ profile: liveProfile, ticker, decimals }: Liv
               <span className="text-[11px] font-sans font-black tracking-widest uppercase text-[var(--text-primary)]">Gamma Matrix · {selectedAsset.ticker}</span>
               <button onClick={() => setMatrixMax(false)} title="Restore" className="flex items-center gap-1.5 text-[10px] font-mono font-black uppercase tracking-wider text-[var(--text-tertiary)] hover:text-[var(--text-primary)] focus-visible:ring-1 focus-visible:ring-[var(--accent-color)] focus:outline-none rounded px-1.5 py-0.5 transition-colors"><Minimize2 className="w-3.5 h-3.5" /> Restore</button>
             </div>
-            <div className="flex-1 min-h-0 overflow-y-auto px-4 py-3">
+            <div className="flex-1 min-h-0 overflow-y-auto px-2 py-2">
               <div className="w-full"><StrikeMatrix profile={profile} decimals={decimals} size="full" /></div>
             </div>
           </div>

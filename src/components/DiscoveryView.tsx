@@ -1226,7 +1226,7 @@ export function DiscoveryView({
               CLEAR
             </button>
           ) : (
-            <kbd className="hidden sm:inline-block bg-black text-zinc-650 border border-black px-1 py-[1.5px] rounded-xs font-mono text-[7px] select-none shrink-0">
+            <kbd className="hidden sm:inline-block bg-[var(--surface-2)] text-[var(--text-tertiary)] border border-[var(--border)] px-1 py-[1.5px] rounded-xs font-mono text-[7px] select-none shrink-0">
               TXT
             </kbd>
           )}
@@ -1239,12 +1239,12 @@ export function DiscoveryView({
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: 3 }}
                 className={`absolute right-0 top-full mt-2 w-[300px] max-w-[calc(100vw-24px)] border shadow-2xl rounded-lg overflow-hidden z-50 text-left font-mono ${
-                  isLight ? 'bg-white border-black text-zinc-800' : 'bg-black border-black text-zinc-400'
+                  isLight ? 'bg-white border-[var(--border)] text-zinc-800' : 'bg-[var(--bg-base)] border-[var(--border)] text-[var(--text-secondary)]'
                 }`}
               >
                 {/* 1. SECTION: MAIN INDEXES */}
                 <div className={`px-2.5 py-1 text-[7.5px] font-extrabold uppercase tracking-widest border-b ${
-                  isLight ? 'bg-black text-[var(--text-tertiary)] border-black' : 'bg-black/40 text-zinc-600 border-black'
+                  isLight ? 'bg-[var(--surface-2)] text-[var(--text-tertiary)] border-[var(--border)]' : 'bg-[var(--surface-2)]/40 text-[var(--text-tertiary)] border-[var(--border)]'
                 }`}>
                   Switch Active Index Ticker
                 </div>
@@ -1260,7 +1260,7 @@ export function DiscoveryView({
                         setSearchQuery('');
                       }}
                       className={`w-full text-left px-3.5 py-1.5 transition-all flex justify-between items-center border-b ${
-                        isLight ? 'hover:bg-zinc-50 border-black' : 'hover:bg-black/60 border-black'
+                        isLight ? 'hover:bg-[var(--surface-2)] border-[var(--border)]' : 'hover:bg-[var(--surface-3)] border-[var(--border)]'
                       }`}
                     >
                       <div className="flex flex-col">
@@ -1277,7 +1277,7 @@ export function DiscoveryView({
 
                 {/* 2. SECTION: OPTIONS & TRANSITIONS */}
                 <div className={`px-2.5 py-1 text-[7.5px] font-extrabold uppercase tracking-widest border-b ${
-                  isLight ? 'bg-black text-[var(--text-tertiary)] border-black' : 'bg-black/40 text-zinc-600 border-black'
+                  isLight ? 'bg-[var(--surface-2)] text-[var(--text-tertiary)] border-[var(--border)]' : 'bg-[var(--surface-2)]/40 text-[var(--text-tertiary)] border-[var(--border)]'
                 }`}>
                   Launch Option chain / Assessments
                 </div>
@@ -1298,7 +1298,7 @@ export function DiscoveryView({
                           setSearchQuery('');
                         }}
                         className={`w-full text-left px-3.5 py-2 transition-all border-b last:border-none flex flex-col ${
-                          isLight ? 'hover:bg-zinc-50 border-black' : 'hover:bg-black/60 border-black'
+                          isLight ? 'hover:bg-[var(--surface-2)] border-[var(--border)]' : 'hover:bg-[var(--surface-3)] border-[var(--border)]'
                         }`}
                       >
                         <div className="flex justify-between items-center">

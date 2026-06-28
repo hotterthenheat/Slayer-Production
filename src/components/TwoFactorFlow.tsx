@@ -194,7 +194,7 @@ export function TwoFactorFlow() {
                 <div className="flex-1 px-3 py-2 text-xs font-mono text-[var(--success)] select-all truncate">{secret}</div>
                 <button 
                   onClick={copySecret}
-                  className="px-3 bg-black border-l border-[var(--border)] hover:bg-black text-[var(--success)] cursor-pointer transition-colors"
+                  className="px-3 bg-[var(--surface-2)] border-l border-[var(--border)] hover:bg-[var(--surface-3)] text-[var(--success)] cursor-pointer transition-colors"
                 >
                   {copied ? 'Copied' : <Copy className="w-3 h-3" />}
                 </button>
@@ -270,7 +270,7 @@ export function TwoFactorFlow() {
             <div className="flex gap-3 justify-end w-full sm:w-auto">
               <button 
                 onClick={handleDownloadBackupCodes}
-                className="px-4 py-2 bg-black hover:bg-black text-[var(--text-primary)] rounded-lg text-xs font-bold transition-colors cursor-pointer flex items-center gap-2"
+                className="px-4 py-2 bg-[var(--surface-2)] hover:bg-[var(--surface-3)] text-[var(--text-primary)] rounded-lg text-xs font-bold transition-colors cursor-pointer flex items-center gap-2"
               >
                 Download Keys <Download className="w-3 h-3" />
               </button>
