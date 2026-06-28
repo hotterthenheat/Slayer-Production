@@ -485,6 +485,13 @@ export function optionExpiryDate(asset: AssetInfo, now: Date = new Date()): stri
  * with DTE. This is MODEL data (used only when the chain is NOT live); a real provider supplies true
  * per-expiry chains via the opt-in fetch. Kept deterministic (no Math.random).
  */
+// Per-slice decay applied when SYNTHESIZING the multi-expiry matrix from the front chain (used only
+// when the live multi-expiry fetch is off). The four slices are front · +1w · +2w · ~1mo: gamma
+// concentrates near-term and volume/OI thins out further-dated, so each successive slice scales by
+// these factors. Named so the model's assumptions are auditable, not buried as inline literals.
+const GEX_EXPIRY_DECAY = [1, 0.64, 0.44, 0.31];      // net/call/put gamma per slice
+const OI_VOL_EXPIRY_DECAY = [1, 0.55, 0.34, 0.22];   // volume/OI per slice
+
 export function synthesizeExpirySlices(
   strikes: { strike: number; netGex: number; callGex?: number; putGex?: number; vol?: number }[],
   asset: AssetInfo,
@@ -493,8 +500,8 @@ export function synthesizeExpirySlices(
   if (!strikes.length) return [];
   const d0 = asset.optionsStyle === 'weekly' ? frontWeeklyDteDays(now) : 0;
   const offsets = [d0, d0 + 7, d0 + 14, d0 + 28];   // front · +1w · +2w · ~1mo
-  const factors = [1, 0.64, 0.44, 0.31];            // gamma concentrates near-term
-  const vfac = [1, 0.55, 0.34, 0.22];               // volume/OI thins out further out too
+  const factors = GEX_EXPIRY_DECAY;
+  const vfac = OI_VOL_EXPIRY_DECAY;
   const iso = (dte: number) => { const d = new Date(now); d.setDate(d.getDate() + dte); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; };
   return offsets.map((dte, k) => {
     const f = factors[k], vf = vfac[k];

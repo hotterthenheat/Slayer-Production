@@ -76,9 +76,15 @@ refreshCalibrationHistory();
 const _calibTimer = setInterval(refreshCalibrationHistory, 5 * 60 * 1000);
 if (typeof _calibTimer.unref === 'function') _calibTimer.unref();
 
+// Verbose per-key logging is opt-in (SLAYER_DEBUG=1). The seed loop runs over every asset × every
+// timeframe, so the per-key line below is ~ASSET_LIST × TIMEFRAMES (hundreds) of lines on each boot —
+// noise in production. The one-line summary and any warnings still print unconditionally.
+const VERBOSE_SEED = process.env.SLAYER_DEBUG === '1';
+
 // Real candle seeding via background thread on startup
 const seedHistoricalCandles = async () => {
   console.log('[SkyVision] Seeding historical candles from live sources...');
+  let seeded = 0;
   for (const asset of ASSET_LIST) {
     for (const tf of TIMEFRAMES) {
       const key = `${asset.ticker}-${tf.val}`;
@@ -86,13 +92,15 @@ const seedHistoricalCandles = async () => {
         const candleRes = await getUnifiedCandles(asset.ticker, tf.val as TimeframeVal, 120);
         if (candleRes && candleRes.candles && candleRes.candles.length > 0) {
           db.candles[key] = candleRes.candles;
-          console.log(`[SkyVision] Seeded ${candleRes.candles.length} candles for ${key} from ${candleRes.source}`);
+          seeded++;
+          if (VERBOSE_SEED) console.log(`[SkyVision] Seeded ${candleRes.candles.length} candles for ${key} from ${candleRes.source}`);
         }
       } catch (err) {
         console.warn(`[SkyVision] Volatile history backfill skipped/failed for ${key}:`, err);
       }
     }
   }
+  console.log(`[SkyVision] Seeded historical candles for ${seeded} streams.`);
 };
 seedHistoricalCandles();
 
