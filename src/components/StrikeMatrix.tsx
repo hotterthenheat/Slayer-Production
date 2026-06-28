@@ -1,182 +1,114 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import type { GexProfileData } from '../types';
 
 /**
- * Strike Matrix — dealer-heatmap build (SpotGamma / Voltick style). Each strike is a row; its NET γ
- * reads as a colour-filled cell (green = positive / dealers sticky, red = negative / slippery; brighter
- * = bigger) with the value in light text. Spot / gamma-flip / walls are marked inline.
- *
- * Two layouts, one component:
- *  • SINGLE expiry: one heatmap column + a magnitude bar so the gamma profile reads as a shape.
- *  • MULTI expiry (the full Voltick matrix): one heatmap column per expiration with the expiry dates
- *    across the top and a per-expiry net-γ bar footer.
- *
- * `size`: 'compact' for the left-rail tab; 'full' for the maximized full-screen view (taller rows,
- * bigger type, more strikes — fills the screen instead of a small box).
+ * Strike Matrix — the dealer gamma chain (SpotGamma-style): one row per strike with a green CALL Γ
+ * heatmap column, a red PUT Γ heatmap column, and a VOL column, plus a TOTAL footer. Spot is marked on
+ * the left edge; the dominant call/put walls get a glow ring. When the profile carries multiple
+ * expiries, a compact expiry selector switches the chain shown (each expiry keeps the same call/put/vol
+ * format). `size`: 'compact' for the rail, 'full' for the maximized full-screen view.
  */
 
 const fmtG = (v: number) => { const a = Math.abs(v), s = v < 0 ? '-' : '+'; if (a >= 1e9) return `${s}${(a / 1e9).toFixed(a >= 1e10 ? 1 : 2)}B`; if (a >= 1e6) return `${s}${(a / 1e6).toFixed(0)}M`; if (a >= 1e3) return `${s}${(a / 1e3).toFixed(0)}K`; return `${s}${Math.round(a)}`; };
+const fmtVol = (v: number) => { const a = Math.abs(v); if (a >= 1e6) return `${(a / 1e6).toFixed(1)}M`; if (a >= 1e3) return `${(a / 1e3).toFixed(a >= 1e4 ? 0 : 1)}K`; return `${Math.round(a)}`; };
 const MON = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-// 'YYYY-MM-DD' → 'Jun 28' (parsed by hand to stay timezone-stable).
-const fmtExp = (iso: string) => { const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(iso); if (!m) return iso; const mo = +m[2]; return `${MON[mo - 1] ?? '?'} ${+m[3]}`; };
-// Heat fill: green for +γ / red for −γ, brightness ∝ magnitude (relative to the matrix max).
-const heatBg = (net: number, maxAbs: number) => { const mag = maxAbs ? Math.min(1, Math.abs(net) / maxAbs) : 0; const hue = net >= 0 ? 'var(--success)' : 'var(--danger)'; return `color-mix(in srgb, ${hue} ${Math.round(7 + mag * 50)}%, transparent)`; };
-const MAX_EXP_COLS = 8;
+const fmtExp = (iso: string) => { const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(iso); if (!m) return iso; return `${MON[+m[2] - 1] ?? '?'} ${+m[3]}`; };
+const NEAR = 60;
 
 export function StrikeMatrix({ profile, decimals = 0, size = 'compact' }: { profile: GexProfileData; decimals?: number; size?: 'compact' | 'full' }) {
   const full = size === 'full';
-  const rowH = full ? 'h-[26px]' : 'h-[20px]';
-  const rowHm = full ? 'h-[25px]' : 'h-[19px]';
-  const cellH = full ? 'h-[20px]' : 'h-[15px]';
-  const fz = full ? 'text-[12px]' : 'text-[10.5px]';
-  const fzm = full ? 'text-[12px]' : 'text-[10px]';
+  const [sel, setSel] = useState(0);
+  const expiries = profile.expiries && profile.expiries.length ? profile.expiries : null;
+  const selIdx = expiries ? Math.min(sel, expiries.length - 1) : 0;
 
   const view = useMemo(() => {
     const spot = profile.spot || 0;
-    const exps = (profile.expiries || []).filter(e => (e.strikes || []).length);
-    const capMulti = full ? 48 : 32, capSingle = full ? 72 : 42;
-
-    // ── MULTI-EXPIRY GRID ────────────────────────────────────────────────────
-    if (exps.length > 1) {
-      const cols = exps.slice(0, MAX_EXP_COLS);
-      const hiddenCols = exps.length - cols.length;
-      const maps = cols.map(c => { const m = new Map<number, number>(); for (const s of c.strikes) m.set(s.strike, (m.get(s.strike) || 0) + (s.netGex || 0)); return m; });
-      const strikeSet = new Set<number>();
-      for (const m of maps) for (const k of m.keys()) strikeSet.add(k);
-      let strikes = [...strikeSet].filter(k => maps.some(m => Math.abs(m.get(k) || 0) > 0));
-      strikes = (spot ? strikes.sort((a, b) => Math.abs(a - spot) - Math.abs(b - spot)) : strikes.sort((a, b) => b - a)).slice(0, capMulti);
-      strikes.sort((a, b) => b - a);
-      const maxAbs = Math.max(1, ...maps.flatMap(m => [...m.values()].map(Math.abs)));
-      const maxColNet = Math.max(1, ...cols.map(c => Math.abs(c.netGex || 0)));
-      const rows = strikes.map(strike => ({
-        strike,
-        isSpot: !!spot && Math.abs(strike - spot) < spot * 0.0008,
-        isFlip: strike === profile.gammaFlip,
-        isCW: strike === profile.callWall,
-        isPW: strike === profile.putWall,
-        cells: maps.map(m => m.get(strike) ?? 0),
-      }));
-      return { mode: 'multi' as const, cols, hiddenCols, rows, maxAbs, maxColNet };
-    }
-
-    // ── SINGLE-EXPIRY HEATMAP ─────────────────────────────────────────────────
-    const all = profile.strikes || [];
-    const ss = all.filter(s => Math.abs(s.netGex || 0) > 0 || (s.callOi || 0) + (s.putOi || 0) > 0);
-    const near = (spot ? [...ss].sort((a, b) => Math.abs(a.strike - spot) - Math.abs(b.strike - spot)).slice(0, capSingle) : ss.slice(0, capSingle));
-    const maxNet = Math.max(...near.map(s => Math.abs(s.netGex || 0)), 1);
-    const rows = near.sort((a, b) => b.strike - a.strike).map(s => {
-      const net = s.netGex || 0;
-      return {
-        strike: s.strike, net, pos: net >= 0, mag: Math.abs(net) / maxNet,
-        isSpot: !!spot && Math.abs(s.strike - spot) < spot * 0.0008,
-        isCW: s.strike === profile.callWall, isPW: s.strike === profile.putWall, isFlip: s.strike === profile.gammaFlip,
-      };
-    });
-    const totalNet = all.reduce((a, s) => a + (s.netGex || 0), 0);
-    return { mode: 'single' as const, rows, totalNet };
-  }, [profile, full]);
+    const near0 = (a: number, b: number) => spot ? Math.abs(a - b) < spot * 0.0008 : a === b;
+    // Source rows: the selected expiry's chain, else the single front chain. Each → call/put/vol.
+    const raw = expiries
+      ? (expiries[selIdx].strikes || []).map(s => ({ strike: s.strike, call: s.callGex ?? Math.max(0, s.netGex || 0), put: s.putGex ?? Math.min(0, s.netGex || 0), vol: s.vol ?? 0 }))
+      : (profile.strikes || []).map(s => ({ strike: s.strike, call: s.callGex || 0, put: s.putGex || 0, vol: (s.callVolume || 0) + (s.putVolume || 0) || (s.callOi || 0) + (s.putOi || 0) }));
+    let ss = raw.filter(s => Math.abs(s.call) > 0 || Math.abs(s.put) > 0 || s.vol > 0);
+    ss = (spot ? ss.sort((a, b) => Math.abs(a.strike - spot) - Math.abs(b.strike - spot)) : ss).slice(0, full ? NEAR + 24 : NEAR);
+    ss.sort((a, b) => b.strike - a.strike);
+    const maxCall = Math.max(1, ...ss.map(s => Math.abs(s.call)));
+    const maxPut = Math.max(1, ...ss.map(s => Math.abs(s.put)));
+    const maxVol = Math.max(1, ...ss.map(s => s.vol));
+    // Dominant walls (the rings) — biggest call γ and biggest |put γ|.
+    let cwStrike = 0, pwStrike = 0, cwMax = 0, pwMax = 0;
+    for (const s of ss) { if (s.call > cwMax) { cwMax = s.call; cwStrike = s.strike; } if (-s.put > pwMax) { pwMax = -s.put; pwStrike = s.strike; } }
+    const rows = ss.map(s => ({ ...s, isSpot: !!spot && near0(s.strike, spot), isCW: s.strike === cwStrike, isPW: s.strike === pwStrike }));
+    const totCall = raw.reduce((a, s) => a + (s.call > 0 ? s.call : 0), 0);
+    const totPut = raw.reduce((a, s) => a + (s.put < 0 ? s.put : 0), 0);
+    const totVol = raw.reduce((a, s) => a + s.vol, 0);
+    return { rows, maxCall, maxPut, maxVol, totCall, totPut, totVol };
+  }, [profile, expiries, selIdx, full]);
 
   const nf = (v: number) => v.toLocaleString(undefined, { minimumFractionDigits: decimals, maximumFractionDigits: decimals });
+  const { rows, maxCall, maxPut, maxVol, totCall, totPut, totVol } = view;
 
-  // ── MULTI-EXPIRY RENDER ────────────────────────────────────────────────────
-  if (view.mode === 'multi') {
-    const { cols, hiddenCols, rows, maxAbs, maxColNet } = view;
-    const grid = { gridTemplateColumns: `${full ? 64 : 52}px repeat(${cols.length}, minmax(0, 1fr))` };
-    if (!rows.length) return <div className="flex items-center justify-center py-12 text-[11px] font-mono text-[var(--text-tertiary)]">Awaiting dealer chain…</div>;
-    return (
-      <div className={`w-full font-mono ${fzm} tabular-nums select-none`}>
-        {/* Expiry headers */}
-        <div className="grid gap-x-1 px-2 py-1.5 sticky top-0 z-10 bg-[var(--surface)] border-b border-[var(--border)]" style={grid}>
-          <div className="text-right text-[8px] font-black uppercase tracking-[0.14em] text-[var(--text-tertiary)] self-end">Strike</div>
-          {cols.map(c => (
-            <div key={c.expiration} className="flex flex-col items-center leading-tight" title={`${c.expiration} · ${c.dte}DTE · net γ ${fmtG(c.netGex)}`}>
-              <span className={`${full ? 'text-[11px]' : 'text-[9px]'} font-black text-[var(--text-secondary)]`}>{fmtExp(c.expiration)}</span>
-              <span className="text-[7.5px] font-bold uppercase tracking-wider" style={{ color: c.dte <= 0 ? 'var(--warning)' : 'var(--text-tertiary)' }}>{c.dte <= 0 ? '0DTE' : `${c.dte}d`}</span>
-            </div>
-          ))}
-        </div>
-        {/* Strike × expiry heatmap */}
-        <div>
-          {rows.map(r => {
-            const marker = r.isCW ? 'var(--success)' : r.isPW ? 'var(--danger)' : r.isFlip ? 'var(--warning)' : null;
-            return (
-              <div key={r.strike} className={`grid gap-x-1 px-2 items-center ${rowHm} hover:bg-white/[0.03] transition-colors duration-150`} style={{ ...grid, ...(r.isSpot ? { boxShadow: 'inset 2px 0 0 var(--accent-color)' } : {}) }}>
-                <div className="flex items-center justify-end gap-1">
-                  {marker && <span className="w-1 h-1 rounded-full shrink-0" style={{ background: marker }} title={r.isCW ? 'Call Wall' : r.isPW ? 'Put Wall' : 'Gamma Flip'} />}
-                  {r.isSpot && <span className="text-[6.5px] font-black" style={{ color: 'var(--accent-color)' }}>◄</span>}
-                  <span style={{ color: r.isSpot ? 'var(--accent-color)' : r.isFlip ? 'var(--warning)' : 'var(--text-secondary)', fontWeight: r.isSpot || r.isFlip ? 800 : 600 }}>{nf(r.strike)}</span>
-                </div>
-                {r.cells.map((net, i) => {
-                  const mag = maxAbs ? Math.abs(net) / maxAbs : 0;
-                  return (
-                    <div key={i} className={`${cellH} rounded-[3px] flex items-center justify-center transition-colors duration-300`} style={{ background: heatBg(net, maxAbs) }}>
-                      <span style={{ color: mag > 0.32 ? 'var(--text-primary)' : `color-mix(in srgb, ${net >= 0 ? 'var(--success)' : 'var(--danger)'} 75%, var(--text-tertiary))`, fontWeight: mag > 0.6 ? 800 : 600 }}>{net ? fmtG(net) : '·'}</span>
-                    </div>
-                  );
-                })}
-              </div>
-            );
-          })}
-        </div>
-        {/* Per-expiry net-γ bars (the Voltick footer) */}
-        <div className="grid gap-x-1 px-2 pt-1.5 pb-1 sticky bottom-0 bg-[var(--surface)] border-t border-[var(--border-strong)] z-10" style={grid}>
-          <div className="text-right text-[8px] font-black uppercase tracking-[0.1em] text-[var(--text-tertiary)] self-end pb-0.5">Net γ</div>
-          {cols.map(c => {
-            const pos = (c.netGex || 0) >= 0, h = Math.max(3, (Math.abs(c.netGex || 0) / maxColNet) * (full ? 30 : 22));
-            return (
-              <div key={c.expiration} className="flex flex-col items-center justify-end gap-0.5" title={`${fmtExp(c.expiration)} net γ ${fmtG(c.netGex)}`}>
-                <div className={`w-full flex items-end justify-center ${full ? 'h-[30px]' : 'h-[22px]'}`}><div className="w-[60%] rounded-sm" style={{ height: `${h}px`, background: pos ? 'var(--success)' : 'var(--danger)', opacity: 0.85 }} /></div>
-                <span className="text-[8px] font-black" style={{ color: pos ? 'var(--success)' : 'var(--danger)' }}>{fmtG(c.netGex)}</span>
-              </div>
-            );
-          })}
-        </div>
-        {hiddenCols > 0 && <div className="px-2 py-1 text-[8px] font-mono text-[var(--text-tertiary)] text-right">+{hiddenCols} more {hiddenCols === 1 ? 'expiry' : 'expiries'} not shown</div>}
-      </div>
-    );
-  }
+  const grid = full ? 'grid grid-cols-[84px_1fr_1fr_56px]' : 'grid grid-cols-[58px_1fr_1fr_42px]';
+  const rowH = full ? 'h-[24px]' : 'h-[19px]';
+  const fz = full ? 'text-[12px]' : 'text-[10px]';
 
-  // ── SINGLE-EXPIRY RENDER ────────────────────────────────────────────────────
-  const { rows, totalNet } = view;
   if (!rows.length) return <div className="flex items-center justify-center py-12 text-[11px] font-mono text-[var(--text-tertiary)]">Awaiting dealer chain…</div>;
-  const cols = 'grid grid-cols-[46px_minmax(0,1fr)_40px] gap-x-1.5 px-2';
+
+  const callBg = (v: number) => `color-mix(in srgb, var(--success) ${Math.round(6 + Math.min(1, Math.abs(v) / maxCall) * 54)}%, transparent)`;
+  const putBg = (v: number) => `color-mix(in srgb, var(--danger) ${Math.round(6 + Math.min(1, Math.abs(v) / maxPut) * 54)}%, transparent)`;
 
   return (
     <div className={`w-full font-mono ${fz} tabular-nums select-none`}>
-      <div className={`${cols} py-1.5 sticky top-0 z-10 bg-[var(--surface)] border-b border-[var(--border)] text-[8px] font-black uppercase tracking-[0.16em] text-[var(--text-tertiary)]`}>
-        <div className="text-right">Strike</div>
-        <div className="text-right">Net γ</div>
-        <div className="text-right">GEX</div>
+      {/* Expiry selector — only when the profile carries multiple expiries */}
+      {expiries && expiries.length > 1 && (
+        <div className="flex items-center gap-1 px-2 py-1.5 border-b border-[var(--border)] bg-[var(--surface)] overflow-x-auto scrollbar-none">
+          {expiries.map((e, i) => (
+            <button key={e.expiration} onClick={() => setSel(i)}
+              className="shrink-0 flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-mono font-black uppercase tracking-wide transition-colors focus-visible:ring-1 focus-visible:ring-[var(--accent-color)] focus:outline-none"
+              style={i === selIdx ? { background: 'var(--surface-3)', color: 'var(--text-primary)', boxShadow: 'inset 0 -2px 0 var(--accent-color)' } : { color: 'var(--text-tertiary)' }}>
+              {fmtExp(e.expiration)}<span style={{ color: e.dte <= 0 ? 'var(--warning)' : 'inherit', opacity: 0.8 }}>{e.dte <= 0 ? '0DTE' : `${e.dte}d`}</span>
+            </button>
+          ))}
+        </div>
+      )}
+      {/* Column header */}
+      <div className={`${grid} gap-x-1 px-2 py-1.5 sticky top-0 z-10 bg-[var(--surface)] border-b border-[var(--border)] text-[8px] font-black uppercase tracking-[0.14em]`}>
+        <div className="text-right text-[var(--text-tertiary)]">Strike</div>
+        <div className="text-center" style={{ color: 'var(--success)' }}>Call Γ</div>
+        <div className="text-center" style={{ color: 'var(--danger)' }}>Put Γ</div>
+        <div className="text-right text-[var(--text-tertiary)]">Vol</div>
       </div>
+      {/* Chain */}
       <div>
         {rows.map(r => {
-          const hue = r.pos ? 'var(--success)' : 'var(--danger)';
-          const marker = r.isCW ? 'var(--success)' : r.isPW ? 'var(--danger)' : r.isFlip ? 'var(--warning)' : null;
+          const cMag = Math.abs(r.call) / maxCall, pMag = Math.abs(r.put) / maxPut, vHot = r.vol / maxVol > 0.55;
           return (
-            <div key={r.strike} className={`grid grid-cols-[46px_minmax(0,1fr)_40px] gap-x-1.5 px-2 items-center ${rowH} hover:bg-white/[0.03] transition-colors duration-150`}
-              style={r.isSpot ? { boxShadow: 'inset 2px 0 0 var(--accent-color)' } : undefined}>
-              <div className="relative flex items-center justify-end gap-1">
-                {marker && <span className="w-1 h-1 rounded-full shrink-0" style={{ background: marker }} title={r.isCW ? 'Call Wall' : r.isPW ? 'Put Wall' : 'Gamma Flip'} />}
-                {r.isSpot && <span className="text-[6.5px] font-black tracking-wider px-0.5 rounded-sm" style={{ color: 'var(--accent-color)' }}>◄</span>}
-                <span style={{ color: r.isSpot ? 'var(--accent-color)' : r.isFlip ? 'var(--warning)' : 'var(--text-secondary)', fontWeight: r.isSpot || r.isFlip ? 800 : 600 }}>{nf(r.strike)}</span>
+            <div key={r.strike} className={`${grid} gap-x-1 px-2 items-center ${rowH} hover:bg-white/[0.03] transition-colors duration-150`}
+              style={r.isSpot ? { boxShadow: 'inset 3px 0 0 var(--accent-color)' } : undefined}>
+              <div className="text-right font-bold" style={{ color: r.isSpot ? 'var(--accent-color)' : 'var(--text-secondary)', fontWeight: r.isSpot ? 800 : 600 }}>{nf(r.strike)}</div>
+              {/* CALL Γ */}
+              <div className="h-full flex items-center justify-center rounded-[2px] transition-colors duration-300"
+                style={{ background: callBg(r.call), boxShadow: r.isCW ? 'inset 0 0 0 1px var(--success), 0 0 7px -2px var(--success)' : undefined }}>
+                <span style={{ color: cMag > 0.4 ? 'var(--text-primary)' : 'color-mix(in srgb, var(--success) 82%, var(--text-tertiary))', fontWeight: cMag > 0.6 ? 800 : 600 }}>{r.call ? fmtG(r.call) : '·'}</span>
               </div>
-              <div className={`relative ${cellH} rounded-[3px] flex items-center justify-end pr-1.5 overflow-hidden transition-colors duration-300`}
-                style={{ background: `color-mix(in srgb, ${hue} ${Math.round(9 + r.mag * 48)}%, transparent)`, boxShadow: r.isFlip ? `inset 0 0 0 1px color-mix(in srgb, var(--warning) 60%, transparent)` : undefined }}>
-                <span style={{ color: r.mag > 0.32 ? 'var(--text-primary)' : `color-mix(in srgb, ${hue} 80%, var(--text-tertiary))`, fontWeight: r.mag > 0.6 ? 800 : 600 }}>{r.net ? fmtG(r.net) : '·'}</span>
+              {/* PUT Γ */}
+              <div className="h-full flex items-center justify-center rounded-[2px] transition-colors duration-300"
+                style={{ background: putBg(r.put), boxShadow: r.isPW ? 'inset 0 0 0 1px var(--danger), 0 0 7px -2px var(--danger)' : undefined }}>
+                <span style={{ color: pMag > 0.4 ? 'var(--text-primary)' : 'color-mix(in srgb, var(--danger) 82%, var(--text-tertiary))', fontWeight: pMag > 0.6 ? 800 : 600 }}>{r.put ? fmtG(r.put) : '·'}</span>
               </div>
-              <div className={`relative ${cellH} flex items-center`}>
-                <div className="w-full h-[6px] rounded-sm overflow-hidden" style={{ background: 'color-mix(in srgb, var(--text-tertiary) 12%, transparent)' }}>
-                  <div className="h-full rounded-sm" style={{ width: `${Math.max(4, r.mag * 100)}%`, background: hue, opacity: 0.35 + r.mag * 0.6, transition: 'width 300ms ease-out' }} />
-                </div>
+              {/* VOL pill */}
+              <div className="flex justify-end">
+                <span className="px-1 rounded-full text-[8.5px] font-bold tabular-nums" style={{ background: vHot ? 'color-mix(in srgb, var(--text-tertiary) 30%, transparent)' : 'color-mix(in srgb, var(--text-tertiary) 13%, transparent)', color: vHot ? 'var(--text-primary)' : 'var(--text-tertiary)' }}>{r.vol ? fmtVol(r.vol) : '–'}</span>
               </div>
             </div>
           );
         })}
       </div>
-      <div className={`${cols} py-1.5 sticky bottom-0 bg-[var(--surface)] border-t border-[var(--border-strong)] text-[9px] font-black z-10`}>
-        <div className="text-right text-[var(--text-tertiary)] uppercase tracking-[0.12em] text-[8px] self-center">Net</div>
-        <div className="text-right pr-1.5" style={{ color: totalNet >= 0 ? 'var(--success)' : 'var(--danger)' }}>{fmtG(totalNet)}</div>
-        <div className="text-right text-[var(--text-tertiary)] text-[8px] self-center">Σγ</div>
+      {/* TOTAL footer */}
+      <div className={`${grid} gap-x-1 px-2 py-1.5 sticky bottom-0 bg-[var(--surface)] border-t border-[var(--border-strong)] text-[9px] font-black z-10`}>
+        <div className="text-right text-[var(--text-tertiary)] uppercase tracking-[0.1em] text-[8px] self-center">Total</div>
+        <div className="text-center" style={{ color: 'var(--success)' }}>{fmtG(totCall)}</div>
+        <div className="text-center" style={{ color: 'var(--danger)' }}>{fmtG(totPut)}</div>
+        <div className="text-right text-[var(--text-secondary)]">{fmtVol(totVol)}</div>
       </div>
     </div>
   );
