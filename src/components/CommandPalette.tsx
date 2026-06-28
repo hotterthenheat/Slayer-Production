@@ -105,26 +105,26 @@ export function CommandPalette() {
       aria-label="Command palette"
     >
       <div
-        className="w-full max-w-xl mx-4 bg-[#0c0d0f] border border-zinc-800 rounded-xl shadow-2xl overflow-hidden font-mono"
+        className="w-full max-w-xl mx-4 bg-[var(--surface)] border border-[var(--border-strong)] rounded-xl shadow-2xl overflow-hidden font-mono"
         onMouseDown={e => e.stopPropagation()}
         onKeyDown={onKeyDown}
       >
-        <div className="flex items-center gap-2 px-4 py-3 border-b border-zinc-800">
-          <span className="text-zinc-600 text-sm select-none">&gt;</span>
+        <div className="flex items-center gap-2 px-4 py-3 border-b border-[var(--border)]">
+          <span className="text-[var(--accent-color)] text-sm font-black select-none">&gt;</span>
           <input
             ref={inputRef}
             value={query}
             onChange={e => setQuery(e.target.value)}
             placeholder="Type a command or symbol…"
-            className="flex-1 bg-transparent outline-none text-sm text-zinc-100 placeholder-zinc-600"
+            className="flex-1 bg-transparent outline-none text-sm text-[var(--text-primary)] placeholder:text-[var(--text-tertiary)] tabular-nums"
             spellCheck={false}
             autoComplete="off"
           />
-          <kbd className="text-[9px] text-zinc-600 border border-zinc-700 rounded px-1.5 py-0.5">ESC</kbd>
+          <kbd className="text-[9px] text-[var(--text-tertiary)] border border-[var(--border)] rounded px-1.5 py-0.5">ESC</kbd>
         </div>
         <div ref={listRef} className="max-h-[50vh] overflow-y-auto py-1">
           {filtered.length === 0 && (
-            <div className="px-4 py-6 text-center text-zinc-600 text-xs">No matching commands</div>
+            <div className="px-4 py-6 text-center text-[var(--text-tertiary)] text-xs">No matching commands</div>
           )}
           {filtered.map((c, i) => (
             <button
@@ -132,14 +132,15 @@ export function CommandPalette() {
               data-idx={i}
               onMouseEnter={() => setActive(i)}
               onClick={() => c.run()}
-              className={`w-full flex items-center justify-between px-4 py-2.5 text-left text-sm transition-colors ${i === active ? 'bg-white/10 text-white' : 'text-[var(--text-tertiary)]'}`}
+              className={`w-full flex items-center justify-between px-4 py-2.5 text-left text-sm transition-colors ${i === active ? 'bg-[var(--surface-3)] text-[var(--text-primary)]' : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'}`}
+              style={i === active ? { boxShadow: 'inset 2px 0 0 var(--accent-color)' } : undefined}
             >
               <span>{c.title}</span>
-              {c.hint && <span className="text-[10px] uppercase tracking-wider text-zinc-600 ml-3 shrink-0">{c.hint}</span>}
+              {c.hint && <span className="text-[10px] uppercase tracking-wider text-[var(--text-tertiary)] ml-3 shrink-0">{c.hint}</span>}
             </button>
           ))}
         </div>
-        <div className="px-4 py-2 border-t border-zinc-800 flex items-center gap-3 text-[9px] uppercase tracking-wider text-zinc-600">
+        <div className="px-4 py-2 border-t border-[var(--border)] flex items-center gap-3 text-[9px] uppercase tracking-wider text-[var(--text-tertiary)]">
           <span>↑↓ navigate</span><span>↵ select</span><span>⌘K toggle</span>
         </div>
       </div>

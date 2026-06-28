@@ -244,6 +244,9 @@ export interface GexProfileData {
   gammaFlipConfident?: boolean;
   wallsConfident?: boolean;
   feed?: string;
+  // Nearest-expiry context for the matrix header: 'Jun 30' + '2DTE'.
+  expiryDate?: string;
+  expiryLabel?: string;
   strikes?: GexStrikeDetail[];
   // Optional multi-expiry gamma columns (the full Voltick-style matrix). Present only
   // when the server's multi-expiry fetch is enabled (it adds OPRA cost, so it is

@@ -466,7 +466,7 @@ export function LiveTerminalFlow({ profile: liveProfile, ticker, decimals }: Liv
           </div>
           <div className="leading-none hidden sm:block">
             <div className="flex items-center gap-1.5">
-              <span className="text-[13px] font-sans font-black tracking-widest uppercase text-[var(--text-primary)]">Live Terminal</span>
+              <span className="text-[13px] font-sans font-black tracking-widest uppercase text-[var(--text-primary)]">Slayer Terminal</span>
               {/* Status dot reflects the real feed — it only pulses when the stream is actually live, so it's
                   never a decorative green light over a closed/frozen tape. (P2-21) */}
               <span className="relative flex h-1.5 w-1.5" title={feedLabel}>{liveFeed && <span className="animate-ping absolute inline-flex h-full w-full rounded-full opacity-60" style={{ background: feedColor }} />}<span className="relative inline-flex rounded-full h-1.5 w-1.5" style={{ background: feedColor }} /></span>

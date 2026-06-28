@@ -6,7 +6,7 @@
  * synthetic sandbox walk), and assembles the Universal SSE payload. Importing
  * this module starts the ticker and seeds candles. No external API key required.
  */
-import { ASSET_LIST, generateInitialCandles, TIMEFRAMES, calculateFVGs, calculateLiquidityEvents, optionExpiryLabel, optionDteDays, hoursToSessionClose } from '../data';
+import { ASSET_LIST, generateInitialCandles, TIMEFRAMES, calculateFVGs, calculateLiquidityEvents, optionExpiryLabel, optionExpiryDate, optionDteDays, hoursToSessionClose } from '../data';
 import {
   calculateSystemScoreFromCandles,
   calculateV11Metrics,
@@ -1615,6 +1615,8 @@ const buildPayload = (params: PayloadParams) => {
     gammaFlipConfident: metricsV11.dealer.gammaFlipConfident,
     wallsConfident: metricsV11.dealer.wallsConfident,
     feed: feedLabel,
+    expiryLabel: expLabel,
+    expiryDate: optionExpiryDate(asset),
     strikes: Object.values(strikesMap),
     // Multi-expiry columns — present only when the opt-in fetch populated them
     // (default-off). Absent ⇒ the matrix renders the single front-expiry heatmap.

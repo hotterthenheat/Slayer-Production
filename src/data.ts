@@ -468,6 +468,16 @@ export function optionExpiryLabel(asset: AssetInfo): string {
   return '0DTE';
 }
 
+/** Short calendar date of a ticker's nearest expiry (e.g. 'Jun 30') — today for 0DTE
+ *  daily names, the upcoming Friday for front-weekly single stocks. Model-feed date;
+ *  a live provider supplies the true listed expiry. */
+export function optionExpiryDate(asset: AssetInfo, now: Date = new Date()): string {
+  const MON = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  const d = new Date(now);
+  if (asset.optionsStyle === 'weekly') d.setDate(d.getDate() + frontWeeklyDteDays(now));
+  return `${MON[d.getMonth()]} ${d.getDate()}`;
+}
+
 export const TIMEFRAMES: { val: TimeframeVal; label: string; minMultiplier: number }[] = [
   { val: '1m', label: '1 Minute', minMultiplier: 1 },
   { val: '2m', label: '2 Minutes', minMultiplier: 2 },
@@ -498,13 +508,22 @@ export function generateInitialCandles(asset: AssetInfo, timeframe: TimeframeVal
     minMultiplier = tfObj.minMultiplier;
   }
 
-  // Deterministic per-asset seed so each ticker's displacement structure differs
-  // but is reproducible across reloads.
+  // Deterministic per-(asset, timeframe) seed so each ticker AND each timeframe is an
+  // INDEPENDENT, reproducible series — not the same shape merely re-spaced in time (which
+  // is what made switching 1m/5m/15m look fake). A seeded PRNG (mulberry32) replaces the
+  // bare Math.random() below, so the sequence is stable across reloads and genuinely
+  // differs per timeframe. (When a data provider is configured these synthetic bars are
+  // overwritten with real per-timeframe OHLC.)
   const assetSeed = asset.ticker.split('').reduce((a, c) => a + c.charCodeAt(0), 0);
-  const dispBar1 = 10 + (assetSeed % 7);
-  const dispBar2 = dispBar1 + 9 + (assetSeed % 5);
-  const dispBar3 = dispBar2 + 7 + (assetSeed % 4);
-  const dispBar2Bearish = assetSeed % 2 === 0;
+  const tfSeed = (((assetSeed * 2654435761) >>> 0) ^ (minMultiplier * 40503)) >>> 0;
+  let _s = tfSeed || 1;
+  const rnd = () => { _s = (_s + 0x6D2B79F5) | 0; let t = Math.imul(_s ^ (_s >>> 15), 1 | _s); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
+  // Displacement structure + drift vary per (asset, timeframe) so charts aren't clones.
+  const dispBar1 = 8 + (tfSeed % 9);
+  const dispBar2 = dispBar1 + 7 + ((tfSeed >> 4) % 6);
+  const dispBar3 = dispBar2 + 6 + ((tfSeed >> 8) % 5);
+  const dispBar2Bearish = ((tfSeed >> 2) & 1) === 0;
+  const trendBias = (((tfSeed >> 5) % 3) - 1) * 0.03 * vol; // some TFs drift up, some down, some flat
 
   let currentPrice = basePrice * (1 - vol * 0.015); // Start slightly lower to build a trend pattern
   let accumulatedVolPrice = 0;
@@ -535,24 +554,24 @@ export function generateInitialCandles(asset: AssetInfo, timeframe: TimeframeVal
       // momentum continuation after the second displacement
       biasFactor = -0.6 * vol;
     } else {
-      biasFactor = (Math.random() - 0.44) * 0.4 * vol;
+      biasFactor = (rnd() - 0.46) * 0.5 * vol + trendBias;
     }
 
     const priceChange = basePrice * (biasFactor / 100) * tfScale;
     const open = currentPrice;
     const close = currentPrice + priceChange;
     
-    let high = Math.max(open, close) + (Math.random() * 0.08 * vol * basePrice) / 100;
-    let low = Math.min(open, close) - (Math.random() * 0.08 * vol * basePrice) / 100;
+    let high = Math.max(open, close) + (rnd() * 0.08 * vol * basePrice) / 100;
+    let low = Math.min(open, close) - (rnd() * 0.08 * vol * basePrice) / 100;
     
     // Stretch candle body for institutional displacement
     if (isHeavyDisplacement) {
       if (displacementDir === 'bullish') {
-        high = close + (Math.random() * 0.01 * basePrice) / 100;
-        low = open - (Math.random() * 0.005 * basePrice) / 100;
+        high = close + (rnd() * 0.01 * basePrice) / 100;
+        low = open - (rnd() * 0.005 * basePrice) / 100;
       } else {
-        high = open + (Math.random() * 0.005 * basePrice) / 100;
-        low = close - (Math.random() * 0.01 * basePrice) / 100;
+        high = open + (rnd() * 0.005 * basePrice) / 100;
+        low = close - (rnd() * 0.01 * basePrice) / 100;
       }
     }
 
@@ -561,11 +580,11 @@ export function generateInitialCandles(asset: AssetInfo, timeframe: TimeframeVal
 
     // Relative volume expands during institutional activity
     const baseVolume = 100000 * (asset.decimals === 5 ? 0.01 : 1);
-    let volume = Math.floor(baseVolume * (0.5 + Math.random() * 1.5));
+    let volume = Math.floor(baseVolume * (0.5 + rnd() * 1.5));
     if (isHeavyDisplacement) {
-      volume = Math.floor(baseVolume * (3.5 + Math.random() * 2));
+      volume = Math.floor(baseVolume * (3.5 + rnd() * 2));
     } else if (Math.abs(priceChange) > (basePrice * vol * 0.003)) {
-      volume = Math.floor(baseVolume * (1.8 + Math.random() * 1.2));
+      volume = Math.floor(baseVolume * (1.8 + rnd() * 1.2));
     }
 
     currentPrice = close;
