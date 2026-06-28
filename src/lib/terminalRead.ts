@@ -147,7 +147,7 @@ export function computeTerminalRead(profile: GexProfileData, recentCloses: numbe
   // of the real signals above — every input is shown to the user, so it is auditable, not a black box.
   const regimeClarity = regime === 'PIN' ? pinStrength : Math.min(100, Math.abs(score) * 1.1);
   let positionStrength = Math.round(0.45 * Math.abs(score) + 0.35 * confidence + 0.20 * regimeClarity);
-  if (noTrade || biasDir === 0) positionStrength = Math.round(positionStrength * 0.5);
+  if (noTrade || biasDir === 0) positionStrength = Math.floor(positionStrength / 2);
   positionStrength = Math.max(0, Math.min(100, positionStrength));
 
   // ── Live narrative ──

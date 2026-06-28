@@ -395,7 +395,9 @@ export function hardInvalidations(
   flow5mFlipped: boolean, priceBrokeStructure: boolean, cfg: EngineConfig
 ): string[] {
   const flags: string[] = [];
-  if (netGexNow * Math.sign(netGex0) < 0) flags.push('DEALER_FLIP');
+  // Sign flip incl. the zero edge: Math.sign(0)===0 made the old product test miss a flip when
+  // netGex0 entered as exactly 0 (e.g. market open / one-sided book). Compare signs explicitly.
+  if ((netGexNow > 0 && netGex0 <= 0) || (netGexNow < 0 && netGex0 >= 0)) flags.push('DEALER_FLIP');
   // FIXED: compare magnitude against 0.50·|oiVel0|, not the signed value.
   if (oiVelNow < 0 && Math.abs(oiVelNow) >= 0.5 * Math.abs(oiVel0)) flags.push('OI_LIQUIDATION');
   if (flow5mFlipped) flags.push('FLOW_REVERSAL');
