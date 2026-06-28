@@ -685,7 +685,7 @@ export function LiveTerminalFlow({ profile: liveProfile, ticker, decimals }: Liv
                 ? <div className="absolute inset-0 p-1.5"><StrikeGexChart history={gexHist} /></div>
                 : multiChart
                 ? <ChartPanelGrid profile={profile} decimals={decimals} candles={candles} baseTicker={selectedAsset.ticker} timeframe={selectedTimeframe} />
-                : <SlayerChart profile={profile} decimals={decimals} />}
+                : <SlayerChart profile={profile} decimals={decimals} live={liveFeed} />}
             </div>
           </main>
 
