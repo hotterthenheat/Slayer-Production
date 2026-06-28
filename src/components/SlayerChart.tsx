@@ -5,7 +5,7 @@ import * as TI from '../lib/indicators';
 import { SyncChannel, CHANNEL_CYCLE, CHANNEL_COLORS, subscribeChannel, publishChannel, broadcastCrosshair, broadcastPriceScale } from '../lib/chartSync';
 import { fetchHistory } from '../lib/historyCache';
 import { OVERLAY_DEFS, PANE_DEFS, type OHLCV, type Series, type PaneData } from './chart/indicators';
-import { newId, idxOfTime, timeOfIdx, distToSeg, RANGE_PRESETS, CHART_TFS, readTheme, EMPTY, type RangeKey } from './chart/format';
+import { newId, idxOfTime, timeOfIdx, distToSeg, RANGE_PRESETS, CHART_TFS, readTheme, EMPTY, hexA, type RangeKey } from './chart/format';
 import { CHART_TYPES, DRAW_COLOR, DRAW_TOOLS, type ChartType, type DrawTool, type Anchor, type Drawing } from './chart/drawing';
 import { ChartContextMenu } from './chart/overlays';
 import { IndicatorMenu } from './chart/IndicatorMenu';
@@ -46,6 +46,10 @@ export const SlayerChart = memo(function SlayerChartImpl({ profile, decimals, ca
   const keySuffix = panelId ? '.' + panelId : '';
   const containerRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  // Layered-canvas Phase 1: a transparent overlay canvas stacked over the candle layer. The live
+  // last-price pulse (and, next, the crosshair) paint here so the heavy candle layer is never
+  // repainted just to animate a 20fps ring — only this lightweight surface clears + redraws.
+  const overlayRef = useRef<HTMLCanvasElement>(null);
 
   // Chart prefs persist across reloads (localStorage). A first-time user still gets the clean
   // default — only the GEX profile on, every indicator + displacement opt-in, TradingView-style.
@@ -233,24 +237,61 @@ export const SlayerChart = memo(function SlayerChartImpl({ profile, decimals, ca
 
   const livePhaseRef = useRef(0);   // 0..1 looping pulse phase, advanced by the live rAF loop below
   const liveRafRef = useRef(0);
-  drawRef.current = () => drawChart({
+  // Last-price geometry the candle layer hands off on every base repaint; the overlay layer reads it
+  // to paint the dot + (when live) the expanding ring, so the dot tracks the fresh last-price y on
+  // every pan/zoom/data frame. null = last price is scrolled off-screen → overlay paints nothing.
+  const liveOverlayRef = useRef<{ plotR: number; lastY: number; up: boolean; upCol: string; downCol: string } | null>(null);
+
+  // The candle layer (heavy: candles, heatmap, levels, axes). Pulled out of drawRef so the live
+  // pulse loop can repaint the OVERLAY alone without re-running any of this.
+  const baseDraw = () => drawChart({
     canvasRef, containerRef, viewRef, priceViewRef, geomRef, dispRangeRef, scaleViewRef, themeRef,
     hoverRef, gexDeltaRef, draftRef, measureRef, drawingsRef, toolRef, selectedRef,
     candles, ha, atr, profile, colors, decimals, chartType, ovOn, overlaySeries, paneSeries,
     displacements, gexCount, showVolume, showGrid, showWatermark, candleBorders,
-    showGex, showHeat, showOrbs, showVolProfile, showPrevClose, showDisp, showLadder, tickKey, tfKey, onScale, live, livePhaseRef,
+    showGex, showHeat, showOrbs, showVolProfile, showPrevClose, showDisp, showLadder, tickKey, tfKey, onScale, live, livePhaseRef, liveOverlayRef,
   });
 
-  // Live last-price pulse — a self-perpetuating rAF that advances the pulse phase and repaints, ONLY
-  // while the feed is genuinely live (market open + real provider). Throttled to ~20fps to bound cost,
-  // and fully torn down when `live` flips false (market close / model data → static dot, no loop).
+  // Overlay repaint — clears the transparent top canvas and paints the last-price dot, plus an
+  // expanding/fading ring while the feed is genuinely live. Cheap enough to run every animation frame.
+  const drawOverlayRef = useRef<() => void>(() => {});
+  drawOverlayRef.current = () => {
+    const cv = overlayRef.current, container = containerRef.current; if (!cv || !container) return;
+    const dpr = window.devicePixelRatio || 1;
+    const W = container.clientWidth, H = container.clientHeight; if (W <= 0 || H <= 0) return;
+    // Match the candle layer's backing store; only reallocate when the surface actually changes.
+    const nw = Math.floor(W * dpr), nh = Math.floor(H * dpr);
+    if (cv.width !== nw || cv.height !== nh) { cv.width = nw; cv.height = nh; cv.style.width = W + 'px'; cv.style.height = H + 'px'; }
+    const ctx = cv.getContext('2d'); if (!ctx) return;
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0); ctx.clearRect(0, 0, W, H);
+    const g = liveOverlayRef.current; if (!g) return;   // last price off-screen or no candles → nothing to paint
+    const col = g.up ? g.upCol : g.downCol;
+    // Expanding pulse ring — live only; phase 0..1 grows the radius and fades the alpha to 0.
+    if (live) {
+      const ph = livePhaseRef.current, r = 3 + ph * 13, a = 0.5 * (1 - ph);
+      ctx.beginPath(); ctx.arc(g.plotR, g.lastY, r, 0, Math.PI * 2);
+      ctx.strokeStyle = hexA(col, a); ctx.lineWidth = 1.5; ctx.stroke();
+    }
+    // Static last-price dot — always painted, so a closed/stale market still shows the marker.
+    ctx.beginPath(); ctx.arc(g.plotR, g.lastY, 3.2, 0, Math.PI * 2); ctx.fillStyle = col; ctx.fill();
+    ctx.beginPath(); ctx.arc(g.plotR, g.lastY, 3.2, 0, Math.PI * 2); ctx.strokeStyle = hexA('#06090d', 0.9); ctx.lineWidth = 1; ctx.stroke();
+  };
+
+  // Full repaint = candle layer then overlay, so the dot re-glues to the latest last-price y on every
+  // data/pan/zoom/hover frame routed through drawRef. The live loop below bypasses baseDraw entirely.
+  drawRef.current = () => { baseDraw(); drawOverlayRef.current(); };
+
+  // Live last-price pulse — a self-perpetuating rAF that advances the pulse phase and repaints ONLY
+  // the overlay layer, ONLY while the feed is genuinely live (market open + real provider). Throttled
+  // to ~20fps to bound cost, and fully torn down when `live` flips false (market close / model data →
+  // static dot, no loop). The candle layer is never touched by this loop.
   useEffect(() => {
-    if (!live) { livePhaseRef.current = 0; return; }
+    if (!live) { livePhaseRef.current = 0; drawOverlayRef.current(); return; }
     let t0 = 0, lastPaint = 0, raf = 0;
     const loop = (now: number) => {
       if (!t0) t0 = now;
       livePhaseRef.current = ((now - t0) / 1600) % 1;
-      if (now - lastPaint >= 50) { lastPaint = now; drawRef.current(); }   // ~20fps
+      if (now - lastPaint >= 50) { lastPaint = now; drawOverlayRef.current(); }   // ~20fps overlay-only
       raf = requestAnimationFrame(loop);
       liveRafRef.current = raf;
     };
@@ -532,6 +573,8 @@ export const SlayerChart = memo(function SlayerChartImpl({ profile, decimals, ca
       </div>
       <div ref={containerRef} className="relative flex-1 min-h-[300px]" style={{ position: 'relative', flex: 1, minHeight: 300 }}>
         <canvas ref={canvasRef} className="absolute inset-0 cursor-crosshair" style={{ position: 'absolute', inset: 0 }} />
+        {/* Layered-canvas overlay (Phase 1): live last-price pulse paints here; pointer events pass through to the canvas below. */}
+        <canvas ref={overlayRef} className="absolute inset-0 pointer-events-none" style={{ position: 'absolute', inset: 0, pointerEvents: 'none' }} />
         {ctxMenu && <ChartContextMenu menu={ctxMenu} onClose={() => setCtxMenu(null)} resetView={resetView} view={view} tweenView={tweenView} priceView={priceView} onAutoFit={() => setPriceView(null)} />}
       </div>
     </div>

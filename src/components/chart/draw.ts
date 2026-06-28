@@ -47,6 +47,7 @@ export type DrawDeps = {
   showGex: boolean; showHeat: boolean; showOrbs: boolean; showDisp: boolean; showLadder: boolean;
   showVolProfile: boolean; showPrevClose: boolean;
   live?: boolean; livePhaseRef?: { current: number };   // animate the last-price pulse only when truly live
+  liveOverlayRef?: { current: { plotR: number; lastY: number; up: boolean; upCol: string; downCol: string } | null };  // last-price geometry handed to the overlay layer
   tickKey: string; tfKey: string;
   onScale?: (lo: number, hi: number) => void;   // report the live visible price range (drives the price-aligned gamma profile)
 };
@@ -57,7 +58,7 @@ export function drawChart(deps: DrawDeps) {
     hoverRef, gexDeltaRef, draftRef, measureRef, drawingsRef, toolRef, selectedRef,
     candles, ha, atr, profile, colors, decimals, chartType, ovOn, overlaySeries, paneSeries,
     displacements, gexCount, showVolume, showGrid, showWatermark, candleBorders,
-    showGex, showHeat, showOrbs, showVolProfile, showPrevClose, showDisp, showLadder, tickKey, tfKey, onScale, live, livePhaseRef,
+    showGex, showHeat, showOrbs, showVolProfile, showPrevClose, showDisp, showLadder, tickKey, tfKey, onScale, live, livePhaseRef, liveOverlayRef,
   } = deps;
     const canvas = canvasRef.current, container = containerRef.current;
     if (!canvas || !container) return;
@@ -632,11 +633,11 @@ export function drawChart(deps: DrawDeps) {
       if (tkr) { ctx.fillStyle = shade(lc, 0.46); (ctx as any).roundRect ? (ctx.beginPath(), (ctx as any).roundRect(priceX - tkrW, lastY - 8, tkrW, 16, 3), ctx.fill()) : ctx.fillRect(priceX - tkrW, lastY - 8, tkrW, 16); ctx.fillStyle = hexA('#ffffff', 0.92); ctx.fillText(tkr, priceX - tkrW + 6, lastY); }
       ctx.fillStyle = lc; (ctx as any).roundRect ? (ctx.beginPath(), (ctx as any).roundRect(priceX, lastY - 8, priceW, 16, 3), ctx.fill()) : ctx.fillRect(priceX, lastY - 8, priceW, 16);
       ctx.fillStyle = '#06090d'; ctx.fillText(nf(last), priceX + 6, lastY); ctx.font = '11px ui-monospace, monospace';
-      // Live pulse — an expanding ring (animated only while the feed is live) + a solid dot at the last
-      // price on the right edge. Market-closed / model data shows just the static dot (no motion).
-      const dotX = plotR, lcDot = lastUp ? COL.up : COL.down;
-      if (live) { const ph = livePhaseRef?.current ?? 0; ctx.strokeStyle = hexA(lcDot, 0.5 * (1 - ph)); ctx.lineWidth = 1.5; ctx.beginPath(); ctx.arc(dotX, lastY, 3 + ph * 10, 0, Math.PI * 2); ctx.stroke(); ctx.lineWidth = 1; }
-      ctx.fillStyle = lcDot; ctx.beginPath(); ctx.arc(dotX, lastY, 3, 0, Math.PI * 2); ctx.fill();
+      // Publish last-price geometry to the dedicated OVERLAY layer, which paints the live pulse — so live
+      // pulsing repaints only the lightweight overlay canvas, never the candle layer. (Layered-canvas Phase 1)
+      if (liveOverlayRef) liveOverlayRef.current = { plotR, lastY, up: lastUp, upCol, downCol };
+    } else if (liveOverlayRef) {
+      liveOverlayRef.current = null;   // last price scrolled off-screen → overlay clears the dot, no ghost
     }
 
     // Magnet pull cue — a short tether on the left showing price being drawn toward the magnet (pin) level.
