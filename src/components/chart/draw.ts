@@ -45,7 +45,8 @@ export type DrawDeps = {
   gexCount: number;
   showVolume: boolean; showGrid: boolean; showWatermark: boolean; candleBorders: boolean;
   showGex: boolean; showHeat: boolean; showOrbs: boolean; showDisp: boolean; showLadder: boolean;
-  showVolProfile: boolean; showPrevClose: boolean;
+  showVolProfile: boolean; showPrevClose: boolean; showVwap: boolean;
+  vwap?: { line: (number | null)[]; u1: (number | null)[]; d1: (number | null)[]; u2: (number | null)[]; d2: (number | null)[] };  // session VWAP centerline + ±1σ/±2σ bands
   live?: boolean; livePhaseRef?: { current: number };   // animate the last-price pulse only when truly live
   liveOverlayRef?: { current: { plotR: number; lastY: number; up: boolean; upCol: string; downCol: string } | null };  // last-price geometry handed to the overlay layer
   tickKey: string; tfKey: string;
@@ -58,7 +59,7 @@ export function drawChart(deps: DrawDeps) {
     hoverRef, gexDeltaRef, draftRef, measureRef, drawingsRef, toolRef, selectedRef,
     candles, ha, atr, profile, colors, decimals, chartType, ovOn, overlaySeries, paneSeries,
     displacements, gexCount, showVolume, showGrid, showWatermark, candleBorders,
-    showGex, showHeat, showOrbs, showVolProfile, showPrevClose, showDisp, showLadder, tickKey, tfKey, onScale, live, livePhaseRef, liveOverlayRef,
+    showGex, showHeat, showOrbs, showVolProfile, showPrevClose, showVwap, vwap, showDisp, showLadder, tickKey, tfKey, onScale, live, livePhaseRef, liveOverlayRef,
   } = deps;
     const canvas = canvasRef.current, container = containerRef.current;
     if (!canvas || !container) return;
@@ -389,6 +390,51 @@ export function drawChart(deps: DrawDeps) {
           ctx.fillText('PDC ' + nfT(prevClose), plotL + 8, y - 5); ctx.font = '11px ui-monospace, monospace';
         }
       }
+    }
+
+    // SESSION VWAP + σ BANDS — volume-weighted average price, re-anchored each session, with ±1σ/±2σ
+    // envelopes. The institutional fair-value line: intraday price pivots around it, and a decisive break
+    // of the outer band is a momentum tell. Re-anchors each day so it never smears across sessions. Drawn
+    // behind candles so wicks/bodies stay on top.
+    if (showVwap && vwap && vwap.line.length === n) {
+      const vwapCol = mixHex(T.info, T.accent, 0.5);
+      // Visible index ranges split at session resets (VWAP jumps each new day → don't connect the gap).
+      const ranges: [number, number][] = [];
+      let s0 = -1;
+      for (let i = 0; i < vis.length; i++) {
+        const gi = start + i;
+        const reset = i === 0 || (gi > 0 && !sameDay(candles[gi - 1].timestamp, candles[gi].timestamp));
+        if (reset) { if (s0 >= 0) ranges.push([s0, gi - 1]); s0 = gi; }
+      }
+      if (s0 >= 0) ranges.push([s0, start + vis.length - 1]);
+      const band = (hiA: (number | null)[], loA: (number | null)[], a: number) => {
+        ctx.fillStyle = hexA(vwapCol, a);
+        for (const [a0, a1] of ranges) {
+          if (a1 <= a0) continue;
+          ctx.beginPath();
+          for (let gi = a0; gi <= a1; gi++) { const v = hiA[gi]; if (v == null) continue; const x = xOf(gi), y = yP(v); gi === a0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y); }
+          for (let gi = a1; gi >= a0; gi--) { const v = loA[gi]; if (v == null) continue; ctx.lineTo(xOf(gi), yP(v)); }
+          ctx.closePath(); ctx.fill();
+        }
+      };
+      band(vwap.u2, vwap.d2, 0.06);
+      band(vwap.u1, vwap.d1, 0.10);
+      // Faint dashed ±1σ edges so the band still reads when the gamma heatmap glows behind it.
+      const edge = (arr: (number | null)[]) => {
+        ctx.beginPath();
+        for (const [a0, a1] of ranges) { let st = false; for (let gi = a0; gi <= a1; gi++) { const v = arr[gi]; if (v == null) continue; const x = xOf(gi), y = yP(v); st ? ctx.lineTo(x, y) : (ctx.moveTo(x, y), st = true); } }
+        ctx.stroke();
+      };
+      ctx.strokeStyle = hexA(vwapCol, 0.3); ctx.lineWidth = 1; ctx.setLineDash([3, 3]);
+      edge(vwap.u1); edge(vwap.d1); ctx.setLineDash([]);
+      ctx.strokeStyle = hexA(vwapCol, 0.95); ctx.lineWidth = 1.5;
+      for (const [a0, a1] of ranges) {
+        ctx.beginPath(); let started = false;
+        for (let gi = a0; gi <= a1; gi++) { const v = vwap.line[gi]; if (v == null) continue; const x = xOf(gi), y = yP(v); started ? ctx.lineTo(x, y) : (ctx.moveTo(x, y), started = true); }
+        ctx.stroke();
+      }
+      const lastRange = ranges[ranges.length - 1];
+      if (lastRange) { const lv = vwap.line[lastRange[0]]; if (lv != null) { ctx.font = '700 8px ui-monospace, monospace'; ctx.textAlign = 'left'; ctx.fillStyle = hexA(vwapCol, 0.95); ctx.fillText('VWAP', xOf(lastRange[0]) + 3, yP(lv) - 5); ctx.font = '11px ui-monospace, monospace'; } }
     }
 
     // price series — five chart types (TradingView-style)
