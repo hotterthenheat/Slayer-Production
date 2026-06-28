@@ -304,17 +304,23 @@ export const SlayerChart = memo(function SlayerChartImpl({ profile, decimals, ca
     if (cv.width !== nw || cv.height !== nh) { cv.width = nw; cv.height = nh; cv.style.width = W + 'px'; cv.style.height = H + 'px'; }
     const ctx = cv.getContext('2d'); if (!ctx) return;
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0); ctx.clearRect(0, 0, W, H);
-    const g = liveOverlayRef.current; if (!g) return;   // last price off-screen or no candles → nothing to paint
-    const col = g.up ? g.upCol : g.downCol;
-    // Expanding pulse ring — live only; phase 0..1 grows the radius and fades the alpha to 0.
-    if (live) {
-      const ph = livePhaseRef.current, r = 3 + ph * 13, a = 0.5 * (1 - ph);
-      ctx.beginPath(); ctx.arc(g.plotR, g.lastY, r, 0, Math.PI * 2);
-      ctx.strokeStyle = hexA(col, a); ctx.lineWidth = 1.5; ctx.stroke();
+    const g = liveOverlayRef.current;   // last-price geometry (null when it's scrolled off-screen)
+    if (g) {
+      const col = g.up ? g.upCol : g.downCol;
+      // Expanding pulse ring — live only; phase 0..1 grows the radius and fades the alpha to 0.
+      if (live) {
+        const ph = livePhaseRef.current, r = 3 + ph * 13, a = 0.5 * (1 - ph);
+        ctx.beginPath(); ctx.arc(g.plotR, g.lastY, r, 0, Math.PI * 2);
+        ctx.strokeStyle = hexA(col, a); ctx.lineWidth = 1.5; ctx.stroke();
+      }
+      // Static last-price dot — always painted, so a closed/stale market still shows the marker.
+      ctx.beginPath(); ctx.arc(g.plotR, g.lastY, 3.2, 0, Math.PI * 2); ctx.fillStyle = col; ctx.fill();
+      ctx.beginPath(); ctx.arc(g.plotR, g.lastY, 3.2, 0, Math.PI * 2); ctx.strokeStyle = hexA('#06090d', 0.9); ctx.lineWidth = 1; ctx.stroke();
     }
-    // Static last-price dot — always painted, so a closed/stale market still shows the marker.
-    ctx.beginPath(); ctx.arc(g.plotR, g.lastY, 3.2, 0, Math.PI * 2); ctx.fillStyle = col; ctx.fill();
-    ctx.beginPath(); ctx.arc(g.plotR, g.lastY, 3.2, 0, Math.PI * 2); ctx.strokeStyle = hexA('#06090d', 0.9); ctx.lineWidth = 1; ctx.stroke();
+    // Crosshair + axis bubbles + OHLC + dealer-context + loaded-strike tooltip — rendered here on the
+    // overlay (Layered-canvas 1b) so cursor movement repaints ONLY this surface, never the candle layer.
+    const hov = hoverRef.current, rh = geomRef.current && (geomRef.current as any).renderHover;
+    if (hov && rh) rh(ctx, hov);
   };
 
   // Full repaint = candle layer then overlay, so the dot re-glues to the latest last-price y on every
@@ -432,10 +438,10 @@ export const SlayerChart = memo(function SlayerChartImpl({ profile, decimals, ca
         if (tl !== 'cursor') canvas.style.cursor = 'crosshair';
         else if (g) canvas.style.cursor = hx >= g.plotR ? 'ns-resize' : (hitTest(hx, hy, g) ? 'pointer' : 'crosshair');
       }
-      schedule();
+      drawOverlayRef.current();   // pure hover → repaint ONLY the overlay (crosshair), never the candle layer
     };
     const onUp = () => { dragRef.current = null; priceDragRef.current = null; measureDragRef.current = false; canvas.style.cursor = 'crosshair'; };
-    const onLeave = () => { hoverRef.current = null; broadcastCrosshair(null, panelId ?? 'main'); schedule(); };
+    const onLeave = () => { hoverRef.current = null; broadcastCrosshair(null, panelId ?? 'main'); drawOverlayRef.current(); };
     // Double-click (cursor mode): price gutter → auto-fit; elsewhere → snap back to the live edge.
     const onDbl = (e: MouseEvent) => { if (toolRef.current !== 'cursor') return; const r = canvas.getBoundingClientRect(), mx = e.clientX - r.left, g = geomRef.current; if (g && mx >= g.plotR) setPriceView(null); else tweenView({ bars: 110, off: 0 }); };
     // Right-click anywhere on the chart → a small "View" menu (reset to the live view, jump to live, auto-fit Y).
