@@ -49,6 +49,7 @@ export type DrawDeps = {
   vwap?: { line: (number | null)[]; u1: (number | null)[]; d1: (number | null)[]; u2: (number | null)[]; d2: (number | null)[] };  // session VWAP centerline + ±1σ/±2σ bands
   showMigration: boolean; gammaCoM?: number | null; comHist?: number[];  // gamma center-of-mass + its recent drift path (migration comet)
   showExposure: boolean;  // aggregate dealer Δ (DEX) + Vanna tilt HUD
+  showMaxPain: boolean;  // max-pain expiry pin level (OI-weighted)
   live?: boolean; livePhaseRef?: { current: number };   // animate the last-price pulse only when truly live
   liveOverlayRef?: { current: { plotR: number; lastY: number; up: boolean; upCol: string; downCol: string } | null };  // last-price geometry handed to the overlay layer
   tickKey: string; tfKey: string;
@@ -61,7 +62,7 @@ export function drawChart(deps: DrawDeps) {
     hoverRef, gexDeltaRef, draftRef, measureRef, drawingsRef, toolRef, selectedRef,
     candles, ha, atr, profile, colors, decimals, chartType, ovOn, overlaySeries, paneSeries,
     displacements, gexCount, showVolume, showGrid, showWatermark, candleBorders,
-    showGex, showHeat, showOrbs, showVolProfile, showPrevClose, showVwap, vwap, showMigration, gammaCoM, comHist, showExposure, showDisp, showLadder, tickKey, tfKey, onScale, live, livePhaseRef, liveOverlayRef,
+    showGex, showHeat, showOrbs, showVolProfile, showPrevClose, showVwap, vwap, showMigration, gammaCoM, comHist, showExposure, showMaxPain, showDisp, showLadder, tickKey, tfKey, onScale, live, livePhaseRef, liveOverlayRef,
   } = deps;
     const canvas = canvasRef.current, container = containerRef.current;
     if (!canvas || !container) return;
@@ -544,13 +545,24 @@ export function drawChart(deps: DrawDeps) {
     // crowd near spot they stack and draw a connector back to the line, so a label never floats free.
     const last = candles[n - 1].close, lastUp = candles[n - 1].close >= candles[n - 1].open, lastY = yP(last);
     const tagH = 15;
-    const NAMES: Record<string, string> = { CW: 'Call Wall', PW: 'Put Wall', 'γF': 'Gamma Flip', MAG: 'Magnet', 'EM+': 'Exp Move ↑', 'EM-': 'Exp Move ↓' };
+    const NAMES: Record<string, string> = { CW: 'Call Wall', PW: 'Put Wall', 'γF': 'Gamma Flip', MAG: 'Magnet', 'EM+': 'Exp Move ↑', 'EM-': 'Exp Move ↓', MP: 'Max Pain' };
     const lvls: { price: number; color: string; label: string; gex?: number; value?: string; conf?: boolean }[] = [];
     const pushLvl = (price: any, color: string, label: string, gex?: number, value?: string, conf?: boolean) => { if (typeof price === 'number' && price > 0) lvls.push({ price, color, label, gex, value, conf }); };
     const gexAt = (price: any): number => { const ss = profile.strikes; if (typeof price !== 'number' || !ss || !ss.length) return 0; let best = 0, bd = Infinity; for (const s of ss) { const d = Math.abs(s.strike - price); if (d < bd) { bd = d; best = s.netGex || 0; } } return bd <= price * 0.0015 ? best : 0; };
     pushLvl(profile.callWall, COL.callWall, 'CW', Math.abs(gexAt(profile.callWall)), undefined, profile.wallsConfident !== false); pushLvl(profile.putWall, COL.putWall, 'PW', Math.abs(gexAt(profile.putWall)), undefined, profile.wallsConfident !== false);
     pushLvl(profile.gammaFlip, COL.flip, 'γF', undefined, undefined, profile.gammaFlipConfident !== false); pushLvl(profile.magnet, COL.magnet, 'MAG', Math.abs(gexAt(profile.magnet)));
     if (profile.spot && profile.expectedMovePct) { pushLvl(profile.spot * (1 + profile.expectedMovePct), COL.em, 'EM+'); pushLvl(profile.spot * (1 - profile.expectedMovePct), COL.em, 'EM-'); }
+    // Max Pain — the settlement strike that minimizes total ITM payout to option holders (a classic expiry
+    // magnet, distinct from the gamma magnet — they often disagree). Computed from per-strike OI; opt-in.
+    if (showMaxPain && profile.strikes && profile.strikes.length > 2) {
+      let mp = NaN, best = Infinity;
+      for (const k of profile.strikes) {
+        let pain = 0;
+        for (const s of profile.strikes) { if (k.strike > s.strike) pain += (s.callOi || 0) * (k.strike - s.strike); else if (k.strike < s.strike) pain += (s.putOi || 0) * (s.strike - k.strike); }
+        if (pain < best) { best = pain; mp = k.strike; }
+      }
+      if (!isNaN(mp)) pushLvl(mp, mixHex(T.warning, T.accent, 0.55), 'MP');
+    }
     // Loaded GEX Strikes — the actual top gamma strikes around price (with their $ values + size-weighted
     // lines), so the dealer positioning BEHIND the walls is visible, not just the walls themselves.
     if (showLadder && profile.strikes && profile.strikes.length) {
