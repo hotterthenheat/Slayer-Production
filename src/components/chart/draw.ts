@@ -318,7 +318,10 @@ export function drawChart(deps: DrawDeps) {
         const a = atr[gi], vel = a && a > 0 ? Math.min(1, Math.abs(c.close - c.open) / (1.6 * a)) : 0.4;
         ctx.globalAlpha = 0.34 + vel * 0.5;
         ctx.fillStyle = c.close >= c.open ? vgUp : vgDn;
-        ctx.fillRect(xOf(gi) - barW * 0.34, volBase - vh, barW * 0.68, vh);
+        // Edge-snapped to the pixel grid (same rule as the candle bodies) so volume columns line up
+        // directly under their candle and never blur or alternate width while scrolling.
+        const x = xOf(gi), vL = Math.round(x - barW * 0.34), vR = Math.max(vL + 1, Math.round(x + barW * 0.34));
+        ctx.fillRect(vL, Math.round(volBase - vh), vR - vL, Math.max(1, Math.round(vh)));
       }
       ctx.globalAlpha = 1;
     }
@@ -482,13 +485,18 @@ export function drawChart(deps: DrawDeps) {
       const border = candleBorders && barW >= 3.4;                // crisp edge only when bars are wide enough
       for (let i = 0; i < vis.length; i++) {
         const c = vis[i], x = xOf(start + i), up = c.close >= c.open, col = up ? upCol : downCol, wickCol = colors.wick || col;
-        // wick first (sits behind the body), centered + pixel-snapped
+        // Body edges are EACH snapped to the pixel grid (not center+width rounded independently): the width
+        // absorbs the sub-pixel remainder, so the GAP between adjacent candles stays visually constant at
+        // every zoom — no alternating 1px gaps, no shimmer while scrolling. (TradingView-style crispness.)
+        const yO = yP(c.open), yC = yP(c.close), bw = Math.max(1, barW * 0.62);
+        const bxL = Math.round(x - bw / 2), bxR = Math.max(bxL + 1, Math.round(x + bw / 2)), w = bxR - bxL;
+        const wx = px((bxL + bxR) / 2);   // wick centered on the ROUNDED body + half-pixel snapped → crisp 1px line
+        // wick first (sits behind the body)
         ctx.strokeStyle = wickCol; ctx.lineWidth = wickW;
-        ctx.beginPath(); ctx.moveTo(px(x), Math.round(yP(c.high))); ctx.lineTo(px(x), Math.round(yP(c.low))); ctx.stroke();
-        // body — fuller (0.78 of the slot), pixel-snapped, optional darker crisp border for depth
-        const yO = yP(c.open), yC = yP(c.close), bw = Math.max(1, barW * 0.62), w = Math.round(bw), bx = Math.round(x - bw / 2), by = Math.round(Math.min(yO, yC)), bh = Math.max(1, Math.round(Math.abs(yC - yO)));
-        if (chartType === 'hollow' && up) { ctx.strokeStyle = col; ctx.lineWidth = 1.3; ctx.strokeRect(bx + 0.5, by + 0.5, w - 1, Math.max(1, bh - 1)); }
-        else { ctx.fillStyle = col; ctx.fillRect(bx, by, w, bh); if (w >= 3 && bh >= 3) { ctx.fillStyle = shade(col, 1.34); ctx.fillRect(bx, by, w, 1); } if (border) { ctx.strokeStyle = shade(col, 0.72); ctx.lineWidth = 1; ctx.strokeRect(bx + 0.5, by + 0.5, w - 1, Math.max(1, bh - 1)); } }
+        ctx.beginPath(); ctx.moveTo(wx, Math.round(yP(c.high))); ctx.lineTo(wx, Math.round(yP(c.low))); ctx.stroke();
+        const by = Math.round(Math.min(yO, yC)), bh = Math.max(1, Math.round(Math.abs(yC - yO)));
+        if (chartType === 'hollow' && up) { ctx.strokeStyle = col; ctx.lineWidth = 1.3; ctx.strokeRect(bxL + 0.5, by + 0.5, w - 1, Math.max(1, bh - 1)); }
+        else { ctx.fillStyle = col; ctx.fillRect(bxL, by, w, bh); if (w >= 3 && bh >= 3) { ctx.fillStyle = shade(col, 1.34); ctx.fillRect(bxL, by, w, 1); } if (border) { ctx.strokeStyle = shade(col, 0.72); ctx.lineWidth = 1; ctx.strokeRect(bxL + 0.5, by + 0.5, w - 1, Math.max(1, bh - 1)); } }
       }
       ctx.lineWidth = 1;
     }
