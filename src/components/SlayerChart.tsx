@@ -159,7 +159,9 @@ export const SlayerChart = memo(function SlayerChartImpl({ profile, decimals, ca
   const hoverRef = useRef<{ x: number; y: number } | null>(null);
   // Per-strike GEX baseline (snapshot from ~45s ago) so each loaded strike can show its ΔGEX (↑/↓ since checkpoint).
   const gexDeltaRef = useRef<{ base: Map<number, number>; ts: number; tick: string }>({ base: new Map(), ts: 0, tick: '' });
-  const dragRef = useRef<{ x: number; off: number } | null>(null);
+  const dragRef = useRef<{ x: number; off: number; lastX?: number; lastT?: number; vx?: number } | null>(null);
+  const panPxRef = useRef(0);   // sub-bar pixel offset during an active drag → smooth (sub-pixel) panning; snaps to 0 on release
+  const inertiaRef = useRef(0); // rAF id for the momentum glide after a flick-release
   const priceDragRef = useRef<{ y: number; factor: number; offset: number } | null>(null);
   const draftRef = useRef<Anchor | null>(null);          // first point of a 2-point drawing
   const measureRef = useRef<{ a: Anchor; b: Anchor } | null>(null);
@@ -182,7 +184,7 @@ export const SlayerChart = memo(function SlayerChartImpl({ profile, decimals, ca
     tweenRef.current = requestAnimationFrame(stepFn);
   };
   const resetView = () => { tweenView({ bars: 110, off: 0 }); setPriceView(null); };
-  useEffect(() => () => { if (tweenRef.current) cancelAnimationFrame(tweenRef.current); }, []);
+  useEffect(() => () => { if (tweenRef.current) cancelAnimationFrame(tweenRef.current); if (inertiaRef.current) cancelAnimationFrame(inertiaRef.current); }, []);
   const priceViewRef = useRef(priceView); priceViewRef.current = priceView;
   const candlesRef = useRef(candles); candlesRef.current = candles;
   const toolRef = useRef(tool); toolRef.current = tool;
@@ -289,7 +291,7 @@ export const SlayerChart = memo(function SlayerChartImpl({ profile, decimals, ca
     hoverRef, gexDeltaRef, draftRef, measureRef, drawingsRef, toolRef, selectedRef,
     candles, ha, atr, profile, colors, decimals, chartType, ovOn, overlaySeries, paneSeries,
     displacements, gexCount, showVolume, showGrid, showWatermark, candleBorders,
-    showGex, showHeat, showOrbs, showVolProfile, showPrevClose, showVwap, vwap: vwapData, showMigration, gammaCoM, comHist: comHistRef.current, showExposure, showMaxPain, showDisp, showLadder, tickKey, tfKey, onScale, live, livePhaseRef, liveOverlayRef,
+    showGex, showHeat, showOrbs, showVolProfile, showPrevClose, showVwap, vwap: vwapData, showMigration, gammaCoM, comHist: comHistRef.current, showExposure, showMaxPain, showDisp, showLadder, tickKey, tfKey, onScale, live, livePhaseRef, liveOverlayRef, panPx: panPxRef.current,
   });
 
   // Overlay repaint — clears the transparent top canvas and paints the last-price dot, plus an
@@ -304,17 +306,23 @@ export const SlayerChart = memo(function SlayerChartImpl({ profile, decimals, ca
     if (cv.width !== nw || cv.height !== nh) { cv.width = nw; cv.height = nh; cv.style.width = W + 'px'; cv.style.height = H + 'px'; }
     const ctx = cv.getContext('2d'); if (!ctx) return;
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0); ctx.clearRect(0, 0, W, H);
-    const g = liveOverlayRef.current; if (!g) return;   // last price off-screen or no candles → nothing to paint
-    const col = g.up ? g.upCol : g.downCol;
-    // Expanding pulse ring — live only; phase 0..1 grows the radius and fades the alpha to 0.
-    if (live) {
-      const ph = livePhaseRef.current, r = 3 + ph * 13, a = 0.5 * (1 - ph);
-      ctx.beginPath(); ctx.arc(g.plotR, g.lastY, r, 0, Math.PI * 2);
-      ctx.strokeStyle = hexA(col, a); ctx.lineWidth = 1.5; ctx.stroke();
+    const g = liveOverlayRef.current;   // last-price geometry (null when it's scrolled off-screen)
+    if (g) {
+      const col = g.up ? g.upCol : g.downCol;
+      // Expanding pulse ring — live only; phase 0..1 grows the radius and fades the alpha to 0.
+      if (live) {
+        const ph = livePhaseRef.current, r = 3 + ph * 13, a = 0.5 * (1 - ph);
+        ctx.beginPath(); ctx.arc(g.plotR, g.lastY, r, 0, Math.PI * 2);
+        ctx.strokeStyle = hexA(col, a); ctx.lineWidth = 1.5; ctx.stroke();
+      }
+      // Static last-price dot — always painted, so a closed/stale market still shows the marker.
+      ctx.beginPath(); ctx.arc(g.plotR, g.lastY, 3.2, 0, Math.PI * 2); ctx.fillStyle = col; ctx.fill();
+      ctx.beginPath(); ctx.arc(g.plotR, g.lastY, 3.2, 0, Math.PI * 2); ctx.strokeStyle = hexA('#06090d', 0.9); ctx.lineWidth = 1; ctx.stroke();
     }
-    // Static last-price dot — always painted, so a closed/stale market still shows the marker.
-    ctx.beginPath(); ctx.arc(g.plotR, g.lastY, 3.2, 0, Math.PI * 2); ctx.fillStyle = col; ctx.fill();
-    ctx.beginPath(); ctx.arc(g.plotR, g.lastY, 3.2, 0, Math.PI * 2); ctx.strokeStyle = hexA('#06090d', 0.9); ctx.lineWidth = 1; ctx.stroke();
+    // Crosshair + axis bubbles + OHLC + dealer-context + loaded-strike tooltip — rendered here on the
+    // overlay (Layered-canvas 1b) so cursor movement repaints ONLY this surface, never the candle layer.
+    const hov = hoverRef.current, rh = geomRef.current && (geomRef.current as any).renderHover;
+    if (hov && rh) rh(ctx, hov);
   };
 
   // Full repaint = candle layer then overlay, so the dot re-glues to the latest last-price y on every
@@ -353,6 +361,7 @@ export const SlayerChart = memo(function SlayerChartImpl({ profile, decimals, ca
     const onWheel = (e: WheelEvent) => {
       e.preventDefault();
       if (tweenRef.current) { cancelAnimationFrame(tweenRef.current); tweenRef.current = 0; }
+      if (inertiaRef.current) { cancelAnimationFrame(inertiaRef.current); inertiaRef.current = 0; panPxRef.current = 0; }   // zoom cancels any pan glide
       // Scrolling over the price axis scales the VERTICAL (price) scale — the eased range makes the
       // candles + side level tags glide bigger/smaller together. Inside the plot, scroll zooms time.
       const gw = geomRef.current, rw = canvas.getBoundingClientRect(), mxw = e.clientX - rw.left;
@@ -390,6 +399,7 @@ export const SlayerChart = memo(function SlayerChartImpl({ profile, decimals, ca
     const onDown = (e: MouseEvent) => {
       if (e.button !== 0) return; // left button only — right-click opens the view context menu
       setCtxMenu(null);
+      if (inertiaRef.current) { cancelAnimationFrame(inertiaRef.current); inertiaRef.current = 0; if (panPxRef.current !== 0) { panPxRef.current = 0; drawRef.current(); } }   // a new grab stops the glide
       if (tweenRef.current) { cancelAnimationFrame(tweenRef.current); tweenRef.current = 0; }
       const r = canvas.getBoundingClientRect(), mx = e.clientX - r.left, my = e.clientY - r.top, g = geomRef.current, tl = toolRef.current;
       if (!g) return;
@@ -418,8 +428,19 @@ export const SlayerChart = memo(function SlayerChartImpl({ profile, decimals, ca
       const drag = dragRef.current;
       if (drag && g) {
         const n = candlesRef.current.length, barW = g.barW;
-        const nextOff = Math.max(-Math.round(viewRef.current.bars * 0.5), Math.min(Math.max(0, n - 10), drag.off + Math.round((e.clientX - drag.x) / barW)));
-        if (nextOff !== viewRef.current.off) { setView(v => ({ ...v, off: nextOff })); return; }
+        const minOff = -Math.round(viewRef.current.bars * 0.5), maxOff = Math.max(0, n - 10);
+        // Continuous (fractional) bar offset → smooth sub-pixel pan. The integer part drives the data
+        // window (off); the remainder becomes panPx, which slides the candle layer between bars.
+        const offFloat = Math.max(minOff, Math.min(maxOff, drag.off + (e.clientX - drag.x) / barW));
+        const offInt = Math.floor(offFloat);   // floor → the data window only re-slices on a full-bar crossing; the
+        panPxRef.current = (offFloat - offInt) * barW;   // remainder (0..barW) slides the layer smoothly between bars
+        // Track release velocity (px/ms) for the momentum glide.
+        const tnow = performance.now();
+        if (drag.lastT != null && tnow > drag.lastT) drag.vx = (e.clientX - (drag.lastX ?? e.clientX)) / (tnow - drag.lastT);
+        drag.lastX = e.clientX; drag.lastT = tnow;
+        if (offInt !== viewRef.current.off) setView(v => ({ ...v, off: offInt }));   // whole-bar crossing → re-window (re-render repaints with the fresh panPx)
+        else drawRef.current();                                                       // sub-bar move → repaint base+overlay now
+        return;
       }
       // Crosshair bridge: broadcast the hovered price (no React state) so the detached Exposure
       // Ladder can highlight the matching strike in lockstep with the canvas crosshair.
@@ -432,10 +453,30 @@ export const SlayerChart = memo(function SlayerChartImpl({ profile, decimals, ca
         if (tl !== 'cursor') canvas.style.cursor = 'crosshair';
         else if (g) canvas.style.cursor = hx >= g.plotR ? 'ns-resize' : (hitTest(hx, hy, g) ? 'pointer' : 'crosshair');
       }
-      schedule();
+      drawOverlayRef.current();   // pure hover → repaint ONLY the overlay (crosshair), never the candle layer
     };
-    const onUp = () => { dragRef.current = null; priceDragRef.current = null; measureDragRef.current = false; canvas.style.cursor = 'crosshair'; };
-    const onLeave = () => { hoverRef.current = null; broadcastCrosshair(null, panelId ?? 'main'); schedule(); };
+    const onUp = () => {
+      const drag = dragRef.current, g = geomRef.current;
+      dragRef.current = null; priceDragRef.current = null; measureDragRef.current = false; canvas.style.cursor = 'crosshair';
+      if (drag && g && drag.vx && Math.abs(drag.vx) > 0.08) {
+        // Momentum glide — keep panning after release, decaying with friction, until it slows or hits an
+        // edge; then settle to the bar grid. Same off/panPx mechanism, so it can't desync the framing.
+        if (inertiaRef.current) cancelAnimationFrame(inertiaRef.current);
+        const barW = g.barW, minOff = -Math.round(viewRef.current.bars * 0.5), maxOff = Math.max(0, candlesRef.current.length - 10);
+        let offF = viewRef.current.off + panPxRef.current / barW, vx = drag.vx, last = performance.now();
+        const glide = (now: number) => {
+          const dt = Math.min(48, now - last); last = now;
+          offF += (vx * dt) / barW; vx *= Math.pow(0.94, dt / 16);   // ~6%/frame friction, frame-rate normalized
+          let edge = false; if (offF <= minOff) { offF = minOff; edge = true; } if (offF >= maxOff) { offF = maxOff; edge = true; }
+          const offInt = Math.floor(offF); panPxRef.current = (offF - offInt) * barW;
+          if (offInt !== viewRef.current.off) setView(v => ({ ...v, off: offInt })); else drawRef.current();
+          if (!edge && Math.abs(vx) > 0.02) inertiaRef.current = requestAnimationFrame(glide);
+          else { inertiaRef.current = 0; if (panPxRef.current !== 0) { panPxRef.current = 0; drawRef.current(); } }
+        };
+        inertiaRef.current = requestAnimationFrame(glide);
+      } else if (panPxRef.current !== 0) { panPxRef.current = 0; drawRef.current(); }
+    };
+    const onLeave = () => { hoverRef.current = null; broadcastCrosshair(null, panelId ?? 'main'); drawOverlayRef.current(); };
     // Double-click (cursor mode): price gutter → auto-fit; elsewhere → snap back to the live edge.
     const onDbl = (e: MouseEvent) => { if (toolRef.current !== 'cursor') return; const r = canvas.getBoundingClientRect(), mx = e.clientX - r.left, g = geomRef.current; if (g && mx >= g.plotR) setPriceView(null); else tweenView({ bars: 110, off: 0 }); };
     // Right-click anywhere on the chart → a small "View" menu (reset to the live view, jump to live, auto-fit Y).

@@ -54,6 +54,7 @@ export type DrawDeps = {
   liveOverlayRef?: { current: { plotR: number; lastY: number; up: boolean; upCol: string; downCol: string } | null };  // last-price geometry handed to the overlay layer
   tickKey: string; tfKey: string;
   onScale?: (lo: number, hi: number) => void;   // report the live visible price range (drives the price-aligned gamma profile)
+  panPx?: number;   // sub-bar pixel offset for smooth (sub-pixel) panning during an active drag; 0 otherwise
 };
 
 export function drawChart(deps: DrawDeps) {
@@ -62,7 +63,7 @@ export function drawChart(deps: DrawDeps) {
     hoverRef, gexDeltaRef, draftRef, measureRef, drawingsRef, toolRef, selectedRef,
     candles, ha, atr, profile, colors, decimals, chartType, ovOn, overlaySeries, paneSeries,
     displacements, gexCount, showVolume, showGrid, showWatermark, candleBorders,
-    showGex, showHeat, showOrbs, showVolProfile, showPrevClose, showVwap, vwap, showMigration, gammaCoM, comHist, showExposure, showMaxPain, showDisp, showLadder, tickKey, tfKey, onScale, live, livePhaseRef, liveOverlayRef,
+    showGex, showHeat, showOrbs, showVolProfile, showPrevClose, showVwap, vwap, showMigration, gammaCoM, comHist, showExposure, showMaxPain, showDisp, showLadder, tickKey, tfKey, onScale, live, livePhaseRef, liveOverlayRef, panPx,
   } = deps;
     const canvas = canvasRef.current, container = containerRef.current;
     if (!canvas || !container) return;
@@ -123,8 +124,11 @@ export function drawChart(deps: DrawDeps) {
     const hasWalls = !!(profile.callWall || profile.putWall || profile.magnet);
     const projBars = hasWalls ? Math.max(6, Math.min(22, Math.round(bars * 0.13))) : 0;
     const barW = plotW / (bars + projBars);
-    const nowX = plotL + bars * barW; // right edge of the candle zone; nowX..plotR is the projection
-    const xOf = (gi: number) => plotL + (gi - start) * barW + barW / 2;
+    // Sub-pixel pan offset (added to every x): the candle layer slides smoothly while dragging between
+    // bars; it's the remainder of the fractional bar offset and is 0 except during an active drag.
+    const panX = panPx || 0;
+    const nowX = plotL + bars * barW + panX; // right edge of the candle zone; nowX..plotR is the projection
+    const xOf = (gi: number) => plotL + (gi - start) * barW + barW / 2 + panX;
     const src = chartType === 'heikin' ? ha : candles;
     const vis = src.slice(start, end);
 
@@ -318,7 +322,10 @@ export function drawChart(deps: DrawDeps) {
         const a = atr[gi], vel = a && a > 0 ? Math.min(1, Math.abs(c.close - c.open) / (1.6 * a)) : 0.4;
         ctx.globalAlpha = 0.34 + vel * 0.5;
         ctx.fillStyle = c.close >= c.open ? vgUp : vgDn;
-        ctx.fillRect(xOf(gi) - barW * 0.34, volBase - vh, barW * 0.68, vh);
+        // Edge-snapped to the pixel grid (same rule as the candle bodies) so volume columns line up
+        // directly under their candle and never blur or alternate width while scrolling.
+        const x = xOf(gi), vL = Math.round(x - barW * 0.34), vR = Math.max(vL + 1, Math.round(x + barW * 0.34));
+        ctx.fillRect(vL, Math.round(volBase - vh), vR - vL, Math.max(1, Math.round(vh)));
       }
       ctx.globalAlpha = 1;
     }
@@ -482,13 +489,18 @@ export function drawChart(deps: DrawDeps) {
       const border = candleBorders && barW >= 3.4;                // crisp edge only when bars are wide enough
       for (let i = 0; i < vis.length; i++) {
         const c = vis[i], x = xOf(start + i), up = c.close >= c.open, col = up ? upCol : downCol, wickCol = colors.wick || col;
-        // wick first (sits behind the body), centered + pixel-snapped
+        // Body edges are EACH snapped to the pixel grid (not center+width rounded independently): the width
+        // absorbs the sub-pixel remainder, so the GAP between adjacent candles stays visually constant at
+        // every zoom — no alternating 1px gaps, no shimmer while scrolling. (TradingView-style crispness.)
+        const yO = yP(c.open), yC = yP(c.close), bw = Math.max(1, barW * 0.62);
+        const bxL = Math.round(x - bw / 2), bxR = Math.max(bxL + 1, Math.round(x + bw / 2)), w = bxR - bxL;
+        const wx = px((bxL + bxR) / 2);   // wick centered on the ROUNDED body + half-pixel snapped → crisp 1px line
+        // wick first (sits behind the body)
         ctx.strokeStyle = wickCol; ctx.lineWidth = wickW;
-        ctx.beginPath(); ctx.moveTo(px(x), Math.round(yP(c.high))); ctx.lineTo(px(x), Math.round(yP(c.low))); ctx.stroke();
-        // body — fuller (0.78 of the slot), pixel-snapped, optional darker crisp border for depth
-        const yO = yP(c.open), yC = yP(c.close), bw = Math.max(1, barW * 0.62), w = Math.round(bw), bx = Math.round(x - bw / 2), by = Math.round(Math.min(yO, yC)), bh = Math.max(1, Math.round(Math.abs(yC - yO)));
-        if (chartType === 'hollow' && up) { ctx.strokeStyle = col; ctx.lineWidth = 1.3; ctx.strokeRect(bx + 0.5, by + 0.5, w - 1, Math.max(1, bh - 1)); }
-        else { ctx.fillStyle = col; ctx.fillRect(bx, by, w, bh); if (w >= 3 && bh >= 3) { ctx.fillStyle = shade(col, 1.34); ctx.fillRect(bx, by, w, 1); } if (border) { ctx.strokeStyle = shade(col, 0.72); ctx.lineWidth = 1; ctx.strokeRect(bx + 0.5, by + 0.5, w - 1, Math.max(1, bh - 1)); } }
+        ctx.beginPath(); ctx.moveTo(wx, Math.round(yP(c.high))); ctx.lineTo(wx, Math.round(yP(c.low))); ctx.stroke();
+        const by = Math.round(Math.min(yO, yC)), bh = Math.max(1, Math.round(Math.abs(yC - yO)));
+        if (chartType === 'hollow' && up) { ctx.strokeStyle = col; ctx.lineWidth = 1.3; ctx.strokeRect(bxL + 0.5, by + 0.5, w - 1, Math.max(1, bh - 1)); }
+        else { ctx.fillStyle = col; ctx.fillRect(bxL, by, w, bh); if (w >= 3 && bh >= 3) { ctx.fillStyle = shade(col, 1.34); ctx.fillRect(bxL, by, w, 1); } if (border) { ctx.strokeStyle = shade(col, 0.72); ctx.lineWidth = 1; ctx.strokeRect(bxL + 0.5, by + 0.5, w - 1, Math.max(1, bh - 1)); } }
       }
       ctx.lineWidth = 1;
     }
@@ -609,8 +621,9 @@ export function drawChart(deps: DrawDeps) {
     const tierCol = (isCall: boolean, t: number) => isCall
       ? (t < 0.4 ? mixHex('#5f8a73', '#37c19a', t / 0.4) : t < 0.72 ? mixHex('#37c19a', '#2fe6a0', (t - 0.4) / 0.32) : mixHex('#2fe6a0', '#74ffbb', (t - 0.72) / 0.28))
       : (t < 0.4 ? mixHex('#7a6f68', '#e89042', t / 0.4) : t < 0.72 ? mixHex('#e89042', '#ff5a72', (t - 0.4) / 0.32) : mixHex('#ff5a72', '#ff3556', (t - 0.72) / 0.28));
-    let hoverTag: (typeof placed)[number] | null = null;
-    const hovPt = hoverRef.current;
+    // Loaded-strike tag hitboxes — captured during layout, consumed by the overlay's renderHover so the
+    // tooltip tracks the LIVE cursor without repainting the candle layer (the crosshair lives on the overlay).
+    const tagHits: { L: (typeof placed)[number]; tagL: number; tagR: number; ty: number }[] = [];
     for (const L of placed) {
       const name = NAMES[L.label] || L.label, isWall = L.label === 'CW' || L.label === 'PW';
       const estd = !L.value && L.conf === false;  // estimated (low-confidence) named level → render tentative + tag it
@@ -648,7 +661,7 @@ export function drawChart(deps: DrawDeps) {
       ctx.font = '700 10px ui-monospace, monospace'; // uniform tag text — importance reads from line weight/colour, not font size
       const nameW = ctx.measureText(nameLbl).width, pctW = pctLbl ? ctx.measureText(pctLbl).width : 0, deltaW = deltaLbl ? ctx.measureText(deltaLbl).width : 0;
       const tagW = nameW + pctW + deltaW + 17, tagR = plotR - 4, tagL = tagR - tagW, ty = L.off ? (L.dir < 0 ? priceTop + tagH / 2 + 2 : priceBottom - tagH / 2 - 2) : L.y;
-      if (hovPt && hovPt.x >= tagL - 3 && hovPt.x <= tagR + 6 && Math.abs(hovPt.y - ty) <= tagH / 2 + 2) hoverTag = L;
+      tagHits.push({ L, tagL, tagR, ty });
       // connector from the line's right end back to the tag whenever the tag was nudged off its price
       if (!L.off && Math.abs(L.y - L.rawY) > 1) { ctx.strokeStyle = hexA(col, 0.55); ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(plotR - 3, px(L.rawY) - 0.5); ctx.lineTo(tagR - 2, px(ty) - 0.5); ctx.stroke(); }
       rr(tagL, ty - tagH / 2, tagW, tagH, 3);
@@ -812,9 +825,29 @@ export function drawChart(deps: DrawDeps) {
       else { ctx.fillStyle = COL.axisDim; ctx.fillText(fmtTime(c.timestamp), xOf(gi), axisY + 11); }
     }
 
-    const hv = hoverRef.current;
-    if (hv && hv.x >= plotL && hv.x <= plotR) {
-      const gi = Math.max(start, Math.min(Math.min(end - 1, n - 1), start + Math.round((hv.x - plotL - barW / 2) / barW)));
+    // Symbol legend (top-left) — always painted on the base layer; on hover the overlay's OHLC box covers it.
+    {
+      ctx.textAlign = 'left'; ctx.font = '11px ui-monospace, monospace';
+      const segs: { t: string; c: string }[] = [];
+      const dC = n > 1 ? candles[n - 1].close - candles[n - 2].close : 0, dPct = n > 1 && candles[n - 2].close ? (dC / candles[n - 2].close) * 100 : 0;
+      segs.push({ t: `${tickKey || ''}${tfKey ? ' · ' + tfKey : ''}`, c: T.text });
+      segs.push({ t: `${nf(last)}  ${dC >= 0 ? '+' : ''}${dPct.toFixed(2)}%`, c: lastUp ? COL.up : COL.down });
+      for (const d of OVERLAY_DEFS) { if (!ovOn[d.key] || !overlaySeries[d.key]) continue; const v = overlaySeries[d.key][0]?.vals[n - 1]; if (v != null) segs.push({ t: `${d.label} ${nf(v as number)}`, c: overlaySeries[d.key][0].color }); }
+      let lx = plotL + 8; const ly = priceTop + 11;
+      for (const sg of segs) { ctx.fillStyle = sg.c; ctx.fillText(sg.t, lx, ly); lx += ctx.measureText(sg.t).width + 16; }
+    }
+    // Crosshair / axis bubbles / OHLC / dealer-context / loaded-strike tooltip — drawn on the OVERLAY (not
+    // here) so moving the cursor never repaints the candle/heatmap layer. drawChart stores this closure;
+    // SlayerChart's overlay rAF calls it with the overlay ctx + the live hover point. (Layered-canvas 1b)
+    const renderHover = (octx: CanvasRenderingContext2D, hv: { x: number; y: number }) => {
+      const ctx = octx;
+      let hoverTag: (typeof placed)[number] | null = null;
+      for (const h of tagHits) { if (hv.x >= h.tagL - 3 && hv.x <= h.tagR + 6 && Math.abs(hv.y - h.ty) <= tagH / 2 + 2) { hoverTag = h.L; break; } }
+      if (!(hv.x >= plotL && hv.x <= plotR)) return;
+      // rr bound to the OVERLAY ctx — the outer rr closes over the BASE ctx, so using it here would paint
+      // the tooltip box onto the candle layer (invisible / cleared on the next base draw). Shadow fixes it.
+      const rr = (x: number, y: number, w: number, h: number, r: number) => { ctx.beginPath(); if ((ctx as any).roundRect) (ctx as any).roundRect(x, y, w, h, r); else ctx.rect(x, y, w, h); };
+      const gi = Math.max(start, Math.min(Math.min(end - 1, n - 1), start + Math.round((hv.x - plotL - barW / 2 - panX) / barW)));
       const cx = xOf(gi);
       ctx.strokeStyle = hexA(T.text, 0.26); ctx.setLineDash([3, 3]);
       ctx.beginPath(); ctx.moveTo(px(cx), priceTop); ctx.lineTo(px(cx), H - xAxisH); ctx.stroke();
@@ -892,14 +925,6 @@ export function drawChart(deps: DrawDeps) {
         for (const [k, v, c] of rows) { ctx.textAlign = 'left'; ctx.fillStyle = hexA(T.text, 0.5); ctx.fillText(k, bx + padX, ry); ctx.textAlign = 'right'; ctx.fillStyle = c; ctx.fillText(v, bx + boxW - padX, ry); ry += rowH; }
         ctx.textAlign = 'left';
       }
-    } else {
-      ctx.textAlign = 'left'; ctx.font = '11px ui-monospace, monospace';
-      const segs: { t: string; c: string }[] = [];
-      const dC = n > 1 ? candles[n - 1].close - candles[n - 2].close : 0, dPct = n > 1 && candles[n - 2].close ? (dC / candles[n - 2].close) * 100 : 0;
-      segs.push({ t: `${tickKey || ''}${tfKey ? ' · ' + tfKey : ''}`, c: T.text });
-      segs.push({ t: `${nf(last)}  ${dC >= 0 ? '+' : ''}${dPct.toFixed(2)}%`, c: lastUp ? COL.up : COL.down });
-      for (const d of OVERLAY_DEFS) { if (!ovOn[d.key] || !overlaySeries[d.key]) continue; const v = overlaySeries[d.key][0]?.vals[n - 1]; if (v != null) segs.push({ t: `${d.label} ${nf(v as number)}`, c: overlaySeries[d.key][0].color }); }
-      let lx = plotL + 8; const ly = priceTop + 11;
-      for (const sg of segs) { ctx.fillStyle = sg.c; ctx.fillText(sg.t, lx, ly); lx += ctx.measureText(sg.t).width + 16; }
-    }
+    };
+    if (geomRef.current) (geomRef.current as any).renderHover = renderHover;
 }
