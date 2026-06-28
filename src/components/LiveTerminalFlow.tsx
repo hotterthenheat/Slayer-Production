@@ -10,6 +10,9 @@ import { StrikeGexChart } from './StrikeGexChart';
 import { useGexHistory } from '../lib/gexHistory';
 import { StrikeMatrix } from './StrikeMatrix';
 import { OrderFlow } from './OrderFlow';
+import { DealerDynamicsPanel } from './DealerDynamicsPanel';
+import { RegimeMatrixPanel } from './RegimeMatrixPanel';
+import { TerminalWorkspace } from './TerminalWorkspace';
 import { SystemStatus } from './terminal/StatusBar';
 import { ReplayScrubber } from './terminal/ReplayScrubber';
 import { DealerPulse } from './terminal/DealerPulse';
@@ -17,7 +20,7 @@ import { SessionBand } from './terminal/SessionBand';
 import { fmtBig } from './terminal/format';
 import { CROSSHAIR_EVENT, CrosshairDetail, PRICE_SCALE_EVENT, PriceScaleDetail } from '../lib/chartSync';
 import { EdgeTrackRecord } from './EdgeTrackRecord';
-import { Crosshair, Activity, Zap, Layers, ChevronDown, Gauge as GaugeIcon, TrendingUp, TrendingDown, Minus, Clock, Maximize2, Minimize2 } from 'lucide-react';
+import { Crosshair, Activity, Zap, Layers, ChevronDown, Gauge as GaugeIcon, TrendingUp, TrendingDown, Minus, Clock, Maximize2, Minimize2, LayoutGrid } from 'lucide-react';
 import { ASSET_LIST, TIMEFRAMES } from '../data';
 
 // Tight, legible type scale (raised the floor off 7.5/8px so dense data stays readable).
@@ -95,6 +98,7 @@ export function LiveTerminalFlow({ profile: liveProfile, ticker, decimals }: Liv
   const [multiChart, setMultiChart] = useState(false); // opt-in movable/resizable multi-chart grid
   const [chartFocus, setChartFocus] = useState(false); // chart-hero focus mode — collapses both side rails (xl+)
   const [matrixMax, setMatrixMax] = useState(false); // full-screen the gamma matrix over the whole workspace
+  const [customize, setCustomize] = useState(false); // TradingView-style drag/resize/save custom layout
   const [gexLines, setGexLines] = useState(false); // center toggle — multi-strike GEX line chart
   const [ladderMetric, setLadderMetric] = useState<'GAMMA' | 'DELTA' | 'VANNA' | 'OI' | 'VOL'>('GAMMA');
   // Live price range the chart is showing — the Dealer Gamma Profile fills its panel with this range
@@ -530,6 +534,12 @@ export function LiveTerminalFlow({ profile: liveProfile, ticker, decimals }: Liv
             {TF.map(t => <option key={t.val} value={t.val}>{t.val}</option>)}
           </select>
           {segToggle(['0DTE', 'ALL'], scope, v => setScope(v as '0DTE' | 'ALL'), true)}
+          {/* Customize — TradingView-style drag/resize/save layout (opt-in; default layout untouched) */}
+          <button onClick={() => setCustomize(c => !c)} title="Customize layout — drag, resize & save your own panel arrangement"
+            className="hidden md:flex items-center gap-1 px-2 py-1 rounded-md border text-[10px] font-mono font-black uppercase tracking-wider transition-colors focus-visible:ring-1 focus-visible:ring-[var(--accent-color)] focus:outline-none"
+            style={customize ? { borderColor: 'var(--accent-color)', background: 'color-mix(in srgb, var(--accent-color) 14%, transparent)', color: 'var(--accent-color)' } : { borderColor: 'var(--border)', color: 'var(--text-tertiary)' }}>
+            <LayoutGrid className="w-3 h-3" />Customize
+          </button>
           <span className="flex items-center gap-1.5 px-2.5 py-1 rounded-md border text-[10px] font-mono font-black uppercase tracking-widest lg:hidden" style={{ borderColor: longGamma ? 'color-mix(in srgb, var(--info) 40%, transparent)' : 'color-mix(in srgb, var(--warning) 40%, transparent)', background: longGamma ? 'color-mix(in srgb, var(--info) 10%, transparent)' : 'color-mix(in srgb, var(--warning) 10%, transparent)', color: trend, boxShadow: `0 0 16px ${longGamma ? 'color-mix(in srgb, var(--info) 18%, transparent)' : 'color-mix(in srgb, var(--warning) 18%, transparent)'}` }}>
             {longGamma ? <Activity className="w-3 h-3" /> : <Zap className="w-3 h-3 fill-current" />}{longGamma ? 'Long γ' : 'Short γ'} · {read.regime === 'PIN' ? `Pin ${read.pinStrength}` : 'Trend'}
           </span>
@@ -557,6 +567,19 @@ export function LiveTerminalFlow({ profile: liveProfile, ticker, decimals }: Liv
             </div>
           </div>
         )}
+        {customize ? (
+          <TerminalWorkspace
+            storageKey="slayer.terminal.layout.v1"
+            onExit={() => setCustomize(false)}
+            panels={[
+              { id: 'chart', title: `Chart · ${selectedAsset.ticker}`, w: 8, h: 16, minW: 4, minH: 8, node: <SlayerChart profile={profile} decimals={decimals} live={liveFeed} /> },
+              { id: 'matrix', title: 'Gamma Matrix', w: 4, h: 16, minW: 3, minH: 6, node: <StrikeMatrix profile={profile} decimals={decimals} size="full" /> },
+              { id: 'flow', title: 'Order Flow', w: 4, h: 11, minW: 3, minH: 6, node: <OrderFlow data={orderFlow} decimals={decimals} /> },
+              { id: 'dynamics', title: 'Dealer Dynamics', w: 8, h: 11, minW: 4, minH: 6, node: <div className="p-3"><DealerDynamicsPanel /></div> },
+              { id: 'regime', title: 'Regime Matrix', w: 6, h: 9, minW: 3, minH: 5, node: <div className="p-3"><RegimeMatrixPanel /></div> },
+            ]}
+          />
+        ) : (
         <div className="flex flex-col xl:flex-row w-full h-full overflow-hidden">
 
           {/* ░ LEFT — Key Levels / Flow ░ */}
@@ -819,6 +842,7 @@ export function LiveTerminalFlow({ profile: liveProfile, ticker, decimals }: Liv
           </aside>
 
         </div>
+        )}
       </div>
       {profileHist.length > 2 && <ReplayScrubber hist={profileHist} replayT={replayT} setReplayT={setReplayT} decimals={decimals} />}
       <SystemStatus feedLabel={feedLabel} live={liveFeed} feedColor={feedColor} cd={sess.cd} />
