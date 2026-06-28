@@ -97,7 +97,7 @@ export function LiveTerminalFlow({ profile: liveProfile, ticker, decimals }: Liv
   const serverState = useContractStore(s => s.serverState);
   const dyn = serverState?.dealer_dynamics ?? null;
   const [tickerOpen, setTickerOpen] = useState(false);
-  const [leftTab, setLeftTab] = useState<'levels' | 'matrix' | 'flow' | 'alerts'>('levels');
+  const [leftTab, setLeftTab] = useState<'levels' | 'matrix' | 'flow' | 'alerts' | 'dynamics'>('levels');
   const [scope, setScope] = useState<'0DTE' | 'ALL'>('0DTE');
   const [multiChart, setMultiChart] = useState(false); // opt-in movable/resizable multi-chart grid
   const [chartFocus, setChartFocus] = useState(false); // chart-hero focus mode — collapses both side rails (xl+)
@@ -610,7 +610,7 @@ export function LiveTerminalFlow({ profile: liveProfile, ticker, decimals }: Liv
         {/* Full-screen gamma matrix — expands the heat-seeker over the whole workspace (multi-expiry,
             big + readable) so it isn't confined to the narrow rail box. */}
         {matrixMax && (
-          <div className="absolute inset-0 z-40 flex flex-col bg-[var(--surface)] animate-fadeIn">
+          <div className="absolute inset-0 z-40 flex flex-col bg-[var(--bg-base)] animate-fadeIn">
             <div className="flex items-center justify-between px-4 h-9 border-b border-[var(--border)] shrink-0">
               <span className="text-[11px] font-sans font-black tracking-widest uppercase text-[var(--text-primary)]">Gamma Matrix · {selectedAsset.ticker}</span>
               <button onClick={() => setMatrixMax(false)} title="Restore" className="flex items-center gap-1.5 text-[10px] font-mono font-black uppercase tracking-wider text-[var(--text-tertiary)] hover:text-[var(--text-primary)] focus-visible:ring-1 focus-visible:ring-[var(--accent-color)] focus:outline-none rounded px-1.5 py-0.5 transition-colors"><Minimize2 className="w-3.5 h-3.5" /> Restore</button>
@@ -638,15 +638,17 @@ export function LiveTerminalFlow({ profile: liveProfile, ticker, decimals }: Liv
 
           {/* ░ LEFT — Key Levels / Flow ░ */}
           <aside className={`order-2 xl:order-1 w-full xl:w-[248px] shrink-0 border-r border-[var(--border)] flex-col min-h-[360px] xl:min-h-0 bg-[var(--surface)] ${chartFocus ? 'flex xl:hidden' : 'flex'}`}>
-            <div className="flex items-center gap-4 px-3 h-9 border-b border-[var(--border)] shrink-0">
-              {(['levels', 'matrix', 'flow', 'alerts'] as const).map(t => (
-                <button key={t} onClick={() => setLeftTab(t)} className="relative text-[10.5px] font-sans font-black tracking-wider uppercase transition-colors py-2" style={{ color: leftTab === t ? 'var(--text-primary)' : 'var(--text-tertiary)' }}>
-                  {t === 'levels' ? 'Levels' : t === 'matrix' ? 'Matrix' : t === 'flow' ? 'Flow' : 'Alerts'}
-                  {leftTab === t && <span className="absolute -bottom-px left-0 right-0 h-[2px]" style={{ background: 'var(--accent-color)' }} />}
-                </button>
-              ))}
+            <div className="flex items-center px-3 h-9 border-b border-[var(--border)] shrink-0">
+              <div className="flex items-center gap-3 overflow-x-auto hide-scrollbar min-w-0">
+                {(['levels', 'matrix', 'flow', 'alerts', 'dynamics'] as const).map(t => (
+                  <button key={t} onClick={() => setLeftTab(t)} className="relative shrink-0 text-[10.5px] font-sans font-black tracking-wider uppercase transition-colors py-2" style={{ color: leftTab === t ? 'var(--text-primary)' : 'var(--text-tertiary)' }}>
+                    {t === 'levels' ? 'Levels' : t === 'matrix' ? 'Matrix' : t === 'flow' ? 'Flow' : t === 'alerts' ? 'Alerts' : 'Dynamics'}
+                    {leftTab === t && <span className="absolute -bottom-px left-0 right-0 h-[2px]" style={{ background: 'var(--accent-color)' }} />}
+                  </button>
+                ))}
+              </div>
               {leftTab === 'matrix' && (
-                <button onClick={() => setMatrixMax(true)} title="Expand matrix full screen" className="ml-auto shrink-0 text-[var(--text-tertiary)] hover:text-[var(--text-primary)] focus-visible:ring-1 focus-visible:ring-[var(--accent-color)] focus:outline-none rounded p-0.5 transition-colors"><Maximize2 className="w-3.5 h-3.5" /></button>
+                <button onClick={() => setMatrixMax(true)} title="Expand matrix full screen" className="ml-auto pl-2 shrink-0 text-[var(--text-tertiary)] hover:text-[var(--text-primary)] focus-visible:ring-1 focus-visible:ring-[var(--accent-color)] focus:outline-none rounded p-0.5 transition-colors"><Maximize2 className="w-3.5 h-3.5" /></button>
               )}
             </div>
 
@@ -654,6 +656,8 @@ export function LiveTerminalFlow({ profile: liveProfile, ticker, decimals }: Liv
               <div className="flex-1 min-h-0 overflow-y-auto"><StrikeMatrix profile={profile} decimals={decimals} /></div>
             ) : leftTab === 'flow' ? (
               <div className="flex-1 min-h-0"><OrderFlow data={orderFlow} decimals={decimals} /></div>
+            ) : leftTab === 'dynamics' ? (
+              <div className="flex-1 min-h-0 overflow-y-auto p-2"><DealerDynamicsPanel /></div>
             ) : leftTab === 'alerts' ? (
               <div className="flex-1 min-h-0">
                 <LevelAlertsPanel

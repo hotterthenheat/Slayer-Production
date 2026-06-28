@@ -1676,16 +1676,9 @@ const buildPayload = (params: PayloadParams) => {
     ]
   };
 
-  const displacementVolatility = {
-    energy: Math.min(100, Math.max(0, Math.round(50 + (systemScore.momentumAcceleration - 5) * 8))),
-    atrPercentile: Math.round(40 + systemScore.volatilityRegime * 5.5),
-    atrSlope: Number((0.6 + systemScore.volatilityRegime * 0.14).toFixed(2))
-  };
-
-  const actualTrend = systemScore.total >= 70 ? 'bullish' : systemScore.total <= 40 ? 'bearish' : 'neutral';
-  const lastCandle = candles[candles.length - 1];
-  const currentVWAP = lastCandle ? (lastCandle.vwap || lastCandle.close) : lastPrice;
-  const pricePosition = lastPrice >= currentVWAP ? 'above vwap' : 'below vwap';
+  // (displacement.volatility + displacement.structure removed: no client component ever read
+  // them — only zones/fvgs/sweeps are consumed. Their inputs were computed solely to fill those
+  // unused fields, so the whole block is dropped to keep the payload honest and lean.)
 
   // (Break-of-Structure / CHoCH event detection removed: the events array was computed on every
   // broadcast tick but consumed by no client component — dead weight on the hot path.)
@@ -1734,11 +1727,6 @@ const buildPayload = (params: PayloadParams) => {
   const sweeps = calculateLiquidityEvents(candles);
 
   const displacement = {
-    volatility: displacementVolatility,
-    structure: {
-      trend: actualTrend,
-      pricePosition,
-    },
     zones,
     fvgs,
     sweeps

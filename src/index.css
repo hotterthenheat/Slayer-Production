@@ -837,8 +837,8 @@ body.light-theme ::-webkit-scrollbar-thumb:hover {
 
   /* Redefine Tailwind's custom theme variables for light mode */
   --color-black: #ffffff;
-  --color-zinc-950: #000000;
-  --color-zinc-900: #000000;
+  --color-zinc-950: #111827;
+  --color-zinc-900: #111827;
   --color-zinc-850: rgba(0, 0, 0, 0.05);
   --color-zinc-800: rgba(0, 0, 0, 0.07);
   --color-zinc-750: rgba(0, 0, 0, 0.09);
