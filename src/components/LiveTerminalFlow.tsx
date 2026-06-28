@@ -487,11 +487,12 @@ export function LiveTerminalFlow({ profile: liveProfile, ticker, decimals }: Liv
             <span className="text-[11px] font-mono font-bold tabular-nums" style={{ color: dayChg >= 0 ? 'var(--success)' : 'var(--danger)' }}>{dayChg >= 0 ? '+' : ''}{dayChg.toFixed(2)}%</span>
           </div>
         </div>
-        {/* Centred macro readout — Asset · Price · Δ · Regime · Gamma · Exp Move · Confidence (§2) */}
-        <div className="absolute left-1/2 -translate-x-1/2 hidden lg:flex items-center gap-3.5 font-mono">
-          <div className="flex items-baseline gap-2">
-            <span className="text-[13px] font-black tracking-wider text-[var(--text-secondary)]">{selectedAsset.ticker}</span>
-            <span className={`text-[25px] font-black tabular-nums leading-none text-[var(--text-primary)] ${flash === 'up' ? 'tick-up' : flash === 'down' ? 'tick-down' : ''}`} style={{ letterSpacing: '-0.01em' }}>{spot ? spot.toLocaleString('en-US', { minimumFractionDigits: decimals, maximumFractionDigits: decimals }) : '—'}</span>
+        {/* Centred macro readout — ticker STACKED over price · Δ. Ticker is the bold/bright header; price sits
+            beneath it so the symbol reads first, then the live print. (§2) */}
+        <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 hidden lg:flex flex-col items-center font-mono">
+          <span className="text-[16px] font-black tracking-[0.12em] text-[var(--text-primary)] leading-none">{selectedAsset.ticker}</span>
+          <div className="flex items-baseline gap-1.5 mt-0.5">
+            <span className={`text-[23px] font-black tabular-nums leading-none text-[var(--text-primary)] ${flash === 'up' ? 'tick-up' : flash === 'down' ? 'tick-down' : ''}`} style={{ letterSpacing: '-0.01em' }}>{spot ? spot.toLocaleString('en-US', { minimumFractionDigits: decimals, maximumFractionDigits: decimals }) : '—'}</span>
             <span className="text-[11px] font-bold tabular-nums" style={{ color: dayChg >= 0 ? 'var(--success)' : 'var(--danger)' }}>{dayChg >= 0 ? '+' : ''}{dayChg.toFixed(2)}%</span>
           </div>
         </div>
