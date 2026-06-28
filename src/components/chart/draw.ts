@@ -54,6 +54,7 @@ export type DrawDeps = {
   liveOverlayRef?: { current: { plotR: number; lastY: number; up: boolean; upCol: string; downCol: string } | null };  // last-price geometry handed to the overlay layer
   tickKey: string; tfKey: string;
   onScale?: (lo: number, hi: number) => void;   // report the live visible price range (drives the price-aligned gamma profile)
+  panPx?: number;   // sub-bar pixel offset for smooth (sub-pixel) panning during an active drag; 0 otherwise
 };
 
 export function drawChart(deps: DrawDeps) {
@@ -62,7 +63,7 @@ export function drawChart(deps: DrawDeps) {
     hoverRef, gexDeltaRef, draftRef, measureRef, drawingsRef, toolRef, selectedRef,
     candles, ha, atr, profile, colors, decimals, chartType, ovOn, overlaySeries, paneSeries,
     displacements, gexCount, showVolume, showGrid, showWatermark, candleBorders,
-    showGex, showHeat, showOrbs, showVolProfile, showPrevClose, showVwap, vwap, showMigration, gammaCoM, comHist, showExposure, showMaxPain, showDisp, showLadder, tickKey, tfKey, onScale, live, livePhaseRef, liveOverlayRef,
+    showGex, showHeat, showOrbs, showVolProfile, showPrevClose, showVwap, vwap, showMigration, gammaCoM, comHist, showExposure, showMaxPain, showDisp, showLadder, tickKey, tfKey, onScale, live, livePhaseRef, liveOverlayRef, panPx,
   } = deps;
     const canvas = canvasRef.current, container = containerRef.current;
     if (!canvas || !container) return;
@@ -123,8 +124,11 @@ export function drawChart(deps: DrawDeps) {
     const hasWalls = !!(profile.callWall || profile.putWall || profile.magnet);
     const projBars = hasWalls ? Math.max(6, Math.min(22, Math.round(bars * 0.13))) : 0;
     const barW = plotW / (bars + projBars);
-    const nowX = plotL + bars * barW; // right edge of the candle zone; nowX..plotR is the projection
-    const xOf = (gi: number) => plotL + (gi - start) * barW + barW / 2;
+    // Sub-pixel pan offset (added to every x): the candle layer slides smoothly while dragging between
+    // bars; it's the remainder of the fractional bar offset and is 0 except during an active drag.
+    const panX = panPx || 0;
+    const nowX = plotL + bars * barW + panX; // right edge of the candle zone; nowX..plotR is the projection
+    const xOf = (gi: number) => plotL + (gi - start) * barW + barW / 2 + panX;
     const src = chartType === 'heikin' ? ha : candles;
     const vis = src.slice(start, end);
 
@@ -843,7 +847,7 @@ export function drawChart(deps: DrawDeps) {
       // rr bound to the OVERLAY ctx — the outer rr closes over the BASE ctx, so using it here would paint
       // the tooltip box onto the candle layer (invisible / cleared on the next base draw). Shadow fixes it.
       const rr = (x: number, y: number, w: number, h: number, r: number) => { ctx.beginPath(); if ((ctx as any).roundRect) (ctx as any).roundRect(x, y, w, h, r); else ctx.rect(x, y, w, h); };
-      const gi = Math.max(start, Math.min(Math.min(end - 1, n - 1), start + Math.round((hv.x - plotL - barW / 2) / barW)));
+      const gi = Math.max(start, Math.min(Math.min(end - 1, n - 1), start + Math.round((hv.x - plotL - barW / 2 - panX) / barW)));
       const cx = xOf(gi);
       ctx.strokeStyle = hexA(T.text, 0.26); ctx.setLineDash([3, 3]);
       ctx.beginPath(); ctx.moveTo(px(cx), priceTop); ctx.lineTo(px(cx), H - xAxisH); ctx.stroke();
