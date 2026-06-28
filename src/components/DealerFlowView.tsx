@@ -801,7 +801,7 @@ export function DealerFlowView() {
   }
 
   return (
-    <div className="w-full space-y-6 tabular-data" id="dealerflow-main-workspace-view">
+    <div className={`w-full tabular-data ${activeEngineView === 'terminal' ? 'h-full flex flex-col min-h-0' : 'space-y-6'}`} id="dealerflow-main-workspace-view">
       {/* ============== HEADER STRIP ============== */}
       <div className={`${theme.cardBg} rounded-lg px-3 py-3 sm:px-5 sm:py-4 flex flex-col lg:flex-row lg:items-center gap-4 justify-between`} id="dealerflow-header-strip">
         <div className="flex items-center gap-3.5">
