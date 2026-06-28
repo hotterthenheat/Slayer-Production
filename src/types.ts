@@ -222,7 +222,9 @@ export interface GexExpirySlice {
   netGex: number;                              // Σ net γ across this expiry's strikes
   callWall?: number;                           // strongest +γ strike (optional marker)
   putWall?: number;                            // strongest −γ strike (optional marker)
-  strikes: { strike: number; netGex: number }[];
+  // Per-strike call/put gamma + volume so the matrix can render the CALL Γ | PUT Γ | VOL table for
+  // any selected expiry. callGex ≥ 0, putGex ≤ 0 (signed like the front chain).
+  strikes: { strike: number; netGex: number; callGex?: number; putGex?: number; vol?: number }[];
 }
 
 export interface GexProfileData {

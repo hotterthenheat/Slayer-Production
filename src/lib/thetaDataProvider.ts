@@ -333,7 +333,7 @@ export async function fetchThetaExpirySlices(
       if (!gRows.length) continue;
 
       const oiMap = new Map(oiRows.map((o) => [`${pick(o, 'strike')}|${rightOf(o)}`, o]));
-      const byStrike = new Map<number, number>();
+      const byStrike = new Map<number, { netGex: number; callGex: number; putGex: number; vol: number }>();
       for (const g of gRows) {
         const rawStrike = num(pick(g, 'strike'));
         const strike = decodeStrike(rawStrike, spotPrice);
@@ -343,12 +343,15 @@ export async function fetchThetaExpirySlices(
         const gamma = num(pick(g, 'gamma')) ?? 0;
         const oi = num(pick(oiRow, 'open_interest', 'oi')) ?? 0;
         if (!gamma || !oi) continue;
-        const sign = type === 'C' ? 1 : -1;
-        byStrike.set(strike, (byStrike.get(strike) || 0) + gamma * oi * 100 * spot2 * 0.01 * sign);
+        const gex = gamma * oi * 100 * spot2 * 0.01 * (type === 'C' ? 1 : -1);
+        const a = byStrike.get(strike) || { netGex: 0, callGex: 0, putGex: 0, vol: 0 };
+        a.netGex += gex; a.vol += oi;
+        if (type === 'C') a.callGex += gex; else a.putGex += gex;
+        byStrike.set(strike, a);
       }
       if (!byStrike.size) continue;
 
-      const strikes = [...byStrike.entries()].map(([strike, netGex]) => ({ strike, netGex }));
+      const strikes = [...byStrike.entries()].map(([strike, a]) => ({ strike, netGex: a.netGex, callGex: a.callGex, putGex: a.putGex, vol: a.vol }));
       let netGex = 0, callWall: number | undefined, putWall: number | undefined, maxPos = 0, maxNeg = 0;
       for (const s of strikes) {
         netGex += s.netGex;

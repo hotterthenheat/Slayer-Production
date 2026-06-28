@@ -1604,7 +1604,7 @@ const buildPayload = (params: PayloadParams) => {
   const realExpiries = db.gexExpiries[asset.ticker];
   const matrixExpiries = (realExpiries && realExpiries.length)
     ? realExpiries
-    : (!isChainLive && strikesArr.length ? synthesizeExpirySlices(strikesArr.map(s => ({ strike: s.strike, netGex: s.netGex })), asset) : undefined);
+    : (!isChainLive && strikesArr.length ? synthesizeExpirySlices(strikesArr.map(s => ({ strike: s.strike, netGex: s.netGex, callGex: s.callGex, putGex: s.putGex, vol: (s.callVolume || 0) + (s.putVolume || 0) || (s.callOi || 0) + (s.putOi || 0) })), asset) : undefined);
 
   const gex_profile = {
     spot: lastPrice,

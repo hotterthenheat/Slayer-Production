@@ -486,7 +486,7 @@ export function optionExpiryDate(asset: AssetInfo, now: Date = new Date()): stri
  * per-expiry chains via the opt-in fetch. Kept deterministic (no Math.random).
  */
 export function synthesizeExpirySlices(
-  strikes: { strike: number; netGex: number }[],
+  strikes: { strike: number; netGex: number; callGex?: number; putGex?: number; vol?: number }[],
   asset: AssetInfo,
   now: Date = new Date(),
 ): GexExpirySlice[] {
@@ -494,10 +494,11 @@ export function synthesizeExpirySlices(
   const d0 = asset.optionsStyle === 'weekly' ? frontWeeklyDteDays(now) : 0;
   const offsets = [d0, d0 + 7, d0 + 14, d0 + 28];   // front · +1w · +2w · ~1mo
   const factors = [1, 0.64, 0.44, 0.31];            // gamma concentrates near-term
+  const vfac = [1, 0.55, 0.34, 0.22];               // volume/OI thins out further out too
   const iso = (dte: number) => { const d = new Date(now); d.setDate(d.getDate() + dte); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; };
   return offsets.map((dte, k) => {
-    const f = factors[k];
-    const sl = strikes.map(s => ({ strike: s.strike, netGex: (s.netGex || 0) * f }));
+    const f = factors[k], vf = vfac[k];
+    const sl = strikes.map(s => ({ strike: s.strike, netGex: (s.netGex || 0) * f, callGex: (s.callGex || 0) * f, putGex: (s.putGex || 0) * f, vol: Math.round((s.vol || 0) * vf) }));
     let netGex = 0, callWall: number | undefined, putWall: number | undefined, mx = 0, mn = 0;
     for (const s of sl) { netGex += s.netGex; if (s.netGex > mx) { mx = s.netGex; callWall = s.strike; } if (s.netGex < mn) { mn = s.netGex; putWall = s.strike; } }
     return { expiration: iso(dte), dte, netGex, callWall, putWall, strikes: sl };
