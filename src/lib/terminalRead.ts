@@ -25,6 +25,7 @@ export interface TerminalRead {
   regime: 'PIN' | 'TREND';
   regimeLabel: string;    // single source of truth for regime wording
   pinStrength: number;    // 0..100 — concentration × proximity of dealer gamma (PIN only)
+  positionStrength: number; // 0..100 — conviction in the read (confluence × agreement × regime clarity)
   signals: TerminalSignal[];
   play: string;
   entry: string;
@@ -139,6 +140,16 @@ export function computeTerminalRead(profile: GexProfileData, recentCloses: numbe
     if (!tOk || !sOk) { noTrade = true; target = undefined; stop = undefined; entry = 'No clean bracket — wait for structure'; play = `${regimeLabel} regime but spot sits ${tOk ? 'inside its stop' : 'past its target'} — no coherent ${bias.toLowerCase()} bracket. Stand down until levels reset.`; }
   }
 
+  // Position Strength (0..100): a single conviction number for the current read — how strong the
+  // directional confluence is (|score|), how aligned the signals are (confidence), and how clear
+  // the regime is (gamma concentration in a PIN; confluence magnitude in a TREND). Halved when
+  // there is no clean tradeable bracket so a no-trade never reads as a strong setup. Pure synthesis
+  // of the real signals above — every input is shown to the user, so it is auditable, not a black box.
+  const regimeClarity = regime === 'PIN' ? pinStrength : Math.min(100, Math.abs(score) * 1.1);
+  let positionStrength = Math.round(0.45 * Math.abs(score) + 0.35 * confidence + 0.20 * regimeClarity);
+  if (noTrade || biasDir === 0) positionStrength = Math.round(positionStrength * 0.5);
+  positionStrength = Math.max(0, Math.min(100, positionStrength));
+
   // ── Live narrative ──
   const events: TerminalEvent[] = [];
   if (flip && spot) events.push({ text: spot >= flip ? `Holding above γ-flip ${r0(flip)} — stability` : `Below γ-flip ${r0(flip)} — unstable / trending`, tone: spot >= flip ? 'pos' : 'neg' });
@@ -149,7 +160,7 @@ export function computeTerminalRead(profile: GexProfileData, recentCloses: numbe
   events.push({ text: `Net ${fmtGex(netGex)} gamma — dealers ${longGamma ? 'suppress vol' : 'chase moves'}`, tone: longGamma ? 'pos' : 'neg' });
   if (emPct) events.push({ text: `Implied day range ±${(emPct * 100).toFixed(2)}% (${r0(spot * (1 - emPct))}–${r0(spot * (1 + emPct))})`, tone: 'neutral' });
 
-  return { bias, score, confidence, confidenceLabel, regime, regimeLabel, pinStrength, signals, play, entry, target, stop, noTrade, netVex, events };
+  return { bias, score, confidence, confidenceLabel, regime, regimeLabel, pinStrength, positionStrength, signals, play, entry, target, stop, noTrade, netVex, events };
 }
 
 /**

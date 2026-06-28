@@ -13,6 +13,7 @@ import { OrderFlow } from './OrderFlow';
 import { DealerDynamicsPanel } from './DealerDynamicsPanel';
 import { RegimeMatrixPanel } from './RegimeMatrixPanel';
 import { TerminalWorkspace } from './TerminalWorkspace';
+import { TopStrikesPanel } from './TopStrikesPanel';
 import { LevelAlertsPanel } from './LevelAlertsPanel';
 import { loadAlerts, saveAlerts, detectCrosses, newAlertId, type ArmedAlert, type FiredAlert, type AlertKind } from '../lib/levelAlerts';
 import { SystemStatus } from './terminal/StatusBar';
@@ -605,6 +606,7 @@ export function LiveTerminalFlow({ profile: liveProfile, ticker, decimals }: Liv
               { id: 'flow', title: 'Order Flow', w: 4, h: 11, minW: 3, minH: 6, node: <OrderFlow data={orderFlow} decimals={decimals} /> },
               { id: 'dynamics', title: 'Dealer Dynamics', w: 8, h: 11, minW: 4, minH: 6, node: <div className="p-3"><DealerDynamicsPanel /></div> },
               { id: 'regime', title: 'Regime Matrix', w: 6, h: 9, minW: 3, minH: 5, node: <div className="p-3"><RegimeMatrixPanel /></div> },
+              { id: 'topstrikes', title: 'Top Calls & Puts', w: 4, h: 9, minW: 3, minH: 5, node: <div className="p-3"><TopStrikesPanel profile={profile} spot={spot} decimals={decimals} /></div> },
             ]}
           />
         ) : (
@@ -686,6 +688,14 @@ export function LiveTerminalFlow({ profile: liveProfile, ticker, decimals }: Liv
                     <span className="px-1.5 py-0.5 rounded text-[9px] font-mono font-black uppercase tracking-widest" style={{ background: `color-mix(in srgb, ${trend} 14%, transparent)`, color: trend }}>{aboveFlip == null ? 'No Flip' : aboveFlip ? 'Above Flip' : 'Below Flip'}</span>
                     <span className="text-[9px] font-mono text-[var(--text-tertiary)]">{read.regimeLabel}</span>
                   </div>
+                  {/* Setup Strength (0–100) — conviction in the current read: confluence × agreement × regime clarity. */}
+                  <div className="mt-2 pt-2 border-t" style={{ borderColor: 'color-mix(in srgb, var(--border) 80%, transparent)' }}>
+                    <div className="flex items-center justify-between mb-1" title="Conviction in the current directional read (0–100): blends confluence magnitude (|score|), signal agreement (confidence) and regime clarity (gamma concentration in a pin). Halved when there is no clean tradeable bracket, so a no-trade never reads as a strong setup.">
+                      <span className="text-[8.5px] font-mono uppercase tracking-widest text-[var(--text-tertiary)]">Setup Strength · {read.bias}</span>
+                      <span className="text-[11px] font-mono font-black tabular-nums" style={{ color: read.bias === 'LONG' ? 'var(--success)' : read.bias === 'SHORT' ? 'var(--danger)' : 'var(--info)' }}>{read.positionStrength}</span>
+                    </div>
+                    <div className="h-1.5 rounded-full bg-[var(--surface-3)] overflow-hidden"><div className="h-full rounded-full" style={{ width: `${read.positionStrength}%`, background: read.bias === 'LONG' ? 'var(--success)' : read.bias === 'SHORT' ? 'var(--danger)' : 'var(--info)', transition: 'width 400ms cubic-bezier(0.16,1,0.3,1)' }} /></div>
+                  </div>
                   {/* Wall strength (0–100) — not all walls are equal; the engine blends gamma, OI
                       and volume so a trader can tell a concrete wall from a paper one. */}
                   {(wallRes || wallSup) && (
@@ -725,6 +735,9 @@ export function LiveTerminalFlow({ profile: liveProfile, ticker, decimals }: Liv
                     ))}
                   </div>
                 </div>
+
+                {/* Top Calls & Puts — the heaviest dealer-gamma strikes on each side, ranked. */}
+                <TopStrikesPanel profile={profile} spot={spot} decimals={decimals} />
 
                 {/* Dealer Structure mini-scale removed — the chart already plots PW / γ-flip / magnet / CW
                     on the price axis spatially, and the hero status line carries the range; a 1-D copy here
