@@ -101,7 +101,7 @@ export default function TierGuard({
         initial={{ opacity: 0, y: 12 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.4, ease: "easeOut" }}
-        className="w-full max-w-3xl mx-auto my-12 border border-[#5865F2]/40 bg-black rounded-2xl relative overflow-hidden shadow-[0_25px_60px_-15px_rgba(88,101,242,0.15)] p-6 md:p-10"
+        className="w-full max-w-3xl mx-auto my-12 border border-[#5865F2]/40 bg-[var(--bg-base)] rounded-2xl relative overflow-hidden shadow-[0_25px_60px_-15px_rgba(88,101,242,0.15)] p-6 md:p-10"
       >
         {/* Decorative mechanical and glow accents */}
         <div className="absolute top-0 right-0 w-80 h-80 bg-[#5865F2]/10 rounded-full blur-[125px] pointer-events-none -mr-40 -mt-40" />
@@ -128,7 +128,7 @@ export default function TierGuard({
         </div>
 
         {/* Big Nice UI Style Discord Invitation Button Link */}
-        <div className="relative z-10 py-8 px-6 my-6 bg-black border border-[#5865F2]/20 rounded-2xl flex flex-col md:flex-row items-center justify-between gap-6 shadow-[inset_0_1px_3px_rgba(255,255,255,0.02)]">
+        <div className="relative z-10 py-8 px-6 my-6 bg-[var(--bg-base)] border border-[#5865F2]/20 rounded-2xl flex flex-col md:flex-row items-center justify-between gap-6 shadow-[inset_0_1px_3px_rgba(255,255,255,0.02)]">
           <div className="space-y-1.5 text-center md:text-left flex-1">
             <span className="text-[9px] text-[#5865F2] font-mono font-black uppercase tracking-widest block">
               JOIN THE SERVER

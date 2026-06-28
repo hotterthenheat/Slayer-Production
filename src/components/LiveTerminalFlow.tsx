@@ -572,10 +572,11 @@ export function LiveTerminalFlow({ profile: liveProfile, ticker, decimals }: Liv
               : <span className="w-1.5 h-1.5 rounded-full" style={{ background: feedColor }} />}
             {feedLabel}
           </span>
-          <div className="hidden md:block">{segToggle(TF.map(t => t.val), selectedTimeframe, setSelectedTimeframe)}</div>
-          {/* Mobile timeframe + scope — grouped into one control cluster so neither sits alone on the
-              bar (the wide desktop TF toggle is hidden below md, so the compact select takes over). */}
+          {/* Timeframe + scope + regime — one control cluster so no toggle sits alone on the bar. The
+              wide desktop TF toggle (md+) and the compact mobile select (below md) swap inside it; the
+              scope toggle is always shown; the regime badge rides along on mobile only. */}
           <div className="flex items-center gap-1.5">
+            <div className="hidden md:block">{segToggle(TF.map(t => t.val), selectedTimeframe, setSelectedTimeframe)}</div>
             <select
               value={selectedTimeframe}
               onChange={e => setSelectedTimeframe(e.target.value as typeof selectedTimeframe)}
@@ -615,7 +616,7 @@ export function LiveTerminalFlow({ profile: liveProfile, ticker, decimals }: Liv
               <span className="text-[11px] font-sans font-black tracking-widest uppercase text-[var(--text-primary)]">Gamma Matrix · {selectedAsset.ticker}</span>
               <button onClick={() => setMatrixMax(false)} title="Restore" className="flex items-center gap-1.5 text-[10px] font-mono font-black uppercase tracking-wider text-[var(--text-tertiary)] hover:text-[var(--text-primary)] focus-visible:ring-1 focus-visible:ring-[var(--accent-color)] focus:outline-none rounded px-1.5 py-0.5 transition-colors"><Minimize2 className="w-3.5 h-3.5" /> Restore</button>
             </div>
-            <div className="flex-1 min-h-0 overflow-y-auto px-2 py-2">
+            <div className="flex-1 min-h-0 overflow-y-auto px-4 py-2">
               <div className="w-full"><StrikeMatrix profile={profile} decimals={decimals} size="full" /></div>
             </div>
           </div>

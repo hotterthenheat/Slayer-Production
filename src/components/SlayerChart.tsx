@@ -5,7 +5,7 @@ import * as TI from '../lib/indicators';
 import { SyncChannel, CHANNEL_CYCLE, CHANNEL_COLORS, subscribeChannel, publishChannel, broadcastCrosshair, broadcastPriceScale } from '../lib/chartSync';
 import { fetchHistory } from '../lib/historyCache';
 import { OVERLAY_DEFS, PANE_DEFS, type OHLCV, type Series, type PaneData } from './chart/indicators';
-import { newId, idxOfTime, timeOfIdx, distToSeg, RANGE_PRESETS, CHART_TFS, readTheme, EMPTY, hexA, sameDay, type RangeKey } from './chart/format';
+import { newId, idxOfTime, timeOfIdx, distToSeg, RANGE_PRESETS, CHART_TFS, readTheme, EMPTY, hexA, contrastInk, sameDay, type RangeKey } from './chart/format';
 import { CHART_TYPES, DRAW_COLOR, DRAW_TOOLS, type ChartType, type DrawTool, type Anchor, type Drawing } from './chart/drawing';
 import { ChartContextMenu } from './chart/overlays';
 import { IndicatorMenu } from './chart/IndicatorMenu';
@@ -327,7 +327,7 @@ export const SlayerChart = memo(function SlayerChartImpl({ profile, decimals, ca
       }
       // Static last-price dot — always painted, so a closed/stale market still shows the marker.
       ctx.beginPath(); ctx.arc(g.plotR, g.lastY, 3.2, 0, Math.PI * 2); ctx.fillStyle = col; ctx.fill();
-      ctx.beginPath(); ctx.arc(g.plotR, g.lastY, 3.2, 0, Math.PI * 2); ctx.strokeStyle = hexA('#06090d', 0.9); ctx.lineWidth = 1; ctx.stroke();
+      ctx.beginPath(); ctx.arc(g.plotR, g.lastY, 3.2, 0, Math.PI * 2); ctx.strokeStyle = hexA(contrastInk(col), 0.85); ctx.lineWidth = 1; ctx.stroke();
     }
     // Crosshair + axis bubbles + OHLC + dealer-context + loaded-strike tooltip — rendered here on the
     // overlay (Layered-canvas 1b) so cursor movement repaints ONLY this surface, never the candle layer.

@@ -88,12 +88,12 @@ export function StrikeMatrix({ profile, decimals = 0, size = 'compact' }: { prof
               {/* CALL Γ */}
               <div className="h-full flex items-center justify-center rounded-[2px] transition-colors duration-300"
                 style={{ background: callBg(r.call), boxShadow: r.isCW ? 'inset 0 0 0 1px var(--success), 0 0 7px -2px var(--success)' : undefined }}>
-                <span style={{ color: cMag > 0.4 ? 'var(--text-primary)' : 'color-mix(in srgb, var(--success) 82%, var(--text-tertiary))', fontWeight: cMag > 0.6 ? 800 : 600 }}>{r.call ? fmtG(r.call) : '·'}</span>
+                <span style={{ color: cMag > 0.4 ? 'var(--text-primary)' : 'var(--text-secondary)', fontWeight: cMag > 0.6 ? 800 : 600 }}>{r.call ? fmtG(r.call) : '·'}</span>
               </div>
               {/* PUT Γ */}
               <div className="h-full flex items-center justify-center rounded-[2px] transition-colors duration-300"
                 style={{ background: putBg(r.put), boxShadow: r.isPW ? 'inset 0 0 0 1px var(--danger), 0 0 7px -2px var(--danger)' : undefined }}>
-                <span style={{ color: pMag > 0.4 ? 'var(--text-primary)' : 'color-mix(in srgb, var(--danger) 82%, var(--text-tertiary))', fontWeight: pMag > 0.6 ? 800 : 600 }}>{r.put ? fmtG(r.put) : '·'}</span>
+                <span style={{ color: pMag > 0.4 ? 'var(--text-primary)' : 'var(--text-secondary)', fontWeight: pMag > 0.6 ? 800 : 600 }}>{r.put ? fmtG(r.put) : '·'}</span>
               </div>
               {/* VOL pill */}
               <div className="flex justify-end">

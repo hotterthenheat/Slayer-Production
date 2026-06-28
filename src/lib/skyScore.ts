@@ -122,12 +122,14 @@ const EMA_KEYS: (keyof EmaTargets)[] = ['ema5', 'ema9', 'ema20', 'ema50', 'ema20
 function mid(c: RankerContract): number { return (c.bid + c.ask) / 2; }
 
 /** Per-strike signed dealer exposure when the adapter didn't supply it.
- *  Convention (existing engine): short calls negative, long puts positive. */
+ *  Canonical GEX convention (shared with gexEngine / v11Math / skyQuantCore): call-positive,
+ *  put-negative — so the fallback matches the adapter-supplied gexStrike/vexStrike it's compared
+ *  against (e.g. the velocity deltas below). VEX is $-scaled (× spot × 0.01) to match those units. */
 function exposures(c: RankerContract, spot: number) {
-  const sign = c.type === 'C' ? -1 : 1;
+  const sign = c.type === 'C' ? 1 : -1;
   const gex = c.gexStrike ?? sign * (c.gamma || 0) * c.oi * 100 * spot * spot * 0.01;
   const dex = c.dexStrike ?? sign * (c.delta || 0) * c.oi * 100 * spot;
-  const vex = c.vexStrike ?? sign * (c.vega || 0) * c.oi * 100;
+  const vex = c.vexStrike ?? sign * (c.vega || 0) * c.oi * 100 * spot * 0.01;
   return { gex, dex, vex };
 }
 

@@ -48,6 +48,19 @@ export const HEAT_POS = '#e0a93b', HEAT_NEG = '#9b6dff';
 export const fmtGex = (v: number) => { const a = Math.abs(v), s = v >= 0 ? '+' : '-'; if (a >= 1e9) return s + (a / 1e9).toFixed(a >= 1e10 ? 1 : 2) + 'B'; if (a >= 1e6) return s + (a / 1e6).toFixed(0) + 'M'; if (a >= 1e3) return s + (a / 1e3).toFixed(0) + 'K'; return s + Math.round(a); };
 // Linear blend of two #rrggbb hex colors (t in 0..1) — drives the loaded-strike intensity scale.
 export const mixHex = (a: string, b: string, t: number) => { const pa = parseInt(a.slice(1), 16), pb = parseInt(b.slice(1), 16), k = Math.max(0, Math.min(1, t)); const r = Math.round(((pa >> 16) & 255) + (((pb >> 16) & 255) - ((pa >> 16) & 255)) * k), g = Math.round(((pa >> 8) & 255) + (((pb >> 8) & 255) - ((pa >> 8) & 255)) * k), bl = Math.round((pa & 255) + ((pb & 255) - (pa & 255)) * k); return '#' + ((1 << 24) + (r << 16) + (g << 8) + bl).toString(16).slice(1); };
+// Pick a high-contrast ink (near-black vs near-white) for text drawn ON a colored chip, by the chip's
+// perceived luminance — so on-chip labels stay readable whatever the chip color is, in every theme
+// (e.g. a light theme whose accent is near-black, where a fixed dark ink would vanish).
+export const contrastInk = (hex: string) => {
+  const h = (hex || '').trim().replace('#', '');
+  const n = h.length === 3 ? h.split('').map(c => c + c).join('') : h.slice(0, 6);
+  const v = parseInt(n, 16);
+  if (Number.isNaN(v)) return '#06090d';
+  const r = (v >> 16) & 255, g = (v >> 8) & 255, b = v & 255;
+  const lum = (0.299 * r + 0.587 * g + 0.114 * b) / 255; // Rec.601 perceived luminance
+  return lum > 0.58 ? '#06090d' : '#F3F3F5';
+};
+
 // Interval (timeframe) options offered directly on the chart toolbar.
 export const CHART_TFS: TimeframeVal[] = ['1m', '2m', '3m', '5m', '15m', '30m', '1h', '4h', '1D', '1W'];
 
