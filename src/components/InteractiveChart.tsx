@@ -146,12 +146,12 @@ export const InteractiveChart = React.memo(function InteractiveChart({
       crosshair: {
         mode: 1, // Magnet mode
         vertLine: {
-          color: isLight ? '#000000' : '#ffffff',
+          color: isLight ? '#1f2937' : '#ffffff',
           width: 1, // LineWidth must be integer e.g., 1
           style: 1 // Dashed line style
         },
         horzLine: {
-          color: isLight ? '#000000' : '#ffffff',
+          color: isLight ? '#1f2937' : '#ffffff',
           width: 1,
           style: 1
         }
@@ -281,10 +281,10 @@ export const InteractiveChart = React.memo(function InteractiveChart({
         },
         crosshair: {
           vertLine: {
-            color: isLight ? '#000000' : '#ffffff',
+            color: isLight ? '#1f2937' : '#ffffff',
           },
           horzLine: {
-            color: isLight ? '#000000' : '#ffffff',
+            color: isLight ? '#1f2937' : '#ffffff',
           }
         },
         timeScale: {

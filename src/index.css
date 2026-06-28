@@ -667,7 +667,7 @@ html.scroll-smooth {
 }
 
 body {
-  background-color: #000000;
+  background-color: var(--bg-base);
   color: #F3F3F5;
   overflow: hidden;
   -webkit-overflow-scrolling: touch;
@@ -691,7 +691,7 @@ body {
 }
 
 ::-webkit-scrollbar-track {
-  background: #000000;
+  background: var(--bg-base);
 }
 
 ::-webkit-scrollbar-thumb {
@@ -715,7 +715,7 @@ body {
 @keyframes breathe-call {
   0%, 100% {
     border-color: rgba(161, 161, 170, 0.1);
-    background-color: #000000;
+    background-color: var(--bg-base);
     box-shadow: none;
   }
   50% {
@@ -728,7 +728,7 @@ body {
 @keyframes breathe-put {
   0%, 100% {
     border-color: rgba(255, 69, 58, 0.1);
-    background-color: #000000;
+    background-color: var(--bg-base);
     box-shadow: none;
   }
   50% {
@@ -745,7 +745,7 @@ body {
     box-shadow: 0 0 20px rgba(161, 161, 170, 0.5);
   }
   100% {
-    background-color: #000000;
+    background-color: var(--bg-base);
     border-color: rgba(161, 161, 170, 0.1);
     box-shadow: none;
   }
@@ -758,7 +758,7 @@ body {
     box-shadow: 0 0 20px rgba(255, 69, 58, 0.5);
   }
   100% {
-    background-color: #000000;
+    background-color: var(--bg-base);
     border-color: rgba(255, 69, 58, 0.1);
     box-shadow: none;
   }

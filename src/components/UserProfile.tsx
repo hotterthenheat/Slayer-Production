@@ -378,7 +378,7 @@ export function UserProfile({ session, onUpdateSession }: UserProfileProps) {
   };
 
   return (
-    <div className="bg-black/55 border border-[var(--border)] rounded-xl p-6 space-y-6 relative shadow-2xl">
+    <div className="bg-[var(--surface-2)] border border-[var(--border)] rounded-xl p-6 space-y-6 relative shadow-2xl">
       <div className="absolute top-0 right-0 p-3 text-[10px] text-[var(--text-tertiary)] font-bold uppercase tracking-widest font-mono">
         PUBLIC PROFILE
       </div>
@@ -409,7 +409,7 @@ export function UserProfile({ session, onUpdateSession }: UserProfileProps) {
             initial={{ opacity: 0, y: -10 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -10 }}
-            className="p-3 bg-black/40 border border-[var(--border)] rounded text-[var(--success)] text-xs font-mono flex items-center gap-2"
+            className="p-3 bg-[var(--surface-2)] border border-[var(--border)] rounded text-[var(--success)] text-xs font-mono flex items-center gap-2"
           >
             <CheckCircle2 className="w-4 h-4 shrink-0 text-[var(--success)]" />
             <span>{successMsg}</span>
@@ -542,7 +542,7 @@ export function UserProfile({ session, onUpdateSession }: UserProfileProps) {
               value={nickname}
               maxLength={50}
               onChange={(e) => setNickname(e.target.value)}
-              className="w-full bg-black/40 border border-[var(--border)] focus-visible:ring-1 focus-visible:ring-[var(--border-strong)] focus:border-[var(--border-strong)] text-[var(--text-primary)] rounded-lg p-2.5 text-sm transition-colors focus:outline-none placeholder-[var(--text-tertiary)] font-mono"
+              className="w-full bg-[var(--surface-2)] border border-[var(--border)] focus-visible:ring-1 focus-visible:ring-[var(--border-strong)] focus:border-[var(--border-strong)] text-[var(--text-primary)] rounded-lg p-2.5 text-sm transition-colors focus:outline-none placeholder-[var(--text-tertiary)] font-mono"
               placeholder="e.g. Robin Slayer"
             />
             <p className="text-[10px] text-[var(--text-tertiary)] font-mono leading-relaxed uppercase">
@@ -587,7 +587,7 @@ export function UserProfile({ session, onUpdateSession }: UserProfileProps) {
                 type="text"
                 value={handle}
                 onChange={(e) => setHandle(e.target.value.toLowerCase().replace(/\s+/g, ''))}
-                className={`w-full bg-black/40 border border-[var(--border)] focus-visible:ring-1 focus-visible:ring-[var(--border-strong)] focus:border-[var(--border-strong)] text-[var(--text-primary)] rounded-lg p-2.5 pl-8 text-sm transition-colors focus:outline-none placeholder-[var(--text-tertiary)] font-mono ${
+                className={`w-full bg-[var(--surface-2)] border border-[var(--border)] focus-visible:ring-1 focus-visible:ring-[var(--border-strong)] focus:border-[var(--border-strong)] text-[var(--text-primary)] rounded-lg p-2.5 pl-8 text-sm transition-colors focus:outline-none placeholder-[var(--text-tertiary)] font-mono ${
                   availability === 'available' ? 'border-[var(--border)]' : availability === 'taken' || availability === 'invalid' ? 'border-rose-500/30' : 'border-[var(--border)]'
                 }`}
                 placeholder="your_handle"
@@ -604,7 +604,7 @@ export function UserProfile({ session, onUpdateSession }: UserProfileProps) {
           <button
             onClick={handleSaveCompleteProfile}
             disabled={isUpdating || availability === 'taken' || availability === 'invalid'}
-            className="py-2.5 px-5 bg-black hover:bg-[var(--accent-color)]/10 text-[var(--accent-color)] hover:text-[var(--accent-color)] border border-[var(--border)] hover:border-[var(--accent-color)]/40 rounded-lg text-xs font-bold font-mono uppercase flex items-center gap-2 transition-all cursor-pointer disabled:opacity-45 disabled:cursor-not-allowed"
+            className="py-2.5 px-5 bg-[var(--surface-2)] hover:bg-[var(--accent-color)]/10 text-[var(--accent-color)] hover:text-[var(--accent-color)] border border-[var(--border)] hover:border-[var(--accent-color)]/40 rounded-lg text-xs font-bold font-mono uppercase flex items-center gap-2 transition-all cursor-pointer disabled:opacity-45 disabled:cursor-not-allowed"
           >
             {isUpdating ? (
               <>
@@ -623,11 +623,11 @@ export function UserProfile({ session, onUpdateSession }: UserProfileProps) {
 
       {/* Visual interactive cropping overlay modal */}
       {cropActive && cropParams && (
-        <div className="fixed inset-0 z-[120] bg-[#000]/80 backdrop-blur-md flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-[120] bg-black/80 backdrop-blur-md flex items-center justify-center p-4">
           <motion.div
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
-            className="bg-black border border-[var(--border)] rounded-xl overflow-hidden max-w-lg w-full shadow-2xl space-y-4"
+            className="bg-[var(--surface)] border border-[var(--border)] rounded-xl overflow-hidden max-w-lg w-full shadow-2xl space-y-4"
           >
             <div className="p-4 border-b border-[var(--border)] flex items-center justify-between">
               <div className="flex items-center gap-2">
@@ -649,12 +649,12 @@ export function UserProfile({ session, onUpdateSession }: UserProfileProps) {
             </div>
 
             <div className="px-5 space-y-4">
-              <p className="text-[10px] text-[var(--text-tertiary)] font-mono uppercase bg-black/40 p-2 border border-[var(--border)] rounded">
+              <p className="text-[10px] text-[var(--text-tertiary)] font-mono uppercase bg-[var(--surface-2)] p-2 border border-[var(--border)] rounded">
                 Drag the image to reposition it, then use the zoom slider to scale.
               </p>
 
               {/* Crop Box Window */}
-              <div className="relative w-full aspect-square md:aspect-video bg-black border border-[var(--border)] rounded-lg overflow-hidden select-none">
+              <div className="relative w-full aspect-square md:aspect-video bg-[var(--bg-base)] border border-[var(--border)] rounded-lg overflow-hidden select-none">
                 <div
                   className="absolute inset-0 cursor-move flex items-center justify-center"
                   onMouseDown={startDragImagePose}
@@ -692,7 +692,7 @@ export function UserProfile({ session, onUpdateSession }: UserProfileProps) {
               <div className="space-y-1">
                 <div className="flex items-center justify-between font-mono text-[10px] text-[var(--text-tertiary)]">
                   <span>ZOOM</span>
-                  <span className="text-zinc-200 font-bold">{Math.round(cropParams.zoom * 100)}%</span>
+                  <span className="text-[var(--text-primary)] font-bold">{Math.round(cropParams.zoom * 100)}%</span>
                 </div>
                 <input
                   type="range"
@@ -707,19 +707,19 @@ export function UserProfile({ session, onUpdateSession }: UserProfileProps) {
                       return { ...prev, zoom: nextZoom };
                     });
                   }}
-                  className="w-full accent-[var(--accent-color)] bg-black rounded cursor-pointer"
+                  className="w-full accent-[var(--accent-color)] bg-[var(--surface-2)] rounded cursor-pointer"
                 />
               </div>
             </div>
 
-            <div className="p-4 bg-black border-t border-[var(--border)] flex justify-end gap-3">
+            <div className="p-4 bg-[var(--surface)] border-t border-[var(--border)] flex justify-end gap-3">
               <button
                 onClick={() => {
                   URL.revokeObjectURL(cropParams.originalSrc);
                   setCropActive(false);
                   setCropParams(null);
                 }}
-                className="py-2 px-4 text-[var(--text-tertiary)] hover:text-[var(--text-primary)] uppercase font-mono font-bold tracking-wider text-[10px] bg-black hover:bg-black rounded cursor-pointer"
+                className="py-2 px-4 text-[var(--text-tertiary)] hover:text-[var(--text-primary)] uppercase font-mono font-bold tracking-wider text-[10px] bg-[var(--surface-2)] hover:bg-[var(--surface-3)] rounded cursor-pointer"
               >
                 Cancel
               </button>

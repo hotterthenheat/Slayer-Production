@@ -693,7 +693,7 @@ export const SlayerChart = memo(function SlayerChartImpl({ profile, decimals, ca
               <input autoFocus value={tickerDraft} onChange={e => setTickerDraft(e.target.value.toUpperCase())}
                 onKeyDown={e => { if (e.key === 'Enter') { commitTicker(tickerDraft); setTickerEditing(false); } else if (e.key === 'Escape') { setTickerEditing(false); } }}
                 onBlur={() => setTickerEditing(false)} placeholder={panelTicker}
-                className="w-16 px-1.5 py-1 rounded text-[11px] font-mono font-black uppercase tracking-wider bg-black/50 border border-[var(--accent-color)] text-[var(--text-primary)] outline-none" />
+                className="w-16 px-1.5 py-1 rounded text-[11px] font-mono font-black uppercase tracking-wider bg-[var(--surface-2)] border border-[var(--accent-color)] text-[var(--text-primary)] outline-none" />
             ) : (
               <button onClick={() => { setTickerDraft(''); setTickerEditing(true); }} title="Click or type to change symbol — Enter submits, Esc cancels" className="px-2 py-1 rounded text-[11px] font-mono font-black uppercase tracking-wider border border-[var(--border)] bg-[var(--surface-2)] text-[var(--text-primary)] hover:border-[var(--border-strong)] transition-colors">{panelTicker}</button>
             )}

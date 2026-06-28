@@ -250,9 +250,9 @@ export function SkyVisionView() {
   // underlying data is unchanged. The inline `|| []` + optional chaining otherwise create
   // a fresh array every render, forcing the chart effect to tear down & rebuild all series.
   const chartCandles = useMemo(() => activeContract?.chartData || [], [activeContract?.chartData]);
-  const chartDisplacementZones = useMemo(() => serverState?.displacement_engine?.zones || [], [serverState?.displacement_engine?.zones]);
-  const chartFvgs = useMemo(() => serverState?.displacement_engine?.fvgs || [], [serverState?.displacement_engine?.fvgs]);
-  const chartLiquidityEvents = useMemo(() => serverState?.displacement_engine?.sweeps || [], [serverState?.displacement_engine?.sweeps]);
+  const chartDisplacementZones = useMemo(() => serverState?.displacement?.zones || [], [serverState?.displacement?.zones]);
+  const chartFvgs = useMemo(() => serverState?.displacement?.fvgs || [], [serverState?.displacement?.fvgs]);
+  const chartLiquidityEvents = useMemo(() => serverState?.displacement?.sweeps || [], [serverState?.displacement?.sweeps]);
   const chartTape = useMemo(() => serverState?.tape || [], [serverState?.tape]);
 
   // Active decision and parameters derived

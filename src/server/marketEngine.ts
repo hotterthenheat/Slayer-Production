@@ -1687,24 +1687,8 @@ const buildPayload = (params: PayloadParams) => {
   const currentVWAP = lastCandle ? (lastCandle.vwap || lastCandle.close) : lastPrice;
   const pricePosition = lastPrice >= currentVWAP ? 'above vwap' : 'below vwap';
 
-  const structureEvents = [];
-  let eventIndex = 0;
-  for (let i = candles.length - 15; i < candles.length - 1; i++) {
-    if (i < 0) continue;
-    const candle = candles[i];
-    const prevCandle = candles[i - 1] || candle;
-    if (Math.abs(candle.close - prevCandle.close) > (lastPrice * asset.volatility * 0.003)) {
-      eventIndex++;
-      structureEvents.push({
-        id: `evt-${eventIndex}-${i}`,
-        kind: eventIndex === 1 ? 'CHoCH' : 'BOS',
-        direction: candle.close > prevCandle.close ? 'bullish' : 'bearish',
-        price: candle.close
-      });
-    }
-  }
-  // No fabricated fallback: if no structure shift is detected in the window, the array stays
-  // empty (the UI shows nothing) rather than inventing a BOS that never happened.
+  // (Break-of-Structure / CHoCH event detection removed: the events array was computed on every
+  // broadcast tick but consumed by no client component — dead weight on the hot path.)
 
   const zones: any[] = [];
   let zoneId = 0;
@@ -1754,7 +1738,6 @@ const buildPayload = (params: PayloadParams) => {
     structure: {
       trend: actualTrend,
       pricePosition,
-      events: structureEvents
     },
     zones,
     fvgs,
