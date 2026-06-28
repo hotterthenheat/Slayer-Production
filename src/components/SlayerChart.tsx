@@ -24,6 +24,7 @@ interface SlayerChartProps {
   initialTimeframe?: TimeframeVal;
   title?: string;                 // initial ticker for a panel
   initialChannel?: SyncChannel;   // initial sync channel for a panel
+  live?: boolean;                 // feed is actually streaming (market open + real provider) → animate the last-price pulse
 }
 
 
@@ -36,7 +37,7 @@ interface SlayerChartProps {
  */
 // Memoized: in the multi-chart grid, a drag re-renders the grid every pointer frame — memo keeps
 // panels whose props are unchanged from re-rendering (only the dragged panel's wrapper moves).
-export const SlayerChart = memo(function SlayerChartImpl({ profile, decimals, candles: propCandles, panelId, initialTimeframe, title, initialChannel }: SlayerChartProps) {
+export const SlayerChart = memo(function SlayerChartImpl({ profile, decimals, candles: propCandles, panelId, initialTimeframe, title, initialChannel, live = false }: SlayerChartProps) {
   // Panels do NOT subscribe to the global candle slice — returning a constant when panelId is
   // set means a global SSE tick (or another panel's keystroke) never re-renders this instance.
   const storeChart = useContractStore(s => (panelId ? undefined : s.activeContract?.chartData));
@@ -230,13 +231,32 @@ export const SlayerChart = memo(function SlayerChartImpl({ profile, decimals, ca
   // Profile flows with it; the listener rAF-throttles and drops no-op frames.
   const onScale = (lo: number, hi: number) => { if (!panelId) broadcastPriceScale(lo, hi, profile.spot ?? null, 'main'); };
 
+  const livePhaseRef = useRef(0);   // 0..1 looping pulse phase, advanced by the live rAF loop below
+  const liveRafRef = useRef(0);
   drawRef.current = () => drawChart({
     canvasRef, containerRef, viewRef, priceViewRef, geomRef, dispRangeRef, scaleViewRef, themeRef,
     hoverRef, gexDeltaRef, draftRef, measureRef, drawingsRef, toolRef, selectedRef,
     candles, ha, atr, profile, colors, decimals, chartType, ovOn, overlaySeries, paneSeries,
     displacements, gexCount, showVolume, showGrid, showWatermark, candleBorders,
-    showGex, showHeat, showOrbs, showVolProfile, showPrevClose, showDisp, showLadder, tickKey, tfKey, onScale,
+    showGex, showHeat, showOrbs, showVolProfile, showPrevClose, showDisp, showLadder, tickKey, tfKey, onScale, live, livePhaseRef,
   });
+
+  // Live last-price pulse — a self-perpetuating rAF that advances the pulse phase and repaints, ONLY
+  // while the feed is genuinely live (market open + real provider). Throttled to ~20fps to bound cost,
+  // and fully torn down when `live` flips false (market close / model data → static dot, no loop).
+  useEffect(() => {
+    if (!live) { livePhaseRef.current = 0; return; }
+    let t0 = 0, lastPaint = 0, raf = 0;
+    const loop = (now: number) => {
+      if (!t0) t0 = now;
+      livePhaseRef.current = ((now - t0) / 1600) % 1;
+      if (now - lastPaint >= 50) { lastPaint = now; drawRef.current(); }   // ~20fps
+      raf = requestAnimationFrame(loop);
+      liveRafRef.current = raf;
+    };
+    raf = requestAnimationFrame(loop); liveRafRef.current = raf;
+    return () => { if (liveRafRef.current) cancelAnimationFrame(liveRafRef.current); liveRafRef.current = 0; };
+  }, [live]);
 
   useEffect(() => {
     const canvas = canvasRef.current, container = containerRef.current; if (!canvas || !container) return;
