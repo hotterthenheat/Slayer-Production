@@ -199,7 +199,9 @@ export function drawChart(deps: DrawDeps) {
     // and more price levels appear for finer read accuracy.
     // Denser, TradingView-style price grid: every 5th step is a round-number "major" line — a brighter
     // gridline + a bold, brighter label — so the eye anchors on round prices and the scale reads finer.
-    const targetGrid = Math.max(6, Math.min(26, Math.round(priceAreaH / 30)));
+    // ~64px between price labels (was ~30) — a clean, TradingView-grade axis instead of a label every
+    // few points. niceStep then rounds the gap to a human interval (10 / 25 / 50 …).
+    const targetGrid = Math.max(4, Math.min(11, Math.round(priceAreaH / 64)));
     const step = niceStep((hi - lo) / targetGrid);
     const majorStep = step * 5;
     const gridYs: { y: number; label: string; major: boolean }[] = [];
