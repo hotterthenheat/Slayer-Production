@@ -426,7 +426,7 @@ export function SkyVisionView() {
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center bg-[var(--surface)] border border-[var(--border)] p-3 rounded-lg gap-3">
         <div className="flex gap-2 items-center">
           <Zap className="w-4 h-4 text-[var(--success)]" />
-          <span className="text-[10px] text-[var(--text-secondary)] uppercase tracking-widest font-black">Live Terminal</span>
+          <span className="text-[10px] text-[var(--text-secondary)] uppercase tracking-widest font-black">Slayer Terminal</span>
         </div>
 
         <div className="flex items-center gap-2.5 flex-wrap w-full sm:w-auto">

@@ -427,24 +427,34 @@ export function drawChart(deps: DrawDeps) {
           ctx.closePath(); ctx.fill();
         }
       };
-      band(vwap.u2, vwap.d2, 0.06);
-      band(vwap.u1, vwap.d1, 0.10);
-      // Faint dashed ±1σ edges so the band still reads when the gamma heatmap glows behind it.
-      const edge = (arr: (number | null)[]) => {
-        ctx.beginPath();
+      // Subtle filled envelopes (TradingView-style: faint fill, clean SOLID edge lines — no dashes).
+      band(vwap.u2, vwap.d2, 0.045);
+      band(vwap.u1, vwap.d1, 0.08);
+      const edge = (arr: (number | null)[], a: number) => {
+        ctx.strokeStyle = hexA(vwapCol, a); ctx.lineWidth = 1; ctx.beginPath();
         for (const [a0, a1] of ranges) { let st = false; for (let gi = a0; gi <= a1; gi++) { const v = arr[gi]; if (v == null) continue; const x = xOf(gi), y = yP(v); st ? ctx.lineTo(x, y) : (ctx.moveTo(x, y), st = true); } }
         ctx.stroke();
       };
-      ctx.strokeStyle = hexA(vwapCol, 0.3); ctx.lineWidth = 1; ctx.setLineDash([3, 3]);
-      edge(vwap.u1); edge(vwap.d1); ctx.setLineDash([]);
-      ctx.strokeStyle = hexA(vwapCol, 0.95); ctx.lineWidth = 1.5;
+      edge(vwap.u2, 0.14); edge(vwap.d2, 0.14); edge(vwap.u1, 0.22); edge(vwap.d1, 0.22);
+      // Main VWAP — one clean solid line, the institutional fair value (TradingView's default look).
+      ctx.strokeStyle = hexA(vwapCol, 0.95); ctx.lineWidth = 1.6;
       for (const [a0, a1] of ranges) {
         ctx.beginPath(); let started = false;
         for (let gi = a0; gi <= a1; gi++) { const v = vwap.line[gi]; if (v == null) continue; const x = xOf(gi), y = yP(v); started ? ctx.lineTo(x, y) : (ctx.moveTo(x, y), started = true); }
         ctx.stroke();
       }
+      // Right-edge value tag (like TradingView) at the line's latest point.
       const lastRange = ranges[ranges.length - 1];
-      if (lastRange) { const lv = vwap.line[lastRange[0]]; if (lv != null) { ctx.font = '700 8px ui-monospace, monospace'; ctx.textAlign = 'left'; ctx.fillStyle = hexA(vwapCol, 0.95); ctx.fillText('VWAP', xOf(lastRange[0]) + 3, yP(lv) - 5); ctx.font = '11px ui-monospace, monospace'; } }
+      if (lastRange) {
+        let gi = lastRange[1]; while (gi >= lastRange[0] && vwap.line[gi] == null) gi--;
+        const lv = gi >= lastRange[0] ? vwap.line[gi] : null;
+        if (lv != null) {
+          const ly = yP(lv); ctx.font = '700 9px ui-monospace, monospace';
+          const label = `VWAP ${nf(lv)}`, lw = ctx.measureText(label).width + 10, lx = Math.min(xOf(gi) + 6, plotR - lw);
+          ctx.fillStyle = hexA(vwapCol, 0.92); (ctx as any).roundRect ? (ctx.beginPath(), (ctx as any).roundRect(lx, ly - 8, lw, 15, 3), ctx.fill()) : ctx.fillRect(lx, ly - 8, lw, 15);
+          ctx.fillStyle = '#06090d'; ctx.textAlign = 'left'; ctx.fillText(label, lx + 5, ly); ctx.font = '11px ui-monospace, monospace';
+        }
+      }
     }
 
     // price series — five chart types (TradingView-style)
