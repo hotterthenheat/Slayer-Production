@@ -526,6 +526,13 @@ export function drawChart(deps: DrawDeps) {
         (ctx as any).roundRect ? (ctx.beginPath(), (ctx as any).roundRect(plotR + 1, y - 8, tw, 16, 3), ctx.fill()) : ctx.fillRect(plotR + 1, y - 8, tw, 16);
         ctx.fillStyle = '#06090d'; ctx.textAlign = 'left'; ctx.font = '700 10px ui-monospace, monospace'; ctx.fillText(nf(d.price), plotR + 6, y); ctx.font = '11px ui-monospace, monospace';
         if (sel) { ctx.fillStyle = d.color; ctx.beginPath(); ctx.arc(plotL + 7, y, 3.2, 0, Math.PI * 2); ctx.fill(); ctx.beginPath(); ctx.arc(plotR - 7, y, 3.2, 0, Math.PI * 2); ctx.fill(); }
+      } else if (d.kind === 'rect') {
+        // Zone box (supply/demand / dealer band) — faint fill + framed outline, anchored to time+price.
+        const x1 = xOfT(d.a.t), y1 = yP(d.a.price), x2 = xOfT(d.b.t), y2 = yP(d.b.price);
+        const rx = Math.min(x1, x2), ry = Math.min(y1, y2), rw = Math.abs(x2 - x1), rh = Math.abs(y2 - y1);
+        ctx.fillStyle = hexA(d.color, sel ? 0.16 : 0.10); ctx.fillRect(rx, ry, rw, rh);
+        ctx.strokeStyle = d.color; ctx.strokeRect(px(rx), px(ry), Math.max(1, rw), Math.max(1, rh));   // px() already half-pixel-snaps for a crisp 1px stroke
+        if (sel) { ctx.fillStyle = d.color; for (const [hx, hy] of [[x1, y1], [x2, y2]] as const) { ctx.beginPath(); ctx.arc(hx, hy, 3.4, 0, Math.PI * 2); ctx.fill(); } }
       } else {
         const x1 = xOfT(d.a.t), y1 = yP(d.a.price); let x2 = xOfT(d.b.t), y2 = yP(d.b.price);
         if (d.kind === 'ray') { const dx = x2 - x1; if (Math.abs(dx) > 0.01) { const m = (y2 - y1) / dx, ex = dx >= 0 ? plotR : plotL; y2 = y1 + m * (ex - x1); x2 = ex; } }
@@ -538,6 +545,11 @@ export function drawChart(deps: DrawDeps) {
     if (draft && hov && (toolRef.current === 'trend' || toolRef.current === 'ray')) {
       ctx.strokeStyle = hexA(T.accent, 0.85); ctx.lineWidth = 1.4; ctx.setLineDash([4, 3]);
       ctx.beginPath(); ctx.moveTo(xOfT(draft.t), yP(draft.price)); ctx.lineTo(hov.x, hov.y); ctx.stroke(); ctx.setLineDash([]); ctx.lineWidth = 1;
+    } else if (draft && hov && toolRef.current === 'rect') {
+      const dx = xOfT(draft.t), dy = yP(draft.price);
+      ctx.strokeStyle = hexA(T.accent, 0.85); ctx.fillStyle = hexA(T.accent, 0.1); ctx.lineWidth = 1.4; ctx.setLineDash([4, 3]);
+      ctx.fillRect(Math.min(dx, hov.x), Math.min(dy, hov.y), Math.abs(hov.x - dx), Math.abs(hov.y - dy));
+      ctx.strokeRect(Math.min(dx, hov.x), Math.min(dy, hov.y), Math.abs(hov.x - dx), Math.abs(hov.y - dy)); ctx.setLineDash([]); ctx.lineWidth = 1;
     }
     const ms = measureRef.current;
     if (ms) {
