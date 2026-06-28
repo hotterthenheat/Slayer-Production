@@ -47,6 +47,8 @@ export type DrawDeps = {
   showGex: boolean; showHeat: boolean; showOrbs: boolean; showDisp: boolean; showLadder: boolean;
   showVolProfile: boolean; showPrevClose: boolean; showVwap: boolean;
   vwap?: { line: (number | null)[]; u1: (number | null)[]; d1: (number | null)[]; u2: (number | null)[]; d2: (number | null)[] };  // session VWAP centerline + ±1σ/±2σ bands
+  showMigration: boolean; gammaCoM?: number | null; comHist?: number[];  // gamma center-of-mass + its recent drift path (migration comet)
+  showExposure: boolean;  // aggregate dealer Δ (DEX) + Vanna tilt HUD
   live?: boolean; livePhaseRef?: { current: number };   // animate the last-price pulse only when truly live
   liveOverlayRef?: { current: { plotR: number; lastY: number; up: boolean; upCol: string; downCol: string } | null };  // last-price geometry handed to the overlay layer
   tickKey: string; tfKey: string;
@@ -59,7 +61,7 @@ export function drawChart(deps: DrawDeps) {
     hoverRef, gexDeltaRef, draftRef, measureRef, drawingsRef, toolRef, selectedRef,
     candles, ha, atr, profile, colors, decimals, chartType, ovOn, overlaySeries, paneSeries,
     displacements, gexCount, showVolume, showGrid, showWatermark, candleBorders,
-    showGex, showHeat, showOrbs, showVolProfile, showPrevClose, showVwap, vwap, showDisp, showLadder, tickKey, tfKey, onScale, live, livePhaseRef, liveOverlayRef,
+    showGex, showHeat, showOrbs, showVolProfile, showPrevClose, showVwap, vwap, showMigration, gammaCoM, comHist, showExposure, showDisp, showLadder, tickKey, tfKey, onScale, live, livePhaseRef, liveOverlayRef,
   } = deps;
     const canvas = canvasRef.current, container = containerRef.current;
     if (!canvas || !container) return;
@@ -698,6 +700,61 @@ export function drawChart(deps: DrawDeps) {
         ctx.fillStyle = hexA(COL.magnet, 0.7); ctx.beginPath(); ctx.arc(tx, lastY + dir * 5, 1.9, 0, Math.PI * 2); ctx.fill();
         ctx.font = '700 7.5px ui-monospace, monospace'; ctx.textAlign = 'left'; ctx.fillStyle = hexA(COL.magnet, 0.7); ctx.fillText('PULL', tx + 6, (lastY + my) / 2);
       }
+    }
+
+    // GAMMA MIGRATION COMET — the gamma center-of-mass (Σ strike·|netGex| / Σ|netGex|) drifting over recent
+    // updates. Bright head at the current CoM, fading ghosts trailing its recent path. Rising = dealer gamma
+    // concentrating higher (supportive drift); falling = the reverse. A right-edge HUD widget, on top of price.
+    if (showMigration && gammaCoM != null && comHist && comHist.length >= 2) {
+      const headY = yP(gammaCoM);
+      if (headY >= priceTop + 4 && headY <= priceBottom - 4) {
+        const N = Math.min(comHist.length, 14), slice = comHist.slice(comHist.length - N);
+        const xR = plotR - 12, dx = 6, drift = slice[N - 1] - slice[0];
+        const dCol = drift > 0.02 ? COL.up : drift < -0.02 ? COL.down : T.dim;
+        // connecting thread through the recent path
+        ctx.strokeStyle = hexA(dCol, 0.28); ctx.lineWidth = 1; ctx.beginPath();
+        for (let i = 0; i < N; i++) { const x = xR - (N - 1 - i) * dx, y = yP(slice[i]); i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y); }
+        ctx.stroke();
+        // fading ghost dots (oldest faintest)
+        for (let i = 0; i < N; i++) { const x = xR - (N - 1 - i) * dx, y = yP(slice[i]); ctx.fillStyle = hexA(dCol, 0.10 + 0.5 * (i / (N - 1))); ctx.beginPath(); ctx.arc(x, y, 1 + 1.5 * (i / (N - 1)), 0, Math.PI * 2); ctx.fill(); }
+        // bright head + drift chevron (points the direction of drift)
+        ctx.fillStyle = hexA(dCol, 0.97); ctx.beginPath(); ctx.arc(xR, headY, 3, 0, Math.PI * 2); ctx.fill();
+        const ar = drift > 0 ? -1 : 1;
+        ctx.strokeStyle = hexA(dCol, 0.9); ctx.lineWidth = 1.4; ctx.beginPath();
+        ctx.moveTo(xR - 2.6, headY + ar * 5); ctx.lineTo(xR, headY + ar * 9); ctx.lineTo(xR + 2.6, headY + ar * 5); ctx.stroke(); ctx.lineWidth = 1;
+        // label, placed opposite the chevron so they never overlap
+        ctx.font = '700 7.5px ui-monospace, monospace'; ctx.textAlign = 'right'; ctx.fillStyle = hexA(dCol, 0.82);
+        ctx.fillText('γ-CoM', xR + 4, headY + (drift > 0 ? 13 : -10)); ctx.font = '11px ui-monospace, monospace';
+      }
+    }
+
+    // DEALER EXPOSURE HUD — aggregate net Δ (DEX) and Vanna across the whole chain, always-on (the hover
+    // tooltip shows these per-strike; this is the global picture). Each row: label, a centered tilt gauge
+    // (how net-long/short dealers are = net ÷ gross), and the signed total. Top-left, under the legend.
+    if (showExposure && profile.strikes && profile.strikes.length) {
+      let netD = 0, grossD = 0, netV = 0, grossV = 0;
+      for (const s of profile.strikes) {
+        const dx = s.netDex != null ? s.netDex : (s.callDex || 0) + (s.putDex || 0);
+        const vx = s.netVex != null ? s.netVex : (s.callVex || 0) + (s.putVex || 0);
+        netD += dx; grossD += Math.abs(dx); netV += vx; grossV += Math.abs(vx);
+      }
+      const rowsX: { lbl: string; net: number; tilt: number }[] = [];
+      if (grossD > 0) rowsX.push({ lbl: 'DEALER Δ', net: netD, tilt: Math.max(-1, Math.min(1, netD / grossD)) });
+      if (grossV > 0) rowsX.push({ lbl: 'VANNA', net: netV, tilt: Math.max(-1, Math.min(1, netV / grossV)) });
+      let ey = priceTop + 26;
+      const gaugeW = 46, gx = plotL + 8, tx = gx + 46;
+      for (const r of rowsX) {
+        const col = r.net >= 0 ? COL.up : COL.down;
+        ctx.font = '700 8px ui-monospace, monospace'; ctx.textAlign = 'left'; ctx.fillStyle = hexA(T.text, 0.6); ctx.fillText(r.lbl, gx, ey);
+        ctx.fillStyle = hexA(T.text, 0.12); ctx.fillRect(tx, ey - 3, gaugeW, 4);                       // track
+        ctx.fillStyle = hexA(T.text, 0.28); ctx.fillRect(tx + gaugeW / 2 - 0.5, ey - 4.5, 1, 7);        // zero tick
+        const fillW = (gaugeW / 2) * Math.abs(r.tilt);
+        ctx.fillStyle = hexA(col, 0.9);
+        if (r.tilt >= 0) ctx.fillRect(tx + gaugeW / 2, ey - 3, fillW, 4); else ctx.fillRect(tx + gaugeW / 2 - fillW, ey - 3, fillW, 4);
+        ctx.fillStyle = col; ctx.fillText(fmtGex(r.net), tx + gaugeW + 6, ey);
+        ey += 13;
+      }
+      ctx.font = '11px ui-monospace, monospace';
     }
 
     // ── Sub-panes (registry-driven) ──
