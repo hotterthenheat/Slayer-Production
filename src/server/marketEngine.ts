@@ -25,6 +25,7 @@ import {
   collectUnifiedFlows,
   getUnifiedCandles,
 } from '../lib/providerAbstraction';
+import { fetchThetaExpirySlices, isThetaConfigured } from '../lib/thetaDataProvider';
 import { buildGexProfile, computeDealerFlowGauge } from '../lib/gexEngine';
 import { computeAssetEdge, computeContractEdge, type AssetEdge, type EdgeHistory } from '../lib/quantEdge';
 import { computeStrikeGravity } from '../lib/strikeGravity';
@@ -468,6 +469,18 @@ async function runTickerCycleInner() {
               const liveFlows = await collectUnifiedFlows(asset.ticker, spotPrice, chainRes.contracts);
               if (liveFlows && liveFlows.length > 0) ingestLiveFlows(asset.ticker, liveFlows);
             } catch { /* safe */ }
+            // Multi-expiry gamma columns (the full matrix) — OPT-IN: this fetches a
+            // greeks+OI snapshot PER expiration, multiplying OPRA/request cost by the
+            // expiry count, so it runs ONLY when SLAYER_MULTI_EXPIRY=1 AND ThetaData
+            // powers this chain. Best-effort and isolated: a failure leaves the
+            // single-expiry payload untouched.
+            if (process.env.SLAYER_MULTI_EXPIRY === '1' && isThetaConfigured() && chainRes.source.startsWith('THETADATA')) {
+              try {
+                const maxExp = Math.max(2, Math.min(8, Number(process.env.SLAYER_MULTI_EXPIRY_MAX) || 5));
+                const slices = await fetchThetaExpirySlices(asset, spotPrice, maxExp);
+                if (slices.length) db.gexExpiries[asset.ticker] = slices;
+              } catch { /* safe — keep single-expiry payload */ }
+            }
           } else {
             db.liveOptionChains[asset.ticker] = [];
             db.chainSource[asset.ticker] = chainRes?.source || mode;
@@ -1602,7 +1615,10 @@ const buildPayload = (params: PayloadParams) => {
     gammaFlipConfident: metricsV11.dealer.gammaFlipConfident,
     wallsConfident: metricsV11.dealer.wallsConfident,
     feed: feedLabel,
-    strikes: Object.values(strikesMap)
+    strikes: Object.values(strikesMap),
+    // Multi-expiry columns — present only when the opt-in fetch populated them
+    // (default-off). Absent ⇒ the matrix renders the single front-expiry heatmap.
+    ...(db.gexExpiries[asset.ticker]?.length ? { expiries: db.gexExpiries[asset.ticker] } : {}),
   };
 
   // Strike Gravity Engine — score every strike (GEX / OI / volume / proximity),

@@ -6,7 +6,7 @@
  * registries, and the connection-pool record shapes. Imported by the market
  * engine and the route handlers.
  */
-import { Candle, V8TradeRecord } from '../types';
+import { Candle, V8TradeRecord, GexExpirySlice } from '../types';
 import { INITIAL_DISCOVERY_CONTRACTS, buildInitialDiscoveryFeedLogs } from '../data';
 
 export interface ServerDb {
@@ -15,6 +15,10 @@ export interface ServerDb {
   globalFlowFeed: any[];
   liveSpotPrices: Record<string, number>;
   liveOptionChains: Record<string, any[]>;
+  // Per-ticker multi-expiry gamma columns for the full matrix. Populated ONLY when
+  // SLAYER_MULTI_EXPIRY is enabled (it adds OPRA cost — N× the chain fetch), so it is
+  // empty by default and the matrix falls back to the single front-expiry heatmap.
+  gexExpiries: Record<string, GexExpirySlice[]>;
   // Per-ticker source of the CURRENTLY-cached option chain (from
   // getUnifiedOptionChain().source). A single global dataSource can't be honest when
   // ThetaData powers one ticker's chain while Tradier/Polygon power another — this
@@ -41,6 +45,7 @@ export const db: ServerDb = {
   globalFlowFeed: [],
   liveSpotPrices: {},
   liveOptionChains: {},
+  gexExpiries: {},
   chainSource: {},
   dataSource: 'SANDBOX_SYNTHETIC',
   apiStatusMessage: 'Offline Sandbox Simulation Running',

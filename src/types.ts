@@ -213,6 +213,18 @@ export interface GexStrikeDetail {
   netVex?: number;
 }
 
+// One expiration's gamma column for the multi-expiry matrix. Intentionally lean —
+// the matrix only needs per-strike net γ and a column total, NOT the full per-strike
+// greek breakdown — so a slice can be built from a cheaper greeks+OI fetch.
+export interface GexExpirySlice {
+  expiration: string;                          // 'YYYY-MM-DD' (display/sort key)
+  dte: number;                                 // calendar days to expiry (0 = 0DTE)
+  netGex: number;                              // Σ net γ across this expiry's strikes
+  callWall?: number;                           // strongest +γ strike (optional marker)
+  putWall?: number;                            // strongest −γ strike (optional marker)
+  strikes: { strike: number; netGex: number }[];
+}
+
 export interface GexProfileData {
   spot?: number;
   netGex?: number;
@@ -233,6 +245,11 @@ export interface GexProfileData {
   wallsConfident?: boolean;
   feed?: string;
   strikes?: GexStrikeDetail[];
+  // Optional multi-expiry gamma columns (the full Voltick-style matrix). Present only
+  // when the server's multi-expiry fetch is enabled (it adds OPRA cost, so it is
+  // opt-in / default-off). When absent, the matrix renders the single front-expiry
+  // heatmap from `strikes`.
+  expiries?: GexExpirySlice[];
 }
 
 // ── Level-2 order-flow (depth-of-market) ──────────────────────────────────────

@@ -20,7 +20,7 @@
  * array of objects) so field-order/shape differences across v3 builds don't break
  * the mapping; greeks the feed omits are computed analytically.
  */
-import { AssetInfo, TimeframeVal, Candle } from '../types';
+import { AssetInfo, TimeframeVal, Candle, GexExpirySlice } from '../types';
 import { ASSET_LIST } from '../data';
 import type { LiveOptionContract } from './marketDataProvider';
 import { calculateAnalyticGreeks } from './v11Math';
@@ -279,6 +279,91 @@ export async function fetchThetaOptionChain(
   const result = { contracts, source: 'THETADATA_LIVE', message: `ThetaData ${sym} ${exp}: ${contracts.length} contracts` };
   if (contracts.length > 0) chainCache[sym] = { data: result, timestamp: now };
   return result;
+}
+
+// ---------------------------------------------------------------------------
+// Multi-expiry gamma slices (the full Voltick-style matrix). OPT-IN by design:
+// this issues a greeks + open-interest bulk snapshot PER expiration, so it
+// multiplies the per-tick request / OPRA cost by the number of expiries fetched.
+// The market engine only calls it when SLAYER_MULTI_EXPIRY is enabled. Quotes are
+// deliberately skipped — the matrix needs only net γ (gamma·OI·100·spot²·0.01·sign),
+// not bid/ask — so it is cheaper than N full chains. Best-effort: any shape or
+// availability problem yields [] (or drops that one expiry) so an enabled-but-
+// failing fetch can never corrupt the single-expiry payload.
+//
+// NOTE: this path is wired and type-checked but has NOT been exercised against a
+// live multi-expiry ThetaData feed (the dev environment fetches front-expiry only).
+// ---------------------------------------------------------------------------
+const EXPIRY_SLICES_TTL_MS = 30000; // heavier than the chain (N×) — cache longer
+const expirySlicesCache: Record<string, CachedData<GexExpirySlice[]>> = {};
+
+export async function fetchThetaExpirySlices(
+  asset: AssetInfo,
+  spotPrice: number,
+  maxExpiries = 5,
+): Promise<GexExpirySlice[]> {
+  const sym = thetaSymbol(asset.ticker);
+  const now = Date.now();
+  const cached = expirySlicesCache[sym];
+  if (cached && now - cached.timestamp < EXPIRY_SLICES_TTL_MS) return cached.data;
+
+  const today = ymd(new Date());
+  const ty = Math.floor(today / 10000), tm = Math.floor((today % 10000) / 100), td = today % 100;
+  const todayUTC = Date.UTC(ty, tm - 1, td);
+
+  const expRows = rowsOf(await thetaFetch('/option/list/expirations', { symbol: sym }));
+  const exps = expRows
+    .map((r) => num(pick(r, 'expiration', 'date', 'exp')))
+    .filter((e): e is number => e != null && e >= today)
+    .sort((a, b) => a - b)
+    .slice(0, Math.max(1, maxExpiries));
+  if (!exps.length) return [];
+
+  const rightOf = (o: Record<string, any>): 'C' | 'P' =>
+    String(pick(o, 'right', 'option_type', 'type') || '').toUpperCase().startsWith('C') ? 'C' : 'P';
+  const spot2 = spotPrice * spotPrice;
+
+  const slices: GexExpirySlice[] = [];
+  for (const exp of exps) {
+    try {
+      const [gRows, oiRows] = await Promise.all([
+        thetaFetch('/option/bulk_snapshot/greeks', { symbol: sym, expiration: exp }).then(rowsOf),
+        thetaFetch('/option/bulk_snapshot/open_interest', { symbol: sym, expiration: exp }).then(rowsOf),
+      ]);
+      if (!gRows.length) continue;
+
+      const oiMap = new Map(oiRows.map((o) => [`${pick(o, 'strike')}|${rightOf(o)}`, o]));
+      const byStrike = new Map<number, number>();
+      for (const g of gRows) {
+        const rawStrike = num(pick(g, 'strike'));
+        const strike = decodeStrike(rawStrike, spotPrice);
+        if (strike == null || strike <= 0) continue;
+        const type = rightOf(g);
+        const oiRow = oiMap.get(`${rawStrike}|${type}`) || {};
+        const gamma = num(pick(g, 'gamma')) ?? 0;
+        const oi = num(pick(oiRow, 'open_interest', 'oi')) ?? 0;
+        if (!gamma || !oi) continue;
+        const sign = type === 'C' ? 1 : -1;
+        byStrike.set(strike, (byStrike.get(strike) || 0) + gamma * oi * 100 * spot2 * 0.01 * sign);
+      }
+      if (!byStrike.size) continue;
+
+      const strikes = [...byStrike.entries()].map(([strike, netGex]) => ({ strike, netGex }));
+      let netGex = 0, callWall: number | undefined, putWall: number | undefined, maxPos = 0, maxNeg = 0;
+      for (const s of strikes) {
+        netGex += s.netGex;
+        if (s.netGex > maxPos) { maxPos = s.netGex; callWall = s.strike; }
+        if (s.netGex < maxNeg) { maxNeg = s.netGex; putWall = s.strike; }
+      }
+      const y = Math.floor(exp / 10000), m = Math.floor((exp % 10000) / 100), d = exp % 100;
+      const isoExp = `${y}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+      const dte = Math.max(0, Math.round((Date.UTC(y, m - 1, d) - todayUTC) / 86400000));
+      slices.push({ expiration: isoExp, dte, netGex, callWall, putWall, strikes });
+    } catch { /* skip this expiry, keep the rest */ }
+  }
+
+  if (slices.length) expirySlicesCache[sym] = { data: slices, timestamp: now };
+  return slices;
 }
 
 // ---------------------------------------------------------------------------
