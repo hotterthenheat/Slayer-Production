@@ -981,7 +981,7 @@ export function SettingsPanel({ session, onUpdateSession }: SettingsPanelProps) 
                       }}
                       className="peer sr-only"
                     />
-                    <div className="w-9 h-5 bg-[var(--surface-3)] peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-[var(--text-tertiary)] after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-[var(--accent-color)] peer-checked:after:bg-white"></div>
+                    <div className="w-9 h-5 bg-[var(--surface-3)] peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-[var(--text-tertiary)] after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-[var(--accent-color)] peer-checked:after:bg-[var(--bg-base)]"></div>
                   </span>
                 </label>
 
@@ -1002,7 +1002,7 @@ export function SettingsPanel({ session, onUpdateSession }: SettingsPanelProps) 
                       }}
                       className="peer sr-only"
                     />
-                    <div className="w-9 h-5 bg-[var(--surface-3)] peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-[var(--text-tertiary)] after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-[var(--accent-color)] peer-checked:after:bg-white"></div>
+                    <div className="w-9 h-5 bg-[var(--surface-3)] peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-[var(--text-tertiary)] after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-[var(--accent-color)] peer-checked:after:bg-[var(--bg-base)]"></div>
                   </span>
                 </label>
 
@@ -1023,7 +1023,7 @@ export function SettingsPanel({ session, onUpdateSession }: SettingsPanelProps) 
                       }}
                       className="peer sr-only"
                     />
-                    <div className="w-9 h-5 bg-[var(--surface-3)] peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-[var(--text-tertiary)] after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-[var(--accent-color)] peer-checked:after:bg-white"></div>
+                    <div className="w-9 h-5 bg-[var(--surface-3)] peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-[var(--text-tertiary)] after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-[var(--accent-color)] peer-checked:after:bg-[var(--bg-base)]"></div>
                   </span>
                 </label>
 
@@ -1044,7 +1044,7 @@ export function SettingsPanel({ session, onUpdateSession }: SettingsPanelProps) 
                       }}
                       className="peer sr-only"
                     />
-                    <div className="w-9 h-5 bg-[var(--surface-3)] peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-[var(--text-tertiary)] after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-[var(--accent-color)] peer-checked:after:bg-white"></div>
+                    <div className="w-9 h-5 bg-[var(--surface-3)] peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-[var(--text-tertiary)] after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-[var(--accent-color)] peer-checked:after:bg-[var(--bg-base)]"></div>
                   </span>
                 </label>
               </div>
@@ -1107,7 +1107,7 @@ export function SettingsPanel({ session, onUpdateSession }: SettingsPanelProps) 
                       }}
                       className="peer sr-only"
                     />
-                    <div className="w-9 h-5 bg-[var(--surface-3)] peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-[var(--text-tertiary)] after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-[var(--accent-color)] peer-checked:after:bg-white"></div>
+                    <div className="w-9 h-5 bg-[var(--surface-3)] peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-[var(--text-tertiary)] after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-[var(--accent-color)] peer-checked:after:bg-[var(--bg-base)]"></div>
                   </label>
                 </div>
               </div>
@@ -1308,7 +1308,7 @@ export function SettingsPanel({ session, onUpdateSession }: SettingsPanelProps) 
                       }}
                       className="sr-only peer"
                     />
-                    <div className="w-9 h-5 bg-[var(--surface-3)] peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-[var(--text-tertiary)] after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-[var(--accent-color)] peer-checked:after:bg-white" />
+                    <div className="w-9 h-5 bg-[var(--surface-3)] peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-[var(--text-tertiary)] after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-[var(--accent-color)] peer-checked:after:bg-[var(--bg-base)]" />
                   </label>
                 </div>
                 <p className="text-xs text-[var(--text-tertiary)] leading-normal">

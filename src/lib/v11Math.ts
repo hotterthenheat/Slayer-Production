@@ -576,7 +576,9 @@ export function computeDealerInventory(
     const GEX_strike = c.gamma * c.openInterest * 100 * (spot * spot) * 0.01 * sign;
     // Delta exposure matches the long call (+1) / short put (-1) inventory position sign.
     const DEX_strike = c.delta * c.openInterest * 100 * spot * sign;
-    const VEX_strike = c.vanna * c.openInterest * 100 * sign;
+    // Vanna exposure: $-scaled per 1% IV move, matching the canonical skyQuantCore.netVannaStrike
+    // (× S × 0.01) so VEX is in the same $-units as GEX/DEX instead of ~spot/100× too small.
+    const VEX_strike = c.vanna * c.openInterest * 100 * spot * 0.01 * sign;
     const Charm_strike = c.charm * c.openInterest * 100 * sign;
 
     netGex += GEX_strike;
