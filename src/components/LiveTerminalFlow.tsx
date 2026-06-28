@@ -60,12 +60,24 @@ export function LiveTerminalFlow({ profile: liveProfile, ticker, decimals }: Liv
     bumpHist(n => n + 1);
   }, [liveProfile, ticker]);
   const profileHist = profileHistRef.current;
+  // Stabilize the live profile's identity (Phase 1C-4 perf): downstream gets a NEW object only when the
+  // content actually changed. A heartbeat frame that re-sends an identical snapshot (common when the market
+  // is closed — the user's frequent "LAST CLOSE" case) then no longer re-renders the chart/panels or
+  // re-runs the profile-derived memos, since SlayerChart's memo + the useMemos below all key off this ref.
+  const profileSigRef = useRef('');
+  const stableLiveRef = useRef<GexProfileData>(liveProfile);
+  {
+    const lp = liveProfile;
+    const sig = lp ? `${lp.spot}|${lp.netGex}|${lp.gammaFlip}|${lp.callWall}|${lp.putWall}|${lp.magnet}|${lp.expectedMovePct}|${lp.strikes?.length ?? 0}|${lp.feed}` : '∅';
+    if (sig !== profileSigRef.current) { profileSigRef.current = sig; stableLiveRef.current = lp; }
+  }
+  const stableLive = stableLiveRef.current;
   const profile = useMemo(() => {
-    if (replayT == null || !profileHist.length) return liveProfile;
+    if (replayT == null || !profileHist.length) return stableLive;
     let best = profileHist[0];
     for (const s of profileHist) { if (s.t <= replayT) best = s; else break; }
     return best.p;
-  }, [replayT, liveProfile, profileHist.length]);
+  }, [replayT, stableLive, profileHist.length]);
   const selectedAsset = useContractStore(s => s.selectedAsset);
   const setSelectedAsset = useContractStore(s => s.setSelectedAsset);
   const selectedTimeframe = useContractStore(s => s.selectedTimeframe);
