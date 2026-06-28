@@ -545,11 +545,11 @@ export function drawChart(deps: DrawDeps) {
     const last = candles[n - 1].close, lastUp = candles[n - 1].close >= candles[n - 1].open, lastY = yP(last);
     const tagH = 15;
     const NAMES: Record<string, string> = { CW: 'Call Wall', PW: 'Put Wall', 'γF': 'Gamma Flip', MAG: 'Magnet', 'EM+': 'Exp Move ↑', 'EM-': 'Exp Move ↓' };
-    const lvls: { price: number; color: string; label: string; gex?: number; value?: string }[] = [];
-    const pushLvl = (price: any, color: string, label: string, gex?: number, value?: string) => { if (typeof price === 'number' && price > 0) lvls.push({ price, color, label, gex, value }); };
+    const lvls: { price: number; color: string; label: string; gex?: number; value?: string; conf?: boolean }[] = [];
+    const pushLvl = (price: any, color: string, label: string, gex?: number, value?: string, conf?: boolean) => { if (typeof price === 'number' && price > 0) lvls.push({ price, color, label, gex, value, conf }); };
     const gexAt = (price: any): number => { const ss = profile.strikes; if (typeof price !== 'number' || !ss || !ss.length) return 0; let best = 0, bd = Infinity; for (const s of ss) { const d = Math.abs(s.strike - price); if (d < bd) { bd = d; best = s.netGex || 0; } } return bd <= price * 0.0015 ? best : 0; };
-    pushLvl(profile.callWall, COL.callWall, 'CW', Math.abs(gexAt(profile.callWall))); pushLvl(profile.putWall, COL.putWall, 'PW', Math.abs(gexAt(profile.putWall)));
-    pushLvl(profile.gammaFlip, COL.flip, 'γF'); pushLvl(profile.magnet, COL.magnet, 'MAG', Math.abs(gexAt(profile.magnet)));
+    pushLvl(profile.callWall, COL.callWall, 'CW', Math.abs(gexAt(profile.callWall)), undefined, profile.wallsConfident !== false); pushLvl(profile.putWall, COL.putWall, 'PW', Math.abs(gexAt(profile.putWall)), undefined, profile.wallsConfident !== false);
+    pushLvl(profile.gammaFlip, COL.flip, 'γF', undefined, undefined, profile.gammaFlipConfident !== false); pushLvl(profile.magnet, COL.magnet, 'MAG', Math.abs(gexAt(profile.magnet)));
     if (profile.spot && profile.expectedMovePct) { pushLvl(profile.spot * (1 + profile.expectedMovePct), COL.em, 'EM+'); pushLvl(profile.spot * (1 - profile.expectedMovePct), COL.em, 'EM-'); }
     // Loaded GEX Strikes — the actual top gamma strikes around price (with their $ values + size-weighted
     // lines), so the dealer positioning BEHIND the walls is visible, not just the walls themselves.
@@ -601,6 +601,7 @@ export function drawChart(deps: DrawDeps) {
     const hovPt = hoverRef.current;
     for (const L of placed) {
       const name = NAMES[L.label] || L.label, isWall = L.label === 'CW' || L.label === 'PW';
+      const estd = !L.value && L.conf === false;  // estimated (low-confidence) named level → render tentative + tag it
       const lrel = L.value ? Math.min(1, (L.gex || 0) / maxLoadedGex) : 0;
       const isTop = !!(L.value && (L.gex || 0) === maxLoadedGex), major = !!(L.value && lrel > 0.5), minor = !!(L.value && lrel <= 0.22);
       // Color: named levels keep their hue; loaded strikes scale gray-green→bright emerald (calls) /
@@ -611,10 +612,11 @@ export function drawChart(deps: DrawDeps) {
         const act = !!(L.value && L.price === activeStrike);
         if (act) { ctx.fillStyle = hexA(col, 0.07); ctx.fillRect(plotL, px(L.rawY) - 4, plotW, 8); }
         const p1 = !L.value && (L.label === 'CW' || L.label === 'PW' || L.label === 'γF'); // Priority-1 levels: walls + gamma flip read crisp; EM / magnet stay softer (P2).
-        ctx.strokeStyle = col; ctx.globalAlpha = L.value ? (act ? 0.95 : 0.1 + Math.pow(lrel, 1.3) * 0.75) : (p1 ? 0.72 : 0.32); ctx.lineWidth = L.value ? (act ? 2.6 : 0.6 + lrel * 3) : (p1 ? 1.5 : 1); ctx.setLineDash(!L.value ? (p1 && L.label !== 'γF' ? [] : [5, 4]) : minor ? [2, 4] : []);
+        ctx.strokeStyle = col; ctx.globalAlpha = (L.value ? (act ? 0.95 : 0.1 + Math.pow(lrel, 1.3) * 0.75) : (p1 ? 0.72 : 0.32)) * (estd ? 0.62 : 1); ctx.lineWidth = L.value ? (act ? 2.6 : 0.6 + lrel * 3) : (p1 ? 1.5 : 1); ctx.setLineDash(estd ? [3, 5] : (!L.value ? (p1 && L.label !== 'γF' ? [] : [5, 4]) : minor ? [2, 4] : []));
         ctx.beginPath(); ctx.moveTo(plotL, px(L.rawY) - 0.5); ctx.lineTo(plotR, px(L.rawY) - 0.5);
         // Dealer walls + flip read as solid "walls" — a soft glow makes the structural levels pop (SpotGamma feel).
-        if (p1) { ctx.save(); ctx.shadowColor = hexA(col, 0.6); ctx.shadowBlur = 8; ctx.stroke(); ctx.restore(); } else ctx.stroke();
+        // Estimated levels skip the glow (and go dashed/dimmer above) so they never masquerade as confirmed structure.
+        if (p1 && !estd) { ctx.save(); ctx.shadowColor = hexA(col, 0.6); ctx.shadowBlur = 8; ctx.stroke(); ctx.restore(); } else ctx.stroke();
         ctx.setLineDash([]); ctx.globalAlpha = 1; ctx.lineWidth = 1;
       }
       // Forward projection: brighten this wall's segment in the future zone + a soft glow toward the
@@ -627,7 +629,7 @@ export function drawChart(deps: DrawDeps) {
       }
       // Name + (for walls/magnet) the gamma-concentration %, so you read strength at a glance.
       const pct = (isWall || L.label === 'MAG') ? gexPctAt(L.price) : null;
-      const nameLbl = (L.off ? (L.dir < 0 ? '↑ ' : '↓ ') : '') + (L.value || name), pctLbl = pct != null ? `  ${pct}%` : '';
+      const nameLbl = (L.off ? (L.dir < 0 ? '↑ ' : '↓ ') : '') + (L.value || name) + (estd ? ' ~est' : ''), pctLbl = pct != null ? `  ${pct}%` : '';
       // ΔGEX beside the value (#1): how this strike's net γ has moved since the ~45s checkpoint (↑ building / ↓ bleeding).
       let deltaLbl = '', deltaUp = true;
       if (L.value) { const dv = gexDeltaAt(L.price); if (Math.abs(dv) >= 1e6) { deltaUp = dv >= 0; deltaLbl = `  ${deltaUp ? '↑' : '↓'}${fmtGex(Math.abs(dv)).replace(/^\+/, '')}`; } }
