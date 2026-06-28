@@ -162,6 +162,8 @@ export const SlayerChart = memo(function SlayerChartImpl({ profile, decimals, ca
   const dragRef = useRef<{ x: number; off: number; lastX?: number; lastT?: number; vx?: number } | null>(null);
   const panPxRef = useRef(0);   // sub-bar pixel offset during an active drag → smooth (sub-pixel) panning; snaps to 0 on release
   const inertiaRef = useRef(0); // rAF id for the momentum glide after a flick-release
+  const zoomAnimRef = useRef(0); // rAF id for eased wheel-zoom
+  const zoomTgtRef = useRef<{ target: number; gi: number; ax: number } | null>(null); // zoom target + the candle/x to keep pinned
   const priceDragRef = useRef<{ y: number; factor: number; offset: number } | null>(null);
   const draftRef = useRef<Anchor | null>(null);          // first point of a 2-point drawing
   const measureRef = useRef<{ a: Anchor; b: Anchor } | null>(null);
@@ -184,7 +186,7 @@ export const SlayerChart = memo(function SlayerChartImpl({ profile, decimals, ca
     tweenRef.current = requestAnimationFrame(stepFn);
   };
   const resetView = () => { tweenView({ bars: 110, off: 0 }); setPriceView(null); };
-  useEffect(() => () => { if (tweenRef.current) cancelAnimationFrame(tweenRef.current); if (inertiaRef.current) cancelAnimationFrame(inertiaRef.current); }, []);
+  useEffect(() => () => { if (tweenRef.current) cancelAnimationFrame(tweenRef.current); if (inertiaRef.current) cancelAnimationFrame(inertiaRef.current); if (zoomAnimRef.current) cancelAnimationFrame(zoomAnimRef.current); }, []);
   const priceViewRef = useRef(priceView); priceViewRef.current = priceView;
   const candlesRef = useRef(candles); candlesRef.current = candles;
   const toolRef = useRef(tool); toolRef.current = tool;
@@ -358,6 +360,21 @@ export const SlayerChart = memo(function SlayerChartImpl({ profile, decimals, ca
     const mo = new MutationObserver(() => { themeRef.current = readTheme(); schedule(); });
     mo.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme', 'class', 'style'] });
 
+    // Eased wheel-zoom: ease `bars` toward the target over a few frames while pinning the candle under
+    // the cursor (anchor gi/ax), so zoom feels smooth and TradingView-anchored instead of snapping.
+    const zoomStep = () => {
+      const z = zoomTgtRef.current, g = geomRef.current;
+      if (!z || !g) { zoomAnimRef.current = 0; zoomTgtRef.current = null; return; }
+      const n = candlesRef.current.length || 300, cur = viewRef.current.bars;
+      let bars = cur + (z.target - cur) * 0.35;
+      if (Math.abs(bars - z.target) < 0.75) bars = z.target;
+      bars = Math.max(20, Math.min(n, Math.round(bars)));
+      const newBarW = (g.plotR - g.plotL) / bars, newStart = z.gi - (z.ax - g.plotL) / newBarW;
+      const off = Math.max(-Math.round(bars * 0.5), Math.min(Math.max(0, n - 10), Math.round(n - bars - newStart)));
+      setView({ bars, off });
+      if (bars !== z.target) zoomAnimRef.current = requestAnimationFrame(zoomStep);
+      else { zoomAnimRef.current = 0; zoomTgtRef.current = null; }
+    };
     const onWheel = (e: WheelEvent) => {
       e.preventDefault();
       if (tweenRef.current) { cancelAnimationFrame(tweenRef.current); tweenRef.current = 0; }
@@ -370,16 +387,19 @@ export const SlayerChart = memo(function SlayerChartImpl({ profile, decimals, ca
         setPriceView(prev => { const cur = prev ?? { factor: 1, offset: 0 }; return { factor: Math.max(0.2, Math.min(6, cur.factor * f)), offset: cur.offset }; });
         return;
       }
-      const n = candlesRef.current.length || 300, factor = e.deltaY > 0 ? 1.15 : 0.87;
-      const cur = viewRef.current, next = Math.max(20, Math.min(n, Math.round(cur.bars * factor)));
-      if (next === cur.bars) return;
-      setRange(null); // manual zoom breaks the active range preset
+      const n = candlesRef.current.length || 300, factor = e.deltaY > 0 ? 1.12 : 0.89;
       const g = geomRef.current, r = canvas.getBoundingClientRect(), mx = e.clientX - r.left;
-      if (g && mx >= g.plotL && mx <= g.plotR) {
-        const giUnder = g.start + (mx - g.plotL) / g.barW, newBarW = (g.plotR - g.plotL) / next, newStart = giUnder - (mx - g.plotL) / newBarW;
-        const newOff = Math.max(-Math.round(next * 0.5), Math.min(Math.max(0, n - 10), Math.round(n - next - newStart)));
-        setView({ bars: next, off: newOff });
-      } else setView(v => ({ ...v, bars: next }));
+      const base = zoomTgtRef.current ? zoomTgtRef.current.target : viewRef.current.bars;
+      const target = Math.max(20, Math.min(n, Math.round(base * factor)));
+      if (target === base) return;
+      setRange(null); // manual zoom breaks the active range preset
+      const inPlot = !!(g && mx >= g.plotL && mx <= g.plotR);
+      if (!zoomTgtRef.current) {   // capture the pin once per burst (the candle under the cursor, else the live edge)
+        const ax = inPlot && g ? mx : (g ? g.plotR : 0);
+        const gi = g ? (inPlot ? g.start + (mx - g.plotL) / g.barW : g.end - 1) : viewRef.current.bars;
+        zoomTgtRef.current = { target, gi, ax };
+      } else zoomTgtRef.current.target = target;
+      if (!zoomAnimRef.current) zoomAnimRef.current = requestAnimationFrame(zoomStep);
     };
     type Geom = NonNullable<typeof geomRef.current>;
     const tAtX = (mx: number, g: Geom) => timeOfIdx(candlesRef.current, g.start + (mx - g.plotL) / g.barW);
@@ -400,6 +420,7 @@ export const SlayerChart = memo(function SlayerChartImpl({ profile, decimals, ca
       if (e.button !== 0) return; // left button only — right-click opens the view context menu
       setCtxMenu(null);
       if (inertiaRef.current) { cancelAnimationFrame(inertiaRef.current); inertiaRef.current = 0; if (panPxRef.current !== 0) { panPxRef.current = 0; drawRef.current(); } }   // a new grab stops the glide
+      if (zoomAnimRef.current) { cancelAnimationFrame(zoomAnimRef.current); zoomAnimRef.current = 0; zoomTgtRef.current = null; }   // and any in-flight zoom ease
       if (tweenRef.current) { cancelAnimationFrame(tweenRef.current); tweenRef.current = 0; }
       const r = canvas.getBoundingClientRect(), mx = e.clientX - r.left, my = e.clientY - r.top, g = geomRef.current, tl = toolRef.current;
       if (!g) return;
