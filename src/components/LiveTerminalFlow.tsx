@@ -94,6 +94,7 @@ export function LiveTerminalFlow({ profile: liveProfile, ticker, decimals }: Liv
   const [scope, setScope] = useState<'0DTE' | 'ALL'>('0DTE');
   const [multiChart, setMultiChart] = useState(false); // opt-in movable/resizable multi-chart grid
   const [chartFocus, setChartFocus] = useState(false); // chart-hero focus mode — collapses both side rails (xl+)
+  const [matrixMax, setMatrixMax] = useState(false); // full-screen the gamma matrix over the whole workspace
   const [gexLines, setGexLines] = useState(false); // center toggle — multi-strike GEX line chart
   const [ladderMetric, setLadderMetric] = useState<'GAMMA' | 'DELTA' | 'VANNA' | 'OI' | 'VOL'>('GAMMA');
   // Live price range the chart is showing — the Dealer Gamma Profile fills its panel with this range
@@ -446,10 +447,10 @@ export function LiveTerminalFlow({ profile: liveProfile, ticker, decimals }: Liv
 
   return (
     <div
-      className="w-full flex flex-col animate-fadeIn"
+      className="w-full flex-1 min-h-0 flex flex-col animate-fadeIn"
       data-gex-regime={longGamma ? 'long' : 'short'}
       style={{
-        minHeight: '860px',
+        minHeight: '600px',
         backgroundColor: 'var(--bg-base)',
         backgroundImage: `radial-gradient(150% 70% at 50% 0%, color-mix(in srgb, ${regimeTint} ${ambientWash}%, transparent), transparent 72%)`,
         color: 'var(--text-secondary)',
@@ -542,7 +543,20 @@ export function LiveTerminalFlow({ profile: liveProfile, ticker, decimals }: Liv
       <SessionBand sess={sess} clock={clock} />
 
       {/* ── 3-column workspace (full-bleed — fills the whole screen) ── */}
-      <div className="flex-1 w-full overflow-hidden flex">
+      <div className="flex-1 w-full overflow-hidden flex relative">
+        {/* Full-screen gamma matrix — expands the heat-seeker over the whole workspace (multi-expiry,
+            big + readable) so it isn't confined to the narrow rail box. */}
+        {matrixMax && (
+          <div className="absolute inset-0 z-40 flex flex-col bg-[var(--surface)] animate-fadeIn">
+            <div className="flex items-center justify-between px-4 h-9 border-b border-[var(--border)] shrink-0">
+              <span className="text-[11px] font-sans font-black tracking-widest uppercase text-[var(--text-primary)]">Gamma Matrix · {selectedAsset.ticker}</span>
+              <button onClick={() => setMatrixMax(false)} title="Restore" className="flex items-center gap-1.5 text-[10px] font-mono font-black uppercase tracking-wider text-[var(--text-tertiary)] hover:text-[var(--text-primary)] focus-visible:ring-1 focus-visible:ring-[var(--accent-color)] focus:outline-none rounded px-1.5 py-0.5 transition-colors"><Minimize2 className="w-3.5 h-3.5" /> Restore</button>
+            </div>
+            <div className="flex-1 min-h-0 overflow-y-auto flex justify-center px-4 py-3">
+              <div className="w-full max-w-[1100px]"><StrikeMatrix profile={profile} decimals={decimals} size="full" /></div>
+            </div>
+          </div>
+        )}
         <div className="flex flex-col xl:flex-row w-full h-full overflow-hidden">
 
           {/* ░ LEFT — Key Levels / Flow ░ */}
@@ -554,6 +568,9 @@ export function LiveTerminalFlow({ profile: liveProfile, ticker, decimals }: Liv
                   {leftTab === t && <span className="absolute -bottom-px left-0 right-0 h-[2px]" style={{ background: 'var(--accent-color)' }} />}
                 </button>
               ))}
+              {leftTab === 'matrix' && (
+                <button onClick={() => setMatrixMax(true)} title="Expand matrix full screen" className="ml-auto shrink-0 text-[var(--text-tertiary)] hover:text-[var(--text-primary)] focus-visible:ring-1 focus-visible:ring-[var(--accent-color)] focus:outline-none rounded p-0.5 transition-colors"><Maximize2 className="w-3.5 h-3.5" /></button>
+              )}
             </div>
 
             {leftTab === 'matrix' ? (

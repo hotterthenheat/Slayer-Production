@@ -6,7 +6,7 @@
  * synthetic sandbox walk), and assembles the Universal SSE payload. Importing
  * this module starts the ticker and seeds candles. No external API key required.
  */
-import { ASSET_LIST, generateInitialCandles, TIMEFRAMES, calculateFVGs, calculateLiquidityEvents, optionExpiryLabel, optionExpiryDate, optionDteDays, hoursToSessionClose } from '../data';
+import { ASSET_LIST, generateInitialCandles, TIMEFRAMES, calculateFVGs, calculateLiquidityEvents, optionExpiryLabel, optionExpiryDate, optionDteDays, hoursToSessionClose, synthesizeExpirySlices } from '../data';
 import {
   calculateSystemScoreFromCandles,
   calculateV11Metrics,
@@ -1598,6 +1598,14 @@ const buildPayload = (params: PayloadParams) => {
     strikesMap[stk].netVex += vexAmt;
   });
 
+  const strikesArr = Object.values(strikesMap);
+  // Matrix multi-expiry columns: prefer REAL per-expiry chains from the opt-in provider fetch; else,
+  // only on the MODEL feed (not live), derive a model expiry ladder so the matrix shows multi-expiry.
+  const realExpiries = db.gexExpiries[asset.ticker];
+  const matrixExpiries = (realExpiries && realExpiries.length)
+    ? realExpiries
+    : (!isChainLive && strikesArr.length ? synthesizeExpirySlices(strikesArr.map(s => ({ strike: s.strike, netGex: s.netGex })), asset) : undefined);
+
   const gex_profile = {
     spot: lastPrice,
     netGex,
@@ -1617,10 +1625,12 @@ const buildPayload = (params: PayloadParams) => {
     feed: feedLabel,
     expiryLabel: expLabel,
     expiryDate: optionExpiryDate(asset),
-    strikes: Object.values(strikesMap),
-    // Multi-expiry columns — present only when the opt-in fetch populated them
-    // (default-off). Absent ⇒ the matrix renders the single front-expiry heatmap.
-    ...(db.gexExpiries[asset.ticker]?.length ? { expiries: db.gexExpiries[asset.ticker] } : {}),
+    strikes: strikesArr,
+    // Multi-expiry columns for the matrix. REAL per-expiry chains when the opt-in provider fetch
+    // populated them (db.gexExpiries); otherwise, on the MODEL/sandbox feed (not live), a derived
+    // model ladder so the matrix still shows a multi-expiry heatmap. A LIVE single-expiry chain
+    // without the opt-in fetch shows just its one real expiry (we never fake multi over real data).
+    ...(matrixExpiries?.length ? { expiries: matrixExpiries } : {}),
   };
 
   // Strike Gravity Engine — score every strike (GEX / OI / volume / proximity),

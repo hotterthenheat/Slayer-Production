@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { AssetInfo, Candle, FairValueGap, LiquidityEvent, TimeframeVal } from './types';
+import { AssetInfo, Candle, FairValueGap, LiquidityEvent, TimeframeVal, GexExpirySlice } from './types';
 
 export const ASSET_LIST: AssetInfo[] = [
   {
@@ -476,6 +476,32 @@ export function optionExpiryDate(asset: AssetInfo, now: Date = new Date()): stri
   const d = new Date(now);
   if (asset.optionsStyle === 'weekly') d.setDate(d.getDate() + frontWeeklyDteDays(now));
   return `${MON[d.getMonth()]} ${d.getDate()}`;
+}
+
+/**
+ * MODEL multi-expiry gamma slices — derive a small expiry ladder (front + the next few weeklies/
+ * monthly) from a single front-expiry strike grid so the matrix can show a multi-expiry heatmap on the
+ * model/sandbox feed (no provider). Near-term gamma is the most concentrated, so per-strike γ decays
+ * with DTE. This is MODEL data (used only when the chain is NOT live); a real provider supplies true
+ * per-expiry chains via the opt-in fetch. Kept deterministic (no Math.random).
+ */
+export function synthesizeExpirySlices(
+  strikes: { strike: number; netGex: number }[],
+  asset: AssetInfo,
+  now: Date = new Date(),
+): GexExpirySlice[] {
+  if (!strikes.length) return [];
+  const d0 = asset.optionsStyle === 'weekly' ? frontWeeklyDteDays(now) : 0;
+  const offsets = [d0, d0 + 7, d0 + 14, d0 + 28];   // front · +1w · +2w · ~1mo
+  const factors = [1, 0.64, 0.44, 0.31];            // gamma concentrates near-term
+  const iso = (dte: number) => { const d = new Date(now); d.setDate(d.getDate() + dte); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; };
+  return offsets.map((dte, k) => {
+    const f = factors[k];
+    const sl = strikes.map(s => ({ strike: s.strike, netGex: (s.netGex || 0) * f }));
+    let netGex = 0, callWall: number | undefined, putWall: number | undefined, mx = 0, mn = 0;
+    for (const s of sl) { netGex += s.netGex; if (s.netGex > mx) { mx = s.netGex; callWall = s.strike; } if (s.netGex < mn) { mn = s.netGex; putWall = s.strike; } }
+    return { expiration: iso(dte), dte, netGex, callWall, putWall, strikes: sl };
+  });
 }
 
 export const TIMEFRAMES: { val: TimeframeVal; label: string; minMultiplier: number }[] = [
