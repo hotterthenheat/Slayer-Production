@@ -592,7 +592,7 @@ export function LiveTerminalFlow({ profile: liveProfile, ticker, decimals }: Liv
             style={customize ? { borderColor: 'var(--accent-color)', background: 'color-mix(in srgb, var(--accent-color) 14%, transparent)', color: 'var(--accent-color)' } : { borderColor: 'var(--border)', color: 'var(--text-tertiary)' }}>
             <LayoutGrid className="w-3 h-3" />Customize
           </button>
-          <span className="flex items-center gap-1.5 px-2.5 py-1 rounded-md border text-[10px] font-mono font-black uppercase tracking-widest lg:hidden" style={{ borderColor: longGamma ? 'color-mix(in srgb, var(--info) 40%, transparent)' : 'color-mix(in srgb, var(--warning) 40%, transparent)', background: longGamma ? 'color-mix(in srgb, var(--info) 10%, transparent)' : 'color-mix(in srgb, var(--warning) 10%, transparent)', color: trend, boxShadow: `0 0 16px ${longGamma ? 'color-mix(in srgb, var(--info) 18%, transparent)' : 'color-mix(in srgb, var(--warning) 18%, transparent)'}` }}>
+          <span className="flex items-center gap-1.5 px-2.5 py-1 rounded-md border text-[10px] font-mono font-black uppercase tracking-widest md:hidden" style={{ borderColor: longGamma ? 'color-mix(in srgb, var(--info) 40%, transparent)' : 'color-mix(in srgb, var(--warning) 40%, transparent)', background: longGamma ? 'color-mix(in srgb, var(--info) 10%, transparent)' : 'color-mix(in srgb, var(--warning) 10%, transparent)', color: trend, boxShadow: `0 0 16px ${longGamma ? 'color-mix(in srgb, var(--info) 18%, transparent)' : 'color-mix(in srgb, var(--warning) 18%, transparent)'}` }}>
             {longGamma ? <Activity className="w-3 h-3" /> : <Zap className="w-3 h-3 fill-current" />}{longGamma ? 'Long γ' : 'Short γ'} · {read.regime === 'PIN' ? `Pin ${read.pinStrength}` : 'Trend'}
           </span>
         </div>
@@ -614,8 +614,8 @@ export function LiveTerminalFlow({ profile: liveProfile, ticker, decimals }: Liv
               <span className="text-[11px] font-sans font-black tracking-widest uppercase text-[var(--text-primary)]">Gamma Matrix · {selectedAsset.ticker}</span>
               <button onClick={() => setMatrixMax(false)} title="Restore" className="flex items-center gap-1.5 text-[10px] font-mono font-black uppercase tracking-wider text-[var(--text-tertiary)] hover:text-[var(--text-primary)] focus-visible:ring-1 focus-visible:ring-[var(--accent-color)] focus:outline-none rounded px-1.5 py-0.5 transition-colors"><Minimize2 className="w-3.5 h-3.5" /> Restore</button>
             </div>
-            <div className="flex-1 min-h-0 overflow-y-auto flex justify-center px-4 py-3">
-              <div className="w-full max-w-[1100px]"><StrikeMatrix profile={profile} decimals={decimals} size="full" /></div>
+            <div className="flex-1 min-h-0 overflow-y-auto px-4 py-3">
+              <div className="w-full"><StrikeMatrix profile={profile} decimals={decimals} size="full" /></div>
             </div>
           </div>
         )}
