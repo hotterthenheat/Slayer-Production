@@ -47,6 +47,9 @@ export type DrawDeps = {
   showGex: boolean; showHeat: boolean; showOrbs: boolean; showDisp: boolean; showLadder: boolean;
   showVolProfile: boolean; showPrevClose: boolean; showVwap: boolean;
   vwap?: { line: (number | null)[]; u1: (number | null)[]; d1: (number | null)[]; u2: (number | null)[]; d2: (number | null)[] };  // session VWAP centerline + ±1σ/±2σ bands
+  showMigration: boolean; gammaCoM?: number | null; comHist?: number[];  // gamma center-of-mass + its recent drift path (migration comet)
+  showExposure: boolean;  // aggregate dealer Δ (DEX) + Vanna tilt HUD
+  showMaxPain: boolean;  // max-pain expiry pin level (OI-weighted)
   live?: boolean; livePhaseRef?: { current: number };   // animate the last-price pulse only when truly live
   liveOverlayRef?: { current: { plotR: number; lastY: number; up: boolean; upCol: string; downCol: string } | null };  // last-price geometry handed to the overlay layer
   tickKey: string; tfKey: string;
@@ -59,7 +62,7 @@ export function drawChart(deps: DrawDeps) {
     hoverRef, gexDeltaRef, draftRef, measureRef, drawingsRef, toolRef, selectedRef,
     candles, ha, atr, profile, colors, decimals, chartType, ovOn, overlaySeries, paneSeries,
     displacements, gexCount, showVolume, showGrid, showWatermark, candleBorders,
-    showGex, showHeat, showOrbs, showVolProfile, showPrevClose, showVwap, vwap, showDisp, showLadder, tickKey, tfKey, onScale, live, livePhaseRef, liveOverlayRef,
+    showGex, showHeat, showOrbs, showVolProfile, showPrevClose, showVwap, vwap, showMigration, gammaCoM, comHist, showExposure, showMaxPain, showDisp, showLadder, tickKey, tfKey, onScale, live, livePhaseRef, liveOverlayRef,
   } = deps;
     const canvas = canvasRef.current, container = containerRef.current;
     if (!canvas || !container) return;
@@ -542,13 +545,24 @@ export function drawChart(deps: DrawDeps) {
     // crowd near spot they stack and draw a connector back to the line, so a label never floats free.
     const last = candles[n - 1].close, lastUp = candles[n - 1].close >= candles[n - 1].open, lastY = yP(last);
     const tagH = 15;
-    const NAMES: Record<string, string> = { CW: 'Call Wall', PW: 'Put Wall', 'γF': 'Gamma Flip', MAG: 'Magnet', 'EM+': 'Exp Move ↑', 'EM-': 'Exp Move ↓' };
-    const lvls: { price: number; color: string; label: string; gex?: number; value?: string }[] = [];
-    const pushLvl = (price: any, color: string, label: string, gex?: number, value?: string) => { if (typeof price === 'number' && price > 0) lvls.push({ price, color, label, gex, value }); };
+    const NAMES: Record<string, string> = { CW: 'Call Wall', PW: 'Put Wall', 'γF': 'Gamma Flip', MAG: 'Magnet', 'EM+': 'Exp Move ↑', 'EM-': 'Exp Move ↓', MP: 'Max Pain' };
+    const lvls: { price: number; color: string; label: string; gex?: number; value?: string; conf?: boolean }[] = [];
+    const pushLvl = (price: any, color: string, label: string, gex?: number, value?: string, conf?: boolean) => { if (typeof price === 'number' && price > 0) lvls.push({ price, color, label, gex, value, conf }); };
     const gexAt = (price: any): number => { const ss = profile.strikes; if (typeof price !== 'number' || !ss || !ss.length) return 0; let best = 0, bd = Infinity; for (const s of ss) { const d = Math.abs(s.strike - price); if (d < bd) { bd = d; best = s.netGex || 0; } } return bd <= price * 0.0015 ? best : 0; };
-    pushLvl(profile.callWall, COL.callWall, 'CW', Math.abs(gexAt(profile.callWall))); pushLvl(profile.putWall, COL.putWall, 'PW', Math.abs(gexAt(profile.putWall)));
-    pushLvl(profile.gammaFlip, COL.flip, 'γF'); pushLvl(profile.magnet, COL.magnet, 'MAG', Math.abs(gexAt(profile.magnet)));
+    pushLvl(profile.callWall, COL.callWall, 'CW', Math.abs(gexAt(profile.callWall)), undefined, profile.wallsConfident !== false); pushLvl(profile.putWall, COL.putWall, 'PW', Math.abs(gexAt(profile.putWall)), undefined, profile.wallsConfident !== false);
+    pushLvl(profile.gammaFlip, COL.flip, 'γF', undefined, undefined, profile.gammaFlipConfident !== false); pushLvl(profile.magnet, COL.magnet, 'MAG', Math.abs(gexAt(profile.magnet)));
     if (profile.spot && profile.expectedMovePct) { pushLvl(profile.spot * (1 + profile.expectedMovePct), COL.em, 'EM+'); pushLvl(profile.spot * (1 - profile.expectedMovePct), COL.em, 'EM-'); }
+    // Max Pain — the settlement strike that minimizes total ITM payout to option holders (a classic expiry
+    // magnet, distinct from the gamma magnet — they often disagree). Computed from per-strike OI; opt-in.
+    if (showMaxPain && profile.strikes && profile.strikes.length > 2) {
+      let mp = NaN, best = Infinity;
+      for (const k of profile.strikes) {
+        let pain = 0;
+        for (const s of profile.strikes) { if (k.strike > s.strike) pain += (s.callOi || 0) * (k.strike - s.strike); else if (k.strike < s.strike) pain += (s.putOi || 0) * (s.strike - k.strike); }
+        if (pain < best) { best = pain; mp = k.strike; }
+      }
+      if (!isNaN(mp)) pushLvl(mp, mixHex(T.warning, T.accent, 0.55), 'MP');
+    }
     // Loaded GEX Strikes — the actual top gamma strikes around price (with their $ values + size-weighted
     // lines), so the dealer positioning BEHIND the walls is visible, not just the walls themselves.
     if (showLadder && profile.strikes && profile.strikes.length) {
@@ -599,6 +613,7 @@ export function drawChart(deps: DrawDeps) {
     const hovPt = hoverRef.current;
     for (const L of placed) {
       const name = NAMES[L.label] || L.label, isWall = L.label === 'CW' || L.label === 'PW';
+      const estd = !L.value && L.conf === false;  // estimated (low-confidence) named level → render tentative + tag it
       const lrel = L.value ? Math.min(1, (L.gex || 0) / maxLoadedGex) : 0;
       const isTop = !!(L.value && (L.gex || 0) === maxLoadedGex), major = !!(L.value && lrel > 0.5), minor = !!(L.value && lrel <= 0.22);
       // Color: named levels keep their hue; loaded strikes scale gray-green→bright emerald (calls) /
@@ -609,10 +624,11 @@ export function drawChart(deps: DrawDeps) {
         const act = !!(L.value && L.price === activeStrike);
         if (act) { ctx.fillStyle = hexA(col, 0.07); ctx.fillRect(plotL, px(L.rawY) - 4, plotW, 8); }
         const p1 = !L.value && (L.label === 'CW' || L.label === 'PW' || L.label === 'γF'); // Priority-1 levels: walls + gamma flip read crisp; EM / magnet stay softer (P2).
-        ctx.strokeStyle = col; ctx.globalAlpha = L.value ? (act ? 0.95 : 0.1 + Math.pow(lrel, 1.3) * 0.75) : (p1 ? 0.72 : 0.32); ctx.lineWidth = L.value ? (act ? 2.6 : 0.6 + lrel * 3) : (p1 ? 1.5 : 1); ctx.setLineDash(!L.value ? (p1 && L.label !== 'γF' ? [] : [5, 4]) : minor ? [2, 4] : []);
+        ctx.strokeStyle = col; ctx.globalAlpha = (L.value ? (act ? 0.95 : 0.1 + Math.pow(lrel, 1.3) * 0.75) : (p1 ? 0.72 : 0.32)) * (estd ? 0.62 : 1); ctx.lineWidth = L.value ? (act ? 2.6 : 0.6 + lrel * 3) : (p1 ? 1.5 : 1); ctx.setLineDash(estd ? [3, 5] : (!L.value ? (p1 && L.label !== 'γF' ? [] : [5, 4]) : minor ? [2, 4] : []));
         ctx.beginPath(); ctx.moveTo(plotL, px(L.rawY) - 0.5); ctx.lineTo(plotR, px(L.rawY) - 0.5);
         // Dealer walls + flip read as solid "walls" — a soft glow makes the structural levels pop (SpotGamma feel).
-        if (p1) { ctx.save(); ctx.shadowColor = hexA(col, 0.6); ctx.shadowBlur = 8; ctx.stroke(); ctx.restore(); } else ctx.stroke();
+        // Estimated levels skip the glow (and go dashed/dimmer above) so they never masquerade as confirmed structure.
+        if (p1 && !estd) { ctx.save(); ctx.shadowColor = hexA(col, 0.6); ctx.shadowBlur = 8; ctx.stroke(); ctx.restore(); } else ctx.stroke();
         ctx.setLineDash([]); ctx.globalAlpha = 1; ctx.lineWidth = 1;
       }
       // Forward projection: brighten this wall's segment in the future zone + a soft glow toward the
@@ -625,7 +641,7 @@ export function drawChart(deps: DrawDeps) {
       }
       // Name + (for walls/magnet) the gamma-concentration %, so you read strength at a glance.
       const pct = (isWall || L.label === 'MAG') ? gexPctAt(L.price) : null;
-      const nameLbl = (L.off ? (L.dir < 0 ? '↑ ' : '↓ ') : '') + (L.value || name), pctLbl = pct != null ? `  ${pct}%` : '';
+      const nameLbl = (L.off ? (L.dir < 0 ? '↑ ' : '↓ ') : '') + (L.value || name) + (estd ? ' ~est' : ''), pctLbl = pct != null ? `  ${pct}%` : '';
       // ΔGEX beside the value (#1): how this strike's net γ has moved since the ~45s checkpoint (↑ building / ↓ bleeding).
       let deltaLbl = '', deltaUp = true;
       if (L.value) { const dv = gexDeltaAt(L.price); if (Math.abs(dv) >= 1e6) { deltaUp = dv >= 0; deltaLbl = `  ${deltaUp ? '↑' : '↓'}${fmtGex(Math.abs(dv)).replace(/^\+/, '')}`; } }
@@ -698,6 +714,61 @@ export function drawChart(deps: DrawDeps) {
         ctx.fillStyle = hexA(COL.magnet, 0.7); ctx.beginPath(); ctx.arc(tx, lastY + dir * 5, 1.9, 0, Math.PI * 2); ctx.fill();
         ctx.font = '700 7.5px ui-monospace, monospace'; ctx.textAlign = 'left'; ctx.fillStyle = hexA(COL.magnet, 0.7); ctx.fillText('PULL', tx + 6, (lastY + my) / 2);
       }
+    }
+
+    // GAMMA MIGRATION COMET — the gamma center-of-mass (Σ strike·|netGex| / Σ|netGex|) drifting over recent
+    // updates. Bright head at the current CoM, fading ghosts trailing its recent path. Rising = dealer gamma
+    // concentrating higher (supportive drift); falling = the reverse. A right-edge HUD widget, on top of price.
+    if (showMigration && gammaCoM != null && comHist && comHist.length >= 2) {
+      const headY = yP(gammaCoM);
+      if (headY >= priceTop + 4 && headY <= priceBottom - 4) {
+        const N = Math.min(comHist.length, 14), slice = comHist.slice(comHist.length - N);
+        const xR = plotR - 12, dx = 6, drift = slice[N - 1] - slice[0];
+        const dCol = drift > 0.02 ? COL.up : drift < -0.02 ? COL.down : T.dim;
+        // connecting thread through the recent path
+        ctx.strokeStyle = hexA(dCol, 0.28); ctx.lineWidth = 1; ctx.beginPath();
+        for (let i = 0; i < N; i++) { const x = xR - (N - 1 - i) * dx, y = yP(slice[i]); i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y); }
+        ctx.stroke();
+        // fading ghost dots (oldest faintest)
+        for (let i = 0; i < N; i++) { const x = xR - (N - 1 - i) * dx, y = yP(slice[i]); ctx.fillStyle = hexA(dCol, 0.10 + 0.5 * (i / (N - 1))); ctx.beginPath(); ctx.arc(x, y, 1 + 1.5 * (i / (N - 1)), 0, Math.PI * 2); ctx.fill(); }
+        // bright head + drift chevron (points the direction of drift)
+        ctx.fillStyle = hexA(dCol, 0.97); ctx.beginPath(); ctx.arc(xR, headY, 3, 0, Math.PI * 2); ctx.fill();
+        const ar = drift > 0 ? -1 : 1;
+        ctx.strokeStyle = hexA(dCol, 0.9); ctx.lineWidth = 1.4; ctx.beginPath();
+        ctx.moveTo(xR - 2.6, headY + ar * 5); ctx.lineTo(xR, headY + ar * 9); ctx.lineTo(xR + 2.6, headY + ar * 5); ctx.stroke(); ctx.lineWidth = 1;
+        // label, placed opposite the chevron so they never overlap
+        ctx.font = '700 7.5px ui-monospace, monospace'; ctx.textAlign = 'right'; ctx.fillStyle = hexA(dCol, 0.82);
+        ctx.fillText('γ-CoM', xR + 4, headY + (drift > 0 ? 13 : -10)); ctx.font = '11px ui-monospace, monospace';
+      }
+    }
+
+    // DEALER EXPOSURE HUD — aggregate net Δ (DEX) and Vanna across the whole chain, always-on (the hover
+    // tooltip shows these per-strike; this is the global picture). Each row: label, a centered tilt gauge
+    // (how net-long/short dealers are = net ÷ gross), and the signed total. Top-left, under the legend.
+    if (showExposure && profile.strikes && profile.strikes.length) {
+      let netD = 0, grossD = 0, netV = 0, grossV = 0;
+      for (const s of profile.strikes) {
+        const dx = s.netDex != null ? s.netDex : (s.callDex || 0) + (s.putDex || 0);
+        const vx = s.netVex != null ? s.netVex : (s.callVex || 0) + (s.putVex || 0);
+        netD += dx; grossD += Math.abs(dx); netV += vx; grossV += Math.abs(vx);
+      }
+      const rowsX: { lbl: string; net: number; tilt: number }[] = [];
+      if (grossD > 0) rowsX.push({ lbl: 'DEALER Δ', net: netD, tilt: Math.max(-1, Math.min(1, netD / grossD)) });
+      if (grossV > 0) rowsX.push({ lbl: 'VANNA', net: netV, tilt: Math.max(-1, Math.min(1, netV / grossV)) });
+      let ey = priceTop + 26;
+      const gaugeW = 46, gx = plotL + 8, tx = gx + 46;
+      for (const r of rowsX) {
+        const col = r.net >= 0 ? COL.up : COL.down;
+        ctx.font = '700 8px ui-monospace, monospace'; ctx.textAlign = 'left'; ctx.fillStyle = hexA(T.text, 0.6); ctx.fillText(r.lbl, gx, ey);
+        ctx.fillStyle = hexA(T.text, 0.12); ctx.fillRect(tx, ey - 3, gaugeW, 4);                       // track
+        ctx.fillStyle = hexA(T.text, 0.28); ctx.fillRect(tx + gaugeW / 2 - 0.5, ey - 4.5, 1, 7);        // zero tick
+        const fillW = (gaugeW / 2) * Math.abs(r.tilt);
+        ctx.fillStyle = hexA(col, 0.9);
+        if (r.tilt >= 0) ctx.fillRect(tx + gaugeW / 2, ey - 3, fillW, 4); else ctx.fillRect(tx + gaugeW / 2 - fillW, ey - 3, fillW, 4);
+        ctx.fillStyle = col; ctx.fillText(fmtGex(r.net), tx + gaugeW + 6, ey);
+        ey += 13;
+      }
+      ctx.font = '11px ui-monospace, monospace';
     }
 
     // ── Sub-panes (registry-driven) ──
