@@ -430,7 +430,7 @@ export function LiveTerminalFlow({ profile: liveProfile, ticker, decimals }: Liv
       className="w-full flex flex-col animate-fadeIn"
       data-gex-regime={longGamma ? 'long' : 'short'}
       style={{
-        minHeight: '820px',
+        minHeight: '860px',
         backgroundColor: 'var(--bg-base)',
         backgroundImage: `radial-gradient(150% 70% at 50% 0%, color-mix(in srgb, ${regimeTint} ${ambientWash}%, transparent), transparent 72%)`,
         color: 'var(--text-secondary)',
@@ -516,7 +516,7 @@ export function LiveTerminalFlow({ profile: liveProfile, ticker, decimals }: Liv
         <div className="flex flex-col xl:flex-row w-full h-full overflow-hidden">
 
           {/* ░ LEFT — Key Levels / Flow ░ */}
-          <aside className="order-2 xl:order-1 w-full xl:w-[276px] shrink-0 border-r border-[var(--border)] flex flex-col min-h-[360px] xl:min-h-0 bg-[var(--surface)]">
+          <aside className="order-2 xl:order-1 w-full xl:w-[248px] shrink-0 border-r border-[var(--border)] flex flex-col min-h-[360px] xl:min-h-0 bg-[var(--surface)]">
             <div className="flex items-center gap-4 px-3 h-9 border-b border-[var(--border)] shrink-0">
               {(['levels', 'matrix', 'flow'] as const).map(t => (
                 <button key={t} onClick={() => setLeftTab(t)} className="relative text-[11px] font-sans font-black tracking-widest uppercase transition-colors py-2" style={{ color: leftTab === t ? 'var(--text-primary)' : 'var(--text-tertiary)' }}>
@@ -541,7 +541,7 @@ export function LiveTerminalFlow({ profile: liveProfile, ticker, decimals }: Liv
                   </div>
                   <div className="flex items-center gap-1.5 mt-1">
                     {outlook.bias === 'up' ? <TrendingUp className="w-4 h-4" style={{ color: 'var(--success)' }} /> : outlook.bias === 'down' ? <TrendingDown className="w-4 h-4" style={{ color: 'var(--danger)' }} /> : <Minus className="w-4 h-4 text-[var(--text-tertiary)]" />}
-                    <span className="text-[17px] font-sans font-black tracking-tight leading-none" style={{ color: outlookColor }}>{outlook.regime}</span>
+                    <span className="text-[20px] font-sans font-black tracking-tight leading-none" style={{ color: outlookColor }}>{outlook.regime}</span>
                   </div>
                   <div className="text-[11px] font-mono font-bold text-[var(--text-secondary)] mt-1.5 leading-snug">{outlook.headline}</div>
                   <div className="text-[9.5px] font-mono text-[var(--text-tertiary)] mt-0.5 leading-snug">{outlook.detail}</div>
@@ -649,7 +649,7 @@ export function LiveTerminalFlow({ profile: liveProfile, ticker, decimals }: Liv
           </aside>
 
           {/* ░ CENTER — flow header + chart ░ */}
-          <main className="order-1 xl:order-2 flex-1 min-w-0 flex flex-col border-r border-[var(--border)] min-h-[440px]">
+          <main className="order-1 xl:order-2 flex-1 min-w-0 flex flex-col border-r border-[var(--border)] min-h-[520px]">
             <div className="px-3 py-1.5 border-b border-[var(--border)] shrink-0 bg-[var(--surface)]">
               <div className="flex items-center justify-between mb-1.5">
                 <div className="flex items-center gap-2 text-[10px] font-mono font-black uppercase tracking-wider min-w-0">
@@ -681,7 +681,7 @@ export function LiveTerminalFlow({ profile: liveProfile, ticker, decimals }: Liv
           </main>
 
           {/* ░ RIGHT — Exposure Ladder ░ */}
-          <aside className="order-3 w-full xl:w-[340px] shrink-0 flex flex-col min-h-[360px] xl:min-h-0 bg-[var(--surface)]">
+          <aside className="order-3 w-full xl:w-[300px] shrink-0 flex flex-col min-h-[360px] xl:min-h-0 bg-[var(--surface)]">
             <div className="flex items-center gap-2 px-3 h-9 border-b border-[var(--border)] shrink-0">
               <Layers className="w-3.5 h-3.5" style={{ color: 'var(--accent-color)' }} />
               <span className="text-[11px] font-sans font-black tracking-widest uppercase text-[var(--text-primary)]">Exposure Ladder</span>
