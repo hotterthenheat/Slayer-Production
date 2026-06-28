@@ -89,7 +89,7 @@ export function ClerkGate({ onSuccess, referralCodeFromUrl, onClose }: ClerkGate
   };
 
   return (
-    <div id="clerk-authentication-gate" className="min-h-screen bg-black text-[var(--text-secondary)] flex flex-col justify-center items-center font-mono selection:bg-[var(--success)] selection:text-[var(--text-primary)] p-4">
+    <div id="clerk-authentication-gate" className="min-h-screen bg-[var(--bg-base)] text-[var(--text-secondary)] flex flex-col justify-center items-center font-mono selection:bg-[var(--success)] selection:text-[var(--text-primary)] p-4">
       
       {/* Visual background atmospheric elements */}
       <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[60rem] h-[60rem] rounded-full bg-white/[0.02] blur-[100px] pointer-events-none" />
@@ -101,12 +101,12 @@ export function ClerkGate({ onSuccess, referralCodeFromUrl, onClose }: ClerkGate
       <motion.div 
         initial={{ opacity: 0, scale: 0.98, y: 15 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
-        className="w-full max-w-[440px] bg-[#050505] border border-[#1f1f1f] shadow-[0_0_50px_rgba(0,0,0,0.5)] pt-12 rounded-3xl overflow-hidden p-8 relative z-10"
+        className="w-full max-w-[440px] bg-[var(--surface)] border border-[var(--border)] shadow-[0_0_50px_rgba(0,0,0,0.5)] pt-12 rounded-3xl overflow-hidden p-8 relative z-10"
       >
         {onClose && (
           <button
             onClick={onClose}
-            className="absolute top-5 right-5 text-zinc-500 hover:text-zinc-200 transition-colors cursor-pointer h-8 w-8 rounded-full bg-[#111] border border-[#222] hover:border-[#444] flex items-center justify-center z-20"
+            className="absolute top-5 right-5 text-[var(--text-tertiary)] hover:text-[var(--text-secondary)] transition-colors cursor-pointer h-8 w-8 rounded-full bg-[var(--surface-2)] border border-[var(--border)] hover:border-[var(--border-strong)] flex items-center justify-center z-20"
             title="Dismiss"
           >
             <X className="w-4 h-4" />
@@ -115,8 +115,8 @@ export function ClerkGate({ onSuccess, referralCodeFromUrl, onClose }: ClerkGate
 
         <div className="text-center space-y-3 mb-6">
           <div className="flex justify-center mb-1 relative">
-            <div className="p-4 bg-black border border-[#1f1f1f] rounded-2xl shadow-[0_0_20px_rgba(255,255,255,0.05)] relative z-10 transition-transform hover:scale-105">
-              <ShieldCheck className="w-8 h-8 text-[#E5E5E5]" />
+            <div className="p-4 bg-[var(--surface-2)] border border-[var(--border)] rounded-2xl shadow-[0_0_20px_rgba(255,255,255,0.05)] relative z-10 transition-transform hover:scale-105">
+              <ShieldCheck className="w-8 h-8 text-[var(--accent-color)]" />
             </div>
           </div>
           <h1 className="text-2xl font-sans font-black tracking-tight text-[var(--text-primary)] select-none">
@@ -129,16 +129,16 @@ export function ClerkGate({ onSuccess, referralCodeFromUrl, onClose }: ClerkGate
 
         {/* Tab switcher */}
         {!twoFactorStage && (
-        <div className="grid grid-cols-2 bg-[#0a0a0a] rounded-xl p-1.5 border border-[#1f1f1f] text-xs font-bold mb-6">
+        <div className="grid grid-cols-2 bg-[var(--surface-2)] rounded-xl p-1.5 border border-[var(--border)] text-xs font-bold mb-6">
           <button
             onClick={() => { setActiveMode('signin'); setErrorMessage(null); }}
-            className={`py-2.5 rounded-lg transition-all cursor-pointer ${activeMode === 'signin' ? 'bg-[#1a1a1a] text-[#E5E5E5] shadow-sm' : 'text-zinc-500 hover:text-zinc-300'}`}
+            className={`py-2.5 rounded-lg transition-all cursor-pointer ${activeMode === 'signin' ? 'bg-[var(--surface-3)] text-[var(--text-primary)] shadow-sm' : 'text-[var(--text-tertiary)] hover:text-[var(--text-secondary)]'}`}
           >
             Sign In
           </button>
           <button
             onClick={() => { setActiveMode('signup'); setErrorMessage(null); }}
-            className={`py-2.5 rounded-lg transition-all cursor-pointer ${activeMode === 'signup' ? 'bg-[#1a1a1a] text-[#E5E5E5] shadow-sm' : 'text-zinc-500 hover:text-zinc-300'}`}
+            className={`py-2.5 rounded-lg transition-all cursor-pointer ${activeMode === 'signup' ? 'bg-[var(--surface-3)] text-[var(--text-primary)] shadow-sm' : 'text-[var(--text-tertiary)] hover:text-[var(--text-secondary)]'}`}
           >
             Create Account
           </button>
@@ -173,9 +173,9 @@ export function ClerkGate({ onSuccess, referralCodeFromUrl, onClose }: ClerkGate
                   value={totpCode}
                   onChange={(e) => setTotpCode(e.target.value.replace(/[^0-9]/g, '').slice(0, 6))}
                   placeholder="123456"
-                  className="w-full bg-[#0a0a0a] border border-[#1f1f1f] focus:border-[#4f4f4f] focus:ring-1 focus:ring-[#4f4f4f] text-[#E5E5E5] font-sans rounded-xl p-3.5 pl-11 text-sm tracking-[0.3em] focus:outline-none transition-all"
+                  className="w-full bg-[var(--surface-2)] border border-[var(--border)] focus:border-[var(--border-strong)] focus-visible:ring-1 focus-visible:ring-[var(--border-strong)] text-[var(--text-primary)] font-sans rounded-xl p-3.5 pl-11 text-sm tracking-[0.3em] focus:outline-none transition-all"
                 />
-                <ShieldCheck className="w-4 h-4 text-zinc-500 absolute left-4 top-1/2 -translate-y-1/2" />
+                <ShieldCheck className="w-4 h-4 text-[var(--text-tertiary)] absolute left-4 top-1/2 -translate-y-1/2" />
               </div>
               <p className="text-[10px] text-[var(--text-tertiary)] mt-2 font-sans normal-case">Enter the 6-digit code from your authenticator app.</p>
             </div>
@@ -220,9 +220,9 @@ export function ClerkGate({ onSuccess, referralCodeFromUrl, onClose }: ClerkGate
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                   placeholder="Alex Morgan"
-                  className="w-full bg-[#0a0a0a] border border-[#1f1f1f] focus:border-[#4f4f4f] focus:ring-1 focus:ring-[#4f4f4f] text-[#E5E5E5] font-sans rounded-xl p-3.5 pl-11 text-sm focus:outline-none transition-all"
+                  className="w-full bg-[var(--surface-2)] border border-[var(--border)] focus:border-[var(--border-strong)] focus-visible:ring-1 focus-visible:ring-[var(--border-strong)] text-[var(--text-primary)] font-sans rounded-xl p-3.5 pl-11 text-sm focus:outline-none transition-all"
                 />
-                <User className="w-4 h-4 text-zinc-500 absolute left-4 top-1/2 -translate-y-1/2" />
+                <User className="w-4 h-4 text-[var(--text-tertiary)] absolute left-4 top-1/2 -translate-y-1/2" />
               </div>
             </div>
           )}
@@ -238,9 +238,9 @@ export function ClerkGate({ onSuccess, referralCodeFromUrl, onClose }: ClerkGate
                   value={avatarUrl}
                   onChange={(e) => setAvatarUrl(e.target.value)}
                   placeholder="https://example.com/avatar.png"
-                  className="w-full bg-[#0a0a0a] border border-[#1f1f1f] focus:border-[#4f4f4f] focus:ring-1 focus:ring-[#4f4f4f] text-[#E5E5E5] font-sans rounded-xl p-3.5 pl-11 text-sm focus:outline-none transition-all"
+                  className="w-full bg-[var(--surface-2)] border border-[var(--border)] focus:border-[var(--border-strong)] focus-visible:ring-1 focus-visible:ring-[var(--border-strong)] text-[var(--text-primary)] font-sans rounded-xl p-3.5 pl-11 text-sm focus:outline-none transition-all"
                 />
-                <User className="w-4 h-4 text-zinc-500 absolute left-4 top-1/2 -translate-y-1/2" />
+                <User className="w-4 h-4 text-[var(--text-tertiary)] absolute left-4 top-1/2 -translate-y-1/2" />
               </div>
             </div>
           )}
@@ -256,9 +256,9 @@ export function ClerkGate({ onSuccess, referralCodeFromUrl, onClose }: ClerkGate
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="you@firm.com"
-                className="w-full bg-[#0a0a0a] border border-[#1f1f1f] focus:border-[#4f4f4f] focus:ring-1 focus:ring-[#4f4f4f] text-[#E5E5E5] font-sans rounded-xl p-3.5 pl-11 text-sm focus:outline-none transition-all"
+                className="w-full bg-[var(--surface-2)] border border-[var(--border)] focus:border-[var(--border-strong)] focus-visible:ring-1 focus-visible:ring-[var(--border-strong)] text-[var(--text-primary)] font-sans rounded-xl p-3.5 pl-11 text-sm focus:outline-none transition-all"
               />
-              <Mail className="w-4 h-4 text-zinc-500 absolute left-4 top-1/2 -translate-y-1/2" />
+              <Mail className="w-4 h-4 text-[var(--text-tertiary)] absolute left-4 top-1/2 -translate-y-1/2" />
             </div>
           </div>
 
@@ -273,9 +273,9 @@ export function ClerkGate({ onSuccess, referralCodeFromUrl, onClose }: ClerkGate
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="••••••••••••"
-                className="w-full bg-[#0a0a0a] border border-[#1f1f1f] focus:border-[#4f4f4f] focus:ring-1 focus:ring-[#4f4f4f] text-[#E5E5E5] font-sans rounded-xl p-3.5 pl-11 text-sm focus:outline-none transition-all"
+                className="w-full bg-[var(--surface-2)] border border-[var(--border)] focus:border-[var(--border-strong)] focus-visible:ring-1 focus-visible:ring-[var(--border-strong)] text-[var(--text-primary)] font-sans rounded-xl p-3.5 pl-11 text-sm focus:outline-none transition-all"
               />
-              <Lock className="w-4 h-4 text-zinc-500 absolute left-4 top-1/2 -translate-y-1/2" />
+              <Lock className="w-4 h-4 text-[var(--text-tertiary)] absolute left-4 top-1/2 -translate-y-1/2" />
             </div>
           </div>
 
@@ -289,7 +289,7 @@ export function ClerkGate({ onSuccess, referralCodeFromUrl, onClose }: ClerkGate
                 value={referralCode}
                 onChange={(e) => setReferralCode(e.target.value)}
                 placeholder="SLAYERY123"
-                className="w-full bg-[#0a0a0a] border border-[#1f1f1f] focus:border-[#4f4f4f] focus:ring-1 focus:ring-[#4f4f4f] text-[#E5E5E5] font-sans rounded-xl p-3.5 text-sm focus:outline-none transition-all uppercase"
+                className="w-full bg-[var(--surface-2)] border border-[var(--border)] focus:border-[var(--border-strong)] focus-visible:ring-1 focus-visible:ring-[var(--border-strong)] text-[var(--text-primary)] font-sans rounded-xl p-3.5 text-sm focus:outline-none transition-all uppercase"
               />
             </div>
           )}
@@ -314,7 +314,7 @@ export function ClerkGate({ onSuccess, referralCodeFromUrl, onClose }: ClerkGate
         </form>
         )}
 
-        <div className="border-t border-[#1f1f1f] pt-5 mt-6 text-center">
+        <div className="border-t border-[var(--border)] pt-5 mt-6 text-center">
           <p className="text-xs text-[var(--text-tertiary)] font-sans leading-relaxed">
             By continuing, you agree to Slayer Terminal's{' '}
             <button type="button" onClick={() => useLegal.getState().open('terms')} className="text-[var(--text-secondary)] hover:text-[var(--text-primary)] underline underline-offset-2 transition-colors cursor-pointer">Terms of Service</button>

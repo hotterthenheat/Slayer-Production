@@ -773,7 +773,7 @@ export function SubscriptionPricing({ onUpgradeComplete, onEnterApp, session, on
                                 );
                               }
                             }}
-                            className="w-full mt-4 py-3 rounded-xl bg-[var(--success)] hover:bg-[var(--success)]/90 text-black font-semibold text-[12px] flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
+                            className="w-full mt-4 py-3 rounded-xl bg-[var(--success)] hover:bg-[var(--success)]/90 text-[var(--surface)] font-semibold text-[12px] flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
                           >
                             <span>Send message</span>
                           </button>

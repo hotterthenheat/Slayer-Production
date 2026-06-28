@@ -379,7 +379,7 @@ export function UserProfile({ session, onUpdateSession }: UserProfileProps) {
 
   return (
     <div className="bg-black/55 border border-[var(--border)] rounded-xl p-6 space-y-6 relative shadow-2xl">
-      <div className="absolute top-0 right-0 p-3 text-[10px] text-zinc-600 font-bold uppercase tracking-widest font-mono">
+      <div className="absolute top-0 right-0 p-3 text-[10px] text-[var(--text-tertiary)] font-bold uppercase tracking-widest font-mono">
         PUBLIC PROFILE
       </div>
 
@@ -431,7 +431,7 @@ export function UserProfile({ session, onUpdateSession }: UserProfileProps) {
             className={`w-full h-36 md:h-44 rounded-lg relative overflow-hidden transition-all duration-300 border-2 select-none group cursor-pointer flex flex-col items-center justify-center ${
               isDragOverCover
                 ? 'border-[var(--accent-color)] bg-[var(--accent-color)]/10'
-                : 'border-black bg-black/30 hover:border-black'
+                : 'border-[var(--border)] bg-[var(--surface-2)] hover:border-[var(--border-strong)]'
             }`}
           >
             <input
@@ -459,14 +459,14 @@ export function UserProfile({ session, onUpdateSession }: UserProfileProps) {
               </>
             ) : (
               <div className="text-center space-y-2 px-4">
-                <div className="w-10 h-10 rounded-full bg-black flex items-center justify-center mx-auto group-hover:bg-black transition-colors">
+                <div className="w-10 h-10 rounded-full bg-[var(--surface-2)] flex items-center justify-center mx-auto group-hover:bg-[var(--surface-3)] transition-colors">
                   <Upload className="w-4 h-4 text-[var(--text-tertiary)]" />
                 </div>
                 <div>
                   <span className="text-xs text-[var(--text-tertiary)] font-bold font-mono uppercase block">
                     DRAG AND DROP OR CLICK TO UPLOAD COVER PHOTO
                   </span>
-                  <span className="text-[10px] text-zinc-600 font-mono block mt-0.5">
+                  <span className="text-[10px] text-[var(--text-tertiary)] font-mono block mt-0.5">
                     JPEG, PNG, or WEBP - min 600x200 px - max 5 MB
                   </span>
                 </div>
@@ -482,8 +482,8 @@ export function UserProfile({ session, onUpdateSession }: UserProfileProps) {
             onDragLeave={handleDragLeaveAvatar}
             onDrop={(e) => handleDropEvent(e, 'avatar')}
             onClick={() => avatarInputRef.current?.click()}
-            className={`w-28 h-28 rounded-full relative overflow-hidden transition-all duration-300 border-4 border-black select-none group cursor-pointer flex items-center justify-center bg-black ${
-              isDragOverAvatar ? 'scale-110 border-[var(--accent-color)]' : 'hover:scale-105 hover:border-black'
+            className={`w-28 h-28 rounded-full relative overflow-hidden transition-all duration-300 border-4 border-[var(--border)] select-none group cursor-pointer flex items-center justify-center bg-[var(--surface-2)] ${
+              isDragOverAvatar ? 'scale-110 border-[var(--accent-color)]' : 'hover:scale-105 hover:border-[var(--border-strong)]'
             }`}
           >
             <input
@@ -533,7 +533,7 @@ export function UserProfile({ session, onUpdateSession }: UserProfileProps) {
               <label className="text-xs text-[var(--text-tertiary)] font-bold block uppercase tracking-wider font-mono">
                 Display Name
               </label>
-              <span className="text-[9px] text-zinc-650 font-mono font-bold">
+              <span className="text-[9px] text-[var(--text-tertiary)] font-mono font-bold">
                 {nickname.length} / 50 CHAR
               </span>
             </div>
@@ -542,10 +542,10 @@ export function UserProfile({ session, onUpdateSession }: UserProfileProps) {
               value={nickname}
               maxLength={50}
               onChange={(e) => setNickname(e.target.value)}
-              className="w-full bg-black/40 border border-[var(--border)] focus-visible:ring-1 focus-visible:ring-[var(--border-strong)] focus:border-[var(--border-strong)] text-[var(--text-primary)] rounded-lg p-2.5 text-sm transition-colors focus:outline-none placeholder-zinc-750 font-mono"
+              className="w-full bg-black/40 border border-[var(--border)] focus-visible:ring-1 focus-visible:ring-[var(--border-strong)] focus:border-[var(--border-strong)] text-[var(--text-primary)] rounded-lg p-2.5 text-sm transition-colors focus:outline-none placeholder-[var(--text-tertiary)] font-mono"
               placeholder="e.g. Robin Slayer"
             />
-            <p className="text-[10px] text-zinc-600 font-mono leading-relaxed uppercase">
+            <p className="text-[10px] text-[var(--text-tertiary)] font-mono leading-relaxed uppercase">
               Shown publicly on your profile. Spaces and special characters allowed.
             </p>
           </div>
@@ -587,13 +587,13 @@ export function UserProfile({ session, onUpdateSession }: UserProfileProps) {
                 type="text"
                 value={handle}
                 onChange={(e) => setHandle(e.target.value.toLowerCase().replace(/\s+/g, ''))}
-                className={`w-full bg-black/40 border border-[var(--border)] focus-visible:ring-1 focus-visible:ring-[var(--border-strong)] focus:border-[var(--border-strong)] text-[var(--text-primary)] rounded-lg p-2.5 pl-8 text-sm transition-colors focus:outline-none placeholder-zinc-750 font-mono ${
+                className={`w-full bg-black/40 border border-[var(--border)] focus-visible:ring-1 focus-visible:ring-[var(--border-strong)] focus:border-[var(--border-strong)] text-[var(--text-primary)] rounded-lg p-2.5 pl-8 text-sm transition-colors focus:outline-none placeholder-[var(--text-tertiary)] font-mono ${
                   availability === 'available' ? 'border-[var(--border)]' : availability === 'taken' || availability === 'invalid' ? 'border-rose-500/30' : 'border-[var(--border)]'
                 }`}
                 placeholder="your_handle"
               />
             </div>
-            <p className="text-[10px] text-zinc-600 font-mono leading-relaxed md:w-11/12 uppercase">
+            <p className="text-[10px] text-[var(--text-tertiary)] font-mono leading-relaxed md:w-11/12 uppercase">
               {availabilityReason || '3-20 characters limit. Lowercase letters, numbers, or underscores only.'}
             </p>
           </div>
