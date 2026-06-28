@@ -125,10 +125,10 @@ export function AlertsView() {
         priority,
         type: f.type || 'FLOW EVENT',
         message: `${f.contract ? f.contract + ' — ' : ''}${f.desc || ''}`.trim(),
-        source: 'LIVE FLOW FEED',
+        source: isLiveData ? 'LIVE FLOW FEED' : 'MODEL FLOW',
       };
     });
-  }, [flowFeed, hasLiveFeed]);
+  }, [flowFeed, hasLiveFeed, isLiveData]);
 
   // User-injected demo alerts (clearly labeled DEMO; not measurements).
   const [demoAlerts, setDemoAlerts] = useState<AlertItem[]>([]);

@@ -1695,14 +1695,8 @@ const buildPayload = (params: PayloadParams) => {
       });
     }
   }
-  if (structureEvents.length === 0) {
-    structureEvents.push({
-      id: 'evt-fallback-1',
-      kind: 'BOS',
-      direction: actualTrend === 'neutral' ? 'bullish' : actualTrend,
-      price: lastPrice * (actualTrend === 'bullish' ? 0.992 : 1.008)
-    });
-  }
+  // No fabricated fallback: if no structure shift is detected in the window, the array stays
+  // empty (the UI shows nothing) rather than inventing a BOS that never happened.
 
   const zones: any[] = [];
   let zoneId = 0;
@@ -1741,18 +1735,8 @@ const buildPayload = (params: PayloadParams) => {
       });
     }
   }
-  if (zones.length === 0) {
-    zones.push({
-      id: 'dz-fallback-1',
-      type: actualTrend === 'bearish' ? 'bearish' : 'bullish',
-      bottom: lastPrice * 0.995,
-      top: lastPrice * 0.998,
-      state: 'ACTIVE',
-      atrMultiple: 1.5,
-      bodyDominance: 0.85,
-      score: 82
-    });
-  }
+  // No fabricated fallback zone: an empty zone set is honest when no displacement candle qualifies,
+  // instead of shipping a hardcoded score:82 placeholder the trader would read as a real zone.
 
   const fvgs = calculateFVGs(candles);
   const sweeps = calculateLiquidityEvents(candles);
