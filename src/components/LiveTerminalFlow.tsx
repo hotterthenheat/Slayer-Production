@@ -17,7 +17,7 @@ import { SessionBand } from './terminal/SessionBand';
 import { fmtBig } from './terminal/format';
 import { CROSSHAIR_EVENT, CrosshairDetail, PRICE_SCALE_EVENT, PriceScaleDetail } from '../lib/chartSync';
 import { EdgeTrackRecord } from './EdgeTrackRecord';
-import { Crosshair, Activity, Zap, Layers, ChevronDown, Gauge as GaugeIcon, TrendingUp, TrendingDown, Minus, Clock } from 'lucide-react';
+import { Crosshair, Activity, Zap, Layers, ChevronDown, Gauge as GaugeIcon, TrendingUp, TrendingDown, Minus, Clock, Maximize2, Minimize2 } from 'lucide-react';
 import { ASSET_LIST, TIMEFRAMES } from '../data';
 
 // Tight, legible type scale (raised the floor off 7.5/8px so dense data stays readable).
@@ -81,6 +81,7 @@ export function LiveTerminalFlow({ profile: liveProfile, ticker, decimals }: Liv
   const [leftTab, setLeftTab] = useState<'levels' | 'matrix' | 'flow'>('levels');
   const [scope, setScope] = useState<'0DTE' | 'ALL'>('0DTE');
   const [multiChart, setMultiChart] = useState(false); // opt-in movable/resizable multi-chart grid
+  const [chartFocus, setChartFocus] = useState(false); // chart-hero focus mode — collapses both side rails (xl+)
   const [gexLines, setGexLines] = useState(false); // center toggle — multi-strike GEX line chart
   const [ladderMetric, setLadderMetric] = useState<'GAMMA' | 'DELTA' | 'VANNA' | 'OI' | 'VOL'>('GAMMA');
   // Live price range the chart is showing — the Dealer Gamma Profile fills its panel with this range
@@ -430,7 +431,7 @@ export function LiveTerminalFlow({ profile: liveProfile, ticker, decimals }: Liv
       className="w-full flex flex-col animate-fadeIn"
       data-gex-regime={longGamma ? 'long' : 'short'}
       style={{
-        minHeight: '820px',
+        minHeight: '860px',
         backgroundColor: 'var(--bg-base)',
         backgroundImage: `radial-gradient(150% 70% at 50% 0%, color-mix(in srgb, ${regimeTint} ${ambientWash}%, transparent), transparent 72%)`,
         color: 'var(--text-secondary)',
@@ -482,9 +483,9 @@ export function LiveTerminalFlow({ profile: liveProfile, ticker, decimals }: Liv
         </div>
         {/* Centred macro readout — Asset · Price · Δ · Regime · Gamma · Exp Move · Confidence (§2) */}
         <div className="absolute left-1/2 -translate-x-1/2 hidden lg:flex items-center gap-3.5 font-mono">
-          <div className="flex items-baseline gap-1.5">
-            <span className="text-[12px] font-black tracking-wider text-[var(--text-tertiary)]">{selectedAsset.ticker}</span>
-            <span className={`text-[19px] font-black tabular-nums leading-none text-[var(--text-primary)] ${flash === 'up' ? 'tick-up' : flash === 'down' ? 'tick-down' : ''}`}>{spot ? spot.toLocaleString('en-US', { minimumFractionDigits: decimals, maximumFractionDigits: decimals }) : '—'}</span>
+          <div className="flex items-baseline gap-2">
+            <span className="text-[13px] font-black tracking-wider text-[var(--text-secondary)]">{selectedAsset.ticker}</span>
+            <span className={`text-[25px] font-black tabular-nums leading-none text-[var(--text-primary)] ${flash === 'up' ? 'tick-up' : flash === 'down' ? 'tick-down' : ''}`} style={{ letterSpacing: '-0.01em' }}>{spot ? spot.toLocaleString('en-US', { minimumFractionDigits: decimals, maximumFractionDigits: decimals }) : '—'}</span>
             <span className="text-[11px] font-bold tabular-nums" style={{ color: dayChg >= 0 ? 'var(--success)' : 'var(--danger)' }}>{dayChg >= 0 ? '+' : ''}{dayChg.toFixed(2)}%</span>
           </div>
         </div>
@@ -516,7 +517,7 @@ export function LiveTerminalFlow({ profile: liveProfile, ticker, decimals }: Liv
         <div className="flex flex-col xl:flex-row w-full h-full overflow-hidden">
 
           {/* ░ LEFT — Key Levels / Flow ░ */}
-          <aside className="order-2 xl:order-1 w-full xl:w-[276px] shrink-0 border-r border-[var(--border)] flex flex-col min-h-[360px] xl:min-h-0 bg-[var(--surface)]">
+          <aside className={`order-2 xl:order-1 w-full xl:w-[248px] shrink-0 border-r border-[var(--border)] flex-col min-h-[360px] xl:min-h-0 bg-[var(--surface)] ${chartFocus ? 'flex xl:hidden' : 'flex'}`}>
             <div className="flex items-center gap-4 px-3 h-9 border-b border-[var(--border)] shrink-0">
               {(['levels', 'matrix', 'flow'] as const).map(t => (
                 <button key={t} onClick={() => setLeftTab(t)} className="relative text-[11px] font-sans font-black tracking-widest uppercase transition-colors py-2" style={{ color: leftTab === t ? 'var(--text-primary)' : 'var(--text-tertiary)' }}>
@@ -534,14 +535,14 @@ export function LiveTerminalFlow({ profile: liveProfile, ticker, decimals }: Liv
               <div className="flex-1 overflow-y-auto p-2 space-y-2">
                 {/* GEX OUTLOOK — the regime read + where price is being drawn (pinning / gamma
                     squeeze / short squeeze / trend / range). Describes the path, not a trade. */}
-                <div className="rounded-lg border px-3 py-2 relative overflow-hidden" style={{ borderColor: `color-mix(in srgb, ${outlookColor} 40%, transparent)`, background: `linear-gradient(135deg, color-mix(in srgb, ${outlookColor} 13%, transparent), transparent)` }}>
+                <div className="rounded-lg border px-3 py-2 relative overflow-hidden" style={{ borderColor: `color-mix(in srgb, ${outlookColor} 40%, transparent)`, background: `linear-gradient(135deg, color-mix(in srgb, ${outlookColor} 13%, transparent), transparent)`, boxShadow: `inset 0 1px 0 color-mix(in srgb, ${outlookColor} 38%, transparent), 0 14px 32px -22px rgba(0,0,0,0.9)` }}>
                   <div className="flex items-center justify-between">
                     <span className="flex items-center gap-1.5 text-[9px] font-black tracking-widest uppercase text-[var(--text-tertiary)]"><Crosshair className="w-3 h-3" /> GEX Outlook</span>
                     <span className="flex items-center gap-1 text-[9px] font-mono font-black uppercase tracking-widest" style={{ color: confBand(outlook.confidence).c }} title="Conviction band (Low / Medium / High) from the weighted dealer signals. Shown qualitatively until the forward log calibrates it — the Edge · Track Record panel reports how these reads have actually resolved.">Conf <span style={{ color: confBand(outlook.confidence).c }}>{confBand(outlook.confidence).t}</span></span>
                   </div>
                   <div className="flex items-center gap-1.5 mt-1">
                     {outlook.bias === 'up' ? <TrendingUp className="w-4 h-4" style={{ color: 'var(--success)' }} /> : outlook.bias === 'down' ? <TrendingDown className="w-4 h-4" style={{ color: 'var(--danger)' }} /> : <Minus className="w-4 h-4 text-[var(--text-tertiary)]" />}
-                    <span className="text-[17px] font-sans font-black tracking-tight leading-none" style={{ color: outlookColor }}>{outlook.regime}</span>
+                    <span className="text-[20px] font-sans font-black tracking-tight leading-none" style={{ color: outlookColor }}>{outlook.regime}</span>
                   </div>
                   <div className="text-[11px] font-mono font-bold text-[var(--text-secondary)] mt-1.5 leading-snug">{outlook.headline}</div>
                   <div className="text-[9.5px] font-mono text-[var(--text-tertiary)] mt-0.5 leading-snug">{outlook.detail}</div>
@@ -565,7 +566,7 @@ export function LiveTerminalFlow({ profile: liveProfile, ticker, decimals }: Liv
                     Turns the regime call from an assertion into a measured, falsifiable hit-rate. */}
                 <EdgeTrackRecord profile={profile} ticker={selectedAsset.ticker} candles={candles} provenance={realFeed ? 'live' : 'model'} />
                 {/* Net gamma hero */}
-                <div className="rounded-lg border px-3 py-2 relative overflow-hidden" style={{ borderColor: longGamma ? 'color-mix(in srgb, var(--info) 32%, transparent)' : 'color-mix(in srgb, var(--warning) 32%, transparent)', background: `linear-gradient(135deg, color-mix(in srgb, ${longGamma ? 'var(--info)' : 'var(--warning)'} 9%, transparent), transparent)` }}>
+                <div className="rounded-lg border px-3 py-2 relative overflow-hidden" style={{ borderColor: longGamma ? 'color-mix(in srgb, var(--info) 32%, transparent)' : 'color-mix(in srgb, var(--warning) 32%, transparent)', background: `linear-gradient(135deg, color-mix(in srgb, ${longGamma ? 'var(--info)' : 'var(--warning)'} 9%, transparent), transparent)`, boxShadow: `inset 0 1px 0 color-mix(in srgb, ${trend} 34%, transparent), 0 14px 32px -22px rgba(0,0,0,0.9)` }}>
                   <div className="flex items-center gap-1.5 text-[9px] font-black tracking-widest uppercase text-[var(--text-tertiary)]"><GaugeIcon className="w-3 h-3" /> Net Gamma Exposure</div>
                   <div className="flex items-baseline gap-1.5 mt-1" title="Total dealer gamma in dollars of hedging per 1% move in the underlying. Positive = dealers buy dips / sell rips (vol-suppressing); negative = they chase the move (vol-amplifying). Same $/1% unit on every per-strike figure.">
                     <span className="text-[26px] font-mono font-black tabular-nums leading-none" style={{ color: trend }}>{netGex >= 0 ? '+' : ''}{fmtBig(netGex)}</span>
@@ -649,7 +650,7 @@ export function LiveTerminalFlow({ profile: liveProfile, ticker, decimals }: Liv
           </aside>
 
           {/* ░ CENTER — flow header + chart ░ */}
-          <main className="order-1 xl:order-2 flex-1 min-w-0 flex flex-col border-r border-[var(--border)] min-h-[440px]">
+          <main className="order-1 xl:order-2 flex-1 min-w-0 flex flex-col border-r border-[var(--border)] min-h-[520px]">
             <div className="px-3 py-1.5 border-b border-[var(--border)] shrink-0 bg-[var(--surface)]">
               <div className="flex items-center justify-between mb-1.5">
                 <div className="flex items-center gap-2 text-[10px] font-mono font-black uppercase tracking-wider min-w-0">
@@ -661,6 +662,8 @@ export function LiveTerminalFlow({ profile: liveProfile, ticker, decimals }: Liv
                 <div className="flex items-center gap-2 text-[9px] font-mono font-black tabular-nums shrink-0">
                   <button onClick={() => setGexLines(m => !m)} title="Strike GEX line chart — top strikes' net gamma tracked over the session" className={`flex items-center gap-1 px-1.5 py-0.5 rounded-sm text-[9px] font-mono font-black uppercase tracking-wide border transition-colors ${gexLines ? 'border-[var(--accent-color)] text-black' : 'border-[var(--border)] bg-[var(--surface-2)] text-[var(--text-tertiary)] hover:text-[var(--text-primary)]'}`} style={gexLines ? { background: 'var(--accent-color)' } : undefined}><Activity className="w-3 h-3" /> GEX</button>
                   <button onClick={() => setMultiChart(m => !m)} title="Toggle the movable multi-chart grid" className={`flex items-center gap-1 px-1.5 py-0.5 rounded-sm text-[9px] font-mono font-black uppercase tracking-wide border transition-colors ${multiChart ? 'border-[var(--accent-color)] text-black' : 'border-[var(--border)] bg-[var(--surface-2)] text-[var(--text-tertiary)] hover:text-[var(--text-primary)]'}`} style={multiChart ? { background: 'var(--accent-color)' } : undefined}><Layers className="w-3 h-3" /> Multi</button>
+                  {/* Focus mode — collapse both side rails so the chart fills the screen (desktop). */}
+                  <button onClick={() => setChartFocus(m => !m)} title={chartFocus ? 'Exit focus — restore the side panels' : 'Focus mode — expand the chart to full width'} className={`hidden xl:flex items-center gap-1 px-1.5 py-0.5 rounded-sm text-[9px] font-mono font-black uppercase tracking-wide border transition-colors ${chartFocus ? 'border-[var(--accent-color)] text-black' : 'border-[var(--border)] bg-[var(--surface-2)] text-[var(--text-tertiary)] hover:text-[var(--text-primary)]'}`} style={chartFocus ? { background: 'var(--accent-color)' } : undefined}>{chartFocus ? <Minimize2 className="w-3 h-3" /> : <Maximize2 className="w-3 h-3" />} {chartFocus ? 'Exit' : 'Focus'}</button>
                   {/* Round ONCE and derive the complement so the two halves always sum to 100 (no 101%). */}
                   <span style={{ color: 'var(--success)' }}>BULL {Math.round(bullPct)}%</span>
                   <span style={{ color: 'var(--danger)' }}>BEAR {100 - Math.round(bullPct)}%</span>
@@ -671,7 +674,7 @@ export function LiveTerminalFlow({ profile: liveProfile, ticker, decimals }: Liv
                 <div className="h-full flex-1" style={{ background: 'var(--danger)' }} />
               </div>
             </div>
-            <div className="flex-1 min-h-[400px] relative" style={{ background: 'var(--bg-base)' }}>
+            <div className="flex-1 min-h-[600px] relative" style={{ background: 'var(--bg-base)' }}>
               {gexLines
                 ? <div className="absolute inset-0 p-1.5"><StrikeGexChart history={gexHist} /></div>
                 : multiChart
@@ -681,7 +684,7 @@ export function LiveTerminalFlow({ profile: liveProfile, ticker, decimals }: Liv
           </main>
 
           {/* ░ RIGHT — Exposure Ladder ░ */}
-          <aside className="order-3 w-full xl:w-[340px] shrink-0 flex flex-col min-h-[360px] xl:min-h-0 bg-[var(--surface)]">
+          <aside className={`order-3 w-full xl:w-[300px] shrink-0 flex-col min-h-[360px] xl:min-h-0 bg-[var(--surface)] ${chartFocus ? 'flex xl:hidden' : 'flex'}`}>
             <div className="flex items-center gap-2 px-3 h-9 border-b border-[var(--border)] shrink-0">
               <Layers className="w-3.5 h-3.5" style={{ color: 'var(--accent-color)' }} />
               <span className="text-[11px] font-sans font-black tracking-widest uppercase text-[var(--text-primary)]">Exposure Ladder</span>
