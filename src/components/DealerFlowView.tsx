@@ -135,7 +135,7 @@ function ExposureProfileChart({ profile, decimals, type }: { profile: any; decim
 
   if (!rows || rows.length === 0) {
     return (
-      <div className="text-center py-8 text-zinc-500 font-mono text-[11px]">
+      <div className="text-center py-8 text-[var(--text-tertiary)] font-mono text-[11px]">
         Awaiting options chain data to calculate {type.toUpperCase()} profile...
       </div>
     );
@@ -155,14 +155,14 @@ function ExposureProfileChart({ profile, decimals, type }: { profile: any; decim
     <div className="space-y-[3px] relative tabular-data">
       {/* Axis header */}
       <div className={`flex items-center text-[9px] font-black tracking-widest uppercase pb-1.5 border-b mb-1.5 ${
-        isLight ? 'text-zinc-500 border-black' : 'text-zinc-600 border-black'
+        isLight ? 'text-zinc-500 border-[var(--border)]' : 'text-zinc-600 border-[var(--border)]'
       }`}>
         <div className="w-[58px] sm:w-[72px] shrink-0">Strike</div>
         <div className="flex-1 flex">
           <div className={`flex-1 text-right pr-2 ${
             type === 'gex' ? 'text-[var(--danger)]/70' : type === 'dex' ? 'text-amber-400/70' : 'text-fuchsia-400/70'
           }`}>← Put {typeUpper}</div>
-          <div className={`w-px ${isLight ? 'bg-black' : 'bg-black'}`} />
+          <div className={`w-px ${isLight ? 'bg-[var(--border)]' : 'bg-[var(--border)]'}`} />
           <div className={`flex-1 pl-2 ${
             type === 'gex' ? 'text-[var(--success)]/70' : type === 'dex' ? 'text-sky-400/70' : 'text-indigo-400/70'
           }`}>Call {typeUpper} →</div>
@@ -251,7 +251,7 @@ function ExposureProfileChart({ profile, decimals, type }: { profile: any; decim
                 </div>
               </div>
 
-              <div className={`w-px self-stretch ${isLight ? 'bg-black' : 'bg-black'}`} />
+              <div className={`w-px self-stretch ${isLight ? 'bg-[var(--border)]' : 'bg-[var(--border)]'}`} />
 
               {/* Call side */}
               <div className="relative group/call flex-1 flex justify-start items-center h-full pl-[1px]">
@@ -1160,13 +1160,13 @@ export function DealerFlowView() {
                   }`}
                 >
                   <span className="text-[7.5px] font-black uppercase tracking-widest text-[var(--text-tertiary)] flex items-center gap-1">
-                    <span className={`w-1 h-3 rounded-full ${expiryTab === 'aggregated' ? 'bg-[var(--success)]' : 'bg-zinc-650'}`} />
+                    <span className={`w-1 h-3 rounded-full ${expiryTab === 'aggregated' ? 'bg-[var(--success)]' : 'bg-[var(--text-tertiary)]'}`} />
                     MASTER PROFILE
                   </span>
                   <span className={`text-[11px] font-bold mt-1.5 leading-none ${expiryTab === 'aggregated' ? 'text-[var(--text-primary)]' : 'text-[var(--text-secondary)]'}`}>
                     All Dates
                   </span>
-                  <span className={`text-[7.5px] font-black mt-2 tracking-widest ${expiryTab === 'aggregated' ? 'text-[var(--success)]' : 'text-zinc-500'}`}>
+                  <span className={`text-[7.5px] font-black mt-2 tracking-widest ${expiryTab === 'aggregated' ? 'text-[var(--success)]' : 'text-[var(--text-tertiary)]'}`}>
                     Total Gravity
                   </span>
                 </button>
@@ -1258,7 +1258,7 @@ export function DealerFlowView() {
                         const firstActive = activeExpiries[0] || 'mon';
                         setExpiryTab(firstActive as any);
                       }}
-                      className="text-[7px] font-bold text-zinc-400 hover:text-[var(--text-primary)] uppercase tracking-widest bg-zinc-800 px-1.5 py-0.5 rounded cursor-pointer border border-zinc-700/50 transition-all ml-1"
+                      className="text-[7px] font-bold text-[var(--text-secondary)] hover:text-[var(--text-primary)] uppercase tracking-widest bg-[var(--surface-2)] px-1.5 py-0.5 rounded cursor-pointer border border-[var(--border)] transition-all ml-1"
                     >
                       Disable
                     </button>
@@ -1284,7 +1284,7 @@ export function DealerFlowView() {
                             }}
                             className={`px-3 py-1 rounded cursor-pointer transition-all duration-150 ${
                               isActive
-                                ? 'bg-zinc-800 text-[var(--text-primary)] font-black shadow-sm border border-zinc-700/50'
+                                ? 'bg-[var(--surface-3)] text-[var(--text-primary)] font-black shadow-sm border border-[var(--border-strong)]'
                                 : 'text-[var(--text-tertiary)] hover:text-[var(--text-primary)]'
                             }`}
                           >

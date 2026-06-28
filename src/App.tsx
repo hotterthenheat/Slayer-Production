@@ -861,9 +861,9 @@ export default function App() {
   if (session === null) {
     return (
       <div className="min-h-screen bg-[var(--bg-base)] text-[var(--text-tertiary)] flex flex-col justify-center items-center font-mono select-none antialiased">
-        <div className="w-8 h-8 border-t-2 border-white rounded-full animate-spin mb-4"></div>
+        <div className="w-8 h-8 border-t-2 border-[var(--text-primary)] rounded-full animate-spin mb-4"></div>
         <div className="tracking-widest uppercase text-xs text-[var(--text-primary)]">Connecting to your workspace…</div>
-        <div className="text-[10px] text-zinc-650 mt-2 uppercase font-mono font-bold">Verifying your secure session</div>
+        <div className="text-[10px] text-[var(--text-tertiary)] mt-2 uppercase font-mono font-bold">Verifying your secure session</div>
       </div>
     );
   }
@@ -875,9 +875,9 @@ export default function App() {
   if (!serverState) {
     return (
       <div className="min-h-screen bg-[var(--bg-base)] text-[var(--text-tertiary)] flex flex-col justify-center items-center font-mono select-none antialiased">
-        <div className="w-8 h-8 border-t-2 border-white rounded-full animate-spin mb-4"></div>
+        <div className="w-8 h-8 border-t-2 border-[var(--text-primary)] rounded-full animate-spin mb-4"></div>
         <div className="tracking-widest uppercase text-xs text-[var(--text-primary)]">Loading live market data…</div>
-        <div className="text-[10px] text-zinc-650 mt-2 uppercase font-mono">Syncing the analytics engine</div>
+        <div className="text-[10px] text-[var(--text-tertiary)] mt-2 uppercase font-mono">Syncing the analytics engine</div>
       </div>
     );
   }
@@ -950,7 +950,7 @@ export default function App() {
               }
               key={activeTab}
             >
-            <Suspense fallback={<div className="w-full min-h-[300px] flex items-center justify-center text-zinc-600 font-mono text-[11px] uppercase tracking-[0.25em] animate-pulse">Loading module…</div>}>
+            <Suspense fallback={<div className="w-full min-h-[300px] flex items-center justify-center text-[var(--text-tertiary)] font-mono text-[11px] uppercase tracking-[0.25em] animate-pulse">Loading module…</div>}>
             {/* TAB 1: HOME */}
             {activeTab === 'home' && (
               <div className="animate-fadeIn">
@@ -1315,13 +1315,13 @@ export default function App() {
                           <span className="text-[10px] font-bold text-[var(--text-tertiary)] font-mono">
                             {tickerItem.isContract || tickerItem.isTool || tickerItem.isNav ? tickerItem.pnl : tickerItem.kind}
                           </span>
-                          <ChevronRight className={`w-3.5 h-3.5 transition-colors ${isActive ? 'text-[var(--text-primary)]' : 'text-zinc-700'}`} />
+                          <ChevronRight className={`w-3.5 h-3.5 transition-colors ${isActive ? 'text-[var(--text-primary)]' : 'text-[var(--text-tertiary)]'}`} />
                         </div>
                       </button>
                     );
                   })}
                   {filterTickersList.length === 0 && (
-                    <div className="text-zinc-650 font-mono text-[9px] text-center uppercase py-8 tracking-widest">
+                    <div className="text-[var(--text-tertiary)] font-mono text-[9px] text-center uppercase py-8 tracking-widest">
                       No matching records found
                     </div>
                   )}

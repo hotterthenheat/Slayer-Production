@@ -40,16 +40,16 @@ export const FeatureMatrix: React.FC<FeatureMatrixProps> = ({ onEnterApp }) => {
   };
 
   return (
-    <section className="relative z-10 py-16 w-full overflow-hidden border-t border-black">
+    <section className="relative z-10 py-16 w-full overflow-hidden border-t border-[var(--border)]">
       
       {/* Decorative backdrop glows */}
       <div className="absolute top-1/4 left-1/4 w-[400px] h-[400px] bg-[var(--accent-color)]/5 rounded-full blur-[120px] pointer-events-none" />
-      <div className="absolute bottom-1/4 right-1/4 w-[400px] h-[400px] bg-[var(--success)] text-black/5 rounded-full blur-[120px] pointer-events-none" />
+      <div className="absolute bottom-1/4 right-1/4 w-[400px] h-[400px] bg-[var(--success)] rounded-full blur-[120px] pointer-events-none" />
 
       <div className="max-w-5xl mx-auto px-6 space-y-32">
         
         <div className="text-center space-y-3">
-          <span className="text-[10px] font-mono tracking-[0.35em] text-[var(--text-tertiary)] font-black bg-black px-4 py-1.5 border border-black rounded-md inline-block">
+          <span className="text-[10px] font-mono tracking-[0.35em] text-[var(--text-tertiary)] font-black bg-[var(--surface-2)] px-4 py-1.5 border border-[var(--border)] rounded-md inline-block">
             Platform Overview
           </span>
           <h2 className="text-3xl md:text-5xl font-black text-[var(--text-primary)] tracking-tight font-sans">
@@ -72,7 +72,7 @@ export const FeatureMatrix: React.FC<FeatureMatrixProps> = ({ onEnterApp }) => {
           >
             <div className="apple-glass rounded-2xl p-5 border border-white/10 shadow-3xl relative overflow-hidden backdrop-blur-md">
               <div className="absolute top-0 left-0 right-0 h-1 bg-[var(--accent-color)]" />
-              <div className="flex justify-between items-center border-b border-black/60 pb-3 mb-4 font-mono text-[9px] text-zinc-500">
+              <div className="flex justify-between items-center border-b border-[var(--border)] pb-3 mb-4 font-mono text-[9px] text-[var(--text-tertiary)]">
                 <span className="font-extrabold text-[var(--text-primary)] tracking-widest flex items-center gap-1.5">
                   <span className="w-1.5 h-1.5 rounded-full bg-[var(--accent-color)]" />
                   SkyVision · Trade Dashboard
@@ -82,7 +82,7 @@ export const FeatureMatrix: React.FC<FeatureMatrixProps> = ({ onEnterApp }) => {
 
               <div className="space-y-4">
                 {/* Active forensic asset */}
-                <div className="bg-black/60 p-3.5 border border-black/60 rounded-xl flex justify-between items-center font-mono">
+                <div className="bg-[var(--surface-2)] p-3.5 border border-[var(--border)] rounded-xl flex justify-between items-center font-mono">
                   <div className="space-y-0.5">
                     <span className="text-[8px] text-[var(--text-tertiary)] uppercase block tracking-wider">Active Analytical Asset</span>
                     <span className="text-sm font-black text-[var(--text-primary)] block">SPX 7640 CALL</span>
@@ -97,21 +97,21 @@ export const FeatureMatrix: React.FC<FeatureMatrixProps> = ({ onEnterApp }) => {
                 <div className="grid grid-cols-3 gap-2.5 font-mono text-center">
                   <button 
                     onClick={() => setActiveGoalpost(0)}
-                    className={`p-2.5 rounded-lg border transition-all text-left ${activeGoalpost === 0 ? 'bg-black border-white/30' : 'bg-black/80 border-black/80'}`}
+                    className={`p-2.5 rounded-lg border transition-all text-left ${activeGoalpost === 0 ? 'bg-[var(--surface-2)] border-[var(--border-strong)]' : 'bg-[var(--surface-2)] border-[var(--border)]'}`}
                   >
-                    <span className="text-[7.5px] text-zinc-400 block uppercase font-bold">Entry Point</span>
+                    <span className="text-[7.5px] text-[var(--text-secondary)] block uppercase font-bold">Entry Point</span>
                     <span className="text-[var(--text-primary)] font-extrabold block text-xs mt-0.5">$12.40</span>
                   </button>
                   <button 
                     onClick={() => setActiveGoalpost(1)}
-                    className={`p-2.5 rounded-lg border transition-all text-left ${activeGoalpost === 1 ? 'bg-black/5 border-black' : 'bg-black/80 border-black/80'}`}
+                    className={`p-2.5 rounded-lg border transition-all text-left ${activeGoalpost === 1 ? 'bg-[var(--surface-2)] border-[var(--border-strong)]' : 'bg-[var(--surface-2)] border-[var(--border)]'}`}
                   >
                     <span className="text-[7.5px] text-[var(--success)] block uppercase font-black">Goalpost 1</span>
                     <span className="text-[var(--success)] font-black block text-xs mt-0.5">$16.50 (+33%)</span>
                   </button>
                   <button 
                     onClick={() => setActiveGoalpost(2)}
-                    className={`p-2.5 rounded-lg border transition-all text-left ${activeGoalpost === 2 ? 'bg-[var(--accent-color)]/5 border-[var(--accent-color)]/30' : 'bg-black/80 border-black/80'}`}
+                    className={`p-2.5 rounded-lg border transition-all text-left ${activeGoalpost === 2 ? 'bg-[var(--accent-color)]/5 border-[var(--accent-color)]/30' : 'bg-[var(--surface-2)] border-[var(--border)]'}`}
                   >
                     <span className="text-[7.5px] text-[var(--accent-color)] block uppercase font-black">Goalpost 2</span>
                     <span className="text-[var(--accent-color)] font-extrabold block text-xs mt-0.5">$22.30 (+80%)</span>
@@ -119,7 +119,7 @@ export const FeatureMatrix: React.FC<FeatureMatrixProps> = ({ onEnterApp }) => {
                 </div>
 
                 {/* Dynamic mathematical visuals */}
-                <div className="bg-black/40 p-3 border border-black/40 rounded-xl space-y-2">
+                <div className="bg-[var(--surface-2)] p-3 border border-[var(--border)] rounded-xl space-y-2">
                   <div className="flex justify-between items-center text-[8.5px] font-mono">
                     <span className="text-[var(--text-tertiary)] uppercase font-bold">Dealer Hedge Pressure:</span>
                     <span className="text-[var(--accent-color)] font-bold uppercase text-[8px] leading-relaxed">
@@ -128,17 +128,17 @@ export const FeatureMatrix: React.FC<FeatureMatrixProps> = ({ onEnterApp }) => {
                       {activeGoalpost === 2 && 'Full Breakout Range'}
                     </span>
                   </div>
-                  <div className="w-full bg-black h-1.5 rounded-full overflow-hidden">
+                  <div className="w-full bg-[var(--surface-2)] h-1.5 rounded-full overflow-hidden">
                     <div 
                       className="bg-[var(--accent-color)] h-full transition-all duration-500"
                       style={{ width: activeGoalpost === 0 ? '45%' : activeGoalpost === 1 ? '78%' : '96%' }} 
                     />
                   </div>
-                  <div className="grid grid-cols-4 gap-1 pt-1 text-[7.5px] text-zinc-550 font-mono text-center">
-                    <div className="border border-black/60 py-1 bg-black/40 rounded">Delta: 0.52</div>
-                    <div className="border border-black/60 py-1 bg-black/40 rounded">Gamma: 0.08</div>
-                    <div className="border border-black/60 py-1 bg-black/40 rounded">Vanna: 0.04</div>
-                    <div className="border border-black/60 py-1 bg-black/40 rounded">Charm: 0.12</div>
+                  <div className="grid grid-cols-4 gap-1 pt-1 text-[7.5px] text-[var(--text-tertiary)] font-mono text-center">
+                    <div className="border border-[var(--border)] py-1 bg-[var(--surface-2)] rounded">Delta: 0.52</div>
+                    <div className="border border-[var(--border)] py-1 bg-[var(--surface-2)] rounded">Gamma: 0.08</div>
+                    <div className="border border-[var(--border)] py-1 bg-[var(--surface-2)] rounded">Vanna: 0.04</div>
+                    <div className="border border-[var(--border)] py-1 bg-[var(--surface-2)] rounded">Charm: 0.12</div>
                   </div>
                 </div>
               </div>
@@ -166,7 +166,7 @@ export const FeatureMatrix: React.FC<FeatureMatrixProps> = ({ onEnterApp }) => {
               The main trade analysis screen. SkyVision highlights specific index option contracts showing potential mispricings and strong dealer hedging setups.
             </p>
 
-            <ul className="space-y-3 font-mono text-[10px] md:text-[10px] text-zinc-400">
+            <ul className="space-y-3 font-mono text-[10px] md:text-[10px] text-[var(--text-secondary)]">
               <li className="flex gap-2 items-start">
                 <Check className="w-3.5 h-3.5 text-[var(--text-secondary)] shrink-0 mt-0.5 animate-pulse" />
                 <span><strong className="text-[var(--text-primary)] uppercase font-black mr-1">Option Goalposts:</strong> Auto-calculated take-profit targets based on live dealer positioning.</span>
@@ -184,7 +184,7 @@ export const FeatureMatrix: React.FC<FeatureMatrixProps> = ({ onEnterApp }) => {
             <div className="pt-2">
               <button
                 onClick={handleLaunchToSkyeye}
-                className="px-5 py-3 bg-white hover:bg-black text-black font-extrabold uppercase tracking-widest text-[9px] rounded-lg transition-all duration-300 flex items-center gap-1.5 cursor-pointer hover:scale-[1.01]"
+                className="px-5 py-3 bg-[var(--text-primary)] text-[var(--surface)] hover:opacity-90 font-extrabold uppercase tracking-widest text-[9px] rounded-lg transition-all duration-300 flex items-center gap-1.5 cursor-pointer hover:scale-[1.01]"
               >
                 <span>Open SkyVision</span>
                 <ArrowRight className="w-3.5 h-3.5" />
@@ -216,7 +216,7 @@ export const FeatureMatrix: React.FC<FeatureMatrixProps> = ({ onEnterApp }) => {
               Every options trade forces the market maker to hedge. Pinpoint tracks those hedges by strike so you can see exactly where dealer buying and selling pressure sits.
             </p>
             
-            <ul className="space-y-3 font-mono text-[10px] md:text-[10px] text-zinc-400">
+            <ul className="space-y-3 font-mono text-[10px] md:text-[10px] text-[var(--text-secondary)]">
               <li className="flex gap-2 items-start">
                 <Check className="w-3.5 h-3.5 text-[var(--text-secondary)] shrink-0 mt-0.5 animate-pulse" />
                 <span><strong className="text-[var(--text-primary)] uppercase font-black mr-1">Gamma Support:</strong> Spot the areas where passive dealer hedging cushions any drops.</span>
@@ -234,7 +234,7 @@ export const FeatureMatrix: React.FC<FeatureMatrixProps> = ({ onEnterApp }) => {
             <div className="pt-2">
               <button
                 onClick={() => handleLaunchToTab('pinpoint')}
-                className="px-5 py-3 bg-black hover:bg-black text-[var(--text-primary)] border border-black font-extrabold uppercase tracking-widest text-[9px] rounded-lg transition-all duration-300 flex items-center gap-1.5 cursor-pointer hover:scale-[1.01]"
+                className="px-5 py-3 bg-[var(--surface-2)] hover:bg-[var(--surface-3)] text-[var(--text-primary)] border border-[var(--border)] font-extrabold uppercase tracking-widest text-[9px] rounded-lg transition-all duration-300 flex items-center gap-1.5 cursor-pointer hover:scale-[1.01]"
               >
                 <span>Open Pinpoint GEX</span>
                 <ArrowRight className="w-3.5 h-3.5" />
@@ -251,10 +251,10 @@ export const FeatureMatrix: React.FC<FeatureMatrixProps> = ({ onEnterApp }) => {
             className="lg:col-span-7 w-full lg:order-2"
           >
             <div className="apple-glass rounded-2xl p-5 border border-white/10 shadow-3xl relative overflow-hidden backdrop-blur-md">
-              <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-[#d4d4d8] via-zinc-300 to-zinc-300" />
-              <div className="flex justify-between items-center border-b border-black/60 pb-3 mb-4 font-mono text-[9px] text-[var(--text-tertiary)]">
+              <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-[var(--border-strong)] via-[var(--border)] to-[var(--border)]" />
+              <div className="flex justify-between items-center border-b border-[var(--border)] pb-3 mb-4 font-mono text-[9px] text-[var(--text-tertiary)]">
                 <span className="font-extrabold uppercase text-[var(--text-primary)] tracking-widest flex items-center gap-1.5">
-                  <span className="w-1.5 h-1.5 rounded-full bg-black/40" />
+                  <span className="w-1.5 h-1.5 rounded-full bg-[var(--text-tertiary)]" />
                   PINPOINT // GEX BY STRIKE
                 </span>
                 <span className="uppercase text-[var(--text-tertiary)] font-bold border border-white/10 rounded px-1.5 py-0.5 text-[8px] tracking-widest">EXAMPLE</span>
@@ -264,8 +264,8 @@ export const FeatureMatrix: React.FC<FeatureMatrixProps> = ({ onEnterApp }) => {
               <div className="space-y-3 font-mono">
                 
                 {/* Spot Price tracker */}
-                <div className="flex justify-between items-center text-[8.5px] border-b border-black pb-2">
-                  <span className="text-zinc-550 uppercase font-black text-[7.5px]">ATM Spot Target:</span>
+                <div className="flex justify-between items-center text-[8.5px] border-b border-[var(--border)] pb-2">
+                  <span className="text-[var(--text-tertiary)] uppercase font-black text-[7.5px]">ATM Spot Target:</span>
                   <span className="text-[var(--text-secondary)] font-black">7620.42 oscillating</span>
                 </div>
 
@@ -286,7 +286,7 @@ export const FeatureMatrix: React.FC<FeatureMatrixProps> = ({ onEnterApp }) => {
                         <span>Strike {row.strike}</span>
                         <span className={`${row.txt} font-extrabold`}>{row.gex} GEX</span>
                       </div>
-                      <div className="h-4 bg-black font-mono rounded overflow-hidden flex items-center px-1 border border-black relative">
+                      <div className="h-4 bg-[var(--surface-2)] font-mono rounded overflow-hidden flex items-center px-1 border border-[var(--border)] relative">
                         <div className={`h-full ${row.bg} transition-all border-r-2 ${row.color}`} style={{ width: row.pct }} />
                         <span className={`text-[7.5px] ${row.txt} ml-2 font-black font-sans relative z-10 whitespace-nowrap`}>
                           {row.type}
@@ -296,7 +296,7 @@ export const FeatureMatrix: React.FC<FeatureMatrixProps> = ({ onEnterApp }) => {
                   ))}
                 </div>
 
-                <div className="bg-black/60 p-2 text-[8px] text-zinc-500 text-center uppercase tracking-wide border border-black rounded">
+                <div className="bg-[var(--surface-2)] p-2 text-[8px] text-[var(--text-tertiary)] text-center uppercase tracking-wide border border-[var(--border)] rounded">
                   Magnet Strike: <strong className="text-[var(--text-primary)]">7620.00</strong> | Net positioning score: <span className="text-[var(--success)] font-bold">68 / Bullish long-gamma</span>
                 </div>
               </div>
@@ -315,10 +315,10 @@ export const FeatureMatrix: React.FC<FeatureMatrixProps> = ({ onEnterApp }) => {
             className="lg:col-span-7 w-full"
           >
             <div className="apple-glass rounded-2xl p-5 border border-white/10 shadow-3xl relative overflow-hidden backdrop-blur-md">
-              <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-zinc-600 via-[#d4d4d8]/50 to-zinc-500" />
-              <div className="flex justify-between items-center border-b border-black/60 pb-3 mb-4 font-mono text-[9px] text-[var(--text-tertiary)]">
+              <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-[var(--border-strong)] via-[var(--border)] to-[var(--border)]" />
+              <div className="flex justify-between items-center border-b border-[var(--border)] pb-3 mb-4 font-mono text-[9px] text-[var(--text-tertiary)]">
                 <span className="font-extrabold uppercase text-[var(--text-primary)] tracking-widest flex items-center gap-1.5">
-                  <span className="w-1.5 h-1.5 rounded-full bg-black" />
+                  <span className="w-1.5 h-1.5 rounded-full bg-[var(--text-tertiary)]" />
                   TRADE HISTORY ARCHIVE
                 </span>
                 <span className="uppercase text-[var(--text-tertiary)] font-bold border border-white/10 rounded px-1.5 py-0.5 text-[8px] tracking-widest">EXAMPLE</span>
@@ -326,7 +326,7 @@ export const FeatureMatrix: React.FC<FeatureMatrixProps> = ({ onEnterApp }) => {
 
               {/* Illustrative trade-history table (example rows, not actual trades) */}
               <div className="space-y-2.5 font-mono">
-                <div className="grid grid-cols-12 text-[7.5px] uppercase font-bold text-[var(--text-tertiary)] px-2 pb-1 border-b border-black">
+                <div className="grid grid-cols-12 text-[7.5px] uppercase font-bold text-[var(--text-tertiary)] px-2 pb-1 border-b border-[var(--border)]">
                   <span className="col-span-4 text-left">CONTRACT</span>
                   <span className="col-span-4 text-center">ENTRANCE</span>
                   <span className="col-span-4 text-right">RESULT</span>
@@ -338,7 +338,7 @@ export const FeatureMatrix: React.FC<FeatureMatrixProps> = ({ onEnterApp }) => {
                     { contract: 'QQQ 515C', enter: '$2.10', result: '+22.4% Exit', rColor: 'text-[var(--text-secondary)]' },
                     { contract: 'NDX 18300C', enter: '$165.40', result: '-12.5% Out', rColor: 'text-[var(--danger)]' }
                   ].map((row, idx) => (
-                    <div key={idx} className="grid grid-cols-12 items-center text-[9px] bg-black/70 p-2 rounded border border-black/50">
+                    <div key={idx} className="grid grid-cols-12 items-center text-[9px] bg-[var(--surface-2)] p-2 rounded border border-[var(--border)]">
                       <span className="col-span-4 font-bold text-[var(--text-primary)] uppercase text-[8.5px] sm:text-[9.5px]">{row.contract}</span>
                       <span className="col-span-4 text-center text-[var(--text-tertiary)]">{row.enter}</span>
                       <span className={`col-span-4 text-right font-bold ${row.rColor} text-[8.5px] sm:text-[9.5px]`}>{row.result}</span>
@@ -346,7 +346,7 @@ export const FeatureMatrix: React.FC<FeatureMatrixProps> = ({ onEnterApp }) => {
                   ))}
                 </div>
 
-                <div className="flex justify-between items-center bg-black/60 px-3 py-2 rounded border border-black text-[8px] text-[var(--text-tertiary)] uppercase tracking-wide">
+                <div className="flex justify-between items-center bg-[var(--surface-2)] px-3 py-2 rounded border border-[var(--border)] text-[8px] text-[var(--text-tertiary)] uppercase tracking-wide">
                   <span className="font-bold text-[var(--text-tertiary)]">
                     Illustrative example — not actual trades
                   </span>
@@ -377,7 +377,7 @@ export const FeatureMatrix: React.FC<FeatureMatrixProps> = ({ onEnterApp }) => {
               No deleted calls, no edited screenshots. As the engine logs trades, each one is recorded with its entry and outcome so the track record stays in one place.
             </p>
 
-            <ul className="space-y-3 font-mono text-[10px] md:text-[10px] text-zinc-400">
+            <ul className="space-y-3 font-mono text-[10px] md:text-[10px] text-[var(--text-secondary)]">
               <li className="flex gap-2 items-start">
                 <Check className="w-3.5 h-3.5 text-[var(--text-secondary)] shrink-0 mt-0.5" />
                 <span><strong className="text-[var(--text-primary)] uppercase font-black mr-1">Timestamped Logs:</strong> Each logged trade keeps the time and entry it was recorded at.</span>
@@ -395,7 +395,7 @@ export const FeatureMatrix: React.FC<FeatureMatrixProps> = ({ onEnterApp }) => {
             <div className="pt-2">
               <button 
                 onClick={() => handleLaunchToTab('auditor')}
-                className="px-5 py-3 bg-black hover:bg-black text-[var(--text-primary)] border border-black font-extrabold uppercase tracking-widest text-[9px] rounded-lg transition-all duration-300 flex items-center gap-1.5 cursor-pointer hover:scale-[1.01]"
+                className="px-5 py-3 bg-[var(--surface-2)] hover:bg-[var(--surface-3)] text-[var(--text-primary)] border border-[var(--border)] font-extrabold uppercase tracking-widest text-[9px] rounded-lg transition-all duration-300 flex items-center gap-1.5 cursor-pointer hover:scale-[1.01]"
               >
                 <span>Audit Historic Logs</span>
                 <ArrowRight className="w-3.5 h-3.5" />
@@ -427,7 +427,7 @@ export const FeatureMatrix: React.FC<FeatureMatrixProps> = ({ onEnterApp }) => {
               Get trade alerts straight to your phone via Discord. Automated alerts are sent to the channel the moment a setup is detected.
             </p>
 
-            <ul className="space-y-3 font-mono text-[10px] md:text-[10px] text-zinc-400">
+            <ul className="space-y-3 font-mono text-[10px] md:text-[10px] text-[var(--text-secondary)]">
               <li className="flex gap-2 items-start">
                 <Check className="w-3.5 h-3.5 text-[var(--text-secondary)] shrink-0 mt-0.5 animate-pulse" />
                 <span><strong className="text-[var(--text-primary)] uppercase font-black mr-1">Instant Delivery:</strong> Alerts go straight from the server to Discord with no manual step.</span>
@@ -445,7 +445,7 @@ export const FeatureMatrix: React.FC<FeatureMatrixProps> = ({ onEnterApp }) => {
             <div className="pt-2">
               <button
                 onClick={() => handleLaunchToTab('community')}
-                className="px-5 py-3 bg-black hover:bg-black text-[var(--text-primary)] border border-black font-extrabold uppercase tracking-widest text-[9px] rounded-lg transition-all duration-300 flex items-center gap-1.5 cursor-pointer hover:scale-[1.01]"
+                className="px-5 py-3 bg-[var(--surface-2)] hover:bg-[var(--surface-3)] text-[var(--text-primary)] border border-[var(--border)] font-extrabold uppercase tracking-widest text-[9px] rounded-lg transition-all duration-300 flex items-center gap-1.5 cursor-pointer hover:scale-[1.01]"
               >
                 <span>Open Discord</span>
                 <ArrowRight className="w-3.5 h-3.5" />
@@ -463,7 +463,7 @@ export const FeatureMatrix: React.FC<FeatureMatrixProps> = ({ onEnterApp }) => {
           >
             <div className="apple-glass rounded-2xl p-5 border border-white/10 shadow-3xl relative overflow-hidden backdrop-blur-md">
               <div className="absolute top-0 left-0 right-0 h-1 bg-[#5865F2]" />
-              <div className="flex justify-between items-center border-b border-black/60 pb-3 mb-4 font-mono text-[9px] text-[var(--text-tertiary)]">
+              <div className="flex justify-between items-center border-b border-[var(--border)] pb-3 mb-4 font-mono text-[9px] text-[var(--text-tertiary)]">
                 <span className="font-extrabold uppercase text-[var(--text-primary)] tracking-widest flex items-center gap-1.5">
                   <span className="font-bold text-[var(--text-primary)] bg-[#5865F2] px-2 py-0.5 rounded-sm text-[7px] leading-relaxed">DISCORD</span>
                   #spx-realtime-alerts webhook
@@ -472,7 +472,7 @@ export const FeatureMatrix: React.FC<FeatureMatrixProps> = ({ onEnterApp }) => {
               </div>
 
               {/* Mock discord message embed card */}
-              <div className="bg-[#2f3136] rounded-lg p-4 font-sans text-left border border-black/40 space-y-3 relative overflow-hidden shadow-xl select-none">
+              <div className="bg-[#2f3136] rounded-lg p-4 font-sans text-left border border-[var(--border)] space-y-3 relative overflow-hidden shadow-xl select-none">
                 <div className="absolute top-0 right-0 bg-[var(--success)]/15 text-[var(--text-secondary)] text-[7.5px] font-mono tracking-widest px-2.5 py-1.5 rounded-bl-lg font-black uppercase">
                   SAMPLE ALERT
                 </div>
@@ -488,7 +488,7 @@ export const FeatureMatrix: React.FC<FeatureMatrixProps> = ({ onEnterApp }) => {
                 </div>
 
                 {/* Main Embed section */}
-                <div className="bg-black border-l-4 border-[var(--text-secondary)] p-3.5 rounded-r-md space-y-2 text-xs">
+                <div className="bg-[var(--surface-2)] border-l-4 border-[var(--text-secondary)] p-3.5 rounded-r-md space-y-2 text-xs">
                   <div className="font-mono text-[10.5px] font-black text-[var(--text-secondary)] uppercase">
                      SPX ALERT: HIGH-SCORE SETUP FOUND
                   </div>
@@ -496,21 +496,21 @@ export const FeatureMatrix: React.FC<FeatureMatrixProps> = ({ onEnterApp }) => {
                     Large options order flow detected on SPX. IV is compressing above key support.
                   </p>
                   
-                  <div className="grid grid-cols-2 gap-2 mt-2 pt-2 border-t border-black font-mono text-[9.5px]">
+                  <div className="grid grid-cols-2 gap-2 mt-2 pt-2 border-t border-[var(--border)] font-mono text-[9.5px]">
                     <div>
-                      <span className="text-zinc-550 block text-[7.5px] uppercase">Option target</span>
+                      <span className="text-[var(--text-tertiary)] block text-[7.5px] uppercase">Option target</span>
                       <span className="text-[var(--text-primary)] font-extrabold">SPX 7620 CALL</span>
                     </div>
                     <div>
-                      <span className="text-zinc-550 block text-[7.5px] uppercase">Entry threshold</span>
+                      <span className="text-[var(--text-tertiary)] block text-[7.5px] uppercase">Entry threshold</span>
                       <span className="text-[var(--text-primary)] font-extrabold">Under $12.50</span>
                     </div>
                     <div>
-                      <span className="text-zinc-550 block text-[7.5px] uppercase">Goalpost 1 exit</span>
+                      <span className="text-[var(--text-tertiary)] block text-[7.5px] uppercase">Goalpost 1 exit</span>
                       <span className="text-[var(--text-secondary)] font-bold">$16.50 (+32%)</span>
                     </div>
                     <div>
-                      <span className="text-zinc-550 block text-[7.5px] uppercase">Stop Guideline</span>
+                      <span className="text-[var(--text-tertiary)] block text-[7.5px] uppercase">Stop Guideline</span>
                       <span className="text-[var(--danger)] font-bold">$9.50 (-24%)</span>
                     </div>
                   </div>
@@ -531,10 +531,10 @@ export const FeatureMatrix: React.FC<FeatureMatrixProps> = ({ onEnterApp }) => {
             className="lg:col-span-7 w-full"
           >
             <div className="apple-glass rounded-2xl p-5 border border-white/10 shadow-3xl relative overflow-hidden backdrop-blur-md">
-              <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-zinc-300 via-zinc-300 to-[#d4d4d8]" />
-              <div className="flex justify-between items-center border-b border-black/60 pb-3 mb-4 font-mono text-[9px] text-[var(--text-tertiary)]">
+              <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-[var(--border-strong)] via-[var(--border)] to-[var(--border)]" />
+              <div className="flex justify-between items-center border-b border-[var(--border)] pb-3 mb-4 font-mono text-[9px] text-[var(--text-tertiary)]">
                 <span className="font-extrabold uppercase text-[var(--text-primary)] tracking-widest flex items-center gap-1.5">
-                  <span className="w-1.5 h-1.5 rounded-full bg-black/40" />
+                  <span className="w-1.5 h-1.5 rounded-full bg-[var(--text-tertiary)]" />
                   DEALER FLOW // SWEEPS
                 </span>
                 <span className="uppercase text-[var(--text-tertiary)] font-bold border border-white/10 rounded px-1.5 py-0.5 text-[8px] tracking-widest">EXAMPLE</span>
@@ -552,12 +552,12 @@ export const FeatureMatrix: React.FC<FeatureMatrixProps> = ({ onEnterApp }) => {
                     key={idx} 
                     onMouseEnter={() => setHoveredSweep(idx)}
                     onMouseLeave={() => setHoveredSweep(null)}
-                    className={`p-2 sm:p-2.5 rounded-lg bg-black/70 border transition-all duration-300 flex justify-between items-center text-[8.5px] sm:text-[9px] ${
-                      hoveredSweep === idx ? 'border-black bg-black' : 'border-black'
+                    className={`p-2 sm:p-2.5 rounded-lg bg-[var(--surface-2)] border transition-all duration-300 flex justify-between items-center text-[8.5px] sm:text-[9px] ${
+                      hoveredSweep === idx ? 'border-[var(--border)] bg-[var(--surface-3)]' : 'border-[var(--border)]'
                     }`}
                   >
                     <div className="flex items-center gap-3">
-                      <span className="text-zinc-650 font-bold">{sweep.time}</span>
+                      <span className="text-[var(--text-tertiary)] font-bold">{sweep.time}</span>
                       <span className="text-[var(--text-primary)] font-black">{sweep.strike}</span>
                       <span className={`px-1.5 py-0.5 rounded text-[7.5px] font-black ${sweep.isGreen ? 'bg-[var(--success)]/10 text-[var(--text-secondary)]' : 'bg-rose-500/10 text-rose-400'}`}>
                         {sweep.type}
@@ -572,11 +572,11 @@ export const FeatureMatrix: React.FC<FeatureMatrixProps> = ({ onEnterApp }) => {
                   </div>
                 ))}
 
-                <div className="flex justify-between items-center text-[7.5px] bg-black p-2 border border-black rounded font-bold uppercase tracking-wider text-zinc-500">
+                <div className="flex justify-between items-center text-[7.5px] bg-[var(--surface-2)] p-2 border border-[var(--border)] rounded font-bold uppercase tracking-wider text-[var(--text-tertiary)]">
                   <span>Continuous sweep pressure ratio:</span>
                   <span className="flex items-center gap-1.5 font-sans">
                     <span className="text-[var(--text-secondary)] font-mono">BULLISH GEX: 64.2%</span>
-                    <span className="text-zinc-700 font-mono">|</span>
+                    <span className="text-[var(--text-tertiary)] font-mono">|</span>
                     <span className="text-[var(--danger)] font-mono">BEARISH DEX: 35.8%</span>
                   </span>
                 </div>
@@ -605,7 +605,7 @@ export const FeatureMatrix: React.FC<FeatureMatrixProps> = ({ onEnterApp }) => {
               See the large trades that move index prices. The Dealer Flow feed watches for institutional block sweeps across major index options and flags them as they print.
             </p>
 
-            <ul className="space-y-3 font-mono text-[10px] md:text-[10px] text-zinc-400">
+            <ul className="space-y-3 font-mono text-[10px] md:text-[10px] text-[var(--text-secondary)]">
               <li className="flex gap-2 items-start">
                 <Check className="w-3.5 h-3.5 text-[var(--text-secondary)] shrink-0 mt-0.5 animate-pulse" />
                 <span><strong className="text-[var(--text-primary)] uppercase font-black mr-1">Large Block Alerts:</strong> Flags multi-million dollar sweeps that force dealers to hedge quickly.</span>
@@ -623,7 +623,7 @@ export const FeatureMatrix: React.FC<FeatureMatrixProps> = ({ onEnterApp }) => {
             <div className="pt-2">
               <button
                 onClick={() => handleLaunchToTab('dealerflow')}
-                className="px-5 py-3 bg-black hover:bg-black text-[var(--text-primary)] border border-black font-extrabold uppercase tracking-widest text-[9px] rounded-lg transition-all duration-300 flex items-center gap-1.5 cursor-pointer hover:scale-[1.01]"
+                className="px-5 py-3 bg-[var(--surface-2)] hover:bg-[var(--surface-3)] text-[var(--text-primary)] border border-[var(--border)] font-extrabold uppercase tracking-widest text-[9px] rounded-lg transition-all duration-300 flex items-center gap-1.5 cursor-pointer hover:scale-[1.01]"
               >
                 <span>Open Dealer Flow</span>
                 <ArrowRight className="w-3.5 h-3.5" />
