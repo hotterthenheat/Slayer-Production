@@ -168,6 +168,8 @@ export const SlayerChart = memo(function SlayerChartImpl({ profile, decimals, ca
   const draftRef = useRef<Anchor | null>(null);          // first point of a 2-point drawing
   const measureRef = useRef<{ a: Anchor; b: Anchor } | null>(null);
   const measureDragRef = useRef(false);
+  const pinchRef = useRef<{ d0: number; bars0: number; gi: number; ax: number } | null>(null); // 2-finger pinch-zoom anchor
+  const touchRef = useRef<{ x: number; y: number; t: number; moved: boolean } | null>(null);    // tap-vs-pan discriminator
   const viewRef = useRef(view); viewRef.current = view;
   // Smoothly tween the view (bars/off) toward a target instead of snapping — used by the discrete
   // jumps (reset, range presets, jump-to-live). Continuous gestures (wheel/drag) cancel it.
@@ -416,6 +418,24 @@ export const SlayerChart = memo(function SlayerChartImpl({ profile, decimals, ca
       }
       return best;
     };
+    // Momentum glide after a flick-release — shared by mouse-up and touch-end. Keeps panning with
+    // decaying friction until it slows or hits an edge, then settles to the bar grid. Same off/panPx
+    // mechanism as the drag, so it can never desync the framing.
+    const startMomentum = (vx: number, g: Geom) => {
+      if (inertiaRef.current) cancelAnimationFrame(inertiaRef.current);
+      const barW = g.barW, minOff = -Math.round(viewRef.current.bars * 0.5), maxOff = Math.max(0, candlesRef.current.length - 10);
+      let offF = viewRef.current.off + panPxRef.current / barW, v = vx, last = performance.now();
+      const glide = (now: number) => {
+        const dt = Math.min(48, now - last); last = now;
+        offF += (v * dt) / barW; v *= Math.pow(0.94, dt / 16);   // ~6%/frame friction, frame-rate normalized
+        let edge = false; if (offF <= minOff) { offF = minOff; edge = true; } if (offF >= maxOff) { offF = maxOff; edge = true; }
+        const offInt = Math.floor(offF); panPxRef.current = (offF - offInt) * barW;
+        if (offInt !== viewRef.current.off) setView(v2 => ({ ...v2, off: offInt })); else drawRef.current();
+        if (!edge && Math.abs(v) > 0.02) inertiaRef.current = requestAnimationFrame(glide);
+        else { inertiaRef.current = 0; if (panPxRef.current !== 0) { panPxRef.current = 0; drawRef.current(); } }
+      };
+      inertiaRef.current = requestAnimationFrame(glide);
+    };
     const onDown = (e: MouseEvent) => {
       if (e.button !== 0) return; // left button only — right-click opens the view context menu
       setCtxMenu(null);
@@ -479,23 +499,8 @@ export const SlayerChart = memo(function SlayerChartImpl({ profile, decimals, ca
     const onUp = () => {
       const drag = dragRef.current, g = geomRef.current;
       dragRef.current = null; priceDragRef.current = null; measureDragRef.current = false; canvas.style.cursor = 'crosshair';
-      if (drag && g && drag.vx && Math.abs(drag.vx) > 0.08) {
-        // Momentum glide — keep panning after release, decaying with friction, until it slows or hits an
-        // edge; then settle to the bar grid. Same off/panPx mechanism, so it can't desync the framing.
-        if (inertiaRef.current) cancelAnimationFrame(inertiaRef.current);
-        const barW = g.barW, minOff = -Math.round(viewRef.current.bars * 0.5), maxOff = Math.max(0, candlesRef.current.length - 10);
-        let offF = viewRef.current.off + panPxRef.current / barW, vx = drag.vx, last = performance.now();
-        const glide = (now: number) => {
-          const dt = Math.min(48, now - last); last = now;
-          offF += (vx * dt) / barW; vx *= Math.pow(0.94, dt / 16);   // ~6%/frame friction, frame-rate normalized
-          let edge = false; if (offF <= minOff) { offF = minOff; edge = true; } if (offF >= maxOff) { offF = maxOff; edge = true; }
-          const offInt = Math.floor(offF); panPxRef.current = (offF - offInt) * barW;
-          if (offInt !== viewRef.current.off) setView(v => ({ ...v, off: offInt })); else drawRef.current();
-          if (!edge && Math.abs(vx) > 0.02) inertiaRef.current = requestAnimationFrame(glide);
-          else { inertiaRef.current = 0; if (panPxRef.current !== 0) { panPxRef.current = 0; drawRef.current(); } }
-        };
-        inertiaRef.current = requestAnimationFrame(glide);
-      } else if (panPxRef.current !== 0) { panPxRef.current = 0; drawRef.current(); }
+      if (drag && g && drag.vx && Math.abs(drag.vx) > 0.08) startMomentum(drag.vx, g);
+      else if (panPxRef.current !== 0) { panPxRef.current = 0; drawRef.current(); }
     };
     const onLeave = () => { hoverRef.current = null; broadcastCrosshair(null, panelId ?? 'main'); drawOverlayRef.current(); };
     // Double-click (cursor mode): price gutter → auto-fit; elsewhere → snap back to the live edge.
@@ -507,6 +512,77 @@ export const SlayerChart = memo(function SlayerChartImpl({ profile, decimals, ca
       if (e.key === 'Delete' && selectedRef.current) { const id = selectedRef.current; setDrawings(a => a.filter(d => d.id !== id)); setSelectedId(null); }
       else if (e.key === 'Escape') { draftRef.current = null; measureRef.current = null; measureDragRef.current = false; if (toolRef.current !== 'cursor') setTool('cursor'); if (selectedRef.current) setSelectedId(null); schedule(); }
     };
+    // ── Touch (mobile / tablet): 1-finger pan + flick-inertia, 2-finger pinch-zoom, tap = crosshair ──
+    // Reuses the exact off/panPx pan mechanism and the eased-zoom anchor math so touch feels identical to
+    // mouse. `touch-action: none` on the canvas (set in JSX) stops the browser hijacking the gesture.
+    const tXY = (t: Touch) => { const r = canvas.getBoundingClientRect(); return { x: t.clientX - r.left, y: t.clientY - r.top }; };
+    const tDist = (a: Touch, b: Touch) => Math.hypot(a.clientX - b.clientX, a.clientY - b.clientY);
+    const onTouchStart = (e: TouchEvent) => {
+      setCtxMenu(null);
+      if (inertiaRef.current) { cancelAnimationFrame(inertiaRef.current); inertiaRef.current = 0; }
+      if (zoomAnimRef.current) { cancelAnimationFrame(zoomAnimRef.current); zoomAnimRef.current = 0; zoomTgtRef.current = null; }
+      if (tweenRef.current) { cancelAnimationFrame(tweenRef.current); tweenRef.current = 0; }
+      const g = geomRef.current; if (!g) return;
+      if (e.touches.length >= 2) {
+        dragRef.current = null;   // a second finger ends panning and begins a pinch
+        const a = e.touches[0], b = e.touches[1], mid = (tXY(a).x + tXY(b).x) / 2;
+        const inPlot = mid >= g.plotL && mid <= g.plotR;
+        pinchRef.current = { d0: tDist(a, b), bars0: viewRef.current.bars, gi: inPlot ? g.start + (mid - g.plotL) / g.barW : g.end - 1, ax: inPlot ? mid : g.plotR };
+        return;
+      }
+      const p = tXY(e.touches[0]);
+      touchRef.current = { x: p.x, y: p.y, t: performance.now(), moved: false };
+      hoverRef.current = null; broadcastCrosshair(null, panelId ?? 'main');   // clear any prior tap-crosshair so it can't look stale mid-pan
+      panPxRef.current = 0;
+      dragRef.current = { x: e.touches[0].clientX, off: viewRef.current.off };
+    };
+    const onTouchMove = (e: TouchEvent) => {
+      const g = geomRef.current; if (!g) return;
+      e.preventDefault();   // keep the page from scrolling/zooming while the chart is being driven
+      const n = candlesRef.current.length || 300;
+      if (e.touches.length >= 2 && pinchRef.current) {
+        const pz = pinchRef.current, d = tDist(e.touches[0], e.touches[1]);
+        if (pz.d0 > 0 && d > 0) {
+          const bars = Math.max(20, Math.min(n, Math.round(pz.bars0 * (pz.d0 / d))));   // fingers apart → fewer bars → zoom in
+          const newBarW = (g.plotR - g.plotL) / bars, newStart = pz.gi - (pz.ax - g.plotL) / newBarW;
+          const off = Math.max(-Math.round(bars * 0.5), Math.min(Math.max(0, n - 10), Math.round(n - bars - newStart)));
+          setRange(null); setView({ bars, off });
+        }
+        return;
+      }
+      const drag = dragRef.current;
+      if (drag) {
+        const cx = e.touches[0].clientX, p = tXY(e.touches[0]), tr = touchRef.current;
+        if (tr && (Math.abs(p.x - tr.x) > 6 || Math.abs(p.y - tr.y) > 6)) tr.moved = true;
+        const barW = g.barW, minOff = -Math.round(viewRef.current.bars * 0.5), maxOff = Math.max(0, n - 10);
+        const offFloat = Math.max(minOff, Math.min(maxOff, drag.off + (cx - drag.x) / barW));
+        const offInt = Math.floor(offFloat);
+        panPxRef.current = (offFloat - offInt) * barW;
+        const tnow = performance.now();
+        if (drag.lastT != null && tnow > drag.lastT) drag.vx = (cx - (drag.lastX ?? cx)) / (tnow - drag.lastT);
+        drag.lastX = cx; drag.lastT = tnow;
+        if (offInt !== viewRef.current.off) setView(v => ({ ...v, off: offInt })); else drawRef.current();
+      }
+    };
+    const onTouchEnd = (e: TouchEvent) => {
+      const g = geomRef.current, drag = dragRef.current, tr = touchRef.current;
+      if (e.touches.length === 0) {
+        // Tap (negligible move) → drop the crosshair at the tap point so values can be read on touch.
+        if (tr && !tr.moved && g) {
+          hoverRef.current = { x: tr.x, y: tr.y };
+          if (tr.x >= g.plotL && tr.x <= g.plotR && tr.y >= g.priceTop && tr.y <= g.priceTop + g.priceAreaH) broadcastCrosshair(priceAtY(tr.y, g), panelId ?? 'main');
+          drawOverlayRef.current();
+        } else if (drag && g && tr?.moved && drag.vx && Math.abs(drag.vx) > 0.08) startMomentum(drag.vx, g);
+        else if (panPxRef.current !== 0) { panPxRef.current = 0; drawRef.current(); }
+        dragRef.current = null; pinchRef.current = null; touchRef.current = null;
+      } else if (e.touches.length === 1) {
+        // Lifted from two fingers to one → resume panning from the remaining finger.
+        pinchRef.current = null;
+        const p = tXY(e.touches[0]);
+        dragRef.current = { x: e.touches[0].clientX, off: viewRef.current.off };
+        touchRef.current = { x: p.x, y: p.y, t: performance.now(), moved: true };
+      }
+    };
     canvas.addEventListener('wheel', onWheel, { passive: false });
     canvas.addEventListener('mousedown', onDown);
     window.addEventListener('mousemove', onMove);
@@ -514,8 +590,12 @@ export const SlayerChart = memo(function SlayerChartImpl({ profile, decimals, ca
     canvas.addEventListener('mouseleave', onLeave);
     canvas.addEventListener('dblclick', onDbl);
     canvas.addEventListener('contextmenu', onCtx);
+    canvas.addEventListener('touchstart', onTouchStart, { passive: false });
+    canvas.addEventListener('touchmove', onTouchMove, { passive: false });
+    canvas.addEventListener('touchend', onTouchEnd);
+    canvas.addEventListener('touchcancel', onTouchEnd);
     window.addEventListener('keydown', onKey);
-    return () => { ro.disconnect(); mo.disconnect(); canvas.removeEventListener('wheel', onWheel); canvas.removeEventListener('mousedown', onDown); window.removeEventListener('mousemove', onMove); window.removeEventListener('mouseup', onUp); canvas.removeEventListener('mouseleave', onLeave); canvas.removeEventListener('dblclick', onDbl); canvas.removeEventListener('contextmenu', onCtx); window.removeEventListener('keydown', onKey); };
+    return () => { ro.disconnect(); mo.disconnect(); canvas.removeEventListener('wheel', onWheel); canvas.removeEventListener('mousedown', onDown); window.removeEventListener('mousemove', onMove); window.removeEventListener('mouseup', onUp); canvas.removeEventListener('mouseleave', onLeave); canvas.removeEventListener('dblclick', onDbl); canvas.removeEventListener('contextmenu', onCtx); canvas.removeEventListener('touchstart', onTouchStart); canvas.removeEventListener('touchmove', onTouchMove); canvas.removeEventListener('touchend', onTouchEnd); canvas.removeEventListener('touchcancel', onTouchEnd); window.removeEventListener('keydown', onKey); };
   }, []);
 
   // Data/view-driven repaints are rAF-coalesced and do NOT re-read the theme (the MutationObserver
@@ -678,7 +758,7 @@ export const SlayerChart = memo(function SlayerChartImpl({ profile, decimals, ca
         </div>
       </div>
       <div ref={containerRef} className="relative flex-1 min-h-[300px]" style={{ position: 'relative', flex: 1, minHeight: 300 }}>
-        <canvas ref={canvasRef} className="absolute inset-0 cursor-crosshair" style={{ position: 'absolute', inset: 0 }} />
+        <canvas ref={canvasRef} className="absolute inset-0 cursor-crosshair" style={{ position: 'absolute', inset: 0, touchAction: 'none' }} />
         {/* Layered-canvas overlay (Phase 1): live last-price pulse paints here; pointer events pass through to the canvas below. */}
         <canvas ref={overlayRef} className="absolute inset-0 pointer-events-none" style={{ position: 'absolute', inset: 0, pointerEvents: 'none' }} />
         {ctxMenu && <ChartContextMenu menu={ctxMenu} onClose={() => setCtxMenu(null)} resetView={resetView} view={view} tweenView={tweenView} priceView={priceView} onAutoFit={() => setPriceView(null)} />}

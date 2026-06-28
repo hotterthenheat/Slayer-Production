@@ -518,6 +518,16 @@ export function LiveTerminalFlow({ profile: liveProfile, ticker, decimals }: Liv
             {feedLabel}
           </span>
           <div className="hidden md:block">{segToggle(TF.map(t => t.val), selectedTimeframe, setSelectedTimeframe)}</div>
+          {/* Mobile timeframe — the segmented toggle is too wide for a phone, so collapse it to a compact
+              themed select below md (where the toggle above is hidden). */}
+          <select
+            value={selectedTimeframe}
+            onChange={e => setSelectedTimeframe(e.target.value as typeof selectedTimeframe)}
+            aria-label="Chart timeframe"
+            className="md:hidden text-[10px] font-mono font-black tracking-wider rounded-md px-1.5 py-1.5 bg-[var(--surface-2)] border border-[var(--border)] text-[var(--text-primary)] focus-visible:ring-1 focus-visible:ring-[var(--accent-color)] focus:outline-none"
+          >
+            {TF.map(t => <option key={t.val} value={t.val}>{t.val}</option>)}
+          </select>
           {segToggle(['0DTE', 'ALL'], scope, v => setScope(v as '0DTE' | 'ALL'), true)}
           <span className="flex items-center gap-1.5 px-2.5 py-1 rounded-md border text-[10px] font-mono font-black uppercase tracking-widest lg:hidden" style={{ borderColor: longGamma ? 'color-mix(in srgb, var(--info) 40%, transparent)' : 'color-mix(in srgb, var(--warning) 40%, transparent)', background: longGamma ? 'color-mix(in srgb, var(--info) 10%, transparent)' : 'color-mix(in srgb, var(--warning) 10%, transparent)', color: trend, boxShadow: `0 0 16px ${longGamma ? 'color-mix(in srgb, var(--info) 18%, transparent)' : 'color-mix(in srgb, var(--warning) 18%, transparent)'}` }}>
             {longGamma ? <Activity className="w-3 h-3" /> : <Zap className="w-3 h-3 fill-current" />}{longGamma ? 'Long γ' : 'Short γ'} · {read.regime === 'PIN' ? `Pin ${read.pinStrength}` : 'Trend'}
