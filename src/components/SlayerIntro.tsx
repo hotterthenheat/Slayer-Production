@@ -33,7 +33,6 @@ interface SlayerIntroProps {
   topSub10Calls: Array<{ asset: AssetInfo; ticker: string; confidence: number }>;
   topSub10Puts: Array<{ asset: AssetInfo; ticker: string; confidence: number }>;
   onSelectOpportunity: (asset: AssetInfo, type: 'C' | 'P', strike?: number) => void;
-  renderTerminalWorkspace: () => React.ReactNode;
   session?: any;
   onRequestAuth?: () => void;
 }

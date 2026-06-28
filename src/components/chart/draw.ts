@@ -2,7 +2,7 @@ import * as TI from '../../lib/indicators';
 import type { Candle, GexProfileData } from '../../types';
 import { OVERLAY_DEFS, PANE_DEFS, type Series, type PaneData } from './indicators';
 import type { ChartType, DrawTool, Anchor, Drawing } from './drawing';
-import { shade, HEAT_POS, HEAT_NEG, fmtGex, mixHex, hexA, DEFAULT_COLORS, readTheme, niceStep, fmtTime, sameDay, px, fmtOsc, idxOfTime } from './format';
+import { shade, HEAT_POS, HEAT_NEG, fmtGex, mixHex, hexA, contrastInk, DEFAULT_COLORS, readTheme, niceStep, fmtTime, sameDay, px, fmtOsc, idxOfTime } from './format';
 
 type Ref<T> = { current: T };
 type Geom = { plotL: number; plotR: number; barW: number; start: number; end: number; n: number; priceTop: number; priceAreaH: number; lo: number; hi: number };
@@ -452,7 +452,7 @@ export function drawChart(deps: DrawDeps) {
           const ly = yP(lv); ctx.font = '700 9px ui-monospace, monospace';
           const label = `VWAP ${nf(lv)}`, lw = ctx.measureText(label).width + 10, lx = Math.min(xOf(gi) + 6, plotR - lw);
           ctx.fillStyle = hexA(vwapCol, 0.92); (ctx as any).roundRect ? (ctx.beginPath(), (ctx as any).roundRect(lx, ly - 8, lw, 15, 3), ctx.fill()) : ctx.fillRect(lx, ly - 8, lw, 15);
-          ctx.fillStyle = '#06090d'; ctx.textAlign = 'left'; ctx.fillText(label, lx + 5, ly); ctx.font = '11px ui-monospace, monospace';
+          ctx.fillStyle = contrastInk(vwapCol); ctx.textAlign = 'left'; ctx.fillText(label, lx + 5, ly); ctx.font = '11px ui-monospace, monospace';
         }
       }
     }
@@ -534,7 +534,7 @@ export function drawChart(deps: DrawDeps) {
         ctx.beginPath(); ctx.moveTo(plotL, px(y) - 0.5); ctx.lineTo(plotR, px(y) - 0.5); ctx.stroke();
         ctx.fillStyle = d.color; const tw = axisW + gammaW - 1;
         (ctx as any).roundRect ? (ctx.beginPath(), (ctx as any).roundRect(plotR + 1, y - 8, tw, 16, 3), ctx.fill()) : ctx.fillRect(plotR + 1, y - 8, tw, 16);
-        ctx.fillStyle = '#06090d'; ctx.textAlign = 'left'; ctx.font = '700 10px ui-monospace, monospace'; ctx.fillText(nf(d.price), plotR + 6, y); ctx.font = '11px ui-monospace, monospace';
+        ctx.fillStyle = contrastInk(d.color); ctx.textAlign = 'left'; ctx.font = '700 10px ui-monospace, monospace'; ctx.fillText(nf(d.price), plotR + 6, y); ctx.font = '11px ui-monospace, monospace';
         if (sel) { ctx.fillStyle = d.color; ctx.beginPath(); ctx.arc(plotL + 7, y, 3.2, 0, Math.PI * 2); ctx.fill(); ctx.beginPath(); ctx.arc(plotR - 7, y, 3.2, 0, Math.PI * 2); ctx.fill(); }
       } else if (d.kind === 'rect') {
         // Zone box (supply/demand / dealer band) — faint fill + framed outline, anchored to time+price.
@@ -571,7 +571,7 @@ export function drawChart(deps: DrawDeps) {
       const label = `${dP >= 0 ? '+' : ''}${nf(dP)}  ${dP >= 0 ? '+' : ''}${dPct.toFixed(2)}%  ${nb.toFixed(0)} bars`;
       ctx.font = '700 10px ui-monospace, monospace'; const lw = ctx.measureText(label).width + 12, lx = (x1 + x2) / 2, ly = Math.min(y1, y2) - 9;
       ctx.fillStyle = mc; (ctx as any).roundRect ? (ctx.beginPath(), (ctx as any).roundRect(lx - lw / 2, ly - 9, lw, 16, 3), ctx.fill()) : ctx.fillRect(lx - lw / 2, ly - 9, lw, 16);
-      ctx.fillStyle = '#06090d'; ctx.textAlign = 'center'; ctx.fillText(label, lx, ly); ctx.font = '11px ui-monospace, monospace';
+      ctx.fillStyle = contrastInk(mc); ctx.textAlign = 'center'; ctx.fillText(label, lx, ly); ctx.font = '11px ui-monospace, monospace';
     }
 
     // Dealer levels — retail-friendly NAMED lines that flow with the chart. Each key level draws a
@@ -729,7 +729,7 @@ export function drawChart(deps: DrawDeps) {
       const tkr = (tickKey || '').toUpperCase(), tkrW = tkr ? ctx.measureText(tkr).width + 11 : 0;
       if (tkr) { ctx.fillStyle = shade(lc, 0.46); (ctx as any).roundRect ? (ctx.beginPath(), (ctx as any).roundRect(priceX - tkrW, lastY - 8, tkrW, 16, 3), ctx.fill()) : ctx.fillRect(priceX - tkrW, lastY - 8, tkrW, 16); ctx.fillStyle = hexA('#ffffff', 0.92); ctx.fillText(tkr, priceX - tkrW + 6, lastY); }
       ctx.fillStyle = lc; (ctx as any).roundRect ? (ctx.beginPath(), (ctx as any).roundRect(priceX, lastY - 8, priceW, 16, 3), ctx.fill()) : ctx.fillRect(priceX, lastY - 8, priceW, 16);
-      ctx.fillStyle = '#06090d'; ctx.fillText(nf(last), priceX + 6, lastY); ctx.font = '11px ui-monospace, monospace';
+      ctx.fillStyle = contrastInk(lc); ctx.fillText(nf(last), priceX + 6, lastY); ctx.font = '11px ui-monospace, monospace';
       // Publish last-price geometry to the dedicated OVERLAY layer, which paints the live pulse — so live
       // pulsing repaints only the lightweight overlay canvas, never the candle layer. (Layered-canvas Phase 1)
       if (liveOverlayRef) liveOverlayRef.current = { plotR, lastY, up: lastUp, upCol, downCol };

@@ -975,7 +975,6 @@ export default function App() {
                   onSelectOpportunity={(asset, type, strike) => {
                     handleSelectOpportunity(asset, type, strike);
                   }}
-                  renderTerminalWorkspace={() => null}
                   session={session}
                   onRequestAuth={() => setShowAuthModal(true)}
                 />

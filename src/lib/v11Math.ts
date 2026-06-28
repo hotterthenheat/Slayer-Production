@@ -656,7 +656,9 @@ export function computeDealerInventory(
   const atmIV = chain.length > 0
     ? chain.reduce((best, c) => Math.abs(c.strike - spot) < Math.abs(best.strike - spot) ? c : best).iv
     : 0.15;
-  const expectedMovePct = atmIV * Math.sqrt(dte / 365);
+  // Floor guard (matches gexEngine.buildGexProfile): when dte≤0 (0DTE/expiry) or atmIV≈0, keep a
+  // tiny positive EM so target prices don't collapse onto spot and divisions stay finite.
+  const expectedMovePct = Math.max(0.0005, atmIV * Math.sqrt(Math.max(dte / 365, 0.0001)));
 
   return {
     netGex,
