@@ -247,7 +247,7 @@ export function QuantAuditView({
               <span className="text-[var(--warning)] font-bold text-[12px] block mt-1">OPEN</span>
             ) : (
               <span
-                className={`font-bold text-[12px] block mt-1 tabular-nums ${
+                className={`font-bold text-[12px] block mt-1 tabular-nums transition-colors duration-300 ${
                   (ret ?? 0) >= 0 ? 'text-[var(--success)]' : 'text-[var(--danger)]'
                 }`}
               >
@@ -259,7 +259,7 @@ export function QuantAuditView({
           <div className="bg-[var(--surface)] p-2.5 border border-[var(--border)] rounded-lg">
             <span className={`${sectionLabel} block`}>RESULT</span>
             <span
-              className={`font-black text-[12px] block mt-1 uppercase ${
+              className={`font-black text-[12px] block mt-1 uppercase transition-colors duration-300 ${
                 isActive
                   ? 'text-[var(--warning)]'
                   : state === 'win'
@@ -481,7 +481,7 @@ export function QuantAuditView({
                 <span className="text-[var(--warning)] text-[13px] font-black block leading-none">OPEN</span>
               ) : (
                 <span
-                  className={`text-[15px] font-black block leading-none tabular-nums ${
+                  className={`text-[15px] font-black block leading-none tabular-nums transition-colors duration-300 ${
                     (ret ?? 0) >= 0 ? 'text-[var(--success)]' : 'text-[var(--danger)]'
                   }`}
                 >
