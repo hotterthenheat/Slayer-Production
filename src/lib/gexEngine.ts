@@ -36,8 +36,11 @@ export function buildGexProfile(
   const allRows = [...byStrike.values()].sort((a, b) => a.strike - b.strike);
   let callWall = spot, putWall = spot, maxCall = -1, maxPut = -1;
   for (const r of allRows) {
-    if (Math.abs(r.callGex) > maxCall) { maxCall = Math.abs(r.callGex); callWall = r.strike; }
-    if (Math.abs(r.putGex) > maxPut) { maxPut = Math.abs(r.putGex); putWall = r.strike; }
+    // Walls must straddle spot (canonical convention, matching v11Math): the call wall is the
+    // heaviest call-γ strike AT/ABOVE spot, the put wall the heaviest put-γ strike AT/BELOW spot —
+    // so they can't both collapse to one side on a degenerate chain.
+    if (r.strike >= spot && Math.abs(r.callGex) > maxCall) { maxCall = Math.abs(r.callGex); callWall = r.strike; }
+    if (r.strike <= spot && Math.abs(r.putGex) > maxPut) { maxPut = Math.abs(r.putGex); putWall = r.strike; }
   }
   const nearSpot = allRows.filter(r => Math.abs(r.strike - spot) / spot <= 0.03);
   const pool = nearSpot.length ? nearSpot : allRows;
