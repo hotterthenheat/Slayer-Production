@@ -47,6 +47,7 @@ export type DrawDeps = {
   showGex: boolean; showHeat: boolean; showOrbs: boolean; showDisp: boolean; showLadder: boolean;
   showVolProfile: boolean; showPrevClose: boolean; showVwap: boolean;
   vwap?: { line: (number | null)[]; u1: (number | null)[]; d1: (number | null)[]; u2: (number | null)[]; d2: (number | null)[] };  // session VWAP centerline + ±1σ/±2σ bands
+  showMigration: boolean; gammaCoM?: number | null; comHist?: number[];  // gamma center-of-mass + its recent drift path (migration comet)
   live?: boolean; livePhaseRef?: { current: number };   // animate the last-price pulse only when truly live
   liveOverlayRef?: { current: { plotR: number; lastY: number; up: boolean; upCol: string; downCol: string } | null };  // last-price geometry handed to the overlay layer
   tickKey: string; tfKey: string;
@@ -59,7 +60,7 @@ export function drawChart(deps: DrawDeps) {
     hoverRef, gexDeltaRef, draftRef, measureRef, drawingsRef, toolRef, selectedRef,
     candles, ha, atr, profile, colors, decimals, chartType, ovOn, overlaySeries, paneSeries,
     displacements, gexCount, showVolume, showGrid, showWatermark, candleBorders,
-    showGex, showHeat, showOrbs, showVolProfile, showPrevClose, showVwap, vwap, showDisp, showLadder, tickKey, tfKey, onScale, live, livePhaseRef, liveOverlayRef,
+    showGex, showHeat, showOrbs, showVolProfile, showPrevClose, showVwap, vwap, showMigration, gammaCoM, comHist, showDisp, showLadder, tickKey, tfKey, onScale, live, livePhaseRef, liveOverlayRef,
   } = deps;
     const canvas = canvasRef.current, container = containerRef.current;
     if (!canvas || !container) return;
@@ -697,6 +698,32 @@ export function drawChart(deps: DrawDeps) {
         ctx.fillStyle = hexA(COL.magnet, 0.85); ctx.beginPath(); ctx.moveTo(tx, my - dir * 1); ctx.lineTo(tx - 3.4, my - dir * 7); ctx.lineTo(tx + 3.4, my - dir * 7); ctx.closePath(); ctx.fill();
         ctx.fillStyle = hexA(COL.magnet, 0.7); ctx.beginPath(); ctx.arc(tx, lastY + dir * 5, 1.9, 0, Math.PI * 2); ctx.fill();
         ctx.font = '700 7.5px ui-monospace, monospace'; ctx.textAlign = 'left'; ctx.fillStyle = hexA(COL.magnet, 0.7); ctx.fillText('PULL', tx + 6, (lastY + my) / 2);
+      }
+    }
+
+    // GAMMA MIGRATION COMET — the gamma center-of-mass (Σ strike·|netGex| / Σ|netGex|) drifting over recent
+    // updates. Bright head at the current CoM, fading ghosts trailing its recent path. Rising = dealer gamma
+    // concentrating higher (supportive drift); falling = the reverse. A right-edge HUD widget, on top of price.
+    if (showMigration && gammaCoM != null && comHist && comHist.length >= 2) {
+      const headY = yP(gammaCoM);
+      if (headY >= priceTop + 4 && headY <= priceBottom - 4) {
+        const N = Math.min(comHist.length, 14), slice = comHist.slice(comHist.length - N);
+        const xR = plotR - 12, dx = 6, drift = slice[N - 1] - slice[0];
+        const dCol = drift > 0.02 ? COL.up : drift < -0.02 ? COL.down : T.dim;
+        // connecting thread through the recent path
+        ctx.strokeStyle = hexA(dCol, 0.28); ctx.lineWidth = 1; ctx.beginPath();
+        for (let i = 0; i < N; i++) { const x = xR - (N - 1 - i) * dx, y = yP(slice[i]); i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y); }
+        ctx.stroke();
+        // fading ghost dots (oldest faintest)
+        for (let i = 0; i < N; i++) { const x = xR - (N - 1 - i) * dx, y = yP(slice[i]); ctx.fillStyle = hexA(dCol, 0.10 + 0.5 * (i / (N - 1))); ctx.beginPath(); ctx.arc(x, y, 1 + 1.5 * (i / (N - 1)), 0, Math.PI * 2); ctx.fill(); }
+        // bright head + drift chevron (points the direction of drift)
+        ctx.fillStyle = hexA(dCol, 0.97); ctx.beginPath(); ctx.arc(xR, headY, 3, 0, Math.PI * 2); ctx.fill();
+        const ar = drift > 0 ? -1 : 1;
+        ctx.strokeStyle = hexA(dCol, 0.9); ctx.lineWidth = 1.4; ctx.beginPath();
+        ctx.moveTo(xR - 2.6, headY + ar * 5); ctx.lineTo(xR, headY + ar * 9); ctx.lineTo(xR + 2.6, headY + ar * 5); ctx.stroke(); ctx.lineWidth = 1;
+        // label, placed opposite the chevron so they never overlap
+        ctx.font = '700 7.5px ui-monospace, monospace'; ctx.textAlign = 'right'; ctx.fillStyle = hexA(dCol, 0.82);
+        ctx.fillText('γ-CoM', xR + 4, headY + (drift > 0 ? 13 : -10)); ctx.font = '11px ui-monospace, monospace';
       }
     }
 
