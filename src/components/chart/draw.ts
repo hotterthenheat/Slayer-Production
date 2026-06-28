@@ -45,6 +45,7 @@ export type DrawDeps = {
   gexCount: number;
   showVolume: boolean; showGrid: boolean; showWatermark: boolean; candleBorders: boolean;
   showGex: boolean; showHeat: boolean; showOrbs: boolean; showDisp: boolean; showLadder: boolean;
+  showVolProfile: boolean; showPrevClose: boolean;
   tickKey: string; tfKey: string;
   onScale?: (lo: number, hi: number) => void;   // report the live visible price range (drives the price-aligned gamma profile)
 };
@@ -55,7 +56,7 @@ export function drawChart(deps: DrawDeps) {
     hoverRef, gexDeltaRef, draftRef, measureRef, drawingsRef, toolRef, selectedRef,
     candles, ha, atr, profile, colors, decimals, chartType, ovOn, overlaySeries, paneSeries,
     displacements, gexCount, showVolume, showGrid, showWatermark, candleBorders,
-    showGex, showHeat, showOrbs, showDisp, showLadder, tickKey, tfKey, onScale,
+    showGex, showHeat, showOrbs, showVolProfile, showPrevClose, showDisp, showLadder, tickKey, tfKey, onScale,
   } = deps;
     const canvas = canvasRef.current, container = containerRef.current;
     if (!canvas || !container) return;
@@ -199,7 +200,9 @@ export function drawChart(deps: DrawDeps) {
     // and more price levels appear for finer read accuracy.
     // Denser, TradingView-style price grid: every 5th step is a round-number "major" line — a brighter
     // gridline + a bold, brighter label — so the eye anchors on round prices and the scale reads finer.
-    const targetGrid = Math.max(6, Math.min(26, Math.round(priceAreaH / 30)));
+    // ~64px between price labels (was ~30) — a clean, TradingView-grade axis instead of a label every
+    // few points. niceStep then rounds the gap to a human interval (10 / 25 / 50 …).
+    const targetGrid = Math.max(4, Math.min(11, Math.round(priceAreaH / 64)));
     const step = niceStep((hi - lo) / targetGrid);
     const majorStep = step * 5;
     const gridYs: { y: number; label: string; major: boolean }[] = [];
@@ -217,14 +220,15 @@ export function drawChart(deps: DrawDeps) {
       const inRange = profile.strikes!.filter(s => { const y = yP(s.strike); return y >= priceTop - 24 && y <= priceBottom + 24 && Math.abs(s.netGex || 0) > 0; });
       if (inRange.length) {
         const maxG = Math.max(...inRange.map(s => Math.abs(s.netGex || 0)), 1e-9);
-        const top = [...inRange].sort((a, b) => Math.abs(b.netGex || 0) - Math.abs(a.netGex || 0)).slice(0, Math.max(gexCount, 26));
+        const top = [...inRange].sort((a, b) => Math.abs(b.netGex || 0) - Math.abs(a.netGex || 0)).slice(0, Math.max(gexCount, 14));
         const spot = profile.spot || (candles[n - 1] ? candles[n - 1].close : 0), vspan = (hi - lo) || 1;
         ctx.save(); ctx.globalCompositeOperation = 'lighter';
         for (const s of top) {
           const y = yP(s.strike), mag = Math.abs(s.netGex || 0) / maxG, pos = (s.netGex || 0) >= 0;
           const col = pos ? mixHex('#1f6f52', '#2fe6a0', mag) : mixHex('#7a3550', '#ff5470', mag);
-          const distFade = Math.max(0.18, 1 - Math.abs(s.strike - spot) / (vspan * 0.7));
-          const peak = (0.06 + Math.pow(mag, 1.1) * 0.62) * distFade, bandH = 8 + mag * 44;
+          const distFade = Math.max(0.12, 1 - Math.abs(s.strike - spot) / (vspan * 0.55));
+          // Sharper, sparser landscape — a near-zero floor so only real GEX blooms, steeper curve, capped peak; candles always lead.
+          const peak = Math.min(0.5, (0.02 + Math.pow(mag, 1.45) * 0.5) * distFade), bandH = 4 + mag * 40;
           const grad = ctx.createLinearGradient(0, y - bandH, 0, y + bandH);
           grad.addColorStop(0, hexA(col, 0)); grad.addColorStop(0.5, hexA(col, peak)); grad.addColorStop(1, hexA(col, 0));
           ctx.fillStyle = grad; ctx.fillRect(plotL, y - bandH, plotW, bandH * 2);
@@ -334,6 +338,55 @@ export function drawChart(deps: DrawDeps) {
         if (isWall) { ctx.fillStyle = hexA(col, 0.98); ctx.fillRect(x0 + len, y - thick / 2 - 1, 2, thick + 2); }
       }
       ctx.fillStyle = hexA(T.text, 0.38); ctx.textAlign = 'left'; ctx.font = '700 8px ui-monospace, monospace'; ctx.fillText('γ EXPOSURE', x0 + 1, priceTop + 7); ctx.font = '11px ui-monospace, monospace';
+    }
+
+    // VOLUME PROFILE (VPVR) — volume-by-price histogram, LEFT-anchored inside the plot so it never
+    // competes with the right price axis / Exposure Ladder. Opt-in. POC line = the highest-volume price.
+    if (showVolProfile && vis.length) {
+      const bins = Math.max(18, Math.min(80, Math.round((priceBottom - priceTop) / 7)));
+      const range = (hi - lo) || 1;
+      const vol = new Float64Array(bins), upVol = new Float64Array(bins);
+      for (const c of vis) {
+        const v = c.volume || 0; if (v <= 0) continue;
+        const cl = Math.max(lo, Math.min(hi, c.low)), ch = Math.max(lo, Math.min(hi, c.high));
+        const b0 = Math.max(0, Math.min(bins - 1, Math.floor(((cl - lo) / range) * bins)));
+        const b1 = Math.max(0, Math.min(bins - 1, Math.floor(((ch - lo) / range) * bins)));
+        const per = v / (b1 - b0 + 1), up = c.close >= c.open;
+        for (let b = b0; b <= b1; b++) { vol[b] += per; if (up) upVol[b] += per; }
+      }
+      let maxV = 0, pocBin = 0; for (let b = 0; b < bins; b++) if (vol[b] > maxV) { maxV = vol[b]; pocBin = b; }
+      if (maxV > 0) {
+        const vpW = Math.min(plotW * 0.22, 150);
+        for (let b = 0; b < bins; b++) {
+          if (vol[b] <= 0) continue;
+          const w = (vol[b] / maxV) * vpW, frac = upVol[b] / vol[b], isPoc = b === pocBin;
+          const col = frac >= 0.5 ? COL.up : COL.down;
+          const yA = yP(lo + ((b + 1) / bins) * range), yB = yP(lo + (b / bins) * range);
+          ctx.fillStyle = hexA(col, isPoc ? 0.32 : 0.09 + 0.13 * (vol[b] / maxV));
+          ctx.fillRect(plotL, Math.min(yA, yB), w, Math.max(1, Math.abs(yB - yA) - 0.5));
+        }
+        const pocPrice = lo + ((pocBin + 0.5) / bins) * range, pocY = yP(pocPrice);
+        ctx.strokeStyle = hexA(COL.flip, 0.65); ctx.setLineDash([4, 3]); ctx.lineWidth = 1;
+        ctx.beginPath(); ctx.moveTo(plotL, px(pocY) - 0.5); ctx.lineTo(plotR, px(pocY) - 0.5); ctx.stroke(); ctx.setLineDash([]);
+        ctx.font = '700 8px ui-monospace, monospace'; ctx.textAlign = 'left'; ctx.fillStyle = hexA(COL.flip, 0.85);
+        ctx.fillText('POC ' + nf(pocPrice), plotL + 4, pocY - 6); ctx.font = '11px ui-monospace, monospace';
+      }
+    }
+
+    // PRIOR-DAY CLOSE — yesterday's settlement; a classic intraday reaction level. Behind candles, left-tagged
+    // (never on the right axis, so it can't recreate the double-column it would otherwise add).
+    if (showPrevClose && n > 1) {
+      const lastTs = candles[n - 1].timestamp; let prevClose: number | null = null;
+      for (let gi = n - 1; gi > 0; gi--) { if (!sameDay(candles[gi].timestamp, lastTs)) { prevClose = candles[gi].close; break; } }
+      if (prevClose != null) {
+        const y = yP(prevClose);
+        if (y >= priceTop && y <= priceBottom) {
+          ctx.strokeStyle = hexA(T.dim, 0.5); ctx.setLineDash([6, 4]); ctx.lineWidth = 1;
+          ctx.beginPath(); ctx.moveTo(plotL, px(y) - 0.5); ctx.lineTo(plotR, px(y) - 0.5); ctx.stroke(); ctx.setLineDash([]);
+          ctx.font = '700 8px ui-monospace, monospace'; ctx.textAlign = 'left'; ctx.fillStyle = hexA(T.dim, 0.75);
+          ctx.fillText('PDC ' + nfT(prevClose), plotL + 8, y - 5); ctx.font = '11px ui-monospace, monospace';
+        }
+      }
     }
 
     // price series — five chart types (TradingView-style)
