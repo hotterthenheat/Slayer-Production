@@ -573,17 +573,19 @@ export function LiveTerminalFlow({ profile: liveProfile, ticker, decimals }: Liv
             {feedLabel}
           </span>
           <div className="hidden md:block">{segToggle(TF.map(t => t.val), selectedTimeframe, setSelectedTimeframe)}</div>
-          {/* Mobile timeframe — the segmented toggle is too wide for a phone, so collapse it to a compact
-              themed select below md (where the toggle above is hidden). */}
-          <select
-            value={selectedTimeframe}
-            onChange={e => setSelectedTimeframe(e.target.value as typeof selectedTimeframe)}
-            aria-label="Chart timeframe"
-            className="md:hidden text-[10px] font-mono font-black tracking-wider rounded-md px-1.5 py-1.5 bg-[var(--surface-2)] border border-[var(--border)] text-[var(--text-primary)] focus-visible:ring-1 focus-visible:ring-[var(--accent-color)] focus:outline-none"
-          >
-            {TF.map(t => <option key={t.val} value={t.val}>{t.val}</option>)}
-          </select>
-          {segToggle(['0DTE', 'ALL'], scope, v => setScope(v as '0DTE' | 'ALL'), true)}
+          {/* Mobile timeframe + scope — grouped into one control cluster so neither sits alone on the
+              bar (the wide desktop TF toggle is hidden below md, so the compact select takes over). */}
+          <div className="flex items-center gap-1.5">
+            <select
+              value={selectedTimeframe}
+              onChange={e => setSelectedTimeframe(e.target.value as typeof selectedTimeframe)}
+              aria-label="Chart timeframe"
+              className="md:hidden text-[10px] font-mono font-black tracking-wider rounded-md px-1.5 py-1.5 bg-[var(--surface-2)] border border-[var(--border)] text-[var(--text-primary)] focus-visible:ring-1 focus-visible:ring-[var(--accent-color)] focus:outline-none"
+            >
+              {TF.map(t => <option key={t.val} value={t.val}>{t.val}</option>)}
+            </select>
+            {segToggle(['0DTE', 'ALL'], scope, v => setScope(v as '0DTE' | 'ALL'), true)}
+          </div>
           {/* Customize — TradingView-style drag/resize/save layout (opt-in; default layout untouched) */}
           <button onClick={() => setCustomize(c => !c)} title="Customize layout — drag, resize & save your own panel arrangement"
             className="hidden md:flex items-center gap-1 px-2 py-1 rounded-md border text-[10px] font-mono font-black uppercase tracking-wider transition-colors focus-visible:ring-1 focus-visible:ring-[var(--accent-color)] focus:outline-none"

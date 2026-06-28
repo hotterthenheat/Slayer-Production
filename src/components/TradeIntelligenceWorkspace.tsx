@@ -680,7 +680,7 @@ export function TradeIntelligenceWorkspace({
             <div className="flex-1 w-full min-h-[300px]">
               <InteractiveChart
                 candles={candles}
-                displacementZones={serverState?.displacement_engine?.zones || []}
+                displacementZones={serverState?.displacement?.zones || []}
                 fvgs={fvgs}
                 liquidityEvents={liquidityEvents}
                 tape={serverState?.tape || []}
