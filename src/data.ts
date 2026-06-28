@@ -468,6 +468,16 @@ export function optionExpiryLabel(asset: AssetInfo): string {
   return '0DTE';
 }
 
+/** Short calendar date of a ticker's nearest expiry (e.g. 'Jun 30') — today for 0DTE
+ *  daily names, the upcoming Friday for front-weekly single stocks. Model-feed date;
+ *  a live provider supplies the true listed expiry. */
+export function optionExpiryDate(asset: AssetInfo, now: Date = new Date()): string {
+  const MON = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  const d = new Date(now);
+  if (asset.optionsStyle === 'weekly') d.setDate(d.getDate() + frontWeeklyDteDays(now));
+  return `${MON[d.getMonth()]} ${d.getDate()}`;
+}
+
 export const TIMEFRAMES: { val: TimeframeVal; label: string; minMultiplier: number }[] = [
   { val: '1m', label: '1 Minute', minMultiplier: 1 },
   { val: '2m', label: '2 Minutes', minMultiplier: 2 },
