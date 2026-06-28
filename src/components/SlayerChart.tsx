@@ -55,10 +55,12 @@ export const SlayerChart = memo(function SlayerChartImpl({ profile, decimals, ca
   // rows + strike diamonds) is the primary view; the green/red γ-profile lane is an opt-in extra.
   // gexMapV2 is a one-time migration — it flips existing users to this look ONCE, then their own
   // toggles win on every load after (so we change the default without overwriting a real choice).
-  const gexMapV2 = initialPrefs.gexMapV2 === true;
-  const [showGex, setShowGex] = useState<boolean>(gexMapV2 ? (initialPrefs.showGex ?? false) : false);
+  // v2 dealer-chart look is now the STANDARD: the gamma heatmap + net-γ lane render by default so the
+  // chart reads like a real dealer-gamma terminal out of the box. A user's own saved toggles still win.
+  const gexMapV2 = initialPrefs.gexMapV2 !== false;
+  const [showGex, setShowGex] = useState<boolean>(gexMapV2 ? (initialPrefs.showGex ?? true) : false);
   const [showDisp, setShowDisp] = useState<boolean>(initialPrefs.showDisp ?? false);
-  const [showHeat, setShowHeat] = useState<boolean>(gexMapV2 ? (initialPrefs.showHeat ?? false) : false); // ladder is the default dealer map now
+  const [showHeat, setShowHeat] = useState<boolean>(gexMapV2 ? (initialPrefs.showHeat ?? true) : false); // gamma heatmap on by default — the signature dealer-gamma read
   // ORBS — focal gamma-concentration orbs in the right gutter (a clean alternative to the Γ-MAP diamonds). Opt-in.
   const [showOrbs, setShowOrbs] = useState<boolean>(gexMapV2 ? (initialPrefs.showOrbs ?? false) : false);
   // Dealer-map density — how many strikes the heatmap / orbs / exposure-lane render. Lower = cleaner.
