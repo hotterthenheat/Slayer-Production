@@ -367,7 +367,7 @@ function refreshEdgeCache(assets: AssetInfo[] = ASSET_LIST) {
       let netVanna = 0;
       for (const c of chain) {
         const sign = c.type === 'call' ? 1 : -1;
-        netVanna += (c.vanna || 0) * (c.openInterest || 0) * 100 * sign;
+        netVanna += (c.vanna || 0) * (c.openInterest || 0) * 100 * spot * 0.01 * sign; // canonical vanna $-scaling (× S × 0.01)
       }
       if (!dealerDynHistory[asset.ticker]) dealerDynHistory[asset.ticker] = [];
       dealerDynCache[asset.ticker] = computeDealerDynamics(

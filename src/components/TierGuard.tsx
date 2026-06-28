@@ -166,7 +166,7 @@ export default function TierGuard({
 
           {/* Account status info & easy navigation link */}
           <div className="flex flex-col sm:flex-row items-center justify-center gap-3 max-w-md mx-auto pt-2">
-            <div className="text-[9.5px] font-mono text-[var(--text-tertiary)] bg-black px-3.5 py-2 rounded-lg border border-[var(--border)] w-full sm:w-auto">
+            <div className="text-[9.5px] font-mono text-[var(--text-tertiary)] bg-[var(--surface)] px-3.5 py-2 rounded-lg border border-[var(--border)] w-full sm:w-auto">
               Current License: <span className="font-bold text-[var(--accent-color)]">Discord Tier-1</span>
             </div>
             
@@ -301,12 +301,12 @@ export default function TierGuard({
             </span>
             
             <div className="space-y-3">
-              <div className="flex justify-between items-center bg-black border border-[var(--border)] p-3 rounded-xl">
+              <div className="flex justify-between items-center bg-[var(--surface)] border border-[var(--border)] p-3 rounded-xl">
                 <span className="text-[10px] font-mono text-[var(--text-tertiary)] uppercase">CURRENT LEVEL:</span>
                 <span className="text-xs font-mono font-bold text-[var(--text-tertiary)]">{getTierLabel(purchasedTier)}</span>
               </div>
 
-              <div className="flex justify-between items-center bg-black border border-[var(--accent-color)]/20 p-3 rounded-xl">
+              <div className="flex justify-between items-center bg-[var(--surface)] border border-[var(--accent-color)]/20 p-3 rounded-xl">
                 <span className="text-[10px] font-mono text-[var(--accent-color)] uppercase">REQUIRED LEVEL:</span>
                 <span className="text-xs font-mono font-bold text-[var(--accent-color)]">{getTierLabel(requiredTier)}</span>
               </div>
