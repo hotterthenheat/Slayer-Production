@@ -224,7 +224,7 @@ export function drawChart(deps: DrawDeps) {
           const y = yP(s.strike), mag = Math.abs(s.netGex || 0) / maxG, pos = (s.netGex || 0) >= 0;
           const col = pos ? mixHex('#1f6f52', '#2fe6a0', mag) : mixHex('#7a3550', '#ff5470', mag);
           const distFade = Math.max(0.18, 1 - Math.abs(s.strike - spot) / (vspan * 0.7));
-          const peak = (0.035 + Math.pow(mag, 1.2) * 0.4) * distFade, bandH = 6 + mag * 32;
+          const peak = (0.06 + Math.pow(mag, 1.1) * 0.62) * distFade, bandH = 8 + mag * 44;
           const grad = ctx.createLinearGradient(0, y - bandH, 0, y + bandH);
           grad.addColorStop(0, hexA(col, 0)); grad.addColorStop(0.5, hexA(col, peak)); grad.addColorStop(1, hexA(col, 0));
           ctx.fillStyle = grad; ctx.fillRect(plotL, y - bandH, plotW, bandH * 2);

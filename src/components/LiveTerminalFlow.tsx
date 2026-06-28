@@ -17,7 +17,7 @@ import { SessionBand } from './terminal/SessionBand';
 import { fmtBig } from './terminal/format';
 import { CROSSHAIR_EVENT, CrosshairDetail, PRICE_SCALE_EVENT, PriceScaleDetail } from '../lib/chartSync';
 import { EdgeTrackRecord } from './EdgeTrackRecord';
-import { Crosshair, Activity, Zap, Layers, ChevronDown, Gauge as GaugeIcon, TrendingUp, TrendingDown, Minus, Clock } from 'lucide-react';
+import { Crosshair, Activity, Zap, Layers, ChevronDown, Gauge as GaugeIcon, TrendingUp, TrendingDown, Minus, Clock, Maximize2, Minimize2 } from 'lucide-react';
 import { ASSET_LIST, TIMEFRAMES } from '../data';
 
 // Tight, legible type scale (raised the floor off 7.5/8px so dense data stays readable).
@@ -81,6 +81,7 @@ export function LiveTerminalFlow({ profile: liveProfile, ticker, decimals }: Liv
   const [leftTab, setLeftTab] = useState<'levels' | 'matrix' | 'flow'>('levels');
   const [scope, setScope] = useState<'0DTE' | 'ALL'>('0DTE');
   const [multiChart, setMultiChart] = useState(false); // opt-in movable/resizable multi-chart grid
+  const [chartFocus, setChartFocus] = useState(false); // chart-hero focus mode — collapses both side rails (xl+)
   const [gexLines, setGexLines] = useState(false); // center toggle — multi-strike GEX line chart
   const [ladderMetric, setLadderMetric] = useState<'GAMMA' | 'DELTA' | 'VANNA' | 'OI' | 'VOL'>('GAMMA');
   // Live price range the chart is showing — the Dealer Gamma Profile fills its panel with this range
@@ -482,9 +483,9 @@ export function LiveTerminalFlow({ profile: liveProfile, ticker, decimals }: Liv
         </div>
         {/* Centred macro readout — Asset · Price · Δ · Regime · Gamma · Exp Move · Confidence (§2) */}
         <div className="absolute left-1/2 -translate-x-1/2 hidden lg:flex items-center gap-3.5 font-mono">
-          <div className="flex items-baseline gap-1.5">
-            <span className="text-[12px] font-black tracking-wider text-[var(--text-tertiary)]">{selectedAsset.ticker}</span>
-            <span className={`text-[19px] font-black tabular-nums leading-none text-[var(--text-primary)] ${flash === 'up' ? 'tick-up' : flash === 'down' ? 'tick-down' : ''}`}>{spot ? spot.toLocaleString('en-US', { minimumFractionDigits: decimals, maximumFractionDigits: decimals }) : '—'}</span>
+          <div className="flex items-baseline gap-2">
+            <span className="text-[13px] font-black tracking-wider text-[var(--text-secondary)]">{selectedAsset.ticker}</span>
+            <span className={`text-[25px] font-black tabular-nums leading-none text-[var(--text-primary)] ${flash === 'up' ? 'tick-up' : flash === 'down' ? 'tick-down' : ''}`} style={{ letterSpacing: '-0.01em' }}>{spot ? spot.toLocaleString('en-US', { minimumFractionDigits: decimals, maximumFractionDigits: decimals }) : '—'}</span>
             <span className="text-[11px] font-bold tabular-nums" style={{ color: dayChg >= 0 ? 'var(--success)' : 'var(--danger)' }}>{dayChg >= 0 ? '+' : ''}{dayChg.toFixed(2)}%</span>
           </div>
         </div>
@@ -516,7 +517,7 @@ export function LiveTerminalFlow({ profile: liveProfile, ticker, decimals }: Liv
         <div className="flex flex-col xl:flex-row w-full h-full overflow-hidden">
 
           {/* ░ LEFT — Key Levels / Flow ░ */}
-          <aside className="order-2 xl:order-1 w-full xl:w-[248px] shrink-0 border-r border-[var(--border)] flex flex-col min-h-[360px] xl:min-h-0 bg-[var(--surface)]">
+          <aside className={`order-2 xl:order-1 w-full xl:w-[248px] shrink-0 border-r border-[var(--border)] flex-col min-h-[360px] xl:min-h-0 bg-[var(--surface)] ${chartFocus ? 'flex xl:hidden' : 'flex'}`}>
             <div className="flex items-center gap-4 px-3 h-9 border-b border-[var(--border)] shrink-0">
               {(['levels', 'matrix', 'flow'] as const).map(t => (
                 <button key={t} onClick={() => setLeftTab(t)} className="relative text-[11px] font-sans font-black tracking-widest uppercase transition-colors py-2" style={{ color: leftTab === t ? 'var(--text-primary)' : 'var(--text-tertiary)' }}>
@@ -661,6 +662,8 @@ export function LiveTerminalFlow({ profile: liveProfile, ticker, decimals }: Liv
                 <div className="flex items-center gap-2 text-[9px] font-mono font-black tabular-nums shrink-0">
                   <button onClick={() => setGexLines(m => !m)} title="Strike GEX line chart — top strikes' net gamma tracked over the session" className={`flex items-center gap-1 px-1.5 py-0.5 rounded-sm text-[9px] font-mono font-black uppercase tracking-wide border transition-colors ${gexLines ? 'border-[var(--accent-color)] text-black' : 'border-[var(--border)] bg-[var(--surface-2)] text-[var(--text-tertiary)] hover:text-[var(--text-primary)]'}`} style={gexLines ? { background: 'var(--accent-color)' } : undefined}><Activity className="w-3 h-3" /> GEX</button>
                   <button onClick={() => setMultiChart(m => !m)} title="Toggle the movable multi-chart grid" className={`flex items-center gap-1 px-1.5 py-0.5 rounded-sm text-[9px] font-mono font-black uppercase tracking-wide border transition-colors ${multiChart ? 'border-[var(--accent-color)] text-black' : 'border-[var(--border)] bg-[var(--surface-2)] text-[var(--text-tertiary)] hover:text-[var(--text-primary)]'}`} style={multiChart ? { background: 'var(--accent-color)' } : undefined}><Layers className="w-3 h-3" /> Multi</button>
+                  {/* Focus mode — collapse both side rails so the chart fills the screen (desktop). */}
+                  <button onClick={() => setChartFocus(m => !m)} title={chartFocus ? 'Exit focus — restore the side panels' : 'Focus mode — expand the chart to full width'} className={`hidden xl:flex items-center gap-1 px-1.5 py-0.5 rounded-sm text-[9px] font-mono font-black uppercase tracking-wide border transition-colors ${chartFocus ? 'border-[var(--accent-color)] text-black' : 'border-[var(--border)] bg-[var(--surface-2)] text-[var(--text-tertiary)] hover:text-[var(--text-primary)]'}`} style={chartFocus ? { background: 'var(--accent-color)' } : undefined}>{chartFocus ? <Minimize2 className="w-3 h-3" /> : <Maximize2 className="w-3 h-3" />} {chartFocus ? 'Exit' : 'Focus'}</button>
                   {/* Round ONCE and derive the complement so the two halves always sum to 100 (no 101%). */}
                   <span style={{ color: 'var(--success)' }}>BULL {Math.round(bullPct)}%</span>
                   <span style={{ color: 'var(--danger)' }}>BEAR {100 - Math.round(bullPct)}%</span>
@@ -671,7 +674,7 @@ export function LiveTerminalFlow({ profile: liveProfile, ticker, decimals }: Liv
                 <div className="h-full flex-1" style={{ background: 'var(--danger)' }} />
               </div>
             </div>
-            <div className="flex-1 min-h-[400px] relative" style={{ background: 'var(--bg-base)' }}>
+            <div className="flex-1 min-h-[600px] relative" style={{ background: 'var(--bg-base)' }}>
               {gexLines
                 ? <div className="absolute inset-0 p-1.5"><StrikeGexChart history={gexHist} /></div>
                 : multiChart
@@ -681,7 +684,7 @@ export function LiveTerminalFlow({ profile: liveProfile, ticker, decimals }: Liv
           </main>
 
           {/* ░ RIGHT — Exposure Ladder ░ */}
-          <aside className="order-3 w-full xl:w-[300px] shrink-0 flex flex-col min-h-[360px] xl:min-h-0 bg-[var(--surface)]">
+          <aside className={`order-3 w-full xl:w-[300px] shrink-0 flex-col min-h-[360px] xl:min-h-0 bg-[var(--surface)] ${chartFocus ? 'flex xl:hidden' : 'flex'}`}>
             <div className="flex items-center gap-2 px-3 h-9 border-b border-[var(--border)] shrink-0">
               <Layers className="w-3.5 h-3.5" style={{ color: 'var(--accent-color)' }} />
               <span className="text-[11px] font-sans font-black tracking-widest uppercase text-[var(--text-primary)]">Exposure Ladder</span>
