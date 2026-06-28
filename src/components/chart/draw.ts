@@ -45,8 +45,10 @@ export type DrawDeps = {
   gexCount: number;
   showVolume: boolean; showGrid: boolean; showWatermark: boolean; candleBorders: boolean;
   showGex: boolean; showHeat: boolean; showOrbs: boolean; showDisp: boolean; showLadder: boolean;
-  showVolProfile: boolean; showPrevClose: boolean;
+  showVolProfile: boolean; showPrevClose: boolean; showVwap: boolean;
+  vwap?: { line: (number | null)[]; u1: (number | null)[]; d1: (number | null)[]; u2: (number | null)[]; d2: (number | null)[] };  // session VWAP centerline + ±1σ/±2σ bands
   live?: boolean; livePhaseRef?: { current: number };   // animate the last-price pulse only when truly live
+  liveOverlayRef?: { current: { plotR: number; lastY: number; up: boolean; upCol: string; downCol: string } | null };  // last-price geometry handed to the overlay layer
   tickKey: string; tfKey: string;
   onScale?: (lo: number, hi: number) => void;   // report the live visible price range (drives the price-aligned gamma profile)
 };
@@ -57,7 +59,7 @@ export function drawChart(deps: DrawDeps) {
     hoverRef, gexDeltaRef, draftRef, measureRef, drawingsRef, toolRef, selectedRef,
     candles, ha, atr, profile, colors, decimals, chartType, ovOn, overlaySeries, paneSeries,
     displacements, gexCount, showVolume, showGrid, showWatermark, candleBorders,
-    showGex, showHeat, showOrbs, showVolProfile, showPrevClose, showDisp, showLadder, tickKey, tfKey, onScale, live, livePhaseRef,
+    showGex, showHeat, showOrbs, showVolProfile, showPrevClose, showVwap, vwap, showDisp, showLadder, tickKey, tfKey, onScale, live, livePhaseRef, liveOverlayRef,
   } = deps;
     const canvas = canvasRef.current, container = containerRef.current;
     if (!canvas || !container) return;
@@ -390,6 +392,51 @@ export function drawChart(deps: DrawDeps) {
       }
     }
 
+    // SESSION VWAP + σ BANDS — volume-weighted average price, re-anchored each session, with ±1σ/±2σ
+    // envelopes. The institutional fair-value line: intraday price pivots around it, and a decisive break
+    // of the outer band is a momentum tell. Re-anchors each day so it never smears across sessions. Drawn
+    // behind candles so wicks/bodies stay on top.
+    if (showVwap && vwap && vwap.line.length === n) {
+      const vwapCol = mixHex(T.info, T.accent, 0.5);
+      // Visible index ranges split at session resets (VWAP jumps each new day → don't connect the gap).
+      const ranges: [number, number][] = [];
+      let s0 = -1;
+      for (let i = 0; i < vis.length; i++) {
+        const gi = start + i;
+        const reset = i === 0 || (gi > 0 && !sameDay(candles[gi - 1].timestamp, candles[gi].timestamp));
+        if (reset) { if (s0 >= 0) ranges.push([s0, gi - 1]); s0 = gi; }
+      }
+      if (s0 >= 0) ranges.push([s0, start + vis.length - 1]);
+      const band = (hiA: (number | null)[], loA: (number | null)[], a: number) => {
+        ctx.fillStyle = hexA(vwapCol, a);
+        for (const [a0, a1] of ranges) {
+          if (a1 <= a0) continue;
+          ctx.beginPath();
+          for (let gi = a0; gi <= a1; gi++) { const v = hiA[gi]; if (v == null) continue; const x = xOf(gi), y = yP(v); gi === a0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y); }
+          for (let gi = a1; gi >= a0; gi--) { const v = loA[gi]; if (v == null) continue; ctx.lineTo(xOf(gi), yP(v)); }
+          ctx.closePath(); ctx.fill();
+        }
+      };
+      band(vwap.u2, vwap.d2, 0.06);
+      band(vwap.u1, vwap.d1, 0.10);
+      // Faint dashed ±1σ edges so the band still reads when the gamma heatmap glows behind it.
+      const edge = (arr: (number | null)[]) => {
+        ctx.beginPath();
+        for (const [a0, a1] of ranges) { let st = false; for (let gi = a0; gi <= a1; gi++) { const v = arr[gi]; if (v == null) continue; const x = xOf(gi), y = yP(v); st ? ctx.lineTo(x, y) : (ctx.moveTo(x, y), st = true); } }
+        ctx.stroke();
+      };
+      ctx.strokeStyle = hexA(vwapCol, 0.3); ctx.lineWidth = 1; ctx.setLineDash([3, 3]);
+      edge(vwap.u1); edge(vwap.d1); ctx.setLineDash([]);
+      ctx.strokeStyle = hexA(vwapCol, 0.95); ctx.lineWidth = 1.5;
+      for (const [a0, a1] of ranges) {
+        ctx.beginPath(); let started = false;
+        for (let gi = a0; gi <= a1; gi++) { const v = vwap.line[gi]; if (v == null) continue; const x = xOf(gi), y = yP(v); started ? ctx.lineTo(x, y) : (ctx.moveTo(x, y), started = true); }
+        ctx.stroke();
+      }
+      const lastRange = ranges[ranges.length - 1];
+      if (lastRange) { const lv = vwap.line[lastRange[0]]; if (lv != null) { ctx.font = '700 8px ui-monospace, monospace'; ctx.textAlign = 'left'; ctx.fillStyle = hexA(vwapCol, 0.95); ctx.fillText('VWAP', xOf(lastRange[0]) + 3, yP(lv) - 5); ctx.font = '11px ui-monospace, monospace'; } }
+    }
+
     // price series — five chart types (TradingView-style)
     if (chartType === 'line' || chartType === 'area' || chartType === 'baseline' || chartType === 'step') {
       const stepped = chartType === 'step';
@@ -632,11 +679,11 @@ export function drawChart(deps: DrawDeps) {
       if (tkr) { ctx.fillStyle = shade(lc, 0.46); (ctx as any).roundRect ? (ctx.beginPath(), (ctx as any).roundRect(priceX - tkrW, lastY - 8, tkrW, 16, 3), ctx.fill()) : ctx.fillRect(priceX - tkrW, lastY - 8, tkrW, 16); ctx.fillStyle = hexA('#ffffff', 0.92); ctx.fillText(tkr, priceX - tkrW + 6, lastY); }
       ctx.fillStyle = lc; (ctx as any).roundRect ? (ctx.beginPath(), (ctx as any).roundRect(priceX, lastY - 8, priceW, 16, 3), ctx.fill()) : ctx.fillRect(priceX, lastY - 8, priceW, 16);
       ctx.fillStyle = '#06090d'; ctx.fillText(nf(last), priceX + 6, lastY); ctx.font = '11px ui-monospace, monospace';
-      // Live pulse — an expanding ring (animated only while the feed is live) + a solid dot at the last
-      // price on the right edge. Market-closed / model data shows just the static dot (no motion).
-      const dotX = plotR, lcDot = lastUp ? COL.up : COL.down;
-      if (live) { const ph = livePhaseRef?.current ?? 0; ctx.strokeStyle = hexA(lcDot, 0.5 * (1 - ph)); ctx.lineWidth = 1.5; ctx.beginPath(); ctx.arc(dotX, lastY, 3 + ph * 10, 0, Math.PI * 2); ctx.stroke(); ctx.lineWidth = 1; }
-      ctx.fillStyle = lcDot; ctx.beginPath(); ctx.arc(dotX, lastY, 3, 0, Math.PI * 2); ctx.fill();
+      // Publish last-price geometry to the dedicated OVERLAY layer, which paints the live pulse — so live
+      // pulsing repaints only the lightweight overlay canvas, never the candle layer. (Layered-canvas Phase 1)
+      if (liveOverlayRef) liveOverlayRef.current = { plotR, lastY, up: lastUp, upCol, downCol };
+    } else if (liveOverlayRef) {
+      liveOverlayRef.current = null;   // last price scrolled off-screen → overlay clears the dot, no ghost
     }
 
     // Magnet pull cue — a short tether on the left showing price being drawn toward the magnet (pin) level.

@@ -5,7 +5,7 @@ import * as TI from '../lib/indicators';
 import { SyncChannel, CHANNEL_CYCLE, CHANNEL_COLORS, subscribeChannel, publishChannel, broadcastCrosshair, broadcastPriceScale } from '../lib/chartSync';
 import { fetchHistory } from '../lib/historyCache';
 import { OVERLAY_DEFS, PANE_DEFS, type OHLCV, type Series, type PaneData } from './chart/indicators';
-import { newId, idxOfTime, timeOfIdx, distToSeg, RANGE_PRESETS, CHART_TFS, readTheme, EMPTY, type RangeKey } from './chart/format';
+import { newId, idxOfTime, timeOfIdx, distToSeg, RANGE_PRESETS, CHART_TFS, readTheme, EMPTY, hexA, sameDay, type RangeKey } from './chart/format';
 import { CHART_TYPES, DRAW_COLOR, DRAW_TOOLS, type ChartType, type DrawTool, type Anchor, type Drawing } from './chart/drawing';
 import { ChartContextMenu } from './chart/overlays';
 import { IndicatorMenu } from './chart/IndicatorMenu';
@@ -46,6 +46,10 @@ export const SlayerChart = memo(function SlayerChartImpl({ profile, decimals, ca
   const keySuffix = panelId ? '.' + panelId : '';
   const containerRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  // Layered-canvas Phase 1: a transparent overlay canvas stacked over the candle layer. The live
+  // last-price pulse (and, next, the crosshair) paint here so the heavy candle layer is never
+  // repainted just to animate a 20fps ring — only this lightweight surface clears + redraws.
+  const overlayRef = useRef<HTMLCanvasElement>(null);
 
   // Chart prefs persist across reloads (localStorage). A first-time user still gets the clean
   // default — only the GEX profile on, every indicator + displacement opt-in, TradingView-style.
@@ -66,6 +70,7 @@ export const SlayerChart = memo(function SlayerChartImpl({ profile, decimals, ca
   const [showOrbs, setShowOrbs] = useState<boolean>(gexMapV2 ? (initialPrefs.showOrbs ?? false) : false);
   const [showVolProfile, setShowVolProfile] = useState<boolean>(initialPrefs.showVolProfile ?? false); // VPVR volume-by-price + POC — opt-in
   const [showPrevClose, setShowPrevClose] = useState<boolean>(initialPrefs.showPrevClose ?? true);      // prior-day close reference line
+  const [showVwap, setShowVwap] = useState<boolean>(initialPrefs.showVwap ?? true);                     // session VWAP + σ bands (institutional fair value)
   // Dealer-map density — how many strikes the heatmap / orbs / exposure-lane render. Lower = cleaner.
   const [gexCount, setGexCount] = useState<number>(typeof initialPrefs.gexCount === 'number' ? initialPrefs.gexCount : 4);
   const [showLadder, setShowLadder] = useState<boolean>(initialPrefs.showLadder ?? true); // Loaded GEX Strikes (flagship)
@@ -205,8 +210,8 @@ export const SlayerChart = memo(function SlayerChartImpl({ profile, decimals, ca
   // Persist chart prefs (type, colors, indicator selection, GEX/disp toggles) so a user's
   // setup survives a reload. Saving the initial (already-stored) values once is harmless.
   useEffect(() => {
-    try { localStorage.setItem('slayerchart.prefs.v1' + keySuffix, JSON.stringify({ chartType, colors, ovOn, paneOn, showGex, showDisp, showHeat, showOrbs, showVolProfile, showPrevClose, gexCount, showLadder, showGrid, showVolume, showWatermark, candleBorders, gexMapV2: true, ...(panelId ? { ticker: panelTicker, timeframe: localTf, channel, expiry } : {}) })); } catch { /* storage unavailable */ }
-  }, [chartType, colors, ovOn, paneOn, showGex, showDisp, showHeat, showOrbs, showVolProfile, showPrevClose, gexCount, showLadder, showGrid, showVolume, showWatermark, candleBorders, panelId, panelTicker, localTf, channel, expiry]);
+    try { localStorage.setItem('slayerchart.prefs.v1' + keySuffix, JSON.stringify({ chartType, colors, ovOn, paneOn, showGex, showDisp, showHeat, showOrbs, showVolProfile, showPrevClose, showVwap, gexCount, showLadder, showGrid, showVolume, showWatermark, candleBorders, gexMapV2: true, ...(panelId ? { ticker: panelTicker, timeframe: localTf, channel, expiry } : {}) })); } catch { /* storage unavailable */ }
+  }, [chartType, colors, ovOn, paneOn, showGex, showDisp, showHeat, showOrbs, showVolProfile, showPrevClose, showVwap, gexCount, showLadder, showGrid, showVolume, showWatermark, candleBorders, panelId, panelTicker, localTf, channel, expiry]);
 
   // Only enabled indicators are computed, and only when the selection or candles change
   // (NOT on pan/hover) — keeps interaction cheap.
@@ -227,30 +232,89 @@ export const SlayerChart = memo(function SlayerChartImpl({ profile, decimals, ca
     return out;
   }, [candles, atr, profile]);
 
+  // Session VWAP + σ bands — volume-weighted average price re-anchored each session, with ±1σ/±2σ
+  // envelopes from the volume-weighted variance of typical price. Institutional fair value; recomputed
+  // only when candles change. Arrays are global-indexed (length n); a session with zero volume falls
+  // back to close so the line never breaks.
+  const vwapData = useMemo(() => {
+    const n = candles.length;
+    const line: (number | null)[] = new Array(n).fill(null);
+    const u1: (number | null)[] = new Array(n).fill(null), d1: (number | null)[] = new Array(n).fill(null);
+    const u2: (number | null)[] = new Array(n).fill(null), d2: (number | null)[] = new Array(n).fill(null);
+    let cumPV = 0, cumV = 0, cumPV2 = 0;
+    for (let i = 0; i < n; i++) {
+      const c = candles[i];
+      if (i === 0 || !sameDay(candles[i - 1].timestamp, c.timestamp)) { cumPV = 0; cumV = 0; cumPV2 = 0; }  // re-anchor each session
+      const tp = (c.high + c.low + c.close) / 3, v = c.volume || 0;
+      cumPV += tp * v; cumV += v; cumPV2 += tp * tp * v;
+      const vw = cumV > 0 ? cumPV / cumV : c.close;
+      const sd = cumV > 0 ? Math.sqrt(Math.max(0, cumPV2 / cumV - vw * vw)) : 0;
+      line[i] = vw; u1[i] = vw + sd; d1[i] = vw - sd; u2[i] = vw + 2 * sd; d2[i] = vw - 2 * sd;
+    }
+    return { line, u1, d1, u2, d2 };
+  }, [candles]);
+
   // Broadcast the chart's live visible price range every frame (main chart only) so the Dealer Gamma
   // Profile flows with it; the listener rAF-throttles and drops no-op frames.
   const onScale = (lo: number, hi: number) => { if (!panelId) broadcastPriceScale(lo, hi, profile.spot ?? null, 'main'); };
 
   const livePhaseRef = useRef(0);   // 0..1 looping pulse phase, advanced by the live rAF loop below
   const liveRafRef = useRef(0);
-  drawRef.current = () => drawChart({
+  // Last-price geometry the candle layer hands off on every base repaint; the overlay layer reads it
+  // to paint the dot + (when live) the expanding ring, so the dot tracks the fresh last-price y on
+  // every pan/zoom/data frame. null = last price is scrolled off-screen → overlay paints nothing.
+  const liveOverlayRef = useRef<{ plotR: number; lastY: number; up: boolean; upCol: string; downCol: string } | null>(null);
+
+  // The candle layer (heavy: candles, heatmap, levels, axes). Pulled out of drawRef so the live
+  // pulse loop can repaint the OVERLAY alone without re-running any of this.
+  const baseDraw = () => drawChart({
     canvasRef, containerRef, viewRef, priceViewRef, geomRef, dispRangeRef, scaleViewRef, themeRef,
     hoverRef, gexDeltaRef, draftRef, measureRef, drawingsRef, toolRef, selectedRef,
     candles, ha, atr, profile, colors, decimals, chartType, ovOn, overlaySeries, paneSeries,
     displacements, gexCount, showVolume, showGrid, showWatermark, candleBorders,
-    showGex, showHeat, showOrbs, showVolProfile, showPrevClose, showDisp, showLadder, tickKey, tfKey, onScale, live, livePhaseRef,
+    showGex, showHeat, showOrbs, showVolProfile, showPrevClose, showVwap, vwap: vwapData, showDisp, showLadder, tickKey, tfKey, onScale, live, livePhaseRef, liveOverlayRef,
   });
 
-  // Live last-price pulse — a self-perpetuating rAF that advances the pulse phase and repaints, ONLY
-  // while the feed is genuinely live (market open + real provider). Throttled to ~20fps to bound cost,
-  // and fully torn down when `live` flips false (market close / model data → static dot, no loop).
+  // Overlay repaint — clears the transparent top canvas and paints the last-price dot, plus an
+  // expanding/fading ring while the feed is genuinely live. Cheap enough to run every animation frame.
+  const drawOverlayRef = useRef<() => void>(() => {});
+  drawOverlayRef.current = () => {
+    const cv = overlayRef.current, container = containerRef.current; if (!cv || !container) return;
+    const dpr = window.devicePixelRatio || 1;
+    const W = container.clientWidth, H = container.clientHeight; if (W <= 0 || H <= 0) return;
+    // Match the candle layer's backing store; only reallocate when the surface actually changes.
+    const nw = Math.floor(W * dpr), nh = Math.floor(H * dpr);
+    if (cv.width !== nw || cv.height !== nh) { cv.width = nw; cv.height = nh; cv.style.width = W + 'px'; cv.style.height = H + 'px'; }
+    const ctx = cv.getContext('2d'); if (!ctx) return;
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0); ctx.clearRect(0, 0, W, H);
+    const g = liveOverlayRef.current; if (!g) return;   // last price off-screen or no candles → nothing to paint
+    const col = g.up ? g.upCol : g.downCol;
+    // Expanding pulse ring — live only; phase 0..1 grows the radius and fades the alpha to 0.
+    if (live) {
+      const ph = livePhaseRef.current, r = 3 + ph * 13, a = 0.5 * (1 - ph);
+      ctx.beginPath(); ctx.arc(g.plotR, g.lastY, r, 0, Math.PI * 2);
+      ctx.strokeStyle = hexA(col, a); ctx.lineWidth = 1.5; ctx.stroke();
+    }
+    // Static last-price dot — always painted, so a closed/stale market still shows the marker.
+    ctx.beginPath(); ctx.arc(g.plotR, g.lastY, 3.2, 0, Math.PI * 2); ctx.fillStyle = col; ctx.fill();
+    ctx.beginPath(); ctx.arc(g.plotR, g.lastY, 3.2, 0, Math.PI * 2); ctx.strokeStyle = hexA('#06090d', 0.9); ctx.lineWidth = 1; ctx.stroke();
+  };
+
+  // Full repaint = candle layer then overlay, so the dot re-glues to the latest last-price y on every
+  // data/pan/zoom/hover frame routed through drawRef. The live loop below bypasses baseDraw entirely.
+  drawRef.current = () => { baseDraw(); drawOverlayRef.current(); };
+
+  // Live last-price pulse — a self-perpetuating rAF that advances the pulse phase and repaints ONLY
+  // the overlay layer, ONLY while the feed is genuinely live (market open + real provider). Throttled
+  // to ~20fps to bound cost, and fully torn down when `live` flips false (market close / model data →
+  // static dot, no loop). The candle layer is never touched by this loop.
   useEffect(() => {
-    if (!live) { livePhaseRef.current = 0; return; }
+    if (!live) { livePhaseRef.current = 0; drawOverlayRef.current(); return; }
     let t0 = 0, lastPaint = 0, raf = 0;
     const loop = (now: number) => {
       if (!t0) t0 = now;
       livePhaseRef.current = ((now - t0) / 1600) % 1;
-      if (now - lastPaint >= 50) { lastPaint = now; drawRef.current(); }   // ~20fps
+      if (now - lastPaint >= 50) { lastPaint = now; drawOverlayRef.current(); }   // ~20fps overlay-only
       raf = requestAnimationFrame(loop);
       liveRafRef.current = raf;
     };
@@ -381,7 +445,7 @@ export const SlayerChart = memo(function SlayerChartImpl({ profile, decimals, ca
   useEffect(() => {
     if (redrawRafRef.current) return;
     redrawRafRef.current = requestAnimationFrame(() => { redrawRafRef.current = 0; drawRef.current(); });
-  }, [candles, overlaySeries, paneSeries, displacements, showGex, showDisp, showHeat, showOrbs, showVolProfile, showPrevClose, gexCount, showLadder, chartType, colors, ha, view, priceView, drawings, tool, selectedId, showGrid, showVolume, showWatermark, candleBorders, profile, decimals, tfKey, tickKey]);
+  }, [candles, overlaySeries, paneSeries, displacements, showGex, showDisp, showHeat, showOrbs, showVolProfile, showPrevClose, showVwap, vwapData, gexCount, showLadder, chartType, colors, ha, view, priceView, drawings, tool, selectedId, showGrid, showVolume, showWatermark, candleBorders, profile, decimals, tfKey, tickKey]);
   // Cancel any frame still queued when the panel unmounts (closing a grid panel mid-redraw):
   // an unmount-only cleanup, so it never disturbs the per-change coalescing above. Without it a
   // pending rAF fires on a torn-down panel and calls drawRef on detached refs → crash on churn.
@@ -516,7 +580,7 @@ export const SlayerChart = memo(function SlayerChartImpl({ profile, decimals, ca
           <ChartSettings
             colors={colors} setColors={setColors} gexCount={gexCount} setGexCount={setGexCount}
             display={[['Grid', showGrid, setShowGrid], ['Volume', showVolume, setShowVolume], ['Watermark', showWatermark, setShowWatermark], ['Candle borders', candleBorders, setCandleBorders]]}
-            dealer={[['Loaded strikes', showLadder, setShowLadder], ['Γ Heatmap', showHeat, setShowHeat], ['Orbs', showOrbs, setShowOrbs], ['γ Exposure lane', showGex, setShowGex], ['Volume profile', showVolProfile, setShowVolProfile], ['Prior-day close', showPrevClose, setShowPrevClose], ['Displacement', showDisp, setShowDisp]]}
+            dealer={[['Loaded strikes', showLadder, setShowLadder], ['Γ Heatmap', showHeat, setShowHeat], ['Orbs', showOrbs, setShowOrbs], ['γ Exposure lane', showGex, setShowGex], ['Volume profile', showVolProfile, setShowVolProfile], ['Prior-day close', showPrevClose, setShowPrevClose], ['Session VWAP', showVwap, setShowVwap], ['Displacement', showDisp, setShowDisp]]}
           />
           {specChip(showLadder, '≣ STRIKES', () => setShowLadder(v => !v), 'default', 'STRIKES — labels the strongest dealer-gamma strike on each side of price. Each tag reads: strike, then net γ ($/1% move), then ↑/↓ its change since the ~45s checkpoint. e.g. "6,790  +574M ↓85M" = +574M net gamma, down 85M since checkpoint.')}
           {specChip(showHeat, 'Γ-MAP', () => setShowHeat(v => !v), 'default', 'Γ-MAP — gamma-concentration heatmap shading behind price (where dealer gamma is densest)')}
@@ -525,6 +589,7 @@ export const SlayerChart = memo(function SlayerChartImpl({ profile, decimals, ca
           {specChip(showDisp, '⚡ DISP', () => setShowDisp(v => !v), 'warn', 'DISP — displacement / expected-move band around spot (the implied daily range)')}
           {specChip(showVolProfile, '▤ VP', () => setShowVolProfile(v => !v), 'default', 'VOLUME PROFILE — volume-by-price histogram on the left edge; the POC line marks the highest-volume price (where the most trade happened).')}
           {specChip(showPrevClose, 'PDC', () => setShowPrevClose(v => !v), 'default', 'PDC — prior-day close reference line (yesterday’s settlement; a classic intraday reaction level).')}
+          {specChip(showVwap, 'VWAP', () => setShowVwap(v => !v), 'default', 'SESSION VWAP — volume-weighted average price, re-anchored each session, with ±1σ/±2σ bands. Institutional fair value; intraday price tends to mean-revert toward it, and a decisive break of the outer band is a momentum tell.')}
           <button onClick={resetView} title="Reset view — smoothly refit zoom, pan and price scale (or double-click the chart)" className="px-1.5 py-0.5 rounded-sm text-[10px] font-mono font-bold uppercase tracking-wide border border-[var(--border)] bg-[var(--surface-2)] text-[var(--text-secondary)] hover:border-[var(--border-strong)] hover:text-[var(--text-primary)] transition-colors">⟲ RESET</button>
           {priceView && <button onClick={() => setPriceView(null)} title="Reset price scale to auto-fit (or double-click the price axis)" className="px-1.5 py-0.5 rounded-sm text-[10px] font-mono font-bold uppercase tracking-wide border border-[var(--border)] bg-[var(--surface-2)] text-[var(--text-secondary)] hover:border-[var(--border-strong)] transition-colors">⤢ AUTO Y</button>}
           {view.off !== 0 && <button onClick={() => tweenView({ bars: view.bars, off: 0 })} title="Jump back to the live edge (or double-click the chart)" className="px-1.5 py-0.5 rounded-sm text-[10px] font-mono font-bold uppercase tracking-wide border border-[var(--border)] bg-[var(--surface-2)] text-[var(--text-secondary)] hover:border-[var(--border-strong)] transition-colors">⟳ LIVE</button>}
@@ -532,6 +597,8 @@ export const SlayerChart = memo(function SlayerChartImpl({ profile, decimals, ca
       </div>
       <div ref={containerRef} className="relative flex-1 min-h-[300px]" style={{ position: 'relative', flex: 1, minHeight: 300 }}>
         <canvas ref={canvasRef} className="absolute inset-0 cursor-crosshair" style={{ position: 'absolute', inset: 0 }} />
+        {/* Layered-canvas overlay (Phase 1): live last-price pulse paints here; pointer events pass through to the canvas below. */}
+        <canvas ref={overlayRef} className="absolute inset-0 pointer-events-none" style={{ position: 'absolute', inset: 0, pointerEvents: 'none' }} />
         {ctxMenu && <ChartContextMenu menu={ctxMenu} onClose={() => setCtxMenu(null)} resetView={resetView} view={view} tweenView={tweenView} priceView={priceView} onAutoFit={() => setPriceView(null)} />}
       </div>
     </div>
