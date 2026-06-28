@@ -10,7 +10,6 @@ import { ASSET_LIST, generateInitialCandles, TIMEFRAMES, calculateFVGs, calculat
 import {
   calculateSystemScoreFromCandles,
   calculateV11Metrics,
-  calculateV10Metrics,
   computeDealerInventory,
   generateMockOptionsChain,
   calculateAnalyticGreeks,
@@ -37,7 +36,7 @@ import { tickSkyVision, getSkyVision } from './skyVisionService';
 import { computeTechnicalRead } from '../lib/technicalEngine';
 import { pcaResidualZScores } from '../lib/crossAsset';
 import { marketLeader } from '../lib/infoTheory';
-import { computeDisplacementIntelligence, analyzeMarketStructure } from '../lib/displacementEngine';
+import { analyzeMarketStructure } from '../lib/displacementEngine';
 import { getLastTradierError } from '../lib/tradierProvider';
 import { sanitizeChain } from '../lib/dataIntegrity';
 import { db, sse } from './state';
@@ -1035,7 +1034,8 @@ const buildPayload = (params: PayloadParams) => {
   // V11 ONCE and feed it into V10 so the heavy pipeline runs a single time per
   // (asset,contract) per tick instead of twice.
   const metricsV11 = calculateV11Metrics(asset, isCall, systemScore, optionPremiumFloat, optionStrike, chainForMetrics, liveSpot, optDteDays, calibrationHistoryCache);
-  const metricsV10 = calculateV10Metrics(asset, isCall, systemScore, optionPremiumFloat, optionStrike, chainForMetrics, liveSpot, optDteDays, metricsV11);
+  // (metricsV10 removed: it was computed every tick and shipped in the payload but no client ever
+  // read serverState.metricsV10 — clients derive V10 locally. Dead server compute + payload bloat.)
 
   // Strict mapping: decision can only be: 'ENTER', 'HOLD', 'REDUCE', 'EXIT'
   // Let's resolve what decision to emit
@@ -1867,7 +1867,6 @@ const buildPayload = (params: PayloadParams) => {
       feed: feedLabel
     },
     metricsV11,
-    metricsV10,
     candles,
     optionPremiumFloat,
     optionStrike,
@@ -1889,23 +1888,8 @@ const buildPayload = (params: PayloadParams) => {
     dealer_flow,
     displacement,
     candle_feed: feedLabel,
-    hud_metrics: {
-      reflexivity_vector: `${(systemScore.momentumAcceleration * 0.14 - (metricsV11.dealer.netGex / 2e9) * 0.16 + (params.isCall ? 0.22 : -0.18)).toFixed(2)} λ [${
-        systemScore.momentumAcceleration > 6 ? 'CO-FEEDBACK DILATION' : 'STABLE GRAVITY PIN'
-      }]`,
-      systemic_fragility: metricsV11.tailRisk.tailRiskScore > 0.6
-        ? 'CRITICAL OVER-EXPOSURE'
-        : metricsV11.tailRisk.tailRiskScore > 0.38
-          ? 'SENSITIVE FRICTION'
-          : 'DAMPENED / STABLE',
-      campaign_state: finalDecision === 'ENTER'
-        ? `${params.isCall ? 'BULLISH' : 'BEARISH'} INSTITUTIONAL ACCUMULATION`
-        : finalDecision === 'REDUCE'
-          ? 'SHELTERED VOL DECAY CORRIDOR'
-          : 'CONVERGENT GRAVITY RECONCILIATION',
-      propagation_path: metricsV11.dealer.netGex >= 0
-        ? 'PASSIVE THETA STREAM -> STABILIZED RANGE PIN'
-        : 'ACTIVE DELTA HARMONIZATION -> VELOCITY ACCELERATION'
-    }
+    // (hud_metrics removed: a block of dramatic-sounding labels — reflexivity_vector,
+    // systemic_fragility, campaign_state, propagation_path — that no client component ever
+    // rendered. Pure vibe-coding payload bloat on every tick; dropped.)
   };
 };

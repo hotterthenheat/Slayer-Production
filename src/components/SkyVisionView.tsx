@@ -991,7 +991,7 @@ export function SkyVisionView() {
                   <div className="border-b border-[var(--border)] pb-2.5 mb-3 shrink-0 flex justify-between items-center">
                     <span className="text-[10px] text-[var(--text-secondary)] font-black uppercase tracking-widest flex items-center gap-2">
                        <Activity className="w-3.5 h-3.5 text-[var(--success)]" />
-                       Live Order Flow
+                       {(!!serverState?.data_source && serverState.data_source !== 'SANDBOX_SYNTHETIC') ? 'Live Order Flow' : 'Model Order Flow'}
                     </span>
                   </div>
                   <div className="flex flex-col gap-2 overflow-y-auto text-[10px] font-mono pr-1 flex-1">
