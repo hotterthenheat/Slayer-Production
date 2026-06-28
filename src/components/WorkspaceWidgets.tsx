@@ -239,10 +239,26 @@ const LiveOptionsFlow = React.memo(() => {
   const feed = serverState?.deep_intelligence?.flow_feed ?? [];
   // Stamp the feed with the server tick time (real), formatted via user prefs.
   const stamp = updatedAt ? formatTime(new Date(updatedAt)) : formatTime();
+  // Honest source label: only read LIVE when a real provider is connected. The sandbox
+  // tape is synthetic and must read MODEL — never presented under a "Live" header.
+  const isLiveData = !!serverState?.data_source && serverState.data_source !== 'SANDBOX_SYNTHETIC';
 
   return (
     <div className="flex flex-col h-full w-full">
-      <SubHead>Live Options Flow</SubHead>
+      <SubHead>
+        <span className="flex items-center gap-1.5">
+          Options Flow
+          <span
+            className="px-1 py-0.5 rounded-[2px] text-[8px] font-bold tracking-wider"
+            style={{
+              color: isLiveData ? 'var(--success)' : 'var(--warning)',
+              background: `color-mix(in srgb, ${isLiveData ? 'var(--success)' : 'var(--warning)'} 14%, transparent)`,
+            }}
+          >
+            {isLiveData ? 'LIVE' : 'MODEL'}
+          </span>
+        </span>
+      </SubHead>
       {feed.length === 0 ? (
         <Empty label="Live options flow" />
       ) : (

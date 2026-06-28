@@ -781,25 +781,26 @@ export function calculateLiquidityEvents(candles: Candle[]): LiquidityEvent[] {
     const lows = prevCandles.map(c => c.low);
     const localMax = Math.max(...highs);
     const localMin = Math.min(...lows);
-    
+
     const curr = candles[i];
-    
-    // Liquidity Sweep High: Price went above local max of past 8 candles, but closed lower
-    if ((curr.high >= localMax && curr.close < localMax) || (curr.high > localMax * 0.9995 && Math.random() > 0.85)) {
+
+    // Liquidity Sweep High: price took out the prior 12-bar high then closed back below it
+    // (a genuine stop-hunt + rejection — detected from the candle, never a probabilistic guess).
+    if (curr.high >= localMax && curr.close < localMax) {
       events.push({
         id: `liq-swp-h-${i}`,
-        label: i % 3 === 0 ? 'External Liquidity Grab' : 'Liquidity Sweep High',
+        label: 'Liquidity Sweep High',
         price: curr.high,
         candleIdx: i,
         type: 'bearish'
       });
     }
-    
-    // Liquidity Sweep Low: Price went below local min of past 8 candles, but closed higher
-    if ((curr.low <= localMin && curr.close > localMin) || (curr.low < localMin * 1.0005 && Math.random() > 0.85)) {
+
+    // Liquidity Sweep Low: price took out the prior 12-bar low then closed back above it.
+    if (curr.low <= localMin && curr.close > localMin) {
       events.push({
         id: `liq-swp-l-${i}`,
-        label: i % 5 === 0 ? 'Stop Run' : (i % 3 === 0 ? 'Internal Liquidity Grab' : 'Liquidity Sweep Low'),
+        label: 'Liquidity Sweep Low',
         price: curr.low,
         candleIdx: i,
         type: 'bullish'
