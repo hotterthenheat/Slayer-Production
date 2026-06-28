@@ -13,6 +13,8 @@ import { OrderFlow } from './OrderFlow';
 import { DealerDynamicsPanel } from './DealerDynamicsPanel';
 import { RegimeMatrixPanel } from './RegimeMatrixPanel';
 import { TerminalWorkspace } from './TerminalWorkspace';
+import { LevelAlertsPanel } from './LevelAlertsPanel';
+import { loadAlerts, saveAlerts, detectCrosses, newAlertId, type ArmedAlert, type FiredAlert, type AlertKind } from '../lib/levelAlerts';
 import { SystemStatus } from './terminal/StatusBar';
 import { ReplayScrubber } from './terminal/ReplayScrubber';
 import { DealerPulse } from './terminal/DealerPulse';
@@ -93,7 +95,7 @@ export function LiveTerminalFlow({ profile: liveProfile, ticker, decimals }: Liv
   const serverState = useContractStore(s => s.serverState);
   const dyn = serverState?.dealer_dynamics ?? null;
   const [tickerOpen, setTickerOpen] = useState(false);
-  const [leftTab, setLeftTab] = useState<'levels' | 'matrix' | 'flow'>('levels');
+  const [leftTab, setLeftTab] = useState<'levels' | 'matrix' | 'flow' | 'alerts'>('levels');
   const [scope, setScope] = useState<'0DTE' | 'ALL'>('0DTE');
   const [multiChart, setMultiChart] = useState(false); // opt-in movable/resizable multi-chart grid
   const [chartFocus, setChartFocus] = useState(false); // chart-hero focus mode — collapses both side rails (xl+)
@@ -138,6 +140,32 @@ export function LiveTerminalFlow({ profile: liveProfile, ticker, decimals }: Liv
     const close = NYSE_HALF_DAYS.has(key) ? 13 * 3600 : 16 * 3600;        // 1pm early close on half-days
     return secs >= 9.5 * 3600 && secs <= close;
   }, [now]);
+
+  // ── Level alerts — chime + log when spot crosses a dealer level or custom price (descriptive only) ──
+  const tkr = selectedAsset.ticker;
+  const [armedAlerts, setArmedAlerts] = useState<ArmedAlert[]>(() => loadAlerts());
+  const [firedAlerts, setFiredAlerts] = useState<FiredAlert[]>([]);
+  const prevSpotRef = useRef<number | null>(null);
+  const updateArmed = (next: ArmedAlert[]) => { setArmedAlerts(next); saveAlerts(next); };
+  const toggleAlert = (kind: Exclude<AlertKind, 'custom'>) => {
+    const has = armedAlerts.some(a => a.kind === kind && a.ticker === tkr);
+    updateArmed(has ? armedAlerts.filter(a => !(a.kind === kind && a.ticker === tkr)) : [...armedAlerts, { id: newAlertId(), ticker: tkr, kind }]);
+  };
+  const addCustomAlert = (price: number) => updateArmed([...armedAlerts, { id: newAlertId(), ticker: tkr, kind: 'custom', price }]);
+  const removeAlert = (id: string) => updateArmed(armedAlerts.filter(a => a.id !== id));
+  useEffect(() => {
+    const prev = prevSpotRef.current; prevSpotRef.current = spot;
+    if (prev == null || !spot || !marketOpen) return;             // only fire on a live, open-market move
+    const mine = armedAlerts.filter(a => a.ticker === tkr);
+    if (!mine.length) return;
+    const crosses = detectCrosses(prev, spot, mine, { callWall: profile.callWall, putWall: profile.putWall, gammaFlip: profile.gammaFlip, magnet: profile.magnet }, Date.now());
+    if (!crosses.length) return;
+    setFiredAlerts(f => [...crosses, ...f].slice(0, 30));
+    try {  // brief sine chime via Web Audio (best-effort)
+      const AC = (window as any).AudioContext || (window as any).webkitAudioContext;
+      if (AC) { const c = new AC(); const o = c.createOscillator(), g = c.createGain(); o.type = 'sine'; o.frequency.value = 880; o.connect(g); g.connect(c.destination); g.gain.setValueAtTime(0.0001, c.currentTime); g.gain.exponentialRampToValueAtTime(0.16, c.currentTime + 0.01); g.gain.exponentialRampToValueAtTime(0.0001, c.currentTime + 0.32); o.start(); o.stop(c.currentTime + 0.34); o.onended = () => c.close(); }
+    } catch { /* no audio */ }
+  }, [spot, marketOpen, armedAlerts, tkr, profile.callWall, profile.putWall, profile.gammaFlip, profile.magnet]);
   // Honest feed status from the server's own source label — provider when the options chain
   // is live, MODEL on synthetic data, STALE if the heartbeat stalls. Never a hardcoded "LIVE".
   const feedRaw = (profile.feed || serverState?.data_source || '').toUpperCase();
@@ -585,9 +613,9 @@ export function LiveTerminalFlow({ profile: liveProfile, ticker, decimals }: Liv
           {/* ░ LEFT — Key Levels / Flow ░ */}
           <aside className={`order-2 xl:order-1 w-full xl:w-[248px] shrink-0 border-r border-[var(--border)] flex-col min-h-[360px] xl:min-h-0 bg-[var(--surface)] ${chartFocus ? 'flex xl:hidden' : 'flex'}`}>
             <div className="flex items-center gap-4 px-3 h-9 border-b border-[var(--border)] shrink-0">
-              {(['levels', 'matrix', 'flow'] as const).map(t => (
-                <button key={t} onClick={() => setLeftTab(t)} className="relative text-[11px] font-sans font-black tracking-widest uppercase transition-colors py-2" style={{ color: leftTab === t ? 'var(--text-primary)' : 'var(--text-tertiary)' }}>
-                  {t === 'levels' ? 'Key Levels' : t === 'matrix' ? 'Matrix' : 'Order Flow'}
+              {(['levels', 'matrix', 'flow', 'alerts'] as const).map(t => (
+                <button key={t} onClick={() => setLeftTab(t)} className="relative text-[10.5px] font-sans font-black tracking-wider uppercase transition-colors py-2" style={{ color: leftTab === t ? 'var(--text-primary)' : 'var(--text-tertiary)' }}>
+                  {t === 'levels' ? 'Levels' : t === 'matrix' ? 'Matrix' : t === 'flow' ? 'Flow' : 'Alerts'}
                   {leftTab === t && <span className="absolute -bottom-px left-0 right-0 h-[2px]" style={{ background: 'var(--accent-color)' }} />}
                 </button>
               ))}
@@ -600,6 +628,19 @@ export function LiveTerminalFlow({ profile: liveProfile, ticker, decimals }: Liv
               <div className="flex-1 min-h-0 overflow-y-auto"><StrikeMatrix profile={profile} decimals={decimals} /></div>
             ) : leftTab === 'flow' ? (
               <div className="flex-1 min-h-0"><OrderFlow data={orderFlow} decimals={decimals} /></div>
+            ) : leftTab === 'alerts' ? (
+              <div className="flex-1 min-h-0">
+                <LevelAlertsPanel
+                  armed={armedAlerts.filter(a => a.ticker === tkr)}
+                  levels={{ callWall: profile.callWall, putWall: profile.putWall, gammaFlip: profile.gammaFlip, magnet: profile.magnet, spot }}
+                  fired={firedAlerts.filter(f => f.ticker === tkr)}
+                  decimals={decimals}
+                  onToggle={toggleAlert}
+                  onAddCustom={addCustomAlert}
+                  onRemove={removeAlert}
+                  onClearFired={() => setFiredAlerts([])}
+                />
+              </div>
             ) : (
               <div className="flex-1 overflow-y-auto p-2 space-y-2">
                 {/* GEX OUTLOOK — the regime read + where price is being drawn (pinning / gamma

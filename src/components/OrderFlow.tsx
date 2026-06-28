@@ -25,6 +25,10 @@ export function OrderFlow({ data, decimals }: { data?: OrderFlowData | null; dec
   const cdPath = cd.map((v, i) => `${(i / Math.max(1, cd.length - 1)) * 100},${30 - ((v - cdMin) / cdRange) * 28 - 1}`).join(' ');
   const foot = (data?.footprint || []).map(f => ({ price: num(f.price), buyVol: num(f.buyVol), sellVol: num(f.sellVol) }));
   const maxFoot = Math.max(...foot.map(f => Math.max(f.buyVol, f.sellVol)), 1);
+  // Depth-of-market book — resting bid/ask size by price (top = highest). Renders when the L2 feed
+  // supplies it; otherwise this section is simply absent (the honest "awaiting feed" state stands).
+  const book = (data?.book || []).map(b => ({ price: num(b.price), bidSize: num(b.bidSize), askSize: num(b.askSize) }));
+  const maxBook = Math.max(...book.map(b => Math.max(b.bidSize, b.askSize)), 1);
 
   return (
     <div className="w-full h-full flex flex-col overflow-hidden" style={{ background: 'var(--surface)' }}>
@@ -93,6 +97,25 @@ export function OrderFlow({ data, decimals }: { data?: OrderFlowData | null; dec
               );
             })}
           </div>
+          {/* Depth of market — resting bid/ask book (bid green left · ask red right) */}
+          {book.length > 0 && (
+            <>
+              <div className="px-3 py-2 border-y border-[var(--border)] flex items-center gap-1.5 shrink-0">
+                <BarChart3 className="w-3.5 h-3.5 text-[var(--accent-color)]" />
+                <span className="text-[10px] font-mono font-black uppercase tracking-[0.18em] text-[var(--text-secondary)]">Depth of Market</span>
+                {data?.spread != null && <span className="ml-auto text-[8.5px] font-mono uppercase tracking-widest text-[var(--text-tertiary)]">spread {num(data.spread).toFixed(decimals)}</span>}
+              </div>
+              <div className="py-1">
+                {book.map((b, i) => (
+                  <div key={i} className="grid grid-cols-[1fr_58px_1fr] items-center gap-1 px-3 h-[20px] text-[10px] font-mono tabular-nums hover:bg-white/[0.03] transition-colors duration-150">
+                    <div className="flex justify-end items-center gap-1"><span className="text-[9px]" style={{ color: K.up }}>{b.bidSize ? fmtVol(b.bidSize) : ''}</span><div className="h-[7px] rounded-sm" style={{ width: `${(b.bidSize / maxBook) * 100}%`, maxWidth: '100%', background: mix('var(--success)', 50), transition: 'width 300ms ease-out' }} /></div>
+                    <div className="text-center font-bold text-[var(--text-secondary)]">{b.price.toFixed(decimals)}</div>
+                    <div className="flex justify-start items-center gap-1"><div className="h-[7px] rounded-sm" style={{ width: `${(b.askSize / maxBook) * 100}%`, maxWidth: '100%', background: mix('var(--danger)', 50), transition: 'width 300ms ease-out' }} /><span className="text-[9px]" style={{ color: K.down }}>{b.askSize ? fmtVol(b.askSize) : ''}</span></div>
+                  </div>
+                ))}
+              </div>
+            </>
+          )}
         </div>
       )}
     </div>
