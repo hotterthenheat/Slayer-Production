@@ -23,6 +23,7 @@
  * inputs are real (chain greeks/OI/volume + dealer inventory) — never fabricated.
  */
 import { ChainContract } from './v11Math';
+import { nbrsRatio, oiVelocity } from './skyQuantCore';
 
 export interface DealerSnapshot {
   t: number;        // timestamp (ms)
@@ -30,6 +31,7 @@ export interface DealerSnapshot {
   netVanna: number;
   netCharm: number; // per-day
   gexCoM: number;   // gamma-weighted center-of-mass strike
+  totalOi: number;  // Σ open interest across the chain (for OI-velocity)
 }
 
 export interface VannaEngine {
@@ -61,6 +63,28 @@ export interface GammaDynamics {
   state: 'ADDING_HEDGES' | 'REMOVING_HEDGES' | 'STABLE';
 }
 
+export interface OiFlow {
+  totalOi: number;
+  velocity: number;       // contracts/min (Δ total OI / Δt) — signed
+  state: 'BUILDING' | 'UNWINDING' | 'STABLE';
+}
+
+export interface GammaConcentration {
+  hhi: number;            // 0..1 Herfindahl of |gamma| across strikes (1 ⇒ all gamma at one strike)
+  gammaTop3Pct: number;   // 0..100 share of total |gamma| held by the 3 heaviest strikes
+  oiTop3Pct: number;      // 0..100 share of total OI held by the 3 heaviest strikes
+  densityStrike: number;  // center strike of the densest OI cluster
+  densityPct: number;     // 0..100 share of OI within ±2 strikes of densityStrike
+}
+
+/** A strike whose value most exceeds its neighbors (NBRS = neighbor ratio). */
+export interface NbrsAnomaly { strike: number; ratio: number; }
+export interface NbrsAnomalies {
+  gamma: NbrsAnomaly | null;   // |gamma| spike vs neighbors
+  oi: NbrsAnomaly | null;      // open-interest spike vs neighbors
+  volume: NbrsAnomaly | null;  // volume spike vs neighbors
+}
+
 export interface VacuumZone {
   lo: number;
   hi: number;
@@ -90,6 +114,9 @@ export interface DealerDynamics {
   charm: CharmEngine;
   migration: MigrationEngine;
   gamma: GammaDynamics;
+  oiFlow: OiFlow;
+  concentration: GammaConcentration;
+  nbrs: NbrsAnomalies;
   vacuums: LiquidityVacuums;
   walls: WallStrength;
 }
@@ -189,6 +216,61 @@ export function computeDealerDynamics(
     state: Math.abs(gVel) < gThresh ? 'STABLE' : gVel > 0 ? 'ADDING_HEDGES' : 'REMOVING_HEDGES',
   };
 
+  // --- OI flow (Σ open interest velocity) ---------------------------------
+  const now = Date.now();
+  const totalOi = per.reduce((s, p) => s + p.oi, 0);
+  const dtMin = prev ? Math.max(1e-6, (now - prev.t) / 60000) : 0;
+  const oiVel = prev ? oiVelocity(totalOi, fin(prev.totalOi), dtMin) : 0;
+  const oiThresh = Math.max(1, totalOi * 0.005); // 0.5% of book / minute
+  const oiFlow: OiFlow = {
+    totalOi, velocity: oiVel,
+    state: Math.abs(oiVel) < oiThresh ? 'STABLE' : oiVel > 0 ? 'BUILDING' : 'UNWINDING',
+  };
+
+  // --- Gamma concentration + OI density cluster ---------------------------
+  // HHI (sum of squared shares) and top-3 share quantify how few strikes hold the
+  // book's gamma; the density cluster is the heaviest ±2-strike OI band.
+  const gShares = totGex > 0 ? per.map((p) => p.gexMag / totGex) : per.map(() => 0);
+  const hhi = gShares.reduce((s, x) => s + x * x, 0);
+  const top3Share = (vals: number[], tot: number) => {
+    if (!(tot > 0)) return 0;
+    const t = [...vals].sort((a, b) => b - a).slice(0, 3).reduce((s, x) => s + x, 0);
+    return Math.min(100, (t / tot) * 100);
+  };
+  let densityStrike = spot, densityPct = 0;
+  if (per.length && totalOi > 0) {
+    for (let i = 0; i < per.length; i++) {
+      let cluster = 0;
+      for (let j = Math.max(0, i - 2); j <= Math.min(per.length - 1, i + 2); j++) cluster += per[j].oi;
+      const pct = (cluster / totalOi) * 100;
+      if (pct > densityPct) { densityPct = pct; densityStrike = per[i].strike; }
+    }
+  }
+  const concentration: GammaConcentration = {
+    hhi: Number(hhi.toFixed(4)),
+    gammaTop3Pct: Number(top3Share(per.map((p) => p.gexMag), totGex).toFixed(1)),
+    oiTop3Pct: Number(top3Share(per.map((p) => p.oi), totalOi).toFixed(1)),
+    densityStrike, densityPct: Number(densityPct.toFixed(1)),
+  };
+
+  // --- Neighbor-strike anomalies (NBRS): gamma / OI / volume --------------
+  // The strike whose value most exceeds the mean of its neighbors — a loaded
+  // strike that stands apart from the surrounding chain.
+  const peakNbrs = (vals: number[]): NbrsAnomaly | null => {
+    if (per.length < 3) return null;
+    let best: NbrsAnomaly | null = null;
+    for (let i = 0; i < per.length; i++) {
+      const r = nbrsRatio(vals, i);
+      if (isFinite(r) && (!best || r > best.ratio)) best = { strike: per[i].strike, ratio: Number(r.toFixed(2)) };
+    }
+    return best;
+  };
+  const nbrs: NbrsAnomalies = {
+    gamma: peakNbrs(per.map((p) => p.gexMag)),
+    oi: peakNbrs(per.map((p) => p.oi)),
+    volume: peakNbrs(per.map((p) => p.volume)),
+  };
+
   // --- Liquidity vacuums --------------------------------------------------
   const vacuums = detectVacuums(per, spot);
 
@@ -196,10 +278,10 @@ export function computeDealerDynamics(
   const walls = computeWallStrength(per, spot);
 
   // Append snapshot (caller persists `history`).
-  history.push({ t: Date.now(), netGex, netVanna, netCharm, gexCoM });
+  history.push({ t: now, netGex, netVanna, netCharm, gexCoM, totalOi });
   if (history.length > HISTORY_CAP) history.splice(0, history.length - HISTORY_CAP);
 
-  return { vanna, charm, migration, gamma, vacuums, walls };
+  return { vanna, charm, migration, gamma, oiFlow, concentration, nbrs, vacuums, walls };
 }
 
 /** Low-liquidity bands (little OI/GEX/volume) between loaded strikes. */

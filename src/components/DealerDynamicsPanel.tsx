@@ -1,6 +1,6 @@
 import React from 'react';
 import { useContractStore } from '../lib/store';
-import { Activity, Waves, Hourglass, Move, Wind, BrickWall } from 'lucide-react';
+import { Activity, Waves, Hourglass, Move, Wind, BrickWall, Crosshair } from 'lucide-react';
 import type { DealerDynamics } from '../lib/dealerDynamics';
 import { PanelSkeleton } from './PanelSkeleton';
 
@@ -42,7 +42,10 @@ export function DealerDynamicsPanel() {
   // Resolve theme tokens once so inline-styled colors track the design system.
   const css = getComputedStyle(document.documentElement);
   const tok = (n: string, f: string) => { const v = css.getPropertyValue(n).trim(); return v || f; };
-  const C = { success: tok('--success', '#4ADE80'), danger: tok('--danger', '#F87171'), info: tok('--info', '#60A5FA') };
+  const C = { success: tok('--success', '#4ADE80'), danger: tok('--danger', '#F87171'), info: tok('--info', '#60A5FA'), warning: tok('--warning', '#FBBF24') };
+  // Honest provenance: the dynamics are computed from the option chain, which is a model
+  // until a live provider is connected. Label the panel so model output is never read as live.
+  const isLive = !!serverState?.data_source && serverState.data_source !== 'SANDBOX_SYNTHETIC';
   const dirTone = (d: string) => (d === 'BULLISH' ? C.success : d === 'BEARISH' ? C.danger : C.info);
   const trendTone = (t: string) => (t === 'RISING' ? C.success : t === 'FALLING' ? C.danger : C.info);
 
@@ -55,6 +58,7 @@ export function DealerDynamicsPanel() {
       <div className="flex items-center gap-2 pb-3 border-b border-[var(--border)]">
         <Activity className="w-4 h-4 text-[#C084FC]" />
         <h2 className="text-xs font-black tracking-widest uppercase text-[var(--text-primary)]">Dealer Dynamics — {selectedAsset?.ticker}</h2>
+        <span className="px-1 py-0.5 rounded-[2px] text-[8px] font-bold tracking-wider" style={{ color: isLive ? C.success : C.warning, background: `color-mix(in srgb, ${isLive ? C.success : C.warning} 14%, transparent)` }}>{isLive ? 'LIVE' : 'MODEL'}</span>
         <span className="text-[10px] text-[var(--text-tertiary)] uppercase tracking-widest ml-auto hidden sm:block">hedging flow · time decay · gamma · walls</span>
       </div>
 
@@ -64,6 +68,24 @@ export function DealerDynamicsPanel() {
         <Tile label="Charm (time decay of hedges)" value={c.bias} sub={`${fmtK(c.netPerDay)}/day · ${Math.round(c.intensity * 100)}% intensity`} tone={dirTone(c.bias)} active />
         <Tile label="Dealer gamma hedging" value={g.state.replace('_', ' ')} sub={`rate ${fmtK(g.velocity)}`} tone={g.state === 'ADDING_HEDGES' ? C.success : g.state === 'REMOVING_HEDGES' ? C.danger : C.info} active />
         <Tile label="Strike migration (where dealer gamma is shifting)" value={m.direction} sub={`Center ${m.shift >= 0 ? '+' : ''}${num(m.shift, decimals)}`} tone={dirTone(m.direction)} active={m.direction !== 'STABLE'} />
+      </div>
+
+      {/* OI flow · gamma concentration · strike density */}
+      <div className="grid grid-cols-3 gap-2">
+        <Tile label="OI Flow (positioning velocity)" value={dd.oiFlow.state.replace('_', ' ')} sub={`${dd.oiFlow.velocity >= 0 ? '+' : ''}${num(dd.oiFlow.velocity, 0)}/min · ${num(dd.oiFlow.totalOi, 0)} OI`} tone={dd.oiFlow.state === 'UNWINDING' ? C.warning : C.info} active={dd.oiFlow.state !== 'STABLE'} />
+        <Tile label="Gamma Concentration" value={`${num(dd.concentration.gammaTop3Pct, 0)}% top-3`} sub={`HHI ${dd.concentration.hhi.toFixed(2)} · OI ${num(dd.concentration.oiTop3Pct, 0)}% top-3`} tone={dd.concentration.gammaTop3Pct >= 50 ? C.warning : C.info} active={dd.concentration.gammaTop3Pct >= 50} />
+        <Tile label="Strike Density (heaviest OI cluster)" value={`${num(dd.concentration.densityPct, 0)}%`} sub={`@ ${num(dd.concentration.densityStrike, decimals)} · ±2 strikes`} tone={C.info} active={dd.concentration.densityPct >= 40} />
+      </div>
+
+      {/* Neighbor-strike anomalies (NBRS): gamma / OI / volume */}
+      <div className="flex flex-col gap-2">
+        <div className="flex items-center gap-2"><Crosshair className="w-3 h-3 text-[var(--text-tertiary)]" /><h3 className="text-[10px] font-black tracking-widest uppercase text-[var(--text-secondary)]">Neighbor-Strike Anomalies (NBRS)</h3></div>
+        <div className="grid grid-cols-3 gap-2">
+          {([{ label: 'Gamma-NBRS', a: dd.nbrs.gamma }, { label: 'OI-NBRS', a: dd.nbrs.oi }, { label: 'Volume-NBRS', a: dd.nbrs.volume }]).map(({ label, a }) => (
+            <Tile key={label} label={label} value={a ? `${a.ratio.toFixed(1)}×` : '—'} sub={a ? `@ ${num(a.strike, decimals)}` : 'n/a'} tone={a && a.ratio >= 3 ? C.warning : C.info} active={!!a && a.ratio >= 3} />
+          ))}
+        </div>
+        <span className="text-[10px] text-[var(--text-tertiary)] leading-tight">Strike whose gamma / OI / volume most exceeds the mean of its neighbors — concentrated positioning that stands apart from the chain.</span>
       </div>
 
       {/* Wall strength + liquidity vacuums */}
