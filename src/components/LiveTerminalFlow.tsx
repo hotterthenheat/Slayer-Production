@@ -585,6 +585,10 @@ export function LiveTerminalFlow({ profile: liveProfile, ticker, decimals }: Liv
               {TF.map(t => <option key={t.val} value={t.val}>{t.val}</option>)}
             </select>
             {segToggle(['0DTE', 'ALL'], scope, v => setScope(v as '0DTE' | 'ALL'), true)}
+            {/* Compact regime badge — kept INSIDE the mobile control cluster so it never sits alone on the bar (mobile-only; the desktop hero ribbon carries the regime on lg+). */}
+            <span className="flex items-center gap-1.5 px-2.5 py-1 rounded-md border text-[10px] font-mono font-black uppercase tracking-widest md:hidden" style={{ borderColor: longGamma ? 'color-mix(in srgb, var(--info) 40%, transparent)' : 'color-mix(in srgb, var(--warning) 40%, transparent)', background: longGamma ? 'color-mix(in srgb, var(--info) 10%, transparent)' : 'color-mix(in srgb, var(--warning) 10%, transparent)', color: trend, boxShadow: `0 0 16px ${longGamma ? 'color-mix(in srgb, var(--info) 18%, transparent)' : 'color-mix(in srgb, var(--warning) 18%, transparent)'}` }}>
+              {longGamma ? <Activity className="w-3 h-3" /> : <Zap className="w-3 h-3 fill-current" />}{longGamma ? 'Long γ' : 'Short γ'} · {read.regime === 'PIN' ? `Pin ${read.pinStrength}` : 'Trend'}
+            </span>
           </div>
           {/* Customize — TradingView-style drag/resize/save layout (opt-in; default layout untouched) */}
           <button onClick={() => setCustomize(c => !c)} title="Customize layout — drag, resize & save your own panel arrangement"
@@ -592,9 +596,6 @@ export function LiveTerminalFlow({ profile: liveProfile, ticker, decimals }: Liv
             style={customize ? { borderColor: 'var(--accent-color)', background: 'color-mix(in srgb, var(--accent-color) 14%, transparent)', color: 'var(--accent-color)' } : { borderColor: 'var(--border)', color: 'var(--text-tertiary)' }}>
             <LayoutGrid className="w-3 h-3" />Customize
           </button>
-          <span className="flex items-center gap-1.5 px-2.5 py-1 rounded-md border text-[10px] font-mono font-black uppercase tracking-widest md:hidden" style={{ borderColor: longGamma ? 'color-mix(in srgb, var(--info) 40%, transparent)' : 'color-mix(in srgb, var(--warning) 40%, transparent)', background: longGamma ? 'color-mix(in srgb, var(--info) 10%, transparent)' : 'color-mix(in srgb, var(--warning) 10%, transparent)', color: trend, boxShadow: `0 0 16px ${longGamma ? 'color-mix(in srgb, var(--info) 18%, transparent)' : 'color-mix(in srgb, var(--warning) 18%, transparent)'}` }}>
-            {longGamma ? <Activity className="w-3 h-3" /> : <Zap className="w-3 h-3 fill-current" />}{longGamma ? 'Long γ' : 'Short γ'} · {read.regime === 'PIN' ? `Pin ${read.pinStrength}` : 'Trend'}
-          </span>
         </div>
       </div>
 

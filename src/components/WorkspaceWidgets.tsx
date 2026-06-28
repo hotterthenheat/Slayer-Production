@@ -260,7 +260,7 @@ const LiveOptionsFlow = React.memo(() => {
         </span>
       </SubHead>
       {feed.length === 0 ? (
-        <Empty label="Live options flow" />
+        <Empty label={isLiveData ? 'Live options flow' : 'Model options flow'} />
       ) : (
         <div className="flex-1 overflow-auto">
           <table className="w-full text-left text-[10px] tabular-nums">
