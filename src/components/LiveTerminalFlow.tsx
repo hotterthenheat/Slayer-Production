@@ -23,7 +23,8 @@ import { SessionBand } from './terminal/SessionBand';
 import { fmtBig } from './terminal/format';
 import { CROSSHAIR_EVENT, CrosshairDetail, PRICE_SCALE_EVENT, PriceScaleDetail } from '../lib/chartSync';
 import { EdgeTrackRecord } from './EdgeTrackRecord';
-import { Crosshair, Activity, Zap, Layers, ChevronDown, Gauge as GaugeIcon, TrendingUp, TrendingDown, Minus, Clock, Maximize2, Minimize2, LayoutGrid } from 'lucide-react';
+import { Crosshair, Activity, Zap, Layers, ChevronDown, Gauge as GaugeIcon, TrendingUp, TrendingDown, Minus, Clock, Maximize2, Minimize2, LayoutGrid, Star } from 'lucide-react';
+import { loadWatchlist, saveWatchlist, toggleWatch } from '../lib/watchlist';
 import { ASSET_LIST, TIMEFRAMES } from '../data';
 
 // Tight, legible type scale (raised the floor off 7.5/8px so dense data stays readable).
@@ -101,6 +102,8 @@ export function LiveTerminalFlow({ profile: liveProfile, ticker, decimals }: Liv
   const [multiChart, setMultiChart] = useState(false); // opt-in movable/resizable multi-chart grid
   const [chartFocus, setChartFocus] = useState(false); // chart-hero focus mode — collapses both side rails (xl+)
   const [matrixMax, setMatrixMax] = useState(false); // full-screen the gamma matrix over the whole workspace
+  const [watchlist, setWatchlist] = useState<string[]>(() => loadWatchlist()); // persisted starred tickers
+  const toggleWatchTicker = (t: string) => setWatchlist(prev => { const next = toggleWatch(prev, t); saveWatchlist(next); return next; });
   const [customize, setCustomize] = useState(false); // TradingView-style drag/resize/save custom layout
   const [gexLines, setGexLines] = useState(false); // center toggle — multi-strike GEX line chart
   const [ladderMetric, setLadderMetric] = useState<'GAMMA' | 'DELTA' | 'VANNA' | 'OI' | 'VOL'>('GAMMA');
@@ -508,21 +511,39 @@ export function LiveTerminalFlow({ profile: liveProfile, ticker, decimals }: Liv
             <div className="text-[9px] font-mono uppercase tracking-[0.28em] mt-0.5 text-[var(--text-tertiary)]">Dealer Flow Engine</div>
           </div>
           <span className="w-px h-5 bg-[var(--border)] hidden sm:block" />
-          {/* symbol */}
-          <div className="relative">
+          {/* symbol + watchlist */}
+          <div className="relative flex items-center gap-1">
+            <button onClick={() => toggleWatchTicker(selectedAsset.ticker)} title={watchlist.includes(selectedAsset.ticker) ? 'Remove from watchlist' : 'Add to watchlist'} aria-label="Toggle watchlist" className="shrink-0 p-1 rounded-md text-[var(--text-tertiary)] hover:text-[var(--warning)] hover:bg-[var(--surface-2)] focus-visible:ring-1 focus-visible:ring-[var(--accent-color)] focus:outline-none transition-colors">
+              <Star className="w-3.5 h-3.5" style={watchlist.includes(selectedAsset.ticker) ? { color: 'var(--warning)', fill: 'var(--warning)' } : undefined} />
+            </button>
             <button onClick={() => setTickerOpen(o => !o)} className="flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-[var(--surface-2)] border border-[var(--border)] hover:border-[var(--border-strong)] text-[12px] font-mono font-black tracking-wider text-[var(--text-primary)] transition-colors">
               {selectedAsset.ticker}<ChevronDown className={`w-3 h-3 text-[var(--text-tertiary)] transition-transform ${tickerOpen ? 'rotate-180' : ''}`} />
             </button>
             {tickerOpen && (
               <>
                 <div className="fixed inset-0 z-40" onClick={() => setTickerOpen(false)} />
-                <div className="absolute top-full left-0 mt-1 z-50 w-48 max-h-80 overflow-y-auto rounded-md shadow-2xl py-1 bg-[var(--surface)] border border-[var(--border-strong)]">
-                  {ASSET_LIST.map(a => (
-                    <button key={a.ticker} onClick={() => { setSelectedAsset(a); setTickerOpen(false); }} className={`w-full flex items-center justify-between px-3 py-1.5 text-left hover:bg-[var(--surface-3)] transition-colors ${a.ticker === selectedAsset.ticker ? 'bg-[var(--surface-2)]' : ''}`}>
-                      <span className="text-[12px] font-mono font-bold" style={{ color: a.ticker === selectedAsset.ticker ? 'var(--accent-color)' : 'var(--text-secondary)' }}>{a.ticker}</span>
-                      <span className="text-[9px] font-sans text-[var(--text-tertiary)] truncate ml-2 max-w-[110px]">{a.name}</span>
-                    </button>
-                  ))}
+                <div className="absolute top-full left-0 mt-1 z-50 w-52 max-h-80 overflow-y-auto rounded-md shadow-2xl py-1 bg-[var(--surface)] border border-[var(--border-strong)]">
+                  {(() => {
+                    const watched = watchlist.map(t => ASSET_LIST.find(a => a.ticker === t)).filter((a): a is (typeof ASSET_LIST)[number] => !!a);
+                    const row = (a: (typeof ASSET_LIST)[number]) => (
+                      <div key={a.ticker} className={`w-full flex items-center gap-1 pl-3 pr-2 py-1.5 hover:bg-[var(--surface-3)] transition-colors ${a.ticker === selectedAsset.ticker ? 'bg-[var(--surface-2)]' : ''}`}>
+                        <button onClick={() => { setSelectedAsset(a); setTickerOpen(false); }} className="flex-1 min-w-0 flex items-center justify-between text-left focus-visible:ring-1 focus-visible:ring-[var(--accent-color)] focus:outline-none rounded">
+                          <span className="text-[12px] font-mono font-bold" style={{ color: a.ticker === selectedAsset.ticker ? 'var(--accent-color)' : 'var(--text-secondary)' }}>{a.ticker}</span>
+                          <span className="text-[9px] font-sans text-[var(--text-tertiary)] truncate ml-2 max-w-[96px]">{a.name}</span>
+                        </button>
+                        <button onClick={() => toggleWatchTicker(a.ticker)} title={watchlist.includes(a.ticker) ? 'Remove from watchlist' : 'Add to watchlist'} aria-label="Toggle watchlist" className="shrink-0 p-0.5 rounded text-[var(--text-tertiary)] hover:text-[var(--warning)] focus-visible:ring-1 focus-visible:ring-[var(--accent-color)] focus:outline-none transition-colors">
+                          <Star className="w-3 h-3" style={watchlist.includes(a.ticker) ? { color: 'var(--warning)', fill: 'var(--warning)' } : undefined} />
+                        </button>
+                      </div>
+                    );
+                    const head = (label: string) => <div className="px-3 pt-1 pb-0.5 text-[8px] font-sans font-black uppercase tracking-widest text-[var(--text-tertiary)]">{label}</div>;
+                    return (
+                      <>
+                        {watched.length > 0 && (<>{head('★ Watchlist')}{watched.map(row)}<div className="my-1 border-t border-[var(--border)]" />{head('All Symbols')}</>)}
+                        {ASSET_LIST.map(row)}
+                      </>
+                    );
+                  })()}
                 </div>
               </>
             )}
