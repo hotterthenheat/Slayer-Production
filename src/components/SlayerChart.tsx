@@ -72,6 +72,7 @@ export const SlayerChart = memo(function SlayerChartImpl({ profile, decimals, ca
   const [showPrevClose, setShowPrevClose] = useState<boolean>(initialPrefs.showPrevClose ?? true);      // prior-day close reference line
   const [showVwap, setShowVwap] = useState<boolean>(initialPrefs.showVwap ?? true);                     // session VWAP + σ bands (institutional fair value)
   const [showMigration, setShowMigration] = useState<boolean>(initialPrefs.showMigration ?? true);     // gamma center-of-mass drift comet
+  const [showExposure, setShowExposure] = useState<boolean>(initialPrefs.showExposure ?? true);        // aggregate dealer Δ (DEX) + Vanna tilt HUD
   // Dealer-map density — how many strikes the heatmap / orbs / exposure-lane render. Lower = cleaner.
   const [gexCount, setGexCount] = useState<number>(typeof initialPrefs.gexCount === 'number' ? initialPrefs.gexCount : 4);
   const [showLadder, setShowLadder] = useState<boolean>(initialPrefs.showLadder ?? true); // Loaded GEX Strikes (flagship)
@@ -211,8 +212,8 @@ export const SlayerChart = memo(function SlayerChartImpl({ profile, decimals, ca
   // Persist chart prefs (type, colors, indicator selection, GEX/disp toggles) so a user's
   // setup survives a reload. Saving the initial (already-stored) values once is harmless.
   useEffect(() => {
-    try { localStorage.setItem('slayerchart.prefs.v1' + keySuffix, JSON.stringify({ chartType, colors, ovOn, paneOn, showGex, showDisp, showHeat, showOrbs, showVolProfile, showPrevClose, showVwap, showMigration, gexCount, showLadder, showGrid, showVolume, showWatermark, candleBorders, gexMapV2: true, ...(panelId ? { ticker: panelTicker, timeframe: localTf, channel, expiry } : {}) })); } catch { /* storage unavailable */ }
-  }, [chartType, colors, ovOn, paneOn, showGex, showDisp, showHeat, showOrbs, showVolProfile, showPrevClose, showVwap, showMigration, gexCount, showLadder, showGrid, showVolume, showWatermark, candleBorders, panelId, panelTicker, localTf, channel, expiry]);
+    try { localStorage.setItem('slayerchart.prefs.v1' + keySuffix, JSON.stringify({ chartType, colors, ovOn, paneOn, showGex, showDisp, showHeat, showOrbs, showVolProfile, showPrevClose, showVwap, showMigration, showExposure, gexCount, showLadder, showGrid, showVolume, showWatermark, candleBorders, gexMapV2: true, ...(panelId ? { ticker: panelTicker, timeframe: localTf, channel, expiry } : {}) })); } catch { /* storage unavailable */ }
+  }, [chartType, colors, ovOn, paneOn, showGex, showDisp, showHeat, showOrbs, showVolProfile, showPrevClose, showVwap, showMigration, showExposure, gexCount, showLadder, showGrid, showVolume, showWatermark, candleBorders, panelId, panelTicker, localTf, channel, expiry]);
 
   // Only enabled indicators are computed, and only when the selection or candles change
   // (NOT on pan/hover) — keeps interaction cheap.
@@ -287,7 +288,7 @@ export const SlayerChart = memo(function SlayerChartImpl({ profile, decimals, ca
     hoverRef, gexDeltaRef, draftRef, measureRef, drawingsRef, toolRef, selectedRef,
     candles, ha, atr, profile, colors, decimals, chartType, ovOn, overlaySeries, paneSeries,
     displacements, gexCount, showVolume, showGrid, showWatermark, candleBorders,
-    showGex, showHeat, showOrbs, showVolProfile, showPrevClose, showVwap, vwap: vwapData, showMigration, gammaCoM, comHist: comHistRef.current, showDisp, showLadder, tickKey, tfKey, onScale, live, livePhaseRef, liveOverlayRef,
+    showGex, showHeat, showOrbs, showVolProfile, showPrevClose, showVwap, vwap: vwapData, showMigration, gammaCoM, comHist: comHistRef.current, showExposure, showDisp, showLadder, tickKey, tfKey, onScale, live, livePhaseRef, liveOverlayRef,
   });
 
   // Overlay repaint — clears the transparent top canvas and paints the last-price dot, plus an
@@ -460,7 +461,7 @@ export const SlayerChart = memo(function SlayerChartImpl({ profile, decimals, ca
   useEffect(() => {
     if (redrawRafRef.current) return;
     redrawRafRef.current = requestAnimationFrame(() => { redrawRafRef.current = 0; drawRef.current(); });
-  }, [candles, overlaySeries, paneSeries, displacements, showGex, showDisp, showHeat, showOrbs, showVolProfile, showPrevClose, showVwap, vwapData, showMigration, gammaCoM, gexCount, showLadder, chartType, colors, ha, view, priceView, drawings, tool, selectedId, showGrid, showVolume, showWatermark, candleBorders, profile, decimals, tfKey, tickKey]);
+  }, [candles, overlaySeries, paneSeries, displacements, showGex, showDisp, showHeat, showOrbs, showVolProfile, showPrevClose, showVwap, vwapData, showMigration, gammaCoM, showExposure, gexCount, showLadder, chartType, colors, ha, view, priceView, drawings, tool, selectedId, showGrid, showVolume, showWatermark, candleBorders, profile, decimals, tfKey, tickKey]);
   // Cancel any frame still queued when the panel unmounts (closing a grid panel mid-redraw):
   // an unmount-only cleanup, so it never disturbs the per-change coalescing above. Without it a
   // pending rAF fires on a torn-down panel and calls drawRef on detached refs → crash on churn.
@@ -595,7 +596,7 @@ export const SlayerChart = memo(function SlayerChartImpl({ profile, decimals, ca
           <ChartSettings
             colors={colors} setColors={setColors} gexCount={gexCount} setGexCount={setGexCount}
             display={[['Grid', showGrid, setShowGrid], ['Volume', showVolume, setShowVolume], ['Watermark', showWatermark, setShowWatermark], ['Candle borders', candleBorders, setCandleBorders]]}
-            dealer={[['Loaded strikes', showLadder, setShowLadder], ['Γ Heatmap', showHeat, setShowHeat], ['Orbs', showOrbs, setShowOrbs], ['γ Exposure lane', showGex, setShowGex], ['Volume profile', showVolProfile, setShowVolProfile], ['Prior-day close', showPrevClose, setShowPrevClose], ['Session VWAP', showVwap, setShowVwap], ['γ Migration', showMigration, setShowMigration], ['Displacement', showDisp, setShowDisp]]}
+            dealer={[['Loaded strikes', showLadder, setShowLadder], ['Γ Heatmap', showHeat, setShowHeat], ['Orbs', showOrbs, setShowOrbs], ['γ Exposure lane', showGex, setShowGex], ['Volume profile', showVolProfile, setShowVolProfile], ['Prior-day close', showPrevClose, setShowPrevClose], ['Session VWAP', showVwap, setShowVwap], ['γ Migration', showMigration, setShowMigration], ['Δ/Vanna HUD', showExposure, setShowExposure], ['Displacement', showDisp, setShowDisp]]}
           />
           {specChip(showLadder, '≣ STRIKES', () => setShowLadder(v => !v), 'default', 'STRIKES — labels the strongest dealer-gamma strike on each side of price. Each tag reads: strike, then net γ ($/1% move), then ↑/↓ its change since the ~45s checkpoint. e.g. "6,790  +574M ↓85M" = +574M net gamma, down 85M since checkpoint.')}
           {specChip(showHeat, 'Γ-MAP', () => setShowHeat(v => !v), 'default', 'Γ-MAP — gamma-concentration heatmap shading behind price (where dealer gamma is densest)')}
@@ -606,6 +607,7 @@ export const SlayerChart = memo(function SlayerChartImpl({ profile, decimals, ca
           {specChip(showPrevClose, 'PDC', () => setShowPrevClose(v => !v), 'default', 'PDC — prior-day close reference line (yesterday’s settlement; a classic intraday reaction level).')}
           {specChip(showVwap, 'VWAP', () => setShowVwap(v => !v), 'default', 'SESSION VWAP — volume-weighted average price, re-anchored each session, with ±1σ/±2σ bands. Institutional fair value; intraday price tends to mean-revert toward it, and a decisive break of the outer band is a momentum tell.')}
           {specChip(showMigration, 'γ DRIFT', () => setShowMigration(v => !v), 'default', 'GAMMA MIGRATION — the gamma center-of-mass (|netGex|-weighted mean strike) drifting over recent updates, shown as a comet. Rising = dealer gamma concentrating higher (supportive); falling = the reverse.')}
+          {specChip(showExposure, 'Δ/VANNA', () => setShowExposure(v => !v), 'default', 'DEALER EXPOSURE HUD — aggregate net dealer Δ (DEX) and Vanna across the whole chain, with a tilt gauge (net ÷ gross). Net-long Δ = dealers add to moves; net Vanna shows how their hedging shifts as IV changes.')}
           <button onClick={resetView} title="Reset view — smoothly refit zoom, pan and price scale (or double-click the chart)" className="px-1.5 py-0.5 rounded-sm text-[10px] font-mono font-bold uppercase tracking-wide border border-[var(--border)] bg-[var(--surface-2)] text-[var(--text-secondary)] hover:border-[var(--border-strong)] hover:text-[var(--text-primary)] transition-colors">⟲ RESET</button>
           {priceView && <button onClick={() => setPriceView(null)} title="Reset price scale to auto-fit (or double-click the price axis)" className="px-1.5 py-0.5 rounded-sm text-[10px] font-mono font-bold uppercase tracking-wide border border-[var(--border)] bg-[var(--surface-2)] text-[var(--text-secondary)] hover:border-[var(--border-strong)] transition-colors">⤢ AUTO Y</button>}
           {view.off !== 0 && <button onClick={() => tweenView({ bars: view.bars, off: 0 })} title="Jump back to the live edge (or double-click the chart)" className="px-1.5 py-0.5 rounded-sm text-[10px] font-mono font-bold uppercase tracking-wide border border-[var(--border)] bg-[var(--surface-2)] text-[var(--text-secondary)] hover:border-[var(--border-strong)] transition-colors">⟳ LIVE</button>}
