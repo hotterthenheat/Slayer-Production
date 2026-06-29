@@ -46,12 +46,17 @@ export function StrikeMatrix({ profile, decimals = 0, size = 'compact' }: { prof
     const maxRowNet = Math.max(1, ...rowNet.map(Math.abs));
     const colTot = cols.map(m => 0).map((_, ci) => ks.reduce((a, k) => a + (cell[ci].get(k) || 0), 0));
     const grand = colTot.reduce((a, b) => a + b, 0);
-    // Each expiry's dominant wall = its largest |net γ| strike (gets a ring).
+    const maxColTot = Math.max(1, ...colTot.map(Math.abs));   // for the per-expiry net-bias bars in the header
+    // Each expiry's dominant wall = its largest |net γ| strike (gets a ring + CW/PW tag).
     const wall = cols.map((_, ci) => { let bs = NaN, bm = 0; for (const k of ks) { const v = Math.abs(cell[ci].get(k) || 0); if (v > bm) { bm = v; bs = k; } } return bs; });
+    // Gamma-flip row — where the AGGREGATE net γ crosses from + to − going down strikes (the dealer flip
+    // level): the line is drawn between rows flipIdx-1 and flipIdx. −1 if no crossing is in view.
+    let flipIdx = -1;
+    for (let i = 1; i < rowNet.length; i++) { if (rowNet[i - 1] > 0 && rowNet[i] <= 0) { flipIdx = i; break; } }
     // The strike row NEAREST spot gets the accent highlight, so the live price is always located even when
     // it sits between strikes (it usually does).
     let nearestK = NaN; if (spot) { let bd = Infinity; for (const k of ks) { const d = Math.abs(k - spot); if (d < bd) { bd = d; nearestK = k; } } }
-    return { cols, ks, cell, maxAbs, rowNet, maxRowNet, colTot, grand, wall, nearestK, spot };
+    return { cols, ks, cell, maxAbs, rowNet, maxRowNet, colTot, grand, maxColTot, wall, flipIdx, nearestK, spot };
   }, [multi, expiries, profile.spot, full]);
 
   // ── Single-expiry CALL | PUT | VOL chain (fallback when <2 expiries) ──────────────────────────
@@ -74,10 +79,11 @@ export function StrikeMatrix({ profile, decimals = 0, size = 'compact' }: { prof
 
   // ════════════════════════════ GAMMA MATRIX render ════════════════════════════
   if (multi && matrix && matrix.ks.length) {
-    const { cols, ks, cell, maxAbs, rowNet, maxRowNet, colTot, grand, wall, nearestK } = matrix;
-    const strikeW = full ? 64 : 48, netW = full ? 78 : 56, colMin = full ? 52 : 38;
+    const { cols, ks, cell, maxAbs, rowNet, maxRowNet, colTot, grand, maxColTot, wall, flipIdx, nearestK } = matrix;
+    const strikeW = full ? 66 : 54, netW = full ? 78 : 56, colMin = full ? 52 : 38;
     const rowH = full ? 23 : 18, fz = full ? 'text-[11px]' : 'text-[9px]';
     const template = `${strikeW}px repeat(${cols.length}, minmax(${colMin}px, 1fr)) ${netW}px`;
+    const stickCol = 'sticky left-0 bg-[var(--surface)]';   // frozen strike axis when scrolling expiries
     // Diverging heatmap cell: green for +γ, red for −γ; intensity ∝ |net|/maxAbs. Faint floor so a cell
     // with γ never fully vanishes, capped so candles-elsewhere stay dominant. Text brightens with intensity.
     const cellBg = (v: number) => { const t = Math.min(1, Math.abs(v) / maxAbs); const tok = v >= 0 ? 'var(--success)' : 'var(--danger)'; return `color-mix(in srgb, ${tok} ${Math.round(8 + t * 60)}%, transparent)`; };
@@ -86,31 +92,36 @@ export function StrikeMatrix({ profile, decimals = 0, size = 'compact' }: { prof
     return (
       <div className="w-full overflow-x-auto hide-scrollbar">
         <div className={`min-w-max font-mono ${fz} tabular-nums select-none`}>
-          {/* Column header — STRIKE · expiry dates · NET */}
-          <div className="grid gap-x-0.5 px-2 py-1.5 sticky top-0 z-10 bg-[var(--surface)] border-b border-[var(--border)] text-[8px] font-black uppercase tracking-[0.12em]" style={{ gridTemplateColumns: template }}>
-            <div className="text-right text-[var(--text-tertiary)] self-center">Strike</div>
-            {cols.map(c => (
-              <div key={c.expiration} className="text-center leading-tight self-center">
+          {/* Column header — STRIKE · expiry (date · DTE · net-bias bar) · NET */}
+          <div className="grid gap-x-0.5 pr-2 py-1.5 sticky top-0 z-20 bg-[var(--surface)] border-b border-[var(--border)] text-[8px] font-black uppercase tracking-[0.12em]" style={{ gridTemplateColumns: template }}>
+            <div className={`${stickCol} z-30 text-right text-[var(--text-tertiary)] self-center pl-2 pr-1`}>Strike</div>
+            {cols.map((c, ci) => (
+              <div key={c.expiration} className="text-center leading-tight self-center px-0.5">
                 <div className="text-[var(--text-secondary)]">{fmtExp(c.expiration)}</div>
                 <div style={{ color: c.dte <= 0 ? 'var(--warning)' : 'var(--text-tertiary)' }}>{c.dte <= 0 ? '0DTE' : `${c.dte}D`}</div>
+                {/* per-expiry net-γ bias bar — width ∝ this expiry's |Σγ| share, coloured by sign */}
+                <div className="mt-1 h-[3px] w-full rounded-full overflow-hidden" style={{ background: 'color-mix(in srgb, var(--text-tertiary) 16%, transparent)' }}>
+                  <div className="h-full mx-auto rounded-full" style={{ width: `${Math.max(6, Math.round((Math.abs(colTot[ci]) / maxColTot) * 100))}%`, background: colTot[ci] >= 0 ? 'var(--success)' : 'var(--danger)' }} />
+                </div>
               </div>
             ))}
-            <div className="text-center text-[var(--text-tertiary)] self-center">Net γ</div>
+            <div className="text-center text-[var(--text-tertiary)] self-center pr-1">Net γ</div>
           </div>
-          {/* Body — one row per strike */}
-          <div>
+          {/* Body — one row per strike, with the aggregate gamma-flip line drawn across it */}
+          <div className="relative">
             {ks.map((k, ri) => {
               const isSpot = k === nearestK;
               const rn = rowNet[ri];
               return (
-                <div key={k} className="grid gap-x-0.5 px-2 items-center hover:bg-white/[0.025] transition-colors" style={{ gridTemplateColumns: template, height: rowH, ...(isSpot ? { boxShadow: 'inset 3px 0 0 var(--accent-color)', background: 'color-mix(in srgb, var(--accent-color) 8%, transparent)' } : undefined) }}>
-                  <div className="text-right font-bold pr-1" style={{ color: isSpot ? 'var(--accent-color)' : 'var(--text-secondary)' }}>{nf(k)}</div>
+                <div key={k} className="grid gap-x-0.5 pr-2 items-center" style={{ gridTemplateColumns: template, height: rowH, ...(isSpot ? { background: 'color-mix(in srgb, var(--accent-color) 8%, transparent)' } : undefined) }}>
+                  <div className={`${stickCol} z-20 h-full flex items-center justify-end text-right font-bold pl-1.5 pr-1`} style={{ color: isSpot ? 'var(--accent-color)' : 'var(--text-secondary)', background: isSpot ? 'color-mix(in srgb, var(--accent-color) 14%, var(--surface))' : 'var(--surface)', boxShadow: isSpot ? 'inset 3px 0 0 var(--accent-color)' : undefined }}>{Number.isInteger(k) ? k.toLocaleString('en-US') : nf(k)}</div>
                   {cols.map((c, ci) => {
                     const v = cell[ci].get(k) || 0;
                     const isWall = wall[ci] === k && Math.abs(v) > 0;
                     return (
-                      <div key={c.expiration} className="h-full flex items-center justify-center rounded-[2px]" style={{ background: v ? cellBg(v) : undefined, boxShadow: isWall ? `inset 0 0 0 1px ${v >= 0 ? 'var(--success)' : 'var(--danger)'}` : undefined }}>
+                      <div key={c.expiration} className="relative h-full flex items-center justify-center rounded-[2px]" style={{ background: v ? cellBg(v) : undefined, boxShadow: isWall ? `inset 0 0 0 1px ${v >= 0 ? 'var(--success)' : 'var(--danger)'}` : undefined }}>
                         <span style={{ color: v ? cellInk(v) : 'var(--text-tertiary)', fontWeight: Math.abs(v) / maxAbs > 0.5 ? 800 : 600 }}>{v ? fmtG(v) : '·'}</span>
+                        {full && isWall && <span className="absolute top-0 right-0.5 text-[6px] font-black leading-none pt-px" style={{ color: v >= 0 ? 'var(--success)' : 'var(--danger)' }}>{v >= 0 ? 'CW' : 'PW'}</span>}
                       </div>
                     );
                   })}
@@ -123,10 +134,17 @@ export function StrikeMatrix({ profile, decimals = 0, size = 'compact' }: { prof
                 </div>
               );
             })}
+            {/* Gamma-flip line — the aggregate +γ → −γ crossing (the dealer flip level) */}
+            {flipIdx > 0 && (
+              <div className="absolute left-0 right-0 z-[21] pointer-events-none flex items-center" style={{ top: flipIdx * rowH }}>
+                <div className="flex-1 h-px" style={{ background: 'var(--warning)', boxShadow: '0 0 6px color-mix(in srgb, var(--warning) 70%, transparent)' }} />
+                <span className="shrink-0 mr-1.5 px-1 py-px rounded-sm text-[7px] font-black uppercase tracking-wider" style={{ background: 'var(--warning)', color: '#06090d' }}>γ Flip</span>
+              </div>
+            )}
           </div>
           {/* TOTAL footer — per-expiry Σ net γ + grand total */}
-          <div className="grid gap-x-0.5 px-2 py-1.5 sticky bottom-0 bg-[var(--surface)] border-t border-[var(--border-strong)] text-[9px] font-black z-10" style={{ gridTemplateColumns: template }}>
-            <div className="text-right text-[var(--text-tertiary)] uppercase tracking-[0.1em] text-[8px] self-center">Total</div>
+          <div className="grid gap-x-0.5 pr-2 py-1.5 sticky bottom-0 bg-[var(--surface)] border-t border-[var(--border-strong)] text-[9px] font-black z-20" style={{ gridTemplateColumns: template }}>
+            <div className={`${stickCol} z-30 text-right text-[var(--text-tertiary)] uppercase tracking-[0.1em] text-[8px] self-center pl-2 pr-1`}>Total</div>
             {colTot.map((t, ci) => (<div key={cols[ci].expiration} className="text-center" style={{ color: t >= 0 ? 'var(--success)' : 'var(--danger)' }}>{fmtG(t)}</div>))}
             <div className="text-center" style={{ color: grand >= 0 ? 'var(--success)' : 'var(--danger)' }}>{fmtG(grand)}</div>
           </div>
