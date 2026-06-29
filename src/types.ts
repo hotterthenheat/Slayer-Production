@@ -211,6 +211,16 @@ export interface GexStrikeDetail {
   callVex?: number;
   putVex?: number;
   netVex?: number;
+  // Charm exposure (dealer Δ-decay per day) aggregated per strike: charm × OI × 100 × sign
+  // (call +1 / put −1) — the canonical v11Math convention, so Σ charmEx matches the platform's
+  // net charm read. Drives the chart's Charm Surface overlay.
+  charmEx?: number;
+  // Net premium FLOW that traded at this strike (mid × volume × 100). callPrem/putPrem are the
+  // per-side $ premium that changed hands; netPrem = callPrem − putPrem (bullish +, bearish −).
+  // Drives the chart's Net Premium Flow overlay.
+  callPrem?: number;
+  putPrem?: number;
+  netPrem?: number;
 }
 
 // One expiration's gamma column for the multi-expiry matrix. Intentionally lean —

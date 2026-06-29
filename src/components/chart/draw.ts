@@ -45,6 +45,8 @@ export type DrawDeps = {
   gexCount: number;
   showVolume: boolean; showGrid: boolean; showWatermark: boolean; candleBorders: boolean;
   showGex: boolean; showHeat: boolean; showOrbs: boolean; showDisp: boolean; showLadder: boolean;
+  showCharm: boolean;    // Charm Surface — per-strike charm (Δ-decay) as a smooth right-gutter heat column
+  showNetPrem: boolean;  // Net Premium Flow — per-strike call−put $ premium traded, diverging gutter bars
   showVolProfile: boolean; showPrevClose: boolean; showVwap: boolean;
   vwap?: { line: (number | null)[]; u1: (number | null)[]; d1: (number | null)[]; u2: (number | null)[]; d2: (number | null)[] };  // session VWAP centerline + ±1σ/±2σ bands
   showMigration: boolean; gammaCoM?: number | null; comHist?: number[];  // gamma center-of-mass + its recent drift path (migration comet)
@@ -63,7 +65,7 @@ export function drawChart(deps: DrawDeps) {
     hoverRef, gexDeltaRef, draftRef, measureRef, drawingsRef, toolRef, selectedRef,
     candles, ha, atr, profile, colors, decimals, chartType, ovOn, overlaySeries, paneSeries,
     displacements, gexCount, showVolume, showGrid, showWatermark, candleBorders,
-    showGex, showHeat, showOrbs, showVolProfile, showPrevClose, showVwap, vwap, showMigration, gammaCoM, comHist, showExposure, showMaxPain, showDisp, showLadder, tickKey, tfKey, onScale, live, livePhaseRef, liveOverlayRef, panPx,
+    showGex, showHeat, showOrbs, showVolProfile, showPrevClose, showVwap, vwap, showMigration, gammaCoM, comHist, showExposure, showMaxPain, showDisp, showLadder, showCharm, showNetPrem, tickKey, tfKey, onScale, live, livePhaseRef, liveOverlayRef, panPx,
   } = deps;
     const canvas = canvasRef.current, container = containerRef.current;
     if (!canvas || !container) return;
@@ -102,10 +104,17 @@ export function drawChart(deps: DrawDeps) {
     const laneOn = !!(showGex && profile.strikes && profile.strikes.length);
     const heatOn = !!(showHeat && profile.strikes && profile.strikes.length);
     const orbsOn = !!(showOrbs && profile.strikes && profile.strikes.length);
-    // Reserve a right gutter only for the γ-lane (wide). The Γ-MAP landscape glow and the ORBS dots both
-    // render on the chart itself, so they need no gutter.
-    const gammaW = laneOn ? 46 : 0;
+    // Charm Surface + Net Premium Flow each get their own right-gutter lane, but only when the underlying
+    // data is actually present (no empty lane reserving dead space on a chain that lacks charm/premium).
+    const charmOn = !!(showCharm && profile.strikes && profile.strikes.some(s => Math.abs(s.charmEx || 0) > 0));
+    const premOn = !!(showNetPrem && profile.strikes && profile.strikes.some(s => Math.abs(s.netPrem || 0) > 0 || (Math.abs(s.callPrem || 0) + Math.abs(s.putPrem || 0)) > 0));
+    // Right-gutter lanes, each its own column (px), laid left→right from plotR in a fixed order:
+    // γ-exposure · net-premium · charm. gammaW is the TOTAL gutter width (axis frame / hover math read it).
+    const GAMMA_LANE_W = 46, PREM_LANE_W = 54, CHARM_LANE_W = 26;
+    const gammaW = (laneOn ? GAMMA_LANE_W : 0) + (premOn ? PREM_LANE_W : 0) + (charmOn ? CHARM_LANE_W : 0);
     const plotL = 2, plotR = W - axisW - gammaW, plotW = plotR - plotL, gammaR = plotR + gammaW;
+    const lanePremX = plotR + (laneOn ? GAMMA_LANE_W : 0);                              // net-premium lane x-origin
+    const laneCharmX = plotR + (laneOn ? GAMMA_LANE_W : 0) + (premOn ? PREM_LANE_W : 0); // charm lane x-origin
     const availH = H - topPad - xAxisH;
     const subH = paneSeries.length ? Math.min(86, (availH * 0.42) / paneSeries.length) : 0;
     const priceH = availH - subH * paneSeries.length;
@@ -344,7 +353,7 @@ export function drawChart(deps: DrawDeps) {
       const allIn = profile.strikes.filter(r => { const y = yP(r.strike); return y >= priceTop + 9 && y <= priceBottom; });
       const keep = new Set([...allIn].sort((a, b) => Math.abs(b.netGex || 0) - Math.abs(a.netGex || 0)).slice(0, gexCount).map(r => r.strike));
       const inView = allIn.filter(r => keep.has(r.strike));
-      const maxAbs = Math.max(...inView.map(r => Math.abs(r.netGex || 0)), 1e-9), laneW = gammaW - 6;
+      const maxAbs = Math.max(...inView.map(r => Math.abs(r.netGex || 0)), 1e-9), laneW = GAMMA_LANE_W - 6;
       let thick = 6;
       if (inView.length > 1) { const span = Math.abs(yP(inView[0].strike) - yP(inView[inView.length - 1].strike)); thick = Math.max(2.5, Math.min(10, (span / (inView.length - 1)) * 0.78)); }
       for (const r of inView) {
@@ -356,6 +365,47 @@ export function drawChart(deps: DrawDeps) {
         if (isWall) { ctx.fillStyle = hexA(col, 0.98); ctx.fillRect(x0 + len, y - thick / 2 - 1, 2, thick + 2); }
       }
       ctx.fillStyle = hexA(T.text, 0.38); ctx.textAlign = 'left'; ctx.font = '700 8px ui-monospace, monospace'; ctx.fillText('γ EXPOSURE', x0 + 1, priceTop + 7); ctx.font = '11px ui-monospace, monospace';
+    }
+
+    // NET PREMIUM FLOW — the $ option premium that actually TRADED at each strike today (mid × volume),
+    // as diverging bars from a centre axis: green right = net CALL premium (bullish $), red left = net PUT
+    // premium (bearish $). Distinct from OI-based gamma — this is where real money paid up this session.
+    if (premOn) {
+      const strikes = profile.strikes || [];
+      const x0 = lanePremX, cx = x0 + PREM_LANE_W / 2, half = PREM_LANE_W / 2 - 3;
+      ctx.strokeStyle = hexA(T.text, 0.12); ctx.beginPath(); ctx.moveTo(px(cx), priceTop + 9); ctx.lineTo(px(cx), priceBottom); ctx.stroke();
+      const inView = strikes.filter(r => { const y = yP(r.strike); return y >= priceTop + 9 && y <= priceBottom && Math.abs(r.netPrem || 0) > 0; });
+      const maxAbs = Math.max(...inView.map(r => Math.abs(r.netPrem || 0)), 1e-9);
+      let thick = 5;
+      if (inView.length > 1) { const ys = inView.map(r => yP(r.strike)); thick = Math.max(2, Math.min(9, ((Math.max(...ys) - Math.min(...ys)) / (inView.length - 1)) * 0.74)); }
+      for (const r of inView) {
+        const y = yP(r.strike), np = r.netPrem || 0, pos = np >= 0, len = Math.max(1, (Math.abs(np) / maxAbs) * half), col = pos ? COL.up : COL.down;
+        const grad = ctx.createLinearGradient(cx, 0, cx + (pos ? len : -len), 0);
+        grad.addColorStop(0, hexA(col, 0.9)); grad.addColorStop(1, hexA(col, 0.22));
+        ctx.fillStyle = grad; ctx.fillRect(pos ? cx : cx - len, y - thick / 2, len, Math.max(1.5, thick));
+      }
+      ctx.fillStyle = hexA(T.text, 0.42); ctx.textAlign = 'center'; ctx.font = '700 7px ui-monospace, monospace'; ctx.fillText('$ FLOW', cx, priceTop + 6); ctx.textAlign = 'left'; ctx.font = '11px ui-monospace, monospace';
+    }
+
+    // CHARM SURFACE — per-strike charm (dealer Δ-decay) Gaussian-smoothed across price into a continuous
+    // right-gutter heat column. Cyan = decay adds passive BUY support at that level, amber = decay adds SELL
+    // pressure; brightest near the money / into expiry where charm is largest. (charmEx = charm×OI×100×sign.)
+    if (charmOn) {
+      const strikes = profile.strikes || [];
+      const x0 = laneCharmX, laneW = CHARM_LANE_W - 2;
+      const pts = strikes.map(s => ({ y: yP(s.strike), v: s.charmEx || 0 })).filter(p => Math.abs(p.v) > 0 && p.y >= priceTop - 30 && p.y <= priceBottom + 30);
+      if (pts.length) {
+        const ys = pts.map(p => p.y).sort((a, b) => a - b);
+        let med = 14; if (ys.length > 1) { const g: number[] = []; for (let i = 1; i < ys.length; i++) g.push(ys[i] - ys[i - 1]); g.sort((a, b) => a - b); med = Math.max(8, g[g.length >> 1] || 14); }
+        // Cyan/amber via the theme's info/warning tokens — the same supportive/pressuring polarity the
+        // regime wash uses, so charm reads in the platform's vocabulary (and adapts to the active theme).
+        const bw = med * 1.5, CHARM_POS = COL.em, CHARM_NEG = COL.flip, step = 2;
+        const rows: { y: number; v: number }[] = []; let maxRow = 1e-9;
+        for (let y = priceTop + 9; y <= priceBottom; y += step) { let v = 0; for (const p of pts) { const d = (y - p.y) / bw; v += p.v * Math.exp(-d * d); } rows.push({ y, v }); if (Math.abs(v) > maxRow) maxRow = Math.abs(v); }
+        ctx.strokeStyle = hexA(T.text, 0.10); ctx.beginPath(); ctx.moveTo(px(x0), priceTop); ctx.lineTo(px(x0), priceBottom); ctx.stroke();
+        for (const { y, v } of rows) { const mag = Math.abs(v) / maxRow; if (mag < 0.02) continue; ctx.fillStyle = hexA(v >= 0 ? CHARM_POS : CHARM_NEG, 0.08 + mag * 0.62); ctx.fillRect(x0 + 1, y - step / 2, laneW, step + 0.6); }
+        ctx.fillStyle = hexA(T.text, 0.5); ctx.textAlign = 'center'; ctx.font = '700 6.5px ui-monospace, monospace'; ctx.fillText('CHARM', x0 + laneW / 2, priceTop + 5); ctx.textAlign = 'left'; ctx.font = '11px ui-monospace, monospace';
+      }
     }
 
     // VOLUME PROFILE (VPVR) — volume-by-price histogram, LEFT-anchored inside the plot so it never
