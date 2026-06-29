@@ -903,6 +903,9 @@ export function LiveTerminalFlow({ profile: liveProfile, ticker, decimals }: Liv
                 // when the short mobile rail would pack rows tighter than the stack (which would overlap).
                 const panelH = ladderScrollRef.current?.clientHeight || 600;
                 const showZone = (rowHpct / 100) * panelH >= 17;
+                // Strike-label stride from the REAL pixel pitch (not just rowHpct%), so labels never collide
+                // on a short mobile rail where the same % resolves to far fewer pixels (~15px min gap).
+                const labelEvery = Math.max(1, Math.ceil(15 / Math.max(1, (rowHpct / 100) * panelH)));
                 // Bars stay THIN: in the sparse (tall-row) regime cap the thickness so they never balloon into
                 // giant blocks (the mobile / few-strikes case); the dense regime fills for a continuous profile.
                 const barH = dense ? 'calc(100% - 1px)' : 'min(74%, 20px)';   // bolder than the old 13px nub, still capped so a few-strike mobile rail never balloons
@@ -912,8 +915,10 @@ export function LiveTerminalFlow({ profile: liveProfile, ticker, decimals }: Liv
                 const callGrad = 'linear-gradient(to right, color-mix(in srgb, var(--success) 92%, transparent), color-mix(in srgb, var(--success) 48%, transparent))';
                 return (
                   <>
-                    {rows.map(r => {
+                    {rows.map((r, i) => {
                       const mk = r.isCW ? 'var(--success)' : r.isPW ? 'var(--danger)' : r.isFlip ? 'var(--warning)' : null;
+                      // pixel-aware label gate (key levels + spot always labelled; others thinned to ~15px pitch)
+                      const lbl = (i % labelEvery === 0) || r.isCW || r.isPW || r.isFlip || r.isSpot;
                       // Key-level rows get a faint tint + a coloured left rail. (Air-pocket bands are named in the
                       // AIR POCKETS callout above — washing whole row-bands here read as muddy, so it's dropped.)
                       const keyBg = r.isCW ? 'color-mix(in srgb, var(--success) 11%, transparent)' : r.isPW ? 'color-mix(in srgb, var(--danger) 11%, transparent)' : r.isFlip ? 'color-mix(in srgb, var(--warning) 10%, transparent)' : undefined;
@@ -925,7 +930,7 @@ export function LiveTerminalFlow({ profile: liveProfile, ticker, decimals }: Liv
                       const strength = z?.strength;
                       return (
                         <div key={r.strike} data-strike={r.strike} className="absolute left-0 right-0 flex items-center px-2" style={{ top: `${r.yPct}%`, height: `${rowHpct}%`, transform: 'translateY(-50%)', transition: 'top 0.3s cubic-bezier(0.22,1,0.36,1), height 0.3s cubic-bezier(0.22,1,0.36,1)', background: keyBg, boxShadow: mk ? `inset 2px 0 0 ${mk}` : undefined }}>
-                          {r.showLabel && (
+                          {lbl && (
                             <span className="w-[58px] shrink-0 flex flex-col items-end justify-center leading-none gap-px">
                               <span className="text-[9px] font-mono tabular-nums flex items-center gap-1 whitespace-nowrap" style={{ color: r.isSpot ? 'var(--accent-color)' : mk || 'var(--text-tertiary)', fontWeight: (mk || r.isSpot) ? 800 : 400 }}>{mk && <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ background: mk, boxShadow: `0 0 5px ${mk}` }} />}{fmtNum(r.strike, decimals)}</span>
                               {showZone && zoneLabel && <span className="text-[6.5px] font-black uppercase tracking-wider flex items-center gap-0.5 leading-none whitespace-nowrap" style={{ color: zoneColor }}>{zoneLabel}{strength != null && <span className="font-bold tabular-nums" style={{ color: 'var(--text-tertiary)' }}>{strength}</span>}</span>}
@@ -937,7 +942,7 @@ export function LiveTerminalFlow({ profile: liveProfile, ticker, decimals }: Liv
                             <div className="relative w-1/2 h-full flex items-center justify-end pr-px border-r border-[var(--border)]"><div className="rounded-l-full" style={{ width: `${r.putPct}%`, height: barH, background: putGrad, transition: 'width 0.42s cubic-bezier(0.22,1,0.36,1), height 0.3s ease' }} /></div>
                             <div className="relative w-1/2 h-full flex items-center justify-start pl-px"><div className="rounded-r-full" style={{ width: `${r.callPct}%`, height: barH, background: callGrad, transition: 'width 0.42s cubic-bezier(0.22,1,0.36,1), height 0.3s ease' }} /></div>
                           </div>
-                          {r.showLabel && <span className="w-[56px] shrink-0 text-right text-[9px] font-mono font-black tabular-nums" style={{ color: r.netUp ? 'var(--success)' : 'var(--danger)' }}>{fmtBig(r.net)}</span>}
+                          {lbl && <span className="w-[56px] shrink-0 text-right text-[9px] font-mono font-black tabular-nums" style={{ color: r.netUp ? 'var(--success)' : 'var(--danger)' }}>{fmtBig(r.net)}</span>}
                         </div>
                       );
                     })}
