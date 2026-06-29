@@ -147,7 +147,7 @@ export const SlayerChart = memo(function SlayerChartImpl({ profile, decimals, ca
     const pending = pendingBarsRef.current;
     setView({ bars: pending ?? 110, off: 0 });
     if (pending == null) setRange(null); // an external timeframe/ticker change isn't a preset range
-    pendingBarsRef.current = null; setPriceView(null);
+    pendingBarsRef.current = null; autoFitPrice();
   }, [tfKey, tickKey]);
   // Load this ticker's saved drawings (and reset transient drawing state) on symbol change.
   useEffect(() => {
@@ -164,7 +164,10 @@ export const SlayerChart = memo(function SlayerChartImpl({ profile, decimals, ca
   const hoverRef = useRef<{ x: number; y: number } | null>(null);
   // Per-strike GEX baseline (snapshot from ~45s ago) so each loaded strike can show its ΔGEX (↑/↓ since checkpoint).
   const gexDeltaRef = useRef<{ base: Map<number, number>; ts: number; tick: string }>({ base: new Map(), ts: 0, tick: '' });
-  const dragRef = useRef<{ x: number; off: number; lastX?: number; lastT?: number; vx?: number } | null>(null);
+  // A plot drag now free-pans BOTH axes (TradingView 2D pan): x/off drive time; y + the price-view
+  // baseline (offset0/factor0) + a px→price scale frozen at grab (pricePerPx) drive price. `locked`
+  // flips true on the first effective move, when the price scale is pinned to manual.
+  const dragRef = useRef<{ x: number; y: number; off: number; offset0: number; factor0: number; pricePerPx: number; span0: number; locked: boolean; lastX?: number; lastT?: number; vx?: number } | null>(null);
   const panPxRef = useRef(0);   // sub-bar pixel offset during an active drag → smooth (sub-pixel) panning; snaps to 0 on release
   const inertiaRef = useRef(0); // rAF id for the momentum glide after a flick-release
   const zoomAnimRef = useRef(0); // rAF id for eased wheel-zoom
@@ -193,9 +196,20 @@ export const SlayerChart = memo(function SlayerChartImpl({ profile, decimals, ca
     };
     tweenRef.current = requestAnimationFrame(stepFn);
   };
-  const resetView = () => { tweenView({ bars: 110, off: 0 }); setPriceView(null); };
+  // Pin the vertical price scale to its current displayed range (AUTO → MANUAL), exactly like
+  // TradingView locks the scale the instant you start to pan. Idempotent — a no-op if already manual.
+  // factor:1/offset:0 reproduces the on-screen range because draw.ts freezes the base range while a
+  // manual priceView is active and applies factor/offset on top of it.
+  const lockPriceScale = () => { if (priceViewRef.current) return priceViewRef.current; const pv = { factor: 1, offset: 0 }; priceViewRef.current = pv; setPriceView(pv); return pv; };
+  // Return the price axis to auto-fit: clear the manual scale AND drop the held range so the next
+  // frame re-fits to the visible candles immediately (reset / double-click / AUTO Y).
+  const autoFitPrice = () => { dispRangeRef.current = null; setPriceView(null); };
+  const resetView = () => { tweenView({ bars: 110, off: 0 }); autoFitPrice(); };
   useEffect(() => () => { if (tweenRef.current) cancelAnimationFrame(tweenRef.current); if (inertiaRef.current) cancelAnimationFrame(inertiaRef.current); if (zoomAnimRef.current) cancelAnimationFrame(zoomAnimRef.current); }, []);
-  const priceViewRef = useRef(priceView); priceViewRef.current = priceView;
+  // While a 2D pan is locked, the move handler OWNS priceViewRef (it updates the range imperatively and
+  // commits to React state only on release — avoids a re-render per pointer frame). So don't let an
+  // unrelated re-render mid-drag (e.g. a live candle tick) clobber the in-flight range back to stale state.
+  const priceViewRef = useRef(priceView); if (!dragRef.current?.locked) priceViewRef.current = priceView;
   const candlesRef = useRef(candles); candlesRef.current = candles;
   const toolRef = useRef(tool); toolRef.current = tool;
   const drawingsRef = useRef(drawings); drawingsRef.current = drawings;
@@ -471,7 +485,11 @@ export const SlayerChart = memo(function SlayerChartImpl({ profile, decimals, ca
           schedule(); return;
         }
         if (selectedRef.current) setSelectedId(null);
-        dragRef.current = { x: e.clientX, off: viewRef.current.off }; canvas.style.cursor = 'grabbing'; return;
+        // Arm a 2D pan. The price-scale lock is deferred to the first effective move (so a click isn't
+        // turned into a manual scale); offset0/factor0 carry the current price-view so a second drag
+        // continues smoothly, and pricePerPx is frozen here so vertical finger-tracking stays 1:1.
+        dragRef.current = { x: e.clientX, y: e.clientY, off: viewRef.current.off, offset0: priceViewRef.current?.offset ?? 0, factor0: priceViewRef.current?.factor ?? 1, pricePerPx: (g.hi - g.lo) / g.priceAreaH, span0: g.hi - g.lo, locked: false };
+        canvas.style.cursor = 'grabbing'; return;
       }
       if (mx >= g.plotR) return; // drawing tools act only inside the plot
       const t = tAtX(mx, g), price = priceAtY(my, g);
@@ -505,6 +523,15 @@ export const SlayerChart = memo(function SlayerChartImpl({ profile, decimals, ca
       if (pd) { const dy = e.clientY - pd.y; const factor = Math.max(0.2, Math.min(6, pd.factor * Math.exp(dy / 240))); setPriceView({ factor, offset: pd.offset }); return; }
       const drag = dragRef.current;
       if (drag && g) {
+        // ── Vertical (price) pan — the missing half of a TradingView free 2D drag. A VERTICAL move (only)
+        // LOCKS the price scale to manual so the candles never rescale; a pure horizontal drag stays in
+        // auto-fit (the dead-band holds it steady, so it slides without rescaling and still auto-recovers
+        // if you scroll to a far price). Once locked, dy translates the range 1:1 (the price grabbed at
+        // mousedown stays under the cursor), factor held. The range is driven through priceViewRef directly
+        // and committed to React state only on release (onUp) — no re-render per pointer frame.
+        const dyTot = e.clientY - drag.y;
+        if (!drag.locked && Math.abs(dyTot) > 3) { lockPriceScale(); drag.locked = true; }
+        if (drag.locked) { const lim = drag.span0 * 2.5; const offset = Math.max(-lim, Math.min(lim, drag.offset0 + dyTot * drag.pricePerPx)); priceViewRef.current = { factor: drag.factor0, offset }; }   // clamp keeps candles from being panned entirely off-screen
         const n = candlesRef.current.length, barW = g.barW;
         const minOff = -Math.round(viewRef.current.bars * 0.5), maxOff = Math.max(0, n - 10);
         // Continuous (fractional) bar offset → smooth sub-pixel pan. The integer part drives the data
@@ -537,12 +564,13 @@ export const SlayerChart = memo(function SlayerChartImpl({ profile, decimals, ca
       const drag = dragRef.current, g = geomRef.current;
       if (editRef.current) { editRef.current = null; canvas.style.cursor = 'crosshair'; return; }   // finished editing a drawing — no pan momentum
       dragRef.current = null; priceDragRef.current = null; measureDragRef.current = false; canvas.style.cursor = 'crosshair';
+      if (drag?.locked) setPriceView(priceViewRef.current);   // commit the panned range to React state once (drag drove it through the ref); now the guarded render can resync without clobbering it
       if (drag && g && drag.vx && Math.abs(drag.vx) > 0.08) startMomentum(drag.vx, g);
       else if (panPxRef.current !== 0) { panPxRef.current = 0; drawRef.current(); }
     };
     const onLeave = () => { hoverRef.current = null; broadcastCrosshair(null, panelId ?? 'main'); drawOverlayRef.current(); };
     // Double-click (cursor mode): price gutter → auto-fit; elsewhere → snap back to the live edge.
-    const onDbl = (e: MouseEvent) => { if (toolRef.current !== 'cursor') return; const r = canvas.getBoundingClientRect(), mx = e.clientX - r.left, g = geomRef.current; if (g && mx >= g.plotR) setPriceView(null); else tweenView({ bars: 110, off: 0 }); };
+    const onDbl = (e: MouseEvent) => { if (toolRef.current !== 'cursor') return; const r = canvas.getBoundingClientRect(), mx = e.clientX - r.left, g = geomRef.current; if (g && mx >= g.plotR) autoFitPrice(); else { tweenView({ bars: 110, off: 0 }); autoFitPrice(); } };
     // Right-click anywhere on the chart → a small "View" menu (reset to the live view, jump to live, auto-fit Y).
     const onCtx = (e: MouseEvent) => { e.preventDefault(); const r = canvas.getBoundingClientRect(); setCtxMenu({ x: Math.max(6, Math.min(e.clientX - r.left, r.width - 192)), y: Math.max(6, Math.min(e.clientY - r.top, r.height - 128)) }); };
     const onKey = (e: KeyboardEvent) => {
@@ -572,7 +600,7 @@ export const SlayerChart = memo(function SlayerChartImpl({ profile, decimals, ca
       touchRef.current = { x: p.x, y: p.y, t: performance.now(), moved: false };
       hoverRef.current = null; broadcastCrosshair(null, panelId ?? 'main');   // clear any prior tap-crosshair so it can't look stale mid-pan
       panPxRef.current = 0;
-      dragRef.current = { x: e.touches[0].clientX, off: viewRef.current.off };
+      dragRef.current = { x: e.touches[0].clientX, y: e.touches[0].clientY, off: viewRef.current.off, offset0: priceViewRef.current?.offset ?? 0, factor0: priceViewRef.current?.factor ?? 1, pricePerPx: (g.hi - g.lo) / g.priceAreaH, span0: g.hi - g.lo, locked: false };
     };
     const onTouchMove = (e: TouchEvent) => {
       const g = geomRef.current; if (!g) return;
@@ -590,8 +618,14 @@ export const SlayerChart = memo(function SlayerChartImpl({ profile, decimals, ca
       }
       const drag = dragRef.current;
       if (drag) {
-        const cx = e.touches[0].clientX, p = tXY(e.touches[0]), tr = touchRef.current;
+        const cx = e.touches[0].clientX, cy = e.touches[0].clientY, p = tXY(e.touches[0]), tr = touchRef.current;
         if (tr && (Math.abs(p.x - tr.x) > 6 || Math.abs(p.y - tr.y) > 6)) tr.moved = true;
+        // 2D pan on touch — mirror the mouse. Only a real vertical move (past the tap/pan threshold) locks
+        // the price scale; thereafter dy translates the range 1:1, driven through the ref and committed to
+        // state on release. A jittery tap (< the pan threshold) never locks the scale.
+        const dyTot = cy - drag.y;
+        if (!drag.locked && tr?.moved && Math.abs(dyTot) > 3) { lockPriceScale(); drag.locked = true; }
+        if (drag.locked) { const lim = drag.span0 * 2.5; const offset = Math.max(-lim, Math.min(lim, drag.offset0 + dyTot * drag.pricePerPx)); priceViewRef.current = { factor: drag.factor0, offset }; }
         const barW = g.barW, minOff = -Math.round(viewRef.current.bars * 0.5), maxOff = Math.max(0, n - 10);
         const offFloat = Math.max(minOff, Math.min(maxOff, drag.off + (cx - drag.x) / barW));
         const offInt = Math.floor(offFloat);
@@ -605,6 +639,7 @@ export const SlayerChart = memo(function SlayerChartImpl({ profile, decimals, ca
     const onTouchEnd = (e: TouchEvent) => {
       const g = geomRef.current, drag = dragRef.current, tr = touchRef.current;
       if (e.touches.length === 0) {
+        if (drag?.locked) setPriceView(priceViewRef.current);   // commit the panned range to state once on release (mirrors onUp)
         // Tap (negligible move) → drop the crosshair at the tap point so values can be read on touch.
         if (tr && !tr.moved && g) {
           hoverRef.current = { x: tr.x, y: tr.y };
@@ -617,7 +652,7 @@ export const SlayerChart = memo(function SlayerChartImpl({ profile, decimals, ca
         // Lifted from two fingers to one → resume panning from the remaining finger.
         pinchRef.current = null;
         const p = tXY(e.touches[0]);
-        dragRef.current = { x: e.touches[0].clientX, off: viewRef.current.off };
+        dragRef.current = { x: e.touches[0].clientX, y: e.touches[0].clientY, off: viewRef.current.off, offset0: priceViewRef.current?.offset ?? 0, factor0: priceViewRef.current?.factor ?? 1, pricePerPx: g ? (g.hi - g.lo) / g.priceAreaH : 0, span0: g ? g.hi - g.lo : 0, locked: false };
         touchRef.current = { x: p.x, y: p.y, t: performance.now(), moved: true };
       }
     };
@@ -670,7 +705,7 @@ export const SlayerChart = memo(function SlayerChartImpl({ profile, decimals, ca
   const pickRange = (r: RangeKey) => {
     const p = RANGE_PRESETS.find(x => x.k === r); if (!p) return;
     setRange(r);
-    if (tfKey === p.tf) { tweenView({ bars: p.bars, off: 0 }); setPriceView(null); }
+    if (tfKey === p.tf) { tweenView({ bars: p.bars, off: 0 }); autoFitPrice(); }
     else { pendingBarsRef.current = p.bars; applyTf(p.tf); } // tf change → reset effect applies the bars
   };
 
@@ -791,7 +826,7 @@ export const SlayerChart = memo(function SlayerChartImpl({ profile, decimals, ca
           {specChip(showExposure, 'Δ/VANNA', () => setShowExposure(v => !v), 'default', 'DEALER EXPOSURE HUD — aggregate net dealer Δ (DEX) and Vanna across the whole chain, with a tilt gauge (net ÷ gross). Net-long Δ = dealers add to moves; net Vanna shows how their hedging shifts as IV changes.')}
           {specChip(showMaxPain, 'MAX PAIN', () => setShowMaxPain(v => !v), 'default', 'MAX PAIN — the settlement strike that minimizes total ITM payout to option holders (OI-weighted). A classic expiry magnet, distinct from the gamma magnet; the two often disagree.')}
           <button onClick={resetView} title="Reset view — smoothly refit zoom, pan and price scale (or double-click the chart)" className="px-1.5 py-0.5 rounded-sm text-[10px] font-mono font-bold uppercase tracking-wide border border-[var(--border)] bg-[var(--surface-2)] text-[var(--text-secondary)] hover:border-[var(--border-strong)] hover:text-[var(--text-primary)] transition-colors">⟲ RESET</button>
-          {priceView && <button onClick={() => setPriceView(null)} title="Reset price scale to auto-fit (or double-click the price axis)" className="px-1.5 py-0.5 rounded-sm text-[10px] font-mono font-bold uppercase tracking-wide border border-[var(--border)] bg-[var(--surface-2)] text-[var(--text-secondary)] hover:border-[var(--border-strong)] transition-colors">⤢ AUTO Y</button>}
+          {priceView && <button onClick={autoFitPrice} title="Reset price scale to auto-fit (or double-click the price axis)" className="px-1.5 py-0.5 rounded-sm text-[10px] font-mono font-bold uppercase tracking-wide border border-[var(--border)] bg-[var(--surface-2)] text-[var(--text-secondary)] hover:border-[var(--border-strong)] transition-colors">⤢ AUTO Y</button>}
           {view.off !== 0 && <button onClick={() => tweenView({ bars: view.bars, off: 0 })} title="Jump back to the live edge (or double-click the chart)" className="px-1.5 py-0.5 rounded-sm text-[10px] font-mono font-bold uppercase tracking-wide border border-[var(--border)] bg-[var(--surface-2)] text-[var(--text-secondary)] hover:border-[var(--border-strong)] transition-colors">⟳ LIVE</button>}
         </div>
       </div>
@@ -799,7 +834,7 @@ export const SlayerChart = memo(function SlayerChartImpl({ profile, decimals, ca
         <canvas ref={canvasRef} className="absolute inset-0 cursor-crosshair" style={{ position: 'absolute', inset: 0, touchAction: 'none' }} />
         {/* Layered-canvas overlay (Phase 1): live last-price pulse paints here; pointer events pass through to the canvas below. */}
         <canvas ref={overlayRef} className="absolute inset-0 pointer-events-none" style={{ position: 'absolute', inset: 0, pointerEvents: 'none' }} />
-        {ctxMenu && <ChartContextMenu menu={ctxMenu} onClose={() => setCtxMenu(null)} resetView={resetView} view={view} tweenView={tweenView} priceView={priceView} onAutoFit={() => setPriceView(null)} />}
+        {ctxMenu && <ChartContextMenu menu={ctxMenu} onClose={() => setCtxMenu(null)} resetView={resetView} view={view} tweenView={tweenView} priceView={priceView} onAutoFit={autoFitPrice} />}
       </div>
     </div>
   );

@@ -153,11 +153,16 @@ export function drawChart(deps: DrawDeps) {
     // margin, so a live feed never visibly "breathes". Re-fit (snap, no per-frame easing) only when the
     // view is actively zoomed/panned, price nears an edge, the frame drifts too loose/tight, or the band
     // jumps (ticker/timeframe switch). No continuous animation → no jitter.
+    const pv = priceViewRef.current;
     const sv = scaleViewRef.current;
-    const viewChanged = !sv || sv.bars !== bars || sv.off !== off;
+    // AUTO-fit (priceView null): a ZOOM (bars change) re-fits the range; a pure horizontal PAN (off-only)
+    // does NOT — the dead-band holds the displayed range so the viewport slides instead of the candles
+    // rescaling vertically (TradingView keeps the price scale steady while you scroll time).
+    const viewChanged = !sv || sv.bars !== bars;
     scaleViewRef.current = { bars, off };
     const disp = dispRangeRef.current;
     if (!disp) { dispRangeRef.current = { lo, hi }; }
+    else if (pv) { lo = disp.lo; hi = disp.hi; }   // MANUAL: the base range is FROZEN — no auto-fit at all, so a locked scale never moves the candles vertically (under pan, zoom, or new live bars); only an explicit price gesture (offset/factor below) changes Y. This is TradingView's locked-scale behavior 1:1.
     else {
       const dSpan = (disp.hi - disp.lo) || 1, tSpan = (hi - lo) || 1, margin = dSpan * 0.06;
       const bigJump = Math.abs((lo + hi) / 2 - (disp.lo + disp.hi) / 2) > Math.max(tSpan, dSpan) * 0.6;
@@ -166,9 +171,9 @@ export function drawChart(deps: DrawDeps) {
       if (viewChanged || bigJump || !fits || looseOrTight) { disp.lo = lo; disp.hi = hi; }
       lo = disp.lo; hi = disp.hi;
     }
-    // Manual vertical scale (drag the price axis): scale the held range about its center + shift — applied
-    // AFTER the dead-band hold so a manual price-scale drag always responds immediately.
-    const pv = priceViewRef.current;
+    // Manual vertical view (2D plot pan, or drag/scroll the price axis): scale the FROZEN base range
+    // about its center (factor = squash/stretch) then translate it (offset, in price units = pan). The
+    // candles' shape is preserved; the whole scene (overlays + axis labels read lo/hi via geom) moves as one.
     if (pv) { const center = (lo + hi) / 2, half = Math.max(1e-6, ((hi - lo) / 2) * pv.factor); lo = center - half + pv.offset; hi = center + half + pv.offset; }
     const volBandH = showVolume ? priceH * 0.13 : 0, priceAreaH = priceH - volBandH;
     const yP = (p: number) => priceTop + priceAreaH - ((p - lo) / (hi - lo)) * priceAreaH;
