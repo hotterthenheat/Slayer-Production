@@ -21,7 +21,7 @@ import { ReplayScrubber } from './terminal/ReplayScrubber';
 import { DealerPulse } from './terminal/DealerPulse';
 import { SessionBand } from './terminal/SessionBand';
 import { fmtBig } from './terminal/format';
-import { CROSSHAIR_EVENT, CrosshairDetail, PRICE_SCALE_EVENT, PriceScaleDetail } from '../lib/chartSync';
+import { CROSSHAIR_EVENT, CrosshairDetail } from '../lib/chartSync';
 import { EdgeTrackRecord } from './EdgeTrackRecord';
 import { Crosshair, Activity, Zap, Layers, ChevronDown, Gauge as GaugeIcon, TrendingUp, TrendingDown, Minus, Clock, Maximize2, Minimize2, LayoutGrid, Star } from 'lucide-react';
 import { loadWatchlist, saveWatchlist, toggleWatch } from '../lib/watchlist';
@@ -107,9 +107,6 @@ export function LiveTerminalFlow({ profile: liveProfile, ticker, decimals }: Liv
   const [customize, setCustomize] = useState(false); // TradingView-style drag/resize/save custom layout
   const [gexLines, setGexLines] = useState(false); // center toggle — multi-strike GEX line chart
   const [ladderMetric, setLadderMetric] = useState<'GAMMA' | 'DELTA' | 'VANNA' | 'OI' | 'VOL'>('GAMMA');
-  // Live price range the chart is showing — the Dealer Gamma Profile fills its panel with this range
-  // and flows as the chart's price axis expands / shortens. null until the chart broadcasts.
-  const [syncScale, setSyncScale] = useState<{ lo: number; hi: number } | null>(null);
   const [now, setNow] = useState(() => new Date());
   useEffect(() => { const t = setInterval(() => setNow(new Date()), 1000); return () => clearInterval(t); }, []);
   // Feed heartbeat — stamp every SSE frame; if the stream goes quiet the UI must SAY so
@@ -249,16 +246,6 @@ export function LiveTerminalFlow({ profile: liveProfile, ticker, decimals }: Liv
     return () => { window.removeEventListener(CROSSHAIR_EVENT, onXhair as EventListener); if (raf) cancelAnimationFrame(raf); clearLit(); };
   }, []);
 
-  // ── Price-scale bridge — the gamma profile follows the chart's live visible range ──
-  // rAF-throttled; the setState compare drops no-op frames so it only re-renders when the range moves.
-  useEffect(() => {
-    let raf = 0, pending: { lo: number; hi: number } | null = null;
-    const flush = () => { raf = 0; const p = pending; if (p) setSyncScale(prev => (prev && Math.abs(prev.lo - p.lo) < 1e-6 && Math.abs(prev.hi - p.hi) < 1e-6) ? prev : p); };
-    const onScale = (e: Event) => { const d = (e as CustomEvent<PriceScaleDetail>).detail; if (!d || !(d.hi > d.lo)) return; pending = { lo: d.lo, hi: d.hi }; if (!raf) raf = requestAnimationFrame(flush); };
-    window.addEventListener(PRICE_SCALE_EVENT, onScale as EventListener);
-    return () => { window.removeEventListener(PRICE_SCALE_EVENT, onScale as EventListener); if (raf) cancelAnimationFrame(raf); };
-  }, []);
-
   // ── TASK 4 — GEX regime theming ──────────────────────────────────────────────
   // Net-GEX sign is the regime. On a FLIP only, pulse the ambient frame harder for ~1.4s so the
   // change is felt peripherally; it then settles to a faint cool (long-gamma) / warning
@@ -339,12 +326,18 @@ export function LiveTerminalFlow({ profile: liveProfile, ticker, decimals }: Liv
     }
   }, [ladder, ladderMetric]);
 
-  // Dealer Gamma Profile — every strike inside the chart's live range, as a tiling horizontal histogram
-  // (bar thickness = strike spacing so it fills the panel; length = the selected metric). Flows as the
-  // chart's price axis expands/shortens.
+  // Dealer Gamma Profile — a tiling horizontal histogram (bar thickness = strike spacing so it fills the
+  // panel; length = the selected metric). The range is STATIC: centred on spot and sized to cover the
+  // dealer structure (walls / flip / magnet / expected-move), so the ladder stays put as the user pans or
+  // zooms the chart. It re-centres only as live spot moves — never with the chart's view.
   const gammaProfile = useMemo(() => {
-    if (!syncScale) return null;
-    const { lo, hi } = syncScale, span = hi - lo;
+    if (!spot || spot <= 0) return null;
+    const dists = [profile.callWall, profile.putWall, profile.gammaFlip, profile.magnet]
+      .filter((x): x is number => typeof x === 'number' && x > 0).map(x => Math.abs(x - spot));
+    if (profile.expectedMovePct) dists.push(spot * profile.expectedMovePct * 1.5);
+    let half = Math.max(spot * 0.015, ...dists);   // always cover at least ±1.5%, and the structure if wider
+    half = Math.min(half * 1.18, spot * 0.05);      // pad, but cap at ±5% so a far OTM level can't blow out the scale
+    const lo = spot - half, hi = spot + half, span = hi - lo;
     if (!(span > 0)) return null;
     const inRange = (profile.strikes || []).filter(s => s.strike >= lo && s.strike <= hi);
     if (inRange.length < 2) return null;
@@ -371,7 +364,7 @@ export function LiveTerminalFlow({ profile: liveProfile, ticker, decimals }: Liv
         showLabel: (i % labelEveryN === 0) || isCW || isPW || isFlip || isSpot,
       }; }),
     };
-  }, [syncScale, profile, ladderMetric, spot]);
+  }, [profile, ladderMetric, spot]);
 
   const mSym = ladderMetric === 'GAMMA' ? 'γ' : ladderMetric === 'DELTA' ? 'Δ' : ladderMetric === 'VANNA' ? 'V' : ladderMetric === 'OI' ? 'OI' : 'Vol';
   const gammaPin = profile.magnet || spot; // where dealer gamma pins price — descriptive, not a call

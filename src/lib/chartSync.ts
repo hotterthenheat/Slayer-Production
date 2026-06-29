@@ -54,14 +54,3 @@ export interface CrosshairDetail { price: number | null; source: string }
 export function broadcastCrosshair(price: number | null, source: string): void {
   try { window.dispatchEvent(new CustomEvent<CrosshairDetail>(CROSSHAIR_EVENT, { detail: { price, source } })); } catch { /* SSR-safe */ }
 }
-
-// ── Price-scale bridge ────────────────────────────────────────────────────────
-// The chart broadcasts its LIVE visible price range so the Dealer Gamma Profile (Exposure Ladder)
-// shows exactly the prices the chart is showing and flows as the chart pans / zooms / ticks. Pure
-// window event for the same 60fps reason as the crosshair bridge.
-export const PRICE_SCALE_EVENT = 'slayer:pricescale';
-export interface PriceScaleDetail { lo: number; hi: number; spot: number | null; source: string }
-
-export function broadcastPriceScale(lo: number, hi: number, spot: number | null, source: string): void {
-  try { window.dispatchEvent(new CustomEvent<PriceScaleDetail>(PRICE_SCALE_EVENT, { detail: { lo, hi, spot, source } })); } catch { /* SSR-safe */ }
-}
