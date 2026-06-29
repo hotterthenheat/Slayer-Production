@@ -10,6 +10,7 @@ import { ChartPanelGrid } from './ChartPanelGrid';
 import { StrikeGexChart } from './StrikeGexChart';
 import { useGexHistory } from '../lib/gexHistory';
 import { StrikeMatrix } from './StrikeMatrix';
+import { GreeksMatrix } from './GreeksMatrix';
 import { OrderFlow } from './OrderFlow';
 import { DealerDynamicsPanel } from './DealerDynamicsPanel';
 import { RegimeMatrixPanel } from './RegimeMatrixPanel';
@@ -108,6 +109,7 @@ export function LiveTerminalFlow({ profile: liveProfile, ticker, decimals }: Liv
   const [multiChart, setMultiChart] = useState(false); // opt-in movable/resizable multi-chart grid
   const [chartFocus, setChartFocus] = useState(false); // chart-hero focus mode — collapses both side rails (xl+)
   const [matrixMax, setMatrixMax] = useState(false); // full-screen the gamma matrix over the whole workspace
+  const [matrixMode, setMatrixMode] = useState<'expiry' | 'greeks'>('expiry'); // EXPIRY = strike×expiry γ heatmap · GREEKS = strike×DEX/GEX/VEX/CEX exposure grid
   const [watchlist, setWatchlist] = useState<string[]>(() => loadWatchlist()); // persisted starred tickers
   const toggleWatchTicker = (t: string) => setWatchlist(prev => { const next = toggleWatch(prev, t); saveWatchlist(next); return next; });
   const [customize, setCustomize] = useState(false); // TradingView-style drag/resize/save custom layout
@@ -662,12 +664,14 @@ export function LiveTerminalFlow({ profile: liveProfile, ticker, decimals }: Liv
             big + readable) so it isn't confined to the narrow rail box. */}
         {matrixMax && (
           <div className="absolute inset-0 z-40 flex flex-col bg-[var(--bg-base)] animate-fadeIn">
-            <div className="flex items-center justify-between px-4 h-9 border-b border-[var(--border)] shrink-0">
-              <span className="text-[11px] font-sans font-black tracking-widest uppercase text-[var(--text-primary)]">Gamma Matrix · {selectedAsset.ticker}</span>
-              <button onClick={() => setMatrixMax(false)} title="Restore" className="flex items-center gap-1.5 text-[10px] font-mono font-black uppercase tracking-wider text-[var(--text-tertiary)] hover:text-[var(--text-primary)] focus-visible:ring-1 focus-visible:ring-[var(--accent-color)] focus:outline-none rounded px-1.5 py-0.5 transition-colors"><Minimize2 className="w-3.5 h-3.5" /> Restore</button>
+            <div className="flex items-center justify-between gap-3 px-4 h-9 border-b border-[var(--border)] shrink-0">
+              <span className="text-[11px] font-sans font-black tracking-widest uppercase text-[var(--text-primary)] shrink-0">{matrixMode === 'greeks' ? 'Greeks Matrix' : 'Gamma Matrix'} · {selectedAsset.ticker}</span>
+              {/* EXPIRY = strike×expiry γ heatmap · GREEKS = strike×exposure (DEX/GEX/VEX/CEX) grid */}
+              {segToggle(['EXPIRY', 'GREEKS'], matrixMode === 'greeks' ? 'GREEKS' : 'EXPIRY', v => setMatrixMode(v === 'GREEKS' ? 'greeks' : 'expiry'))}
+              <button onClick={() => setMatrixMax(false)} title="Restore" className="ml-auto flex items-center gap-1.5 text-[10px] font-mono font-black uppercase tracking-wider text-[var(--text-tertiary)] hover:text-[var(--text-primary)] focus-visible:ring-1 focus-visible:ring-[var(--accent-color)] focus:outline-none rounded px-1.5 py-0.5 transition-colors shrink-0"><Minimize2 className="w-3.5 h-3.5" /> Restore</button>
             </div>
             <div className="flex-1 min-h-0 overflow-y-auto px-4 py-2">
-              <div className="w-full"><StrikeMatrix profile={profile} decimals={decimals} size="full" /></div>
+              <div className="w-full">{matrixMode === 'greeks' ? <GreeksMatrix profile={profile} decimals={decimals} /> : <StrikeMatrix profile={profile} decimals={decimals} size="full" />}</div>
             </div>
           </div>
         )}

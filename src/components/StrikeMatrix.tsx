@@ -49,12 +49,15 @@ export function StrikeMatrix({ profile, decimals = 0, size = 'compact' }: { prof
     const maxRowNet = Math.max(1, ...rowNet.map(Math.abs));
     const colTot = cols.map(m => 0).map((_, ci) => ks.reduce((a, k) => a + (cell[ci].get(k) || 0), 0));
     const grand = colTot.reduce((a, b) => a + b, 0);
-    const maxColTot = Math.max(1, ...colTot.map(Math.abs));   // for the per-expiry net-bias bars in the header
     // Per-expiry KEY LEVELS — in EACH column the brightest call wall (largest +γ) and put wall (largest
-    // −γ) get a glow + CW/PW tag, so the dominant dealer level on each side reads at a glance (this is the
-    // "biggest / smallest" the eye should land on first).
+    // −γ), so every expiry's dominant level on each side carries a subtle ring.
     const callWall = cols.map((_, ci) => { let bs = NaN, bm = 0; for (const k of ks) { const v = cell[ci].get(k) || 0; if (v > bm) { bm = v; bs = k; } } return bs; });
     const putWall = cols.map((_, ci) => { let bs = NaN, bm = 0; for (const k of ks) { const v = cell[ci].get(k) || 0; if (v < bm) { bm = v; bs = k; } } return bs; });
+    // HERO walls — the single strongest call wall (+γ) and put wall (−γ) across the whole grid. These two
+    // cells get the prominent ring + CW/PW tag (the "biggest" the eye lands on first); every other per-column
+    // wall keeps only a faint ring, so the grid reads calm instead of a wall of tags.
+    let cwHero = { ci: -1, k: NaN, v: 0 }, pwHero = { ci: -1, k: NaN, v: 0 };
+    cols.forEach((_, ci) => { for (const k of ks) { const v = cell[ci].get(k) || 0; if (v > cwHero.v) cwHero = { ci, k, v }; if (v < pwHero.v) pwHero = { ci, k, v }; } });
     // Gamma-flip row — where the AGGREGATE net γ crosses from + to − going down strikes (the dealer flip
     // level): the line is drawn between rows flipIdx-1 and flipIdx. −1 if no crossing is in view.
     let flipIdx = -1;
@@ -70,7 +73,7 @@ export function StrikeMatrix({ profile, decimals = 0, size = 'compact' }: { prof
       let bdH = Infinity, bdL = Infinity;
       for (const k of ks) { const dh = Math.abs(k - emHi); if (dh < bdH) { bdH = dh; emHiK = k; } const dl = Math.abs(k - emLo); if (dl < bdL) { bdL = dl; emLoK = k; } }
     }
-    return { cols, ks, cell, maxAbs, colMaxAbs, rowNet, maxRowNet, colTot, grand, maxColTot, callWall, putWall, flipIdx, nearestK, emHiK, emLoK, spot };
+    return { cols, ks, cell, maxAbs, colMaxAbs, rowNet, maxRowNet, colTot, grand, callWall, putWall, cwHero, pwHero, flipIdx, nearestK, emHiK, emLoK, spot };
   }, [multi, expiries, profile.spot, full]);
 
   // ── Single-expiry CALL | PUT | VOL chain (fallback when <2 expiries) ──────────────────────────
@@ -93,80 +96,89 @@ export function StrikeMatrix({ profile, decimals = 0, size = 'compact' }: { prof
 
   // ════════════════════════════ GAMMA MATRIX render ════════════════════════════
   if (multi && matrix && matrix.ks.length) {
-    const { cols, ks, cell, maxAbs, colMaxAbs, rowNet, maxRowNet, colTot, grand, maxColTot, callWall, putWall, flipIdx, nearestK, emHiK, emLoK } = matrix;
-    const strikeW = full ? 66 : 54, netW = full ? 78 : 56, colMin = full ? 52 : 38;
-    const rowH = full ? 23 : 18, fz = full ? 'text-[11px]' : 'text-[9px]';
+    const { cols, ks, cell, maxAbs, colMaxAbs, rowNet, maxRowNet, colTot, grand, callWall, putWall, cwHero, pwHero, flipIdx, nearestK, emHiK, emLoK } = matrix;
+    const strikeW = full ? 74 : 52, netW = full ? 84 : 52, colMin = full ? 56 : 38;
+    const rowH = full ? 23 : 17, fz = full ? 'text-[11px]' : 'text-[9px]';
+    const PITCH = rowH;   // no row gap → cell hairlines form the grid; used to place the spot box / flip overlays
     const template = `${strikeW}px repeat(${cols.length}, minmax(${colMin}px, 1fr)) ${netW}px`;
-    const stickCol = 'sticky left-0 bg-[var(--surface)]';   // frozen strike axis when scrolling expiries
-    // Diverging heatmap cell: green for +γ, red for −γ; intensity ∝ |net|/maxAbs. Faint floor so a cell
-    // with γ never fully vanishes, capped so candles-elsewhere stay dominant. Text brightens with intensity.
-    const cellBg = (v: number) => { const t = Math.min(1, Math.abs(v) / maxAbs); const tok = v >= 0 ? 'var(--success)' : 'var(--danger)'; return `color-mix(in srgb, ${tok} ${Math.round(8 + t * 60)}%, transparent)`; };
-    const cellInk = (v: number) => { const t = Math.min(1, Math.abs(v) / maxAbs); return t > 0.45 ? 'var(--text-primary)' : t > 0.12 ? 'var(--text-secondary)' : 'var(--text-tertiary)'; };
+    const stick = 'sticky left-0';   // frozen strike axis when scrolling expiries
+    const hair = 'inset 0 0 0 1px var(--border)';   // crisp hairline around every cell → reads as a true matrix grid
+    const spotIdx = ks.indexOf(nearestK);
+    // Per-expiry heat — intensity is relative to THAT column's own peak (so every expiry reveals its own
+    // call/put structure, not just the front month), then gently damped by how that column's peak compares
+    // to the global peak so a near-dead far-dated column stays dim. A steep curve keeps the wall cells bright
+    // and pushes weak cells back toward the surface, so the grid reads as distinct tiles instead of one
+    // green/red wash. The printed value is always the truth; the fill is only a reading aid. green = +γ, red = −γ.
+    const heat = (v: number, ci: number) => Math.min(1, Math.abs(v) / colMaxAbs[ci]) * Math.pow(colMaxAbs[ci] / maxAbs, 0.28);
+    const cellBg = (v: number, ci: number) => { if (!v) return 'var(--surface)'; const tok = v >= 0 ? 'var(--success)' : 'var(--danger)'; return `color-mix(in srgb, ${tok} ${Math.round(6 + Math.pow(heat(v, ci), 1.05) * 80)}%, var(--surface))`; };
+    const cellInk = (v: number, ci: number) => { const t = heat(v, ci); return t > 0.42 ? 'var(--text-primary)' : t > 0.13 ? 'var(--text-secondary)' : 'var(--text-tertiary)'; };
 
     return (
       <div className="w-full overflow-x-auto hide-scrollbar">
         <div className={`min-w-max font-mono ${fz} tabular-nums select-none`}>
-          {/* Legend — decodes the spotlight markers so a first-time reader knows what the glows / tags mean.
-              Full-screen only (the rail is too narrow); theme tokens throughout. */}
+          {/* Legend — decodes the markers. Full-screen only (the rail is too narrow); theme tokens throughout. */}
           {full && (
-            <div className="flex flex-wrap items-center gap-x-3.5 gap-y-1 px-2 py-1.5 border-b border-[var(--border)] text-[8px] font-mono font-bold uppercase tracking-wider text-[var(--text-tertiary)] bg-[var(--surface)]">
-              <span className="text-[var(--text-secondary)]">Legend</span>
-              <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-[2px]" style={{ boxShadow: 'inset 0 0 0 1.5px var(--success)' }} />CW · call wall</span>
-              <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-[2px]" style={{ boxShadow: 'inset 0 0 0 1.5px var(--danger)' }} />PW · put wall</span>
-              <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full" style={{ background: 'var(--accent-color)' }} />Spot</span>
-              <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full" style={{ background: 'var(--info)' }} />EM · exp move</span>
-              <span className="flex items-center gap-1"><span className="w-3 h-0.5" style={{ background: 'var(--warning)' }} />γ flip</span>
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-1 px-3 py-2 border-b border-[var(--border)] text-[8px] font-mono font-bold uppercase tracking-wider text-[var(--text-tertiary)] bg-[var(--surface)]">
+              <span className="text-[var(--text-secondary)]">Net γ / strike · per-expiry heat</span>
+              <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-[2px]" style={{ background: 'color-mix(in srgb, var(--success) 60%, var(--surface))' }} />+ γ long</span>
+              <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-[2px]" style={{ background: 'color-mix(in srgb, var(--danger) 60%, var(--surface))' }} />− γ short</span>
+              <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-[2px]" style={{ boxShadow: 'inset 0 0 0 1.5px var(--success)' }} />CW call wall</span>
+              <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-[2px]" style={{ boxShadow: 'inset 0 0 0 1.5px var(--danger)' }} />PW put wall</span>
+              <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-[2px]" style={{ boxShadow: 'inset 0 0 0 1.5px var(--accent-color)' }} />Spot</span>
+              <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full" style={{ background: 'var(--info)' }} />EM exp move</span>
+              <span className="flex items-center gap-1.5"><span className="w-3 h-0.5" style={{ background: 'var(--warning)' }} />γ flip</span>
             </div>
           )}
-          {/* Column header — STRIKE · expiry (date · DTE · net-bias bar) · NET */}
-          <div className="grid gap-x-0.5 pr-2 py-1.5 sticky top-0 z-20 bg-[var(--surface)] border-b border-[var(--border)] text-[8px] font-black uppercase tracking-[0.12em]" style={{ gridTemplateColumns: template }}>
-            <div className={`${stickCol} z-30 text-right text-[var(--text-tertiary)] self-center pl-2 pr-1`}>Strike</div>
+          {/* Column header — STRIKE · expiry (date · DTE) · NET */}
+          <div className="grid sticky top-0 z-20 bg-[var(--surface)] border-b border-[var(--border)] text-[8px] font-black uppercase tracking-[0.12em]" style={{ gridTemplateColumns: template }}>
+            <div className={`${stick} z-30 bg-[var(--surface)] text-right text-[var(--text-tertiary)] self-stretch flex items-center justify-end pl-2 pr-2 py-2`}>Strike</div>
             {cols.map((c, ci) => (
-              <div key={c.expiration} className="text-center leading-tight self-center px-0.5">
+              <div key={c.expiration} className="text-center leading-tight self-center px-0.5 py-2">
                 <div className="text-[var(--text-secondary)]">{fmtExp(c.expiration)}</div>
                 <div style={{ color: c.dte <= 0 ? 'var(--warning)' : 'var(--text-tertiary)' }}>{c.dte <= 0 ? '0DTE' : `${c.dte}D`}</div>
-                {/* per-expiry net-γ bias bar — width ∝ this expiry's |Σγ| share, coloured by sign */}
-                <div className="mt-1 h-[3px] w-full rounded-full overflow-hidden" style={{ background: 'color-mix(in srgb, var(--text-tertiary) 16%, transparent)' }}>
-                  <div className="h-full mx-auto rounded-full" style={{ width: `${Math.max(6, Math.round((Math.abs(colTot[ci]) / maxColTot) * 100))}%`, background: colTot[ci] >= 0 ? 'var(--success)' : 'var(--danger)' }} />
-                </div>
               </div>
             ))}
-            <div className="text-center text-[var(--text-tertiary)] self-center pr-1">Net γ</div>
+            <div className="text-center text-[var(--text-tertiary)] self-center pr-1 py-2">Net γ</div>
           </div>
-          {/* Body — one row per strike, with the aggregate gamma-flip line drawn across it */}
-          <div className="relative">
+          {/* Body — every cell is a surface tile outlined by a 1px hairline → a true matrix grid; the spot
+              box + γ-flip divider are drawn as overlays on top. */}
+          <div className="relative flex flex-col" style={{ background: 'var(--surface)' }}>
             {ks.map((k, ri) => {
               const isSpot = k === nearestK;
               const isEm = !isSpot && (k === emHiK || k === emLoK);   // expected-move boundary strike (not the spot row)
               const rn = rowNet[ri];
               return (
-                <div key={k} className="grid gap-x-0.5 pr-2 items-center" style={{ gridTemplateColumns: template, height: rowH, ...(isSpot ? { background: 'color-mix(in srgb, var(--accent-color) 8%, transparent)' } : isEm ? { background: 'color-mix(in srgb, var(--info) 6%, transparent)' } : undefined) }}>
-                  <div className={`${stickCol} z-20 h-full flex items-center justify-end gap-1 text-right font-bold pl-1.5 pr-1`} style={{ color: isSpot ? 'var(--accent-color)' : isEm ? 'var(--info)' : 'var(--text-secondary)', background: isSpot ? 'color-mix(in srgb, var(--accent-color) 14%, var(--surface))' : isEm ? 'color-mix(in srgb, var(--info) 11%, var(--surface))' : 'var(--surface)', boxShadow: isSpot ? 'inset 3px 0 0 var(--accent-color)' : isEm ? 'inset 2px 0 0 var(--info)' : undefined }}>
-                    {full && isEm && <span className="text-[6px] font-black leading-none opacity-80">EM</span>}
+                <div key={k} className="grid items-stretch" style={{ gridTemplateColumns: template, height: rowH }}>
+                  <div className={`${stick} z-20 h-full flex items-center justify-end gap-1 text-right font-bold pl-2 pr-2`} style={{ color: isSpot ? 'var(--accent-color)' : isEm ? 'var(--info)' : 'var(--text-secondary)', background: isSpot ? 'color-mix(in srgb, var(--accent-color) 16%, var(--surface))' : isEm ? 'color-mix(in srgb, var(--info) 12%, var(--surface))' : 'var(--surface)', boxShadow: isSpot ? 'inset 3px 0 0 var(--accent-color), inset -1px 0 0 var(--border)' : isEm ? 'inset 3px 0 0 var(--info), inset -1px 0 0 var(--border)' : 'inset -1px 0 0 var(--border)' }}>
+                    {isEm && <span className="px-0.5 rounded-[2px] text-[6.5px] font-black leading-none tracking-wide" style={{ background: 'color-mix(in srgb, var(--info) 26%, transparent)', color: 'var(--info)' }}>EM</span>}
                     {Number.isInteger(k) ? k.toLocaleString('en-US') : nf(k)}
                   </div>
                   {cols.map((c, ci) => {
                     const v = cell[ci].get(k) || 0;
-                    // KEY-LEVEL glow: the brightest +γ (call wall) and −γ (put wall) cell in EACH column,
-                    // gated so a near-dead column's trivial max isn't lit. Bright inset ring + soft outer glow.
-                    const isCW = callWall[ci] === k && v > 0 && v / colMaxAbs[ci] > 0.4;
-                    const isPW = putWall[ci] === k && v < 0 && -v / colMaxAbs[ci] > 0.4;
-                    const lit = isCW || isPW;
+                    // Per-column wall ring (subtle); the single strongest call/put wall in the whole grid is the
+                    // HERO — brighter ring + soft glow + CW/PW tag, so the dominant level pops without a wall of tags.
+                    const isCW = callWall[ci] === k && v > 0 && heat(v, ci) > 0.38;
+                    const isPW = putWall[ci] === k && v < 0 && heat(v, ci) > 0.38;
+                    const heroCW = ci === cwHero.ci && k === cwHero.k, heroPW = ci === pwHero.ci && k === pwHero.k;
+                    const ring = heroCW ? 'inset 0 0 0 1.5px var(--success), 0 0 10px -3px var(--success)'
+                      : heroPW ? 'inset 0 0 0 1.5px var(--danger), 0 0 10px -3px var(--danger)'
+                      : isCW ? 'inset 0 0 0 1px color-mix(in srgb, var(--success) 60%, transparent)'
+                      : isPW ? 'inset 0 0 0 1px color-mix(in srgb, var(--danger) 60%, transparent)' : undefined;
                     return (
-                      <div key={c.expiration} className="relative h-full flex items-center justify-center rounded-[2px]" style={{ background: v ? cellBg(v) : undefined, boxShadow: isCW ? 'inset 0 0 0 1.5px var(--success), 0 0 9px -2px var(--success)' : isPW ? 'inset 0 0 0 1.5px var(--danger), 0 0 9px -2px var(--danger)' : undefined }}>
-                        <span style={{ color: lit ? 'var(--text-primary)' : (v ? cellInk(v) : 'var(--text-tertiary)'), fontWeight: (lit || Math.abs(v) / maxAbs > 0.5) ? 800 : 600 }}>{v ? fmtG(v) : '·'}</span>
-                        {full && lit && <span className="absolute top-0 right-0.5 text-[6px] font-black leading-none pt-px" style={{ color: isCW ? 'var(--success)' : 'var(--danger)' }}>{isCW ? 'CW' : 'PW'}</span>}
+                      <div key={c.expiration} className="relative h-full flex items-center justify-center" style={{ background: cellBg(v, ci), boxShadow: ring || hair }}>
+                        <span style={{ color: v ? cellInk(v, ci) : 'var(--text-tertiary)', fontWeight: heat(v, ci) > 0.5 ? 800 : 600 }}>{v ? fmtG(v) : '·'}</span>
+                        {full && (heroCW || heroPW) && <span className="absolute top-px right-0.5 text-[6.5px] font-black leading-none" style={{ color: heroCW ? 'var(--success)' : 'var(--danger)' }}>{heroCW ? 'CW' : 'PW'}</span>}
                       </div>
                     );
                   })}
-                  {/* NET-by-strike — value reads clean; a diverging sparkline (green right / red left from a
-                      centre axis) pins to the bottom edge so it never collides with the number. */}
-                  <div className="relative h-full flex items-center justify-center">
+                  {/* NET-by-strike — the row aggregate; a diverging mini-bar (green right / red left of centre)
+                      pins to the bottom edge so it never collides with the number. */}
+                  <div className="relative h-full flex items-center justify-center" style={{ background: 'var(--surface)', boxShadow: hair }}>
                     <span className="font-bold leading-none" style={{ color: rn >= 0 ? 'var(--success)' : 'var(--danger)' }}>{rn ? fmtG(rn) : '·'}</span>
                     {rn !== 0 && (
-                      <div className="absolute bottom-[2px] left-1.5 right-1.5 h-[3px] flex items-stretch">
+                      <div className="absolute bottom-[2px] left-1.5 right-1.5 h-[2.5px] flex items-stretch opacity-90">
                         <div className="flex-1 flex justify-end"><div style={{ width: `${Math.min(100, (Math.abs(rn) / maxRowNet) * 100)}%`, background: rn < 0 ? 'var(--danger)' : 'transparent', borderRadius: 1 }} /></div>
-                        <div className="w-px shrink-0" style={{ background: 'var(--border)' }} />
+                        <div className="w-px shrink-0" style={{ background: 'var(--border-strong)' }} />
                         <div className="flex-1 flex justify-start"><div style={{ width: `${Math.min(100, (Math.abs(rn) / maxRowNet) * 100)}%`, background: rn >= 0 ? 'var(--success)' : 'transparent', borderRadius: 1 }} /></div>
                       </div>
                     )}
@@ -174,19 +186,25 @@ export function StrikeMatrix({ profile, decimals = 0, size = 'compact' }: { prof
                 </div>
               );
             })}
-            {/* Gamma-flip line — the aggregate +γ → −γ crossing (the dealer flip level) */}
+            {/* Boxed current strike — the clean accent ring around the live-price row (overlay so the frozen
+                strike cell's fill never clips it). */}
+            {spotIdx >= 0 && (
+              <div className="absolute left-0 right-0 z-30 pointer-events-none" style={{ top: spotIdx * PITCH - 1, height: rowH + 2, boxShadow: 'inset 0 0 0 1.5px var(--accent-color)', borderRadius: 3 }} />
+            )}
+            {/* Gamma-flip divider — the aggregate +γ → −γ crossing, drawn ON the gridline between rows with a
+                small chip at the strike edge (never overlaps a row's numbers). */}
             {flipIdx > 0 && (
-              <div className="absolute right-0 z-[21] pointer-events-none flex items-center" style={{ top: flipIdx * rowH, left: strikeW }}>
-                <span className="shrink-0 px-1 py-px rounded-sm text-[7px] font-black uppercase tracking-wider" style={{ background: 'var(--warning)', color: '#06090d' }}>γ Flip</span>
-                <div className="flex-1 h-px ml-1" style={{ background: 'var(--warning)', boxShadow: '0 0 6px color-mix(in srgb, var(--warning) 70%, transparent)' }} />
+              <div className="absolute left-0 right-0 z-[31] pointer-events-none flex items-center" style={{ top: flipIdx * PITCH - 1.5, height: 3 }}>
+                <span className="shrink-0 px-0.5 py-px rounded-[2px] text-[6.5px] font-black uppercase tracking-wide leading-none" style={{ background: 'var(--warning)', color: 'var(--bg-base)' }}>Γ Flip</span>
+                <div className="flex-1 h-px" style={{ background: 'var(--warning)', boxShadow: '0 0 7px color-mix(in srgb, var(--warning) 75%, transparent)' }} />
               </div>
             )}
           </div>
           {/* TOTAL footer — per-expiry Σ net γ + grand total */}
-          <div className="grid gap-x-0.5 pr-2 py-1.5 sticky bottom-0 bg-[var(--surface)] border-t border-[var(--border-strong)] text-[9px] font-black z-20" style={{ gridTemplateColumns: template }}>
-            <div className={`${stickCol} z-30 text-right text-[var(--text-tertiary)] uppercase tracking-[0.1em] text-[8px] self-center pl-2 pr-1`}>Total</div>
-            {colTot.map((t, ci) => (<div key={cols[ci].expiration} className="text-center" style={{ color: t >= 0 ? 'var(--success)' : 'var(--danger)' }}>{fmtG(t)}</div>))}
-            <div className="text-center" style={{ color: grand >= 0 ? 'var(--success)' : 'var(--danger)' }}>{fmtG(grand)}</div>
+          <div className="grid sticky bottom-0 bg-[var(--surface)] border-t border-[var(--border-strong)] text-[9px] font-black z-20" style={{ gridTemplateColumns: template }}>
+            <div className={`${stick} z-30 bg-[var(--surface)] text-right text-[var(--text-tertiary)] uppercase tracking-[0.1em] text-[8px] flex items-center justify-end pl-2 pr-2 py-2`}>Total</div>
+            {colTot.map((t, ci) => (<div key={cols[ci].expiration} className="text-center self-center py-2" style={{ color: t >= 0 ? 'var(--success)' : 'var(--danger)' }}>{fmtG(t)}</div>))}
+            <div className="text-center self-center py-2" style={{ color: grand >= 0 ? 'var(--success)' : 'var(--danger)' }}>{fmtG(grand)}</div>
           </div>
         </div>
       </div>
