@@ -921,22 +921,28 @@ export function LiveTerminalFlow({ profile: liveProfile, ticker, decimals }: Liv
               {gammaProfile ? (() => {
                 const { lo, hi, span, rowHpct, rows } = gammaProfile;
                 const dense = rowHpct < 4.6;              // many strikes packed short → solid profile + sparse labels (per-row showLabel)
-                const barH = dense ? 'calc(100% - 1px)' : '68%';
+                // Bars stay THIN: in the sparse (tall-row) regime cap the thickness so they never balloon into
+                // giant blocks (the mobile / few-strikes case); the dense regime fills for a continuous profile.
+                const barH = dense ? 'calc(100% - 1px)' : 'min(56%, 13px)';
                 const greek = ladderMetric === 'GAMMA' || ladderMetric === 'DELTA' || ladderMetric === 'VANNA';
+                // Bright-at-the-axis → fade-outward gradients give the bars depth instead of flat slabs.
+                const putGrad = 'linear-gradient(to left, color-mix(in srgb, var(--danger) 85%, transparent), color-mix(in srgb, var(--danger) 28%, transparent))';
+                const callGrad = 'linear-gradient(to right, color-mix(in srgb, var(--success) 85%, transparent), color-mix(in srgb, var(--success) 28%, transparent))';
                 return (
                   <>
                     {rows.map(r => {
-                      const inVac = !!((vacAbove && r.strike >= vacAbove.lo && r.strike <= vacAbove.hi) || (vacBelow && r.strike >= vacBelow.lo && r.strike <= vacBelow.hi));
                       const mk = r.isCW ? 'var(--success)' : r.isPW ? 'var(--danger)' : r.isFlip ? 'var(--warning)' : null;
-                      // Key-level rows get a faint tint + a coloured left rail so the call/put wall, flip and
-                      // spot stand out of the profile (the "find the wall at a glance" the references lead with).
-                      const keyBg = r.isCW ? 'color-mix(in srgb, var(--success) 10%, transparent)' : r.isPW ? 'color-mix(in srgb, var(--danger) 10%, transparent)' : r.isFlip ? 'color-mix(in srgb, var(--warning) 9%, transparent)' : inVac ? 'color-mix(in srgb, var(--warning) 5%, transparent)' : undefined;
+                      // Key-level rows get a faint tint + a coloured left rail. (Air-pocket bands are named in the
+                      // AIR POCKETS callout above — washing whole row-bands here read as muddy, so it's dropped.)
+                      const keyBg = r.isCW ? 'color-mix(in srgb, var(--success) 11%, transparent)' : r.isPW ? 'color-mix(in srgb, var(--danger) 11%, transparent)' : r.isFlip ? 'color-mix(in srgb, var(--warning) 10%, transparent)' : undefined;
                       return (
                         <div key={r.strike} data-strike={r.strike} className="absolute left-0 right-0 flex items-center px-2" style={{ top: `${r.yPct}%`, height: `${rowHpct}%`, transform: 'translateY(-50%)', transition: 'top 0.3s cubic-bezier(0.22,1,0.36,1), height 0.3s cubic-bezier(0.22,1,0.36,1)', background: keyBg, boxShadow: mk ? `inset 2px 0 0 ${mk}` : undefined }}>
                           {r.showLabel && <span className="w-[58px] shrink-0 text-right text-[9px] font-mono tabular-nums flex items-center justify-end gap-1 whitespace-nowrap" style={{ color: r.isSpot ? 'var(--accent-color)' : mk || 'var(--text-tertiary)', fontWeight: (mk || r.isSpot) ? 800 : 400 }}>{mk && <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ background: mk, boxShadow: `0 0 5px ${mk}` }} />}{fmtNum(r.strike, decimals)}</span>}
-                          <div className="flex-1 h-full flex items-center mx-1.5">
-                            <div className="w-1/2 h-full flex items-center justify-end pr-px border-r border-[var(--border)]"><div className="rounded-l-[2px]" style={{ width: `${r.putPct}%`, height: barH, background: 'color-mix(in srgb, var(--danger) 62%, transparent)', transition: 'width 0.42s cubic-bezier(0.22,1,0.36,1), height 0.3s ease' }} /></div>
-                            <div className="w-1/2 h-full flex items-center justify-start pl-px"><div className="rounded-r-[2px]" style={{ width: `${r.callPct}%`, height: barH, background: 'color-mix(in srgb, var(--success) 62%, transparent)', transition: 'width 0.42s cubic-bezier(0.22,1,0.36,1), height 0.3s ease' }} /></div>
+                          <div className="relative flex-1 h-full flex items-center mx-1.5">
+                            {/* faint full-width rail so the thin, spaced bars read as a structured profile, not floating */}
+                            {!dense && <div className="absolute left-0 right-0 top-1/2 -translate-y-1/2 h-px pointer-events-none" style={{ background: 'color-mix(in srgb, var(--border) 60%, transparent)' }} />}
+                            <div className="relative w-1/2 h-full flex items-center justify-end pr-px border-r border-[var(--border)]"><div className="rounded-l-full" style={{ width: `${r.putPct}%`, height: barH, background: putGrad, transition: 'width 0.42s cubic-bezier(0.22,1,0.36,1), height 0.3s ease' }} /></div>
+                            <div className="relative w-1/2 h-full flex items-center justify-start pl-px"><div className="rounded-r-full" style={{ width: `${r.callPct}%`, height: barH, background: callGrad, transition: 'width 0.42s cubic-bezier(0.22,1,0.36,1), height 0.3s ease' }} /></div>
                           </div>
                           {r.showLabel && <span className="w-[56px] shrink-0 text-right text-[9px] font-mono font-black tabular-nums" style={{ color: greek ? 'var(--greek)' : (r.netUp ? 'var(--success)' : 'var(--danger)') }}>{fmtBig(r.net)}</span>}
                         </div>
