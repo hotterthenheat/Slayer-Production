@@ -498,9 +498,9 @@ export function LiveTerminalFlow({ profile: liveProfile, ticker, decimals }: Liv
         <span className="text-[13px] font-sans font-black tracking-tight uppercase" style={{ color: outlookColor }}>{outlook.regime}</span>
       </span>
       {heroDot}{heroSeg('γ', longGamma ? 'Long' : 'Short', trend)}
-      {profile.magnet ? <>{heroDot}{heroSeg('pin', fmtNum(profile.magnet, decimals))}</> : null}
       {read.regime === 'PIN' ? <>{heroDot}{heroSeg('str', `${read.pinStrength}`)}</> : null}
-      {(profile.putWall && profile.callWall) ? <>{heroDot}{heroSeg('walls', `${fmtNum(profile.putWall, decimals)} ↔ ${fmtNum(profile.callWall, decimals)}`)}</> : null}
+      {/* PIN level + WALLS live in the metric-card strip above (Pin Magnet / Call Wall / Put Wall), so the
+          read line carries only what the cards don't: regime, dealer γ posture, pin strength, expected move. */}
       {emPct != null ? <>{heroDot}{heroSeg('exp', `±${(emPct * 100).toFixed(2)}%`, 'var(--info)')}</> : null}
     </div>
   );
@@ -552,20 +552,9 @@ export function LiveTerminalFlow({ profile: liveProfile, ticker, decimals }: Liv
           right). Below lg the controls wrap to a second line instead of overflowing into the price, so
           the identity row stays legible on a phone rather than colliding badges. */}
       <div className="flex flex-wrap lg:flex-nowrap items-center justify-between gap-x-2 gap-y-1.5 px-3 sm:px-4 py-2 lg:py-0 min-h-12 lg:h-12 border-b border-[var(--border)] shrink-0 bg-[var(--surface)] relative">
+        {/* Left — symbol + the live print. No second brand block here: the module is already titled
+            "Pinpoint GEX · {ticker}" in the strip directly above, so this bar is pure ticker + price + controls. */}
         <div className="flex items-center gap-2.5 min-w-0">
-          <div className="w-8 h-8 rounded-md hidden sm:flex items-center justify-center shrink-0 bg-[var(--surface-2)] border border-[var(--border)]">
-            <Crosshair className="w-4 h-4" style={{ color: 'var(--accent-color)' }} />
-          </div>
-          <div className="leading-none hidden sm:block">
-            <div className="flex items-center gap-1.5">
-              <span className="text-[13px] font-sans font-black tracking-widest uppercase text-[var(--text-primary)]">Slayer Terminal</span>
-              {/* Status dot reflects the real feed — it only pulses when the stream is actually live, so it's
-                  never a decorative green light over a closed/frozen tape. (P2-21) */}
-              <span className="relative flex h-1.5 w-1.5" title={feedLabel}>{liveFeed && <span className="animate-ping absolute inline-flex h-full w-full rounded-full opacity-60" style={{ background: feedColor }} />}<span className="relative inline-flex rounded-full h-1.5 w-1.5" style={{ background: feedColor }} /></span>
-            </div>
-            <div className="text-[9px] font-mono uppercase tracking-[0.28em] mt-0.5 text-[var(--text-tertiary)]">Dealer Flow Engine</div>
-          </div>
-          <span className="w-px h-5 bg-[var(--border)] hidden sm:block" />
           {/* symbol + watchlist */}
           <div className="relative flex items-center gap-1">
             <button onClick={() => toggleWatchTicker(selectedAsset.ticker)} title={watchlist.includes(selectedAsset.ticker) ? 'Remove from watchlist' : 'Add to watchlist'} aria-label="Toggle watchlist" className="shrink-0 p-1 rounded-md text-[var(--text-tertiary)] hover:text-[var(--warning)] hover:bg-[var(--surface-2)] focus-visible:ring-1 focus-visible:ring-[var(--accent-color)] focus:outline-none transition-colors">
@@ -603,30 +592,20 @@ export function LiveTerminalFlow({ profile: liveProfile, ticker, decimals }: Liv
               </>
             )}
           </div>
-          {/* spot — compact (small screens); the centred macro readout takes over on lg+ */}
-          <div className="flex items-baseline gap-1.5 shrink-0 lg:hidden">
-            <span className={`text-[18px] font-mono font-black tabular-nums leading-none text-[var(--text-primary)] ${flash === 'up' ? 'tick-up' : flash === 'down' ? 'tick-down' : ''}`}>{spot ? spot.toLocaleString('en-US', { minimumFractionDigits: decimals, maximumFractionDigits: decimals }) : '—'}</span>
+          {/* the live print — the hero number, sitting right next to the symbol as one clean cluster */}
+          <div className="flex items-baseline gap-1.5 shrink-0">
+            <span className={`text-[20px] sm:text-[23px] font-mono font-black tabular-nums leading-none text-[var(--text-primary)] ${flash === 'up' ? 'tick-up' : flash === 'down' ? 'tick-down' : ''}`}>{spot ? spot.toLocaleString('en-US', { minimumFractionDigits: decimals, maximumFractionDigits: decimals }) : '—'}</span>
             <span className="text-[11px] font-mono font-bold tabular-nums" style={{ color: dayChg >= 0 ? 'var(--success)' : 'var(--danger)' }}>{dayChg >= 0 ? '+' : ''}{dayChg.toFixed(2)}%</span>
           </div>
-        </div>
-        {/* Centred macro readout — ticker STACKED over price · Δ. Ticker is the bold/bright header; price sits
-            beneath it so the symbol reads first, then the live print. (§2) */}
-        <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 hidden lg:flex flex-col items-center font-mono">
-          <span className="text-[16px] font-black tracking-[0.12em] text-[var(--text-primary)] leading-none">{selectedAsset.ticker}</span>
-          <div className="flex items-baseline gap-1.5 mt-0.5">
-            <span className={`text-[23px] font-black tabular-nums leading-none text-[var(--text-primary)] ${flash === 'up' ? 'tick-up' : flash === 'down' ? 'tick-down' : ''}`} style={{ letterSpacing: '-0.01em' }}>{spot ? spot.toLocaleString('en-US', { minimumFractionDigits: decimals, maximumFractionDigits: decimals }) : '—'}</span>
-            <span className="text-[11px] font-bold tabular-nums" style={{ color: dayChg >= 0 ? 'var(--success)' : 'var(--danger)' }}>{dayChg >= 0 ? '+' : ''}{dayChg.toFixed(2)}%</span>
-          </div>
-        </div>
-        <div className="flex items-center gap-2 shrink-0">
-          {/* Honest feed status — provider name when the chain is live, MODEL on synthetic data,
-              STALE if the SSE heartbeat stalls. Replaces the old hardcoded "LIVE". */}
-          <span className="flex items-center gap-1.5 px-2 py-1 rounded-md border text-[10px] font-mono font-black uppercase tracking-widest shrink-0" title={!marketOpen ? `Market closed — last-close snapshot${feedProvider ? ' from ' + feedProvider : ''} (updated ${staleSecs}s ago); data is frozen, not live` : liveFeed ? `Live options feed (${feedProvider}) · updated ${staleSecs}s ago` : isStale ? `Feed stalled — last update ${staleSecs}s ago` : 'Synthetic model data — connect a provider API key for a live feed'} style={{ borderColor: `color-mix(in srgb, ${feedColor} 42%, transparent)`, background: `color-mix(in srgb, ${feedColor} 10%, transparent)`, color: feedColor }}>
+          {/* session-aware feed status — lives with the price so LIVE / LAST CLOSE / STALE / MODEL reads at the print */}
+          <span className="hidden sm:flex items-center gap-1.5 px-2 py-1 rounded-md border text-[10px] font-mono font-black uppercase tracking-widest shrink-0" title={!marketOpen ? `Market closed — last-close snapshot${feedProvider ? ' from ' + feedProvider : ''} (updated ${staleSecs}s ago); data is frozen, not live` : liveFeed ? `Live options feed (${feedProvider}) · updated ${staleSecs}s ago` : isStale ? `Feed stalled — last update ${staleSecs}s ago` : 'Synthetic model data — connect a provider API key for a live feed'} style={{ borderColor: `color-mix(in srgb, ${feedColor} 42%, transparent)`, background: `color-mix(in srgb, ${feedColor} 10%, transparent)`, color: feedColor }}>
             {liveFeed
               ? <span className="relative flex h-1.5 w-1.5"><span className="animate-ping absolute inline-flex h-full w-full rounded-full opacity-60" style={{ background: feedColor }} /><span className="relative inline-flex rounded-full h-1.5 w-1.5" style={{ background: feedColor }} /></span>
               : <span className="w-1.5 h-1.5 rounded-full" style={{ background: feedColor }} />}
             {feedLabel}
           </span>
+        </div>
+        <div className="flex items-center gap-2 shrink-0">
           {/* Timeframe + scope — one control cluster so no toggle sits alone on the bar. The wide
               desktop TF toggle (md+) and the compact mobile select (below md) swap inside it; the
               scope toggle is always shown. Regime is carried by DealerPulse directly below (all
