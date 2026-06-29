@@ -75,7 +75,8 @@ function SectionHeader({
 }) {
   return (
     <div className="flex items-center justify-between border-b border-[var(--border)] pb-2 mb-3">
-      <span className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-[0.12em] text-[var(--text-secondary)]">
+      <span className="flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.14em] text-[var(--text-secondary)]">
+        <span className="w-[3px] h-3.5 rounded-full shrink-0" style={{ background: 'color-mix(in srgb, var(--accent-color) 55%, transparent)' }} />
         {icon}
         {label}
       </span>
@@ -518,45 +519,45 @@ export default function QuantSuiteView() {
     <div className="flex flex-col gap-5 w-full text-[var(--text-primary)] bg-[var(--surface)] border border-[var(--border)] rounded-lg p-4 font-mono select-none" id="quant-suite-terminal-view">
       {/* Header + live summary stats */}
       <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center border-b border-[var(--border)] pb-4 gap-4">
-        <div>
-          <h2 className="text-[13px] font-bold tracking-[0.14em] text-[var(--text-primary)] uppercase flex items-center gap-2">
-            <Calculator className="w-4 h-4 text-[var(--accent-color)]" />
-            Quant Lab
-            <span
-              className={`text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded border ${
-                isLiveData
-                  ? 'text-[var(--success)] border-[var(--success)]/40 bg-[var(--success)]/10'
-                  : 'text-[var(--warning)] border-[var(--warning)]/40 bg-[var(--warning)]/10'
-              }`}
-              title={isLiveData
-                ? 'Computing on the live option chain streamed from the server.'
-                : 'No live chain connected — computing on a high-fidelity simulated chain. Connect a data API key to go live.'}
-            >
-              {isLiveData ? 'LIVE CHAIN' : 'SIMULATED'}
-            </span>
-          </h2>
-          <p className="text-[10px] text-[var(--text-tertiary)] mt-1.5 uppercase tracking-wider">
-            Risk-Neutral Density · Realized Vol · Multi-Leg Risk · Dealer GEX
-          </p>
+        <div className="flex items-center gap-3.5 min-w-0">
+          <div className="w-9 h-9 rounded-md flex items-center justify-center shrink-0 bg-[var(--surface-2)] border border-[var(--border)]">
+            <Calculator className="w-[18px] h-[18px] text-[var(--accent-color)]" />
+          </div>
+          <div className="min-w-0">
+            <div className="flex items-center gap-2">
+              <h2 className="text-sm font-black tracking-widest text-[var(--text-primary)] uppercase font-sans whitespace-nowrap">Quant Lab</h2>
+              <span
+                className={`text-[9px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded border shrink-0 ${
+                  isLiveData
+                    ? 'text-[var(--success)] border-[var(--success)]/40 bg-[var(--success)]/10'
+                    : 'text-[var(--warning)] border-[var(--warning)]/40 bg-[var(--warning)]/10'
+                }`}
+                title={isLiveData
+                  ? 'Computing on the live option chain streamed from the server.'
+                  : 'No live chain connected — computing on a high-fidelity simulated chain. Connect a data API key to go live.'}
+              >
+                {isLiveData ? 'LIVE CHAIN' : 'SIMULATED'}
+              </span>
+            </div>
+            <p className="text-[9px] text-[var(--text-tertiary)] mt-0.5 uppercase tracking-widest">
+              Risk-Neutral Density · Realized Vol · Multi-Leg Risk · Dealer GEX
+            </p>
+          </div>
         </div>
 
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 w-full lg:w-auto">
-          <div className="flex flex-col bg-[var(--surface)] border border-[var(--border)] rounded-md px-3 py-2">
-            <span className="text-[10px] text-[var(--text-tertiary)] uppercase tracking-wide">Spot</span>
-            <span className="text-[13px] font-bold text-[var(--text-primary)] tabular-nums">{spotPrice.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
-          </div>
-          <div className="flex flex-col bg-[var(--surface)] border border-[var(--border)] rounded-md px-3 py-2">
-            <span className="text-[10px] text-[var(--text-tertiary)] uppercase tracking-wide">RND Skew</span>
-            <span className={`text-[13px] font-bold tabular-nums ${rndResult.skewness < 0 ? 'text-[var(--warning)]' : 'text-[var(--success)]'}`}>{rndResult.skewness.toFixed(3)}</span>
-          </div>
-          <div className="flex flex-col bg-[var(--surface)] border border-[var(--border)] rounded-md px-3 py-2">
-            <span className="text-[10px] text-[var(--text-tertiary)] uppercase tracking-wide">RV (Y-Z)</span>
-            <span className="text-[13px] font-bold text-[var(--text-primary)] tabular-nums">{(volSuite.yangZhang * 100).toFixed(2)}%</span>
-          </div>
-          <div className="flex flex-col bg-[var(--surface)] border border-[var(--border)] rounded-md px-3 py-2">
-            <span className="text-[10px] text-[var(--text-tertiary)] uppercase tracking-wide">25Δ RR</span>
-            <span className={`text-[13px] font-bold tabular-nums ${skewMetrics.riskReversal25D < 0 ? 'text-[var(--danger)]' : 'text-[var(--success)]'}`}>{(skewMetrics.riskReversal25D * 100).toFixed(2)}%</span>
-          </div>
+          {([
+            { l: 'Spot', v: spotPrice.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }), tone: 'var(--accent-color)', ink: 'var(--text-primary)' },
+            { l: 'RND Skew', v: rndResult.skewness.toFixed(3), tone: rndResult.skewness < 0 ? 'var(--warning)' : 'var(--success)', ink: rndResult.skewness < 0 ? 'var(--warning)' : 'var(--success)' },
+            { l: 'RV · Y-Z', v: `${(volSuite.yangZhang * 100).toFixed(2)}%`, tone: 'var(--info)', ink: 'var(--text-primary)' },
+            { l: '25Δ RR', v: `${(skewMetrics.riskReversal25D * 100).toFixed(2)}%`, tone: skewMetrics.riskReversal25D < 0 ? 'var(--danger)' : 'var(--success)', ink: skewMetrics.riskReversal25D < 0 ? 'var(--danger)' : 'var(--success)' },
+          ]).map(c => (
+            <div key={c.l} className="relative overflow-hidden flex flex-col bg-[var(--surface-2)] border border-[var(--border)] rounded-md pl-3 pr-3 py-1.5 min-w-0 lg:min-w-[92px]">
+              <span className="absolute left-0 top-0 bottom-0 w-[2px]" style={{ background: c.tone, opacity: 0.8 }} />
+              <span className="text-[8px] font-black tracking-widest text-[var(--text-tertiary)] uppercase truncate">{c.l}</span>
+              <span className="text-[14px] font-bold tabular-nums leading-tight truncate" style={{ color: c.ink }}>{c.v}</span>
+            </div>
+          ))}
         </div>
       </div>
 
@@ -586,7 +587,7 @@ export default function QuantSuiteView() {
       </div>
 
       {/* View panel area */}
-      <div className="min-h-[460px]" id="quant-suite-view-canvas">
+      <div className="min-h-[280px]" id="quant-suite-view-canvas">
         <AnimatePresence mode="wait">
           <motion.div
             key={activeSubTab}
@@ -606,59 +607,68 @@ export default function QuantSuiteView() {
                     right={<span className="text-[10px] text-[var(--text-tertiary)] tracking-wide">BREEDEN-LITZENBERGER</span>}
                   />
 
-                  <div className="h-56 w-full relative">
-                    <svg viewBox="0 0 500 224" className="w-full h-full overflow-hidden" xmlns="http://www.w3.org/2000/svg">
-                      <defs>
-                        <linearGradient id="pdfGradient" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="0%" stopColor="#4ADE80" stopOpacity="0.16" />
-                          <stop offset="100%" stopColor="#4ADE80" stopOpacity="0.0" />
-                        </linearGradient>
-                      </defs>
-                      {[0.25, 0.5, 0.75].map((ratio, idx) => (
-                        <line key={idx} x1="0" y1={224 * ratio} x2="500" y2={224 * ratio} stroke="rgba(255,255,255,0.04)" strokeWidth="1" />
-                      ))}
-                      <path
-                        d={(() => {
-                          const h = 224;
-                          const pts = rndResult.density;
-                          if (pts.length === 0) return '';
-                          let maxProb = 1e-5;
-                          pts.forEach(p => { if (p.probability > maxProb) maxProb = p.probability; });
-                          return pts.map((p, idx) => {
-                            const x = (idx / (pts.length - 1)) * 500;
-                            const ratio = p.probability / maxProb;
-                            const y = h - (ratio * 0.8 * h);
-                            return `${idx === 0 ? 'M' : 'L'} ${x} ${y}`;
-                          }).join(' ') + ` L 500 ${h} L 0 ${h} Z`;
-                        })()}
-                        fill="url(#pdfGradient)"
-                        stroke="#4ADE80"
-                        strokeWidth="1.5"
-                      />
-                      {(() => {
-                        const pts = rndResult.density;
-                        let spotX = 250;
-                        if (pts.length > 0) {
-                          const minS = pts[0].strike;
-                          const maxS = pts[pts.length - 1].strike;
-                          spotX = ((spotPrice - minS) / (maxS - minS || 1)) * 500;
-                        }
-                        return (
-                          <>
-                            <line x1={spotX} y1="0" x2={spotX} y2="224" stroke="#4ADE80" strokeWidth="1" strokeDasharray="2,2" opacity="0.4" />
-                            <text x={spotX} y="14" textAnchor="middle" fill="#4ADE80" className="font-mono text-[10px] font-bold tracking-[0.12em]">
-                              SPOT {spotPrice.toLocaleString(undefined, { maximumFractionDigits: 0 })}
-                            </text>
-                          </>
-                        );
-                      })()}
-                    </svg>
+                  <div className="w-full relative" style={{ height: 280 }}>
+                    {(() => {
+                      const pts = rndResult.density;
+                      if (!pts.length) return <div className="flex items-center justify-center h-full text-[11px] font-mono text-[var(--text-tertiary)]">Awaiting option chain…</div>;
+                      const W = 500, H = 280;
+                      const minS = pts[0].strike, maxS = pts[pts.length - 1].strike, span = (maxS - minS) || 1;
+                      let maxProb = 1e-9; for (const p of pts) if (p.probability > maxProb) maxProb = p.probability;
+                      const xOf = (s: number) => ((s - minS) / span) * W;
+                      const yOf = (p: number) => H - (p / maxProb) * 0.82 * H;
+                      const mean = rndResult.mean, sd = rndResult.stdDev || (spotPrice * 0.05);
+                      const lo1 = mean - sd, hi1 = mean + sd, spotX = xOf(spotPrice);
+                      const line = pts.map((p, i) => `${i === 0 ? 'M' : 'L'} ${xOf(p.strike).toFixed(1)} ${yOf(p.probability).toFixed(1)}`).join(' ');
+                      const area = `${line} L ${xOf(maxS).toFixed(1)} ${H} L ${xOf(minS).toFixed(1)} ${H} Z`;
+                      // Reference symmetric bell (peak-matched) → the implied curve's deviation from it IS the skew/fat-tails.
+                      const norm = pts.map(p => { const z = (p.strike - mean) / (sd || 1); return `${xOf(p.strike).toFixed(1)} ${(H - Math.exp(-0.5 * z * z) * 0.82 * H).toFixed(1)}`; });
+                      const normPath = norm.map((n, i) => `${i === 0 ? 'M' : 'L'} ${n}`).join(' ');
+                      const tail = (arr: typeof pts) => arr.length < 2 ? '' : arr.map((p, i) => `${i === 0 ? 'M' : 'L'} ${xOf(p.strike).toFixed(1)} ${yOf(p.probability).toFixed(1)}`).join(' ') + ` L ${xOf(arr[arr.length - 1].strike).toFixed(1)} ${H} L ${xOf(arr[0].strike).toFixed(1)} ${H} Z`;
+                      const down = tail(pts.filter(p => p.strike <= lo1)), up = tail(pts.filter(p => p.strike >= hi1));
+                      return (
+                        <svg viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none" className="w-full h-full overflow-visible" xmlns="http://www.w3.org/2000/svg">
+                          <defs>
+                            <linearGradient id="qpdf" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="var(--success)" stopOpacity="0.22" /><stop offset="100%" stopColor="var(--success)" stopOpacity="0" /></linearGradient>
+                            <linearGradient id="qdown" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="var(--danger)" stopOpacity="0.5" /><stop offset="100%" stopColor="var(--danger)" stopOpacity="0.04" /></linearGradient>
+                            <linearGradient id="qup" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="var(--success)" stopOpacity="0.55" /><stop offset="100%" stopColor="var(--success)" stopOpacity="0.05" /></linearGradient>
+                          </defs>
+                          {[0.25, 0.5, 0.75].map(r => <line key={r} x1="0" y1={H * r} x2={W} y2={H * r} stroke="var(--border)" strokeWidth="1" opacity="0.5" />)}
+                          <path d={area} fill="url(#qpdf)" />
+                          {down && <path d={down} fill="url(#qdown)" />}
+                          {up && <path d={up} fill="url(#qup)" />}
+                          {/* reference normal (what a symmetric bell would look like) */}
+                          <path d={normPath} fill="none" stroke="var(--text-tertiary)" strokeWidth="1" strokeDasharray="3,3" opacity="0.55" vectorEffect="non-scaling-stroke" />
+                          {/* implied density */}
+                          <path d={line} fill="none" stroke="var(--success)" strokeWidth="2" vectorEffect="non-scaling-stroke" style={{ filter: 'drop-shadow(0 0 5px color-mix(in srgb, var(--success) 50%, transparent))' }} />
+                          {/* ±1σ boundaries */}
+                          {[lo1, hi1].map((b, i) => <line key={i} x1={xOf(b)} y1={H * 0.12} x2={xOf(b)} y2={H} stroke="var(--warning)" strokeWidth="1" strokeDasharray="2,3" opacity="0.5" vectorEffect="non-scaling-stroke" />)}
+                          {/* spot */}
+                          <line x1={spotX} y1="0" x2={spotX} y2={H} stroke="var(--accent-color)" strokeWidth="1.25" strokeDasharray="3,2" opacity="0.8" vectorEffect="non-scaling-stroke" />
+                        </svg>
+                      );
+                    })()}
+                    {/* overlaid labels (non-scaling, in real px) */}
+                    {rndResult.density.length > 0 && (() => {
+                      const pts = rndResult.density, minS = pts[0].strike, maxS = pts[pts.length - 1].strike, span = (maxS - minS) || 1;
+                      const sd = rndResult.stdDev || spotPrice * 0.05;
+                      const pct = (s: number) => `${(((s - minS) / span) * 100).toFixed(1)}%`;
+                      const tag = (s: number, txt: string, color: string, top = false) => (
+                        <span className="absolute -translate-x-1/2 text-[8.5px] font-mono font-black uppercase tracking-wider whitespace-nowrap px-1 rounded-sm" style={{ left: pct(s), [top ? 'top' : 'bottom']: top ? 2 : 22, color, background: 'color-mix(in srgb, var(--bg-base) 70%, transparent)' }}>{txt}</span>
+                      );
+                      return (<>
+                        {tag(spotPrice, `Spot ${spotPrice.toLocaleString(undefined, { maximumFractionDigits: 0 })}`, 'var(--accent-color)', true)}
+                        {tag(rndResult.mean - sd, '−1σ', 'var(--warning)')}
+                        {tag(rndResult.mean + sd, '+1σ', 'var(--warning)')}
+                      </>);
+                    })()}
                   </div>
 
-                  <div className="flex justify-between text-[10px] text-[var(--text-tertiary)] border-t border-[var(--border)] pt-2 px-1 font-semibold">
-                    <span>DOWNSIDE</span>
-                    <span>ATM</span>
-                    <span>UPSIDE</span>
+                  <div className="flex items-center justify-between text-[9px] text-[var(--text-tertiary)] border-t border-[var(--border)] pt-2 px-1 font-mono font-bold tabular-nums">
+                    {rndResult.density.length > 0 ? <>
+                      <span style={{ color: 'var(--danger)' }}>{rndResult.density[0].strike.toLocaleString(undefined, { maximumFractionDigits: 0 })} <span className="text-[var(--text-tertiary)]">DOWNSIDE</span></span>
+                      <span className="flex items-center gap-3 normal-case tracking-normal"><span className="flex items-center gap-1"><span className="w-3 h-[2px] inline-block" style={{ background: 'var(--success)' }} />Implied</span><span className="flex items-center gap-1"><span className="w-3 border-t border-dashed inline-block" style={{ borderColor: 'var(--text-tertiary)' }} />Normal</span></span>
+                      <span style={{ color: 'var(--success)' }}><span className="text-[var(--text-tertiary)]">UPSIDE</span> {rndResult.density[rndResult.density.length - 1].strike.toLocaleString(undefined, { maximumFractionDigits: 0 })}</span>
+                    </> : <><span>DOWNSIDE</span><span>ATM</span><span>UPSIDE</span></>}
                   </div>
                 </div>
 
@@ -1321,17 +1331,25 @@ export default function QuantSuiteView() {
             label="GEX by Expiry"
             right={<span className="text-[10px] text-[var(--text-tertiary)] tracking-wide">PER-EXPIRY</span>}
           />
-          <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
-            {expiryGex.map((node, idx) => (
-              <div key={idx} className="bg-[var(--surface-2)] border border-[var(--border)] rounded-md p-2 flex flex-col items-center text-center">
-                <span className="text-[11px] font-bold text-[var(--text-primary)]">{node.expiry}</span>
-                <span className={`text-[11px] font-bold tabular-nums mt-1 ${node.totalGex >= 0 ? 'text-[var(--success)]' : 'text-[var(--danger)]'}`}>
-                  {node.totalGex >= 0 ? `+$${(node.totalGex / 1e6).toFixed(1)}M` : `-$${Math.abs(node.totalGex / 1e6).toFixed(1)}M`}
-                </span>
-                <span className="text-[10px] text-[var(--text-tertiary)] mt-1">K {node.dominantStrike.toLocaleString(undefined, { maximumFractionDigits: 0 })}</span>
-              </div>
-            ))}
-          </div>
+          {expiryGex.length ? (
+            <div className="flex flex-col gap-1.5">
+              {(() => { const maxAbs = Math.max(1, ...expiryGex.map(n => Math.abs(n.totalGex))); return expiryGex.map((node, idx) => {
+                const up = node.totalGex >= 0, pct = Math.min(100, (Math.abs(node.totalGex) / maxAbs) * 100), tok = up ? 'var(--success)' : 'var(--danger)';
+                return (
+                  <div key={idx} className="flex items-center gap-2.5">
+                    <span className="w-14 shrink-0 text-[10px] font-bold text-[var(--text-secondary)] tabular-nums">{node.expiry}</span>
+                    <div className="flex-1 h-[22px] relative bg-[var(--surface-2)] rounded-sm overflow-hidden border border-[var(--border)]">
+                      <div className="absolute inset-y-0 left-0" style={{ width: `${Math.max(3, pct)}%`, background: `linear-gradient(to right, color-mix(in srgb, ${tok} 70%, transparent), color-mix(in srgb, ${tok} 30%, transparent))` }} />
+                      <span className="absolute inset-0 flex items-center px-2 text-[10px] font-black tabular-nums" style={{ color: tok }}>{up ? '+' : '-'}${(Math.abs(node.totalGex) / 1e6).toFixed(1)}M</span>
+                    </div>
+                    <span className="w-16 shrink-0 text-right text-[9px] text-[var(--text-tertiary)] tabular-nums">K {node.dominantStrike.toLocaleString(undefined, { maximumFractionDigits: 0 })}</span>
+                  </div>
+                );
+              }); })()}
+            </div>
+          ) : (
+            <div className="text-center py-8 text-[10px] text-[var(--text-tertiary)] uppercase tracking-wide">No per-expiry GEX streamed yet.</div>
+          )}
         </div>
       </div>
     </div>
