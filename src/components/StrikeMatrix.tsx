@@ -106,6 +106,18 @@ export function StrikeMatrix({ profile, decimals = 0, size = 'compact' }: { prof
     return (
       <div className="w-full overflow-x-auto hide-scrollbar">
         <div className={`min-w-max font-mono ${fz} tabular-nums select-none`}>
+          {/* Legend — decodes the spotlight markers so a first-time reader knows what the glows / tags mean.
+              Full-screen only (the rail is too narrow); theme tokens throughout. */}
+          {full && (
+            <div className="flex flex-wrap items-center gap-x-3.5 gap-y-1 px-2 py-1.5 border-b border-[var(--border)] text-[8px] font-mono font-bold uppercase tracking-wider text-[var(--text-tertiary)] bg-[var(--surface)]">
+              <span className="text-[var(--text-secondary)]">Legend</span>
+              <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-[2px]" style={{ boxShadow: 'inset 0 0 0 1.5px var(--success)' }} />CW · call wall</span>
+              <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-[2px]" style={{ boxShadow: 'inset 0 0 0 1.5px var(--danger)' }} />PW · put wall</span>
+              <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full" style={{ background: 'var(--accent-color)' }} />Spot</span>
+              <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full" style={{ background: 'var(--info)' }} />EM · exp move</span>
+              <span className="flex items-center gap-1"><span className="w-3 h-0.5" style={{ background: 'var(--warning)' }} />γ flip</span>
+            </div>
+          )}
           {/* Column header — STRIKE · expiry (date · DTE · net-bias bar) · NET */}
           <div className="grid gap-x-0.5 pr-2 py-1.5 sticky top-0 z-20 bg-[var(--surface)] border-b border-[var(--border)] text-[8px] font-black uppercase tracking-[0.12em]" style={{ gridTemplateColumns: template }}>
             <div className={`${stickCol} z-30 text-right text-[var(--text-tertiary)] self-center pl-2 pr-1`}>Strike</div>
