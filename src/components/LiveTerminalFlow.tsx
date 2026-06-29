@@ -326,36 +326,39 @@ export function LiveTerminalFlow({ profile: liveProfile, ticker, decimals }: Liv
     }
   }, [ladder, ladderMetric]);
 
-  // Dealer Gamma Profile — a tiling horizontal histogram (bar thickness = strike spacing so it fills the
-  // panel; length = the selected metric). The range is STATIC: centred on spot and sized to cover the
-  // dealer structure (walls / flip / magnet / expected-move), so the ladder stays put as the user pans or
-  // zooms the chart. It re-centres only as live spot moves — never with the chart's view.
+  // Dealer Gamma Profile — the WHOLE dealer chain in ONE static view. Every real strike (one that carries
+  // OI or gamma) is a row, and the range is fitted EXACTLY to those strikes so the rows tile and fill the
+  // panel top-to-bottom — no giant bars, no empty gaps. The strike SET is stable tick-to-tick (only the bar
+  // lengths animate), and it's derived from the chain — NOT the chart — so it never moves when you pan/zoom.
   const gammaProfile = useMemo(() => {
-    if (!spot || spot <= 0) return null;
-    const dists = [profile.callWall, profile.putWall, profile.gammaFlip, profile.magnet]
-      .filter((x): x is number => typeof x === 'number' && x > 0).map(x => Math.abs(x - spot));
-    if (profile.expectedMovePct) dists.push(spot * profile.expectedMovePct * 1.5);
-    let half = Math.max(spot * 0.015, ...dists);   // always cover at least ±1.5%, and the structure if wider
-    half = Math.min(half * 1.18, spot * 0.05);      // pad, but cap at ±5% so a far OTM level can't blow out the scale
-    const lo = spot - half, hi = spot + half, span = hi - lo;
-    if (!(span > 0)) return null;
-    const inRange = (profile.strikes || []).filter(s => s.strike >= lo && s.strike <= hi);
-    if (inRange.length < 2) return null;
     const oiLike = ladderMetric === 'OI' || ladderMetric === 'VOL';
-    const pick = (s: typeof inRange[number]): [number, number] => ladderMetric === 'DELTA' ? [s.callDex || 0, s.putDex || 0] : ladderMetric === 'VANNA' ? [s.callVex || 0, s.putVex || 0] : ladderMetric === 'OI' ? [s.callOi || 0, s.putOi || 0] : ladderMetric === 'VOL' ? [s.callVolume || 0, s.putVolume || 0] : [s.callGex || 0, s.putGex || 0];
-    const maxM = Math.max(...inRange.map(s => { const [c, p] = pick(s); return Math.max(Math.abs(c), Math.abs(p)); }), 1);
-    const sorted = [...inRange].sort((a, b) => a.strike - b.strike);
-    const steps = sorted.slice(1).map((s, i) => s.strike - sorted[i].strike).filter(x => x > 0).sort((a, b) => a - b);
-    const step = steps.length ? steps[Math.floor(steps.length / 2)] : span / sorted.length;  // median strike gap
-    const rowHpct = Math.min(14, (step / span) * 100);
-    // Only LABEL rows tall enough to read. When the panel packs many strikes into a short height
-    // (mobile), labeling every row smears the strike/net text into an unreadable column — so the bars
-    // still draw for every row, but text shows on a sparse subset (~>=4.6% apart) plus every named level.
+    const pick = (s: NonNullable<typeof profile.strikes>[number]): [number, number] => ladderMetric === 'DELTA' ? [s.callDex || 0, s.putDex || 0] : ladderMetric === 'VANNA' ? [s.callVex || 0, s.putVex || 0] : ladderMetric === 'OI' ? [s.callOi || 0, s.putOi || 0] : ladderMetric === 'VOL' ? [s.callVolume || 0, s.putVolume || 0] : [s.callGex || 0, s.putGex || 0];
+    // Real chain strikes (have OI or gamma) — a STABLE set across ticks (the chain doesn't add/remove
+    // strikes each second), so the ladder doesn't reflow as values change; only the bars animate.
+    const all = (profile.strikes || []).filter(s => (s.callOi || 0) + (s.putOi || 0) > 0 || Math.abs(s.callGex || 0) + Math.abs(s.putGex || 0) > 0);
+    if (all.length < 2) return null;
+    // Cap the row count so bars never shrink to an unreadable sliver — keep the strikes NEAREST spot
+    // (a stable selection that doesn't churn tick-to-tick).
+    const MAXROWS = 46;
+    let kept = (all.length > MAXROWS && spot > 0)
+      ? [...all].sort((a, b) => Math.abs(a.strike - spot) - Math.abs(b.strike - spot)).slice(0, MAXROWS)
+      : all;
+    kept = [...kept].sort((a, b) => a.strike - b.strike);
+    const maxM = Math.max(...kept.map(s => { const [c, p] = pick(s); return Math.max(Math.abs(c), Math.abs(p)); }), 1);
+    const ks = kept.map(s => s.strike);
+    const gaps = ks.slice(1).map((k, i) => k - ks[i]).filter(x => x > 0).sort((a, b) => a - b);
+    const step = gaps.length ? gaps[Math.floor(gaps.length / 2)] : Math.max(1, (ks[ks.length - 1] - ks[0]) / kept.length);  // median strike gap
+    // Fit the range exactly to the kept strikes (+ half a step each side) so the rows pack the full panel.
+    const lo = ks[0] - step / 2, hi = ks[ks.length - 1] + step / 2, span = hi - lo;
+    if (!(span > 0)) return null;
+    const rowHpct = Math.max(1.4, Math.min(14, (step / span) * 100));
+    // Only LABEL rows tall enough to read; when many strikes pack a short panel, the bars still draw for
+    // every row but text shows on a sparse subset (~>=4.6% apart) plus every named level.
     const labelEveryN = rowHpct >= 4.6 ? 1 : Math.max(1, Math.ceil(4.6 / rowHpct));
     return {
       lo, hi, span, rowHpct,
-      rows: sorted.map((s, i) => { const [c, p] = pick(s); const net = c + p;
-        const isCW = s.strike === profile.callWall, isPW = s.strike === profile.putWall, isFlip = s.strike === profile.gammaFlip, isSpot = Math.abs(s.strike - spot) < spot * 0.0008;
+      rows: kept.map((s, i) => { const [c, p] = pick(s); const net = c + p;
+        const isCW = s.strike === profile.callWall, isPW = s.strike === profile.putWall, isFlip = s.strike === profile.gammaFlip, isSpot = spot > 0 && Math.abs(s.strike - spot) < spot * 0.0008;
         return {
         strike: s.strike, net, netUp: oiLike ? c >= p : net >= 0,
         callPct: (Math.abs(c) / maxM) * 100, putPct: (Math.abs(p) / maxM) * 100,
