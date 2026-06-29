@@ -42,13 +42,19 @@ export function StrikeMatrix({ profile, decimals = 0, size = 'compact' }: { prof
     const cell = cols.map(c => { const m = new Map<number, number>(); for (const s of (c.strikes || [])) m.set(s.strike, s.netGex || 0); return m; });
     let maxAbs = 1;
     for (const m of cell) for (const k of ks) maxAbs = Math.max(maxAbs, Math.abs(m.get(k) || 0));
+    // Per-column max |γ| — wall glows gate on THIS so every expiry lights its own call/put wall, even a
+    // far-dated column whose gamma is small next to the 0DTE column (global gating would leave it dark).
+    const colMaxAbs = cols.map((_, ci) => { let m = 1; for (const k of ks) m = Math.max(m, Math.abs(cell[ci].get(k) || 0)); return m; });
     const rowNet = ks.map(k => cell.reduce((a, m) => a + (m.get(k) || 0), 0));
     const maxRowNet = Math.max(1, ...rowNet.map(Math.abs));
     const colTot = cols.map(m => 0).map((_, ci) => ks.reduce((a, k) => a + (cell[ci].get(k) || 0), 0));
     const grand = colTot.reduce((a, b) => a + b, 0);
     const maxColTot = Math.max(1, ...colTot.map(Math.abs));   // for the per-expiry net-bias bars in the header
-    // Each expiry's dominant wall = its largest |net γ| strike (gets a ring + CW/PW tag).
-    const wall = cols.map((_, ci) => { let bs = NaN, bm = 0; for (const k of ks) { const v = Math.abs(cell[ci].get(k) || 0); if (v > bm) { bm = v; bs = k; } } return bs; });
+    // Per-expiry KEY LEVELS — in EACH column the brightest call wall (largest +γ) and put wall (largest
+    // −γ) get a glow + CW/PW tag, so the dominant dealer level on each side reads at a glance (this is the
+    // "biggest / smallest" the eye should land on first).
+    const callWall = cols.map((_, ci) => { let bs = NaN, bm = 0; for (const k of ks) { const v = cell[ci].get(k) || 0; if (v > bm) { bm = v; bs = k; } } return bs; });
+    const putWall = cols.map((_, ci) => { let bs = NaN, bm = 0; for (const k of ks) { const v = cell[ci].get(k) || 0; if (v < bm) { bm = v; bs = k; } } return bs; });
     // Gamma-flip row — where the AGGREGATE net γ crosses from + to − going down strikes (the dealer flip
     // level): the line is drawn between rows flipIdx-1 and flipIdx. −1 if no crossing is in view.
     let flipIdx = -1;
@@ -56,7 +62,15 @@ export function StrikeMatrix({ profile, decimals = 0, size = 'compact' }: { prof
     // The strike row NEAREST spot gets the accent highlight, so the live price is always located even when
     // it sits between strikes (it usually does).
     let nearestK = NaN; if (spot) { let bd = Infinity; for (const k of ks) { const d = Math.abs(k - spot); if (d < bd) { bd = d; nearestK = k; } } }
-    return { cols, ks, cell, maxAbs, rowNet, maxRowNet, colTot, grand, maxColTot, wall, flipIdx, nearestK, spot };
+    // Expected-move boundary strikes — the strikes nearest spot×(1±EM%), tagged so the implied day range
+    // is located on the grid (the "expected" the eye should also catch). NaN when no EM% / no spot.
+    let emHiK = NaN, emLoK = NaN;
+    if (spot && profile.expectedMovePct) {
+      const emHi = spot * (1 + profile.expectedMovePct), emLo = spot * (1 - profile.expectedMovePct);
+      let bdH = Infinity, bdL = Infinity;
+      for (const k of ks) { const dh = Math.abs(k - emHi); if (dh < bdH) { bdH = dh; emHiK = k; } const dl = Math.abs(k - emLo); if (dl < bdL) { bdL = dl; emLoK = k; } }
+    }
+    return { cols, ks, cell, maxAbs, colMaxAbs, rowNet, maxRowNet, colTot, grand, maxColTot, callWall, putWall, flipIdx, nearestK, emHiK, emLoK, spot };
   }, [multi, expiries, profile.spot, full]);
 
   // ── Single-expiry CALL | PUT | VOL chain (fallback when <2 expiries) ──────────────────────────
@@ -79,7 +93,7 @@ export function StrikeMatrix({ profile, decimals = 0, size = 'compact' }: { prof
 
   // ════════════════════════════ GAMMA MATRIX render ════════════════════════════
   if (multi && matrix && matrix.ks.length) {
-    const { cols, ks, cell, maxAbs, rowNet, maxRowNet, colTot, grand, maxColTot, wall, flipIdx, nearestK } = matrix;
+    const { cols, ks, cell, maxAbs, colMaxAbs, rowNet, maxRowNet, colTot, grand, maxColTot, callWall, putWall, flipIdx, nearestK, emHiK, emLoK } = matrix;
     const strikeW = full ? 66 : 54, netW = full ? 78 : 56, colMin = full ? 52 : 38;
     const rowH = full ? 23 : 18, fz = full ? 'text-[11px]' : 'text-[9px]';
     const template = `${strikeW}px repeat(${cols.length}, minmax(${colMin}px, 1fr)) ${netW}px`;
@@ -111,17 +125,25 @@ export function StrikeMatrix({ profile, decimals = 0, size = 'compact' }: { prof
           <div className="relative">
             {ks.map((k, ri) => {
               const isSpot = k === nearestK;
+              const isEm = !isSpot && (k === emHiK || k === emLoK);   // expected-move boundary strike (not the spot row)
               const rn = rowNet[ri];
               return (
-                <div key={k} className="grid gap-x-0.5 pr-2 items-center" style={{ gridTemplateColumns: template, height: rowH, ...(isSpot ? { background: 'color-mix(in srgb, var(--accent-color) 8%, transparent)' } : undefined) }}>
-                  <div className={`${stickCol} z-20 h-full flex items-center justify-end text-right font-bold pl-1.5 pr-1`} style={{ color: isSpot ? 'var(--accent-color)' : 'var(--text-secondary)', background: isSpot ? 'color-mix(in srgb, var(--accent-color) 14%, var(--surface))' : 'var(--surface)', boxShadow: isSpot ? 'inset 3px 0 0 var(--accent-color)' : undefined }}>{Number.isInteger(k) ? k.toLocaleString('en-US') : nf(k)}</div>
+                <div key={k} className="grid gap-x-0.5 pr-2 items-center" style={{ gridTemplateColumns: template, height: rowH, ...(isSpot ? { background: 'color-mix(in srgb, var(--accent-color) 8%, transparent)' } : isEm ? { background: 'color-mix(in srgb, var(--info) 6%, transparent)' } : undefined) }}>
+                  <div className={`${stickCol} z-20 h-full flex items-center justify-end gap-1 text-right font-bold pl-1.5 pr-1`} style={{ color: isSpot ? 'var(--accent-color)' : isEm ? 'var(--info)' : 'var(--text-secondary)', background: isSpot ? 'color-mix(in srgb, var(--accent-color) 14%, var(--surface))' : isEm ? 'color-mix(in srgb, var(--info) 11%, var(--surface))' : 'var(--surface)', boxShadow: isSpot ? 'inset 3px 0 0 var(--accent-color)' : isEm ? 'inset 2px 0 0 var(--info)' : undefined }}>
+                    {full && isEm && <span className="text-[6px] font-black leading-none opacity-80">EM</span>}
+                    {Number.isInteger(k) ? k.toLocaleString('en-US') : nf(k)}
+                  </div>
                   {cols.map((c, ci) => {
                     const v = cell[ci].get(k) || 0;
-                    const isWall = wall[ci] === k && Math.abs(v) / maxAbs > 0.25;   // ring only a genuine wall, not a weak column's trivial max
+                    // KEY-LEVEL glow: the brightest +γ (call wall) and −γ (put wall) cell in EACH column,
+                    // gated so a near-dead column's trivial max isn't lit. Bright inset ring + soft outer glow.
+                    const isCW = callWall[ci] === k && v > 0 && v / colMaxAbs[ci] > 0.4;
+                    const isPW = putWall[ci] === k && v < 0 && -v / colMaxAbs[ci] > 0.4;
+                    const lit = isCW || isPW;
                     return (
-                      <div key={c.expiration} className="relative h-full flex items-center justify-center rounded-[2px]" style={{ background: v ? cellBg(v) : undefined, boxShadow: isWall ? `inset 0 0 0 1px ${v >= 0 ? 'var(--success)' : 'var(--danger)'}` : undefined }}>
-                        <span style={{ color: v ? cellInk(v) : 'var(--text-tertiary)', fontWeight: Math.abs(v) / maxAbs > 0.5 ? 800 : 600 }}>{v ? fmtG(v) : '·'}</span>
-                        {full && isWall && <span className="absolute top-0 right-0.5 text-[6px] font-black leading-none pt-px" style={{ color: v >= 0 ? 'var(--success)' : 'var(--danger)' }}>{v >= 0 ? 'CW' : 'PW'}</span>}
+                      <div key={c.expiration} className="relative h-full flex items-center justify-center rounded-[2px]" style={{ background: v ? cellBg(v) : undefined, boxShadow: isCW ? 'inset 0 0 0 1.5px var(--success), 0 0 9px -2px var(--success)' : isPW ? 'inset 0 0 0 1.5px var(--danger), 0 0 9px -2px var(--danger)' : undefined }}>
+                        <span style={{ color: lit ? 'var(--text-primary)' : (v ? cellInk(v) : 'var(--text-tertiary)'), fontWeight: (lit || Math.abs(v) / maxAbs > 0.5) ? 800 : 600 }}>{v ? fmtG(v) : '·'}</span>
+                        {full && lit && <span className="absolute top-0 right-0.5 text-[6px] font-black leading-none pt-px" style={{ color: isCW ? 'var(--success)' : 'var(--danger)' }}>{isCW ? 'CW' : 'PW'}</span>}
                       </div>
                     );
                   })}
