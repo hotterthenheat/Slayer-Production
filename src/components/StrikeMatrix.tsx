@@ -103,15 +103,19 @@ export function StrikeMatrix({ profile, decimals = 0, size = 'compact' }: { prof
     const template = `${strikeW}px repeat(${cols.length}, minmax(${colMin}px, 1fr)) ${netW}px`;
     const stick = 'sticky left-0';   // frozen strike axis when scrolling expiries
     const hair = 'inset 0 0 0 1px var(--border)';   // crisp hairline around every cell → reads as a true matrix grid
+    const FIELD = 'color-mix(in srgb, var(--surface) 45%, var(--bg-base))';   // near-black cell field → bright cells glow against it
     const spotIdx = ks.indexOf(nearestK);
     // Per-expiry heat — intensity is relative to THAT column's own peak (so every expiry reveals its own
     // call/put structure, not just the front month), then gently damped by how that column's peak compares
-    // to the global peak so a near-dead far-dated column stays dim. A steep curve keeps the wall cells bright
-    // and pushes weak cells back toward the surface, so the grid reads as distinct tiles instead of one
-    // green/red wash. The printed value is always the truth; the fill is only a reading aid. green = +γ, red = −γ.
+    // to the global peak so a near-dead far-dated column stays dim. A steep curve sinks weak cells into the
+    // near-black FIELD and lets only the dealer walls blaze — a dark canvas with glowing hotspots, not a
+    // green/red wash. The printed value is always the truth; the fill is only a reading aid. green +γ, red −γ.
     const heat = (v: number, ci: number) => Math.min(1, Math.abs(v) / colMaxAbs[ci]) * Math.pow(colMaxAbs[ci] / maxAbs, 0.28);
-    const cellBg = (v: number, ci: number) => { if (!v) return 'var(--surface)'; const tok = v >= 0 ? 'var(--success)' : 'var(--danger)'; return `color-mix(in srgb, ${tok} ${Math.round(6 + Math.pow(heat(v, ci), 1.05) * 80)}%, var(--surface))`; };
-    const cellInk = (v: number, ci: number) => { const t = heat(v, ci); return t > 0.42 ? 'var(--text-primary)' : t > 0.13 ? 'var(--text-secondary)' : 'var(--text-tertiary)'; };
+    const cellBg = (v: number, ci: number) => { if (!v) return FIELD; const tok = v >= 0 ? 'var(--success)' : 'var(--danger)'; return `color-mix(in srgb, ${tok} ${Math.round(3 + Math.pow(heat(v, ci), 1.7) * 91)}%, ${FIELD})`; };
+    const cellInk = (v: number, ci: number) => { const t = heat(v, ci); return t > 0.4 ? 'var(--text-primary)' : t > 0.1 ? 'var(--text-secondary)' : 'var(--text-tertiary)'; };
+    // Magnitude-proportional bloom: cells past mid-strength cast a soft coloured glow so the walls read as
+    // luminous hotspots (the itmatrix look), scaled by how hot the cell is.
+    const cellGlow = (v: number, ci: number) => { const t = heat(v, ci); return t > 0.5 ? `, 0 0 ${Math.round((t - 0.5) * 26) + 4}px -3px color-mix(in srgb, ${v >= 0 ? 'var(--success)' : 'var(--danger)'} 62%, transparent)` : ''; };
 
     return (
       <div className="w-full overflow-x-auto hide-scrollbar">
@@ -160,12 +164,12 @@ export function StrikeMatrix({ profile, decimals = 0, size = 'compact' }: { prof
                     const isCW = callWall[ci] === k && v > 0 && heat(v, ci) > 0.38;
                     const isPW = putWall[ci] === k && v < 0 && heat(v, ci) > 0.38;
                     const heroCW = ci === cwHero.ci && k === cwHero.k, heroPW = ci === pwHero.ci && k === pwHero.k;
-                    const ring = heroCW ? 'inset 0 0 0 1.5px var(--success), 0 0 10px -3px var(--success)'
-                      : heroPW ? 'inset 0 0 0 1.5px var(--danger), 0 0 10px -3px var(--danger)'
+                    const ring = heroCW ? 'inset 0 0 0 1.5px var(--success), 0 0 14px -2px var(--success)'
+                      : heroPW ? 'inset 0 0 0 1.5px var(--danger), 0 0 14px -2px var(--danger)'
                       : isCW ? 'inset 0 0 0 1px color-mix(in srgb, var(--success) 60%, transparent)'
-                      : isPW ? 'inset 0 0 0 1px color-mix(in srgb, var(--danger) 60%, transparent)' : undefined;
+                      : isPW ? 'inset 0 0 0 1px color-mix(in srgb, var(--danger) 60%, transparent)' : hair;
                     return (
-                      <div key={c.expiration} className="relative h-full flex items-center justify-center" style={{ background: cellBg(v, ci), boxShadow: ring || hair }}>
+                      <div key={c.expiration} className="relative h-full flex items-center justify-center" style={{ background: cellBg(v, ci), boxShadow: `${ring}${(heroCW || heroPW) ? '' : cellGlow(v, ci)}` }}>
                         <span style={{ color: v ? cellInk(v, ci) : 'var(--text-tertiary)', fontWeight: heat(v, ci) > 0.5 ? 800 : 600 }}>{v ? fmtG(v) : '·'}</span>
                         {full && (heroCW || heroPW) && <span className="absolute top-px right-0.5 text-[6.5px] font-black leading-none" style={{ color: heroCW ? 'var(--success)' : 'var(--danger)' }}>{heroCW ? 'CW' : 'PW'}</span>}
                       </div>
