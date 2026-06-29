@@ -886,7 +886,7 @@ export function LiveTerminalFlow({ profile: liveProfile, ticker, decimals }: Liv
                 (coloured rail + CW/PW/FLIP/PIN tag), so no duplicate text block here. */}
             <div className="grid grid-cols-[52px_1fr_64px] gap-2 px-3 py-1.5 border-b border-[var(--border)] shrink-0 text-[9px] font-mono font-black uppercase tracking-widest text-[var(--text-tertiary)]">
               <div className="text-right">Strike</div>
-              <div className="flex justify-between"><span style={{ color: 'var(--danger)' }}>◄ Put {mSym}</span><span style={{ color: 'var(--success)' }}>{mSym} Call ►</span></div>
+              <div className="flex items-center gap-2.5 pl-1.5"><span className="flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-sm" style={{ background: 'var(--success)' }} />Call {mSym}</span><span className="flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-sm" style={{ background: 'var(--danger)' }} />Put {mSym}</span></div>
               <div className="text-right">{ladderMetric === 'OI' || ladderMetric === 'VOL' ? 'Total' : 'Net'}</div>
             </div>
             {/* Dealer Gamma Profile — a price-aligned tiling histogram that fills the panel with the
@@ -906,13 +906,13 @@ export function LiveTerminalFlow({ profile: liveProfile, ticker, decimals }: Liv
                 // Strike-label stride from the REAL pixel pitch (not just rowHpct%), so labels never collide
                 // on a short mobile rail where the same % resolves to far fewer pixels (~15px min gap).
                 const labelEvery = Math.max(1, Math.ceil(15 / Math.max(1, (rowHpct / 100) * panelH)));
-                // Bars stay THIN: in the sparse (tall-row) regime cap the thickness so they never balloon into
-                // giant blocks (the mobile / few-strikes case); the dense regime fills for a continuous profile.
-                const barH = dense ? 'calc(100% - 1px)' : 'min(74%, 20px)';   // bolder than the old 13px nub, still capped so a few-strike mobile rail never balloons
-                // Near-solid bars (bright at the axis, fading only to ~50% at the tip) so the walls read as
-                // confident blocks instead of thin wisps.
-                const putGrad = 'linear-gradient(to left, color-mix(in srgb, var(--danger) 92%, transparent), color-mix(in srgb, var(--danger) 48%, transparent))';
-                const callGrad = 'linear-gradient(to right, color-mix(in srgb, var(--success) 92%, transparent), color-mix(in srgb, var(--success) 48%, transparent))';
+                // ONE bold bar per strike (left-anchored gamma profile): length = |net exposure| vs the panel
+                // max, so the dealer walls span the FULL width instead of being capped to a 50% half-nub.
+                const barH = dense ? 'calc(100% - 1px)' : 'min(82%, 24px)';
+                const maxNet = Math.max(1, ...rows.map(rr => Math.abs(rr.net)));
+                // Bright at the left rail, fading out → depth + anchored to the strike axis.
+                const upGrad = 'linear-gradient(to right, color-mix(in srgb, var(--success) 95%, transparent), color-mix(in srgb, var(--success) 42%, transparent))';
+                const downGrad = 'linear-gradient(to right, color-mix(in srgb, var(--danger) 95%, transparent), color-mix(in srgb, var(--danger) 42%, transparent))';
                 return (
                   <>
                     {rows.map((r, i) => {
@@ -937,10 +937,11 @@ export function LiveTerminalFlow({ profile: liveProfile, ticker, decimals }: Liv
                             </span>
                           )}
                           <div className="relative flex-1 h-full flex items-center mx-1.5">
-                            {/* faint full-width rail so the thin, spaced bars read as a structured profile, not floating */}
-                            {!dense && <div className="absolute left-0 right-0 top-1/2 -translate-y-1/2 h-px pointer-events-none" style={{ background: 'color-mix(in srgb, var(--border) 60%, transparent)' }} />}
-                            <div className="relative w-1/2 h-full flex items-center justify-end pr-px border-r border-[var(--border)]"><div className="rounded-l-full" style={{ width: `${r.putPct}%`, height: barH, background: putGrad, transition: 'width 0.42s cubic-bezier(0.22,1,0.36,1), height 0.3s ease' }} /></div>
-                            <div className="relative w-1/2 h-full flex items-center justify-start pl-px"><div className="rounded-r-full" style={{ width: `${r.callPct}%`, height: barH, background: callGrad, transition: 'width 0.42s cubic-bezier(0.22,1,0.36,1), height 0.3s ease' }} /></div>
+                            {/* faint baseline rail so a near-zero strike still reads as a row on the profile */}
+                            {!dense && <div className="absolute left-0 right-0 top-1/2 -translate-y-1/2 h-px pointer-events-none" style={{ background: 'color-mix(in srgb, var(--border) 55%, transparent)' }} />}
+                            {(() => { const np = Math.min(100, (Math.abs(r.net) / maxNet) * 100); const big = np > 55; return (
+                              <div className="rounded-r-sm" style={{ width: `${np}%`, height: barH, background: r.netUp ? upGrad : downGrad, boxShadow: big ? `0 0 12px -3px ${r.netUp ? 'var(--success)' : 'var(--danger)'}` : undefined, transition: 'width 0.42s cubic-bezier(0.22,1,0.36,1), height 0.3s ease' }} />
+                            ); })()}
                           </div>
                           {lbl && <span className="w-[56px] shrink-0 text-right text-[9px] font-mono font-black tabular-nums" style={{ color: r.netUp ? 'var(--success)' : 'var(--danger)' }}>{fmtBig(r.net)}</span>}
                         </div>
