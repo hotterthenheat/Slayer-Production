@@ -2,10 +2,10 @@ import { useEffect, useMemo, useRef, useState, memo } from 'react';
 import { Candle, GexProfileData, TimeframeVal } from '../types';
 import { useContractStore } from '../lib/store';
 import * as TI from '../lib/indicators';
-import { SyncChannel, CHANNEL_CYCLE, CHANNEL_COLORS, subscribeChannel, publishChannel, broadcastCrosshair, broadcastPriceScale } from '../lib/chartSync';
+import { SyncChannel, CHANNEL_CYCLE, CHANNEL_COLORS, subscribeChannel, publishChannel, broadcastCrosshair } from '../lib/chartSync';
 import { fetchHistory } from '../lib/historyCache';
 import { OVERLAY_DEFS, PANE_DEFS, type OHLCV, type Series, type PaneData } from './chart/indicators';
-import { newId, idxOfTime, timeOfIdx, distToSeg, RANGE_PRESETS, CHART_TFS, readTheme, EMPTY, hexA, contrastInk, sameDay, type RangeKey } from './chart/format';
+import { newId, idxOfTime, timeOfIdx, distToSeg, CHART_TFS, readTheme, EMPTY, hexA, contrastInk, sameDay, type RangeKey } from './chart/format';
 import { CHART_TYPES, DRAW_COLOR, DRAW_TOOLS, type ChartType, type DrawTool, type Anchor, type Drawing } from './chart/drawing';
 import { ChartContextMenu } from './chart/overlays';
 import { IndicatorMenu } from './chart/IndicatorMenu';
@@ -297,10 +297,6 @@ export const SlayerChart = memo(function SlayerChartImpl({ profile, decimals, ca
   }, [profile]);
   useEffect(() => { comHistRef.current = []; }, [tickKey]);
 
-  // Broadcast the chart's live visible price range every frame (main chart only) so the Dealer Gamma
-  // Profile flows with it; the listener rAF-throttles and drops no-op frames.
-  const onScale = (lo: number, hi: number) => { if (!panelId) broadcastPriceScale(lo, hi, profile.spot ?? null, 'main'); };
-
   const livePhaseRef = useRef(0);   // 0..1 looping pulse phase, advanced by the live rAF loop below
   const liveRafRef = useRef(0);
   // Last-price geometry the candle layer hands off on every base repaint; the overlay layer reads it
@@ -315,7 +311,7 @@ export const SlayerChart = memo(function SlayerChartImpl({ profile, decimals, ca
     hoverRef, gexDeltaRef, draftRef, measureRef, drawingsRef, toolRef, selectedRef,
     candles, ha, atr, profile, colors, decimals, chartType, ovOn, overlaySeries, paneSeries,
     displacements, gexCount, showVolume, showGrid, showWatermark, candleBorders,
-    showGex, showHeat, showOrbs, showVolProfile, showPrevClose, showVwap, vwap: vwapData, showMigration, gammaCoM, comHist: comHistRef.current, showExposure, showMaxPain, showDisp, showLadder, tickKey, tfKey, onScale, live, livePhaseRef, liveOverlayRef, panPx: panPxRef.current,
+    showGex, showHeat, showOrbs, showVolProfile, showPrevClose, showVwap, vwap: vwapData, showMigration, gammaCoM, comHist: comHistRef.current, showExposure, showMaxPain, showDisp, showLadder, tickKey, tfKey, live, livePhaseRef, liveOverlayRef, panPx: panPxRef.current,
   });
 
   // Overlay repaint — clears the transparent top canvas and paints the last-price dot, plus an
@@ -702,12 +698,6 @@ export const SlayerChart = memo(function SlayerChartImpl({ profile, decimals, ca
     <button onClick={onClick} title={tip} className={`flex items-center gap-1 px-1.5 py-0.5 rounded-sm text-[10px] font-mono font-bold uppercase tracking-wide border transition-colors ${active ? (tone === 'warn' ? 'bg-[var(--warning)]/15 border-[var(--warning)]/40 text-[var(--warning)]' : 'bg-[var(--surface-2)] border-[var(--border)] text-[var(--text-secondary)]') : 'bg-transparent border-transparent text-[var(--text-tertiary)] opacity-50'}`}>{label}</button>
   );
   const pickTool = (k: DrawTool) => { setTool(t => (t === k ? 'cursor' : k)); draftRef.current = null; measureRef.current = null; measureDragRef.current = false; };
-  const pickRange = (r: RangeKey) => {
-    const p = RANGE_PRESETS.find(x => x.k === r); if (!p) return;
-    setRange(r);
-    if (tfKey === p.tf) { tweenView({ bars: p.bars, off: 0 }); autoFitPrice(); }
-    else { pendingBarsRef.current = p.bars; applyTf(p.tf); } // tf change → reset effect applies the bars
-  };
 
   return (
     <div className="w-full h-full flex flex-col outline-none" tabIndex={panelId ? 0 : undefined}
@@ -779,13 +769,6 @@ export const SlayerChart = memo(function SlayerChartImpl({ profile, decimals, ca
               </div>
             </>
           )}
-        </div>
-        <span className="w-px h-4 bg-[var(--border)] mx-0.5" />
-        {/* Date range — each maps to (timeframe + visible bars); 1Y/ALL use daily/weekly bars */}
-        <div className="flex items-center p-0.5 rounded gap-0.5 bg-[var(--surface-2)] border border-[var(--border)]">
-          {RANGE_PRESETS.map(p => (
-            <button key={p.k} onClick={() => pickRange(p.k)} title={`${p.k} — ${p.tf} bars`} className={`px-1.5 py-0.5 text-[10px] font-mono font-black tracking-wide rounded transition-colors ${range === p.k ? 'text-black' : 'text-[var(--text-tertiary)] hover:text-[var(--text-primary)]'}`} style={range === p.k ? { background: 'var(--accent-color)' } : undefined}>{p.k}</button>
-          ))}
         </div>
         <span className="w-px h-4 bg-[var(--border)] mx-0.5" />
         {/* Indicator menu */}
