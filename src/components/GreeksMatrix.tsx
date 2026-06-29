@@ -52,13 +52,16 @@ export function GreeksMatrix({ profile, decimals = 0 }: { profile: GexProfileDat
   const template = `82px repeat(${active.length}, minmax(72px, 1fr))`;
   const stick = 'sticky left-0';
   const hair = 'inset 0 0 0 1px var(--border)';   // crisp hairline around every cell → a true matrix grid
+  const FIELD = 'color-mix(in srgb, var(--surface) 45%, var(--bg-base))';   // near-black field → bright cells glow against it
   const spotIdx = ss.findIndex(s => s.strike === nearestK);
   // Each greek column is normalised to ITS OWN peak — the four exposures live on different scales (Δ-$, Γ-$,
   // vanna, charm), so cross-column brightness comparison is meaningless; the printed value is the truth.
-  // Solid surface tiles + steep curve so the dominant strike in each exposure pops and weak ones recede.
+  // A steep curve sinks weak cells into the near-black FIELD and lets the dominant strike in each exposure
+  // blaze — a dark canvas with glowing hotspots. green = +, red = −.
   const heat = (v: number, mx: number) => Math.min(1, Math.abs(v) / mx);
-  const cellBg = (v: number, mx: number) => { if (!v) return 'var(--surface)'; const tok = v >= 0 ? 'var(--success)' : 'var(--danger)'; return `color-mix(in srgb, ${tok} ${Math.round(6 + Math.pow(heat(v, mx), 1.05) * 80)}%, var(--surface))`; };
-  const cellInk = (v: number, mx: number) => { const t = heat(v, mx); return t > 0.42 ? 'var(--text-primary)' : t > 0.13 ? 'var(--text-secondary)' : 'var(--text-tertiary)'; };
+  const cellBg = (v: number, mx: number) => { if (!v) return FIELD; const tok = v >= 0 ? 'var(--success)' : 'var(--danger)'; return `color-mix(in srgb, ${tok} ${Math.round(3 + Math.pow(heat(v, mx), 1.7) * 91)}%, ${FIELD})`; };
+  const cellInk = (v: number, mx: number) => { const t = heat(v, mx); return t > 0.4 ? 'var(--text-primary)' : t > 0.1 ? 'var(--text-secondary)' : 'var(--text-tertiary)'; };
+  const cellGlow = (v: number, mx: number) => { const t = heat(v, mx); return t > 0.5 ? `, 0 0 ${Math.round((t - 0.5) * 26) + 4}px -3px color-mix(in srgb, ${v >= 0 ? 'var(--success)' : 'var(--danger)'} 62%, transparent)` : ''; };
   const wallOf = (k: number) => k === profile.callWall ? { t: 'CW', c: 'var(--success)' } : k === profile.putWall ? { t: 'PW', c: 'var(--danger)' } : k === profile.gammaFlip ? { t: 'FLIP', c: 'var(--warning)' } : (k === profile.magnet ? { t: 'PIN', c: 'var(--greek)' } : null);
 
   return (
@@ -91,9 +94,9 @@ export function GreeksMatrix({ profile, decimals = 0 }: { profile: GexProfileDat
                   <span className="font-bold" style={{ color: isSpot ? 'var(--accent-color)' : isEm ? 'var(--info)' : 'var(--text-secondary)' }}>{Number.isInteger(k) ? k.toLocaleString('en-US') : nf(k)}</span>
                   {(w || isEm) && <span className="text-[6.5px] font-black uppercase tracking-wider" style={{ color: w ? w.c : 'var(--info)' }}>{w ? w.t : 'EM'}</span>}
                 </div>
-                {active.map(c => { const v = c.get(s); return (
-                  <div key={c.key} className="h-full flex items-center justify-center" style={{ background: cellBg(v, maxAbs[c.key]), boxShadow: hair }}>
-                    <span style={{ color: v ? cellInk(v, maxAbs[c.key]) : 'var(--text-tertiary)', fontWeight: heat(v, maxAbs[c.key]) > 0.5 ? 800 : 600 }}>{v ? fmtG(v) : '·'}</span>
+                {active.map(c => { const v = c.get(s), mx = maxAbs[c.key]; return (
+                  <div key={c.key} className="h-full flex items-center justify-center" style={{ background: cellBg(v, mx), boxShadow: `${hair}${cellGlow(v, mx)}` }}>
+                    <span style={{ color: v ? cellInk(v, mx) : 'var(--text-tertiary)', fontWeight: heat(v, mx) > 0.5 ? 800 : 600 }}>{v ? fmtG(v) : '·'}</span>
                   </div>
                 ); })}
               </div>
