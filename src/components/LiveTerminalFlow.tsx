@@ -377,20 +377,6 @@ export function LiveTerminalFlow({ profile: liveProfile, ticker, decimals }: Liv
     };
   }, [profile, ladderMetric, spot]);
 
-  // KEY LEVELS — the dominant dealer structure (call wall, put wall, γ-flip, pin magnet) with each strike,
-  // so the ladder can both HEADLINE them in a callout and spotlight their rows. Strike → net γ via the live
-  // chain; a level is null when the profile doesn't carry it.
-  const keyLevels = useMemo(() => {
-    const ss = profile.strikes || [];
-    const valAt = (strike?: number) => { if (!strike) return null; const s = ss.find(x => Math.abs(x.strike - strike) < 1e-6); return s ? (s.netGex ?? ((s.callGex || 0) + (s.putGex || 0))) : null; };
-    return {
-      callWall: profile.callWall ? { strike: profile.callWall, val: valAt(profile.callWall) } : null,
-      putWall: profile.putWall ? { strike: profile.putWall, val: valAt(profile.putWall) } : null,
-      flip: profile.gammaFlip || null,
-      pin: profile.magnet || null,
-    };
-  }, [profile]);
-
   // STRUCTURE ZONES — a per-strike label + 0–100 strength so the ladder reads like an institutional strike
   // map (Resistance / Support / Pin / OI-spike, with a strength meter). CW/PW/FLIP come from the row's own
   // canonical flags in the render; this map carries the EXTRAS: PIN (magnet, tier-2) plus RES/SUP/OI and the
@@ -444,7 +430,7 @@ export function LiveTerminalFlow({ profile: liveProfile, ticker, decimals }: Liv
         <div className="w-1/2 h-full flex items-center justify-end pr-0.5 border-r border-dotted border-[var(--border)]"><div className="h-[9px] rounded-sm" style={{ width: `${r.putPct}%`, background: 'color-mix(in srgb, var(--danger) 60%, transparent)', transition: 'width 0.45s cubic-bezier(0.16,1,0.3,1)' }} /></div>
         <div className="w-1/2 h-full flex items-center pl-0.5"><div className="h-[9px] rounded-sm" style={{ width: `${r.callPct}%`, background: 'color-mix(in srgb, var(--success) 60%, transparent)', transition: 'width 0.45s cubic-bezier(0.16,1,0.3,1)' }} /></div>
       </div>
-      <div className="text-right font-black" style={{ color: (ladderMetric === 'GAMMA' || ladderMetric === 'DELTA' || ladderMetric === 'VANNA') ? 'var(--greek)' : (r.netUp ? 'var(--success)' : 'var(--danger)') }}>{fmtBig(r.net)}</div>
+      <div className="text-right font-black" style={{ color: r.netUp ? 'var(--success)' : 'var(--danger)' }}>{fmtBig(r.net)}</div>
     </>
   );
 
@@ -877,11 +863,10 @@ export function LiveTerminalFlow({ profile: liveProfile, ticker, decimals }: Liv
                 <span className="w-1.5 h-1.5 rounded-full" style={{ background: trend }} />{read.regime}
               </span>
             </div>
-            {/* GAMMA / DELTA / VANNA exposure metric */}
-            <div className="flex items-center gap-1 px-3 py-1.5 border-b border-[var(--border)] shrink-0">
-              <span className="text-[9px] font-black tracking-widest uppercase text-[var(--text-tertiary)] mr-1">Metric</span>
+            {/* Exposure metric — a full-width segmented control (no label; the buttons are self-evident) */}
+            <div className="flex items-stretch gap-1 px-3 py-1.5 border-b border-[var(--border)] shrink-0">
               {(['GAMMA', 'DELTA', 'VANNA', 'OI', 'VOL'] as const).map(m => { const dis = (m === 'DELTA' && !hasDex) || (m === 'VANNA' && !hasVex) || (m === 'OI' && !hasOi) || (m === 'VOL' && !hasVol); return (
-                <button key={m} disabled={dis} onClick={() => setLadderMetric(m)} title={dis ? `No ${m.toLowerCase()} data in this feed` : `Show per-strike ${m.toLowerCase()}`} className="px-2 py-0.5 text-[9px] font-mono font-black tracking-wider rounded transition-colors" style={ladderMetric === m ? { background: 'var(--surface-3)', color: 'var(--text-primary)' } : { color: dis ? 'color-mix(in srgb, var(--text-tertiary) 40%, transparent)' : 'var(--text-tertiary)', cursor: dis ? 'not-allowed' : 'pointer' }}>{m}</button>
+                <button key={m} disabled={dis} onClick={() => setLadderMetric(m)} title={dis ? `No ${m.toLowerCase()} data in this feed` : `Show per-strike ${m.toLowerCase()}`} className="flex-1 py-1 text-[9px] font-mono font-black tracking-wider rounded transition-colors text-center" style={ladderMetric === m ? { background: 'var(--surface-3)', color: 'var(--text-primary)', boxShadow: 'inset 0 0 0 1px var(--border-strong)' } : { color: dis ? 'color-mix(in srgb, var(--text-tertiary) 40%, transparent)' : 'var(--text-tertiary)', cursor: dis ? 'not-allowed' : 'pointer' }}>{m}</button>
               ); })}
             </div>
             {(vacAbove || vacBelow) && (
@@ -897,40 +882,8 @@ export function LiveTerminalFlow({ profile: liveProfile, ticker, decimals }: Liv
                 </div>
               </div>
             )}
-            {/* KEY LEVELS — the dominant dealer structure headlined (strike + net γ), so the walls / flip /
-                pin read before you scan the list, and the abbreviations used in the rows below have a legend. */}
-            {(keyLevels.callWall || keyLevels.putWall || keyLevels.flip || keyLevels.pin) && (
-              <div className="px-3 py-1.5 border-b border-[var(--border)] shrink-0 grid grid-cols-2 gap-x-3 gap-y-1 text-[10px] font-mono tabular-nums">
-                {keyLevels.callWall && (
-                  <span className="flex items-center gap-1.5 min-w-0" title="Call wall — the strongest +γ strike; dealer hedging caps rallies here (resistance)">
-                    <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ background: 'var(--success)', boxShadow: '0 0 5px var(--success)' }} />
-                    <span className="text-[8px] font-black uppercase tracking-wider text-[var(--text-tertiary)]">Call Wall</span>
-                    <span className="font-black ml-auto" style={{ color: 'var(--success)' }}>{fmtNum(keyLevels.callWall.strike, decimals)}</span>
-                  </span>
-                )}
-                {keyLevels.putWall && (
-                  <span className="flex items-center gap-1.5 min-w-0" title="Put wall — the strongest −γ strike; dealer hedging supports dips here (support)">
-                    <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ background: 'var(--danger)', boxShadow: '0 0 5px var(--danger)' }} />
-                    <span className="text-[8px] font-black uppercase tracking-wider text-[var(--text-tertiary)]">Put Wall</span>
-                    <span className="font-black ml-auto" style={{ color: 'var(--danger)' }}>{fmtNum(keyLevels.putWall.strike, decimals)}</span>
-                  </span>
-                )}
-                {keyLevels.flip && (
-                  <span className="flex items-center gap-1.5 min-w-0" title="Gamma flip — the +γ→−γ crossing; above it dealers dampen moves, below it they amplify">
-                    <span className="w-1.5 h-1.5 rounded-sm shrink-0" style={{ background: 'var(--warning)' }} />
-                    <span className="text-[8px] font-black uppercase tracking-wider text-[var(--text-tertiary)]">γ Flip</span>
-                    <span className="font-black ml-auto" style={{ color: 'var(--warning)' }}>{fmtNum(keyLevels.flip, decimals)}</span>
-                  </span>
-                )}
-                {keyLevels.pin && (
-                  <span className="flex items-center gap-1.5 min-w-0" title="Gamma pin / magnet — the highest-|γ| strike near spot; price tends to be drawn toward it">
-                    <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ background: 'var(--accent-color)' }} />
-                    <span className="text-[8px] font-black uppercase tracking-wider text-[var(--text-tertiary)]">Pin</span>
-                    <span className="font-black ml-auto" style={{ color: 'var(--greek)' }}>{fmtNum(keyLevels.pin, decimals)}</span>
-                  </span>
-                )}
-              </div>
-            )}
+            {/* KEY LEVELS are headlined in the metric-card strip up top and spotlighted on the rows below
+                (coloured rail + CW/PW/FLIP/PIN tag), so no duplicate text block here. */}
             <div className="grid grid-cols-[52px_1fr_64px] gap-2 px-3 py-1.5 border-b border-[var(--border)] shrink-0 text-[9px] font-mono font-black uppercase tracking-widest text-[var(--text-tertiary)]">
               <div className="text-right">Strike</div>
               <div className="flex justify-between"><span style={{ color: 'var(--danger)' }}>◄ Put {mSym}</span><span style={{ color: 'var(--success)' }}>{mSym} Call ►</span></div>
@@ -952,11 +905,11 @@ export function LiveTerminalFlow({ profile: liveProfile, ticker, decimals }: Liv
                 const showZone = (rowHpct / 100) * panelH >= 17;
                 // Bars stay THIN: in the sparse (tall-row) regime cap the thickness so they never balloon into
                 // giant blocks (the mobile / few-strikes case); the dense regime fills for a continuous profile.
-                const barH = dense ? 'calc(100% - 1px)' : 'min(56%, 13px)';
-                const greek = ladderMetric === 'GAMMA' || ladderMetric === 'DELTA' || ladderMetric === 'VANNA';
-                // Bright-at-the-axis → fade-outward gradients give the bars depth instead of flat slabs.
-                const putGrad = 'linear-gradient(to left, color-mix(in srgb, var(--danger) 85%, transparent), color-mix(in srgb, var(--danger) 28%, transparent))';
-                const callGrad = 'linear-gradient(to right, color-mix(in srgb, var(--success) 85%, transparent), color-mix(in srgb, var(--success) 28%, transparent))';
+                const barH = dense ? 'calc(100% - 1px)' : 'min(74%, 20px)';   // bolder than the old 13px nub, still capped so a few-strike mobile rail never balloons
+                // Near-solid bars (bright at the axis, fading only to ~50% at the tip) so the walls read as
+                // confident blocks instead of thin wisps.
+                const putGrad = 'linear-gradient(to left, color-mix(in srgb, var(--danger) 92%, transparent), color-mix(in srgb, var(--danger) 48%, transparent))';
+                const callGrad = 'linear-gradient(to right, color-mix(in srgb, var(--success) 92%, transparent), color-mix(in srgb, var(--success) 48%, transparent))';
                 return (
                   <>
                     {rows.map(r => {
@@ -984,7 +937,7 @@ export function LiveTerminalFlow({ profile: liveProfile, ticker, decimals }: Liv
                             <div className="relative w-1/2 h-full flex items-center justify-end pr-px border-r border-[var(--border)]"><div className="rounded-l-full" style={{ width: `${r.putPct}%`, height: barH, background: putGrad, transition: 'width 0.42s cubic-bezier(0.22,1,0.36,1), height 0.3s ease' }} /></div>
                             <div className="relative w-1/2 h-full flex items-center justify-start pl-px"><div className="rounded-r-full" style={{ width: `${r.callPct}%`, height: barH, background: callGrad, transition: 'width 0.42s cubic-bezier(0.22,1,0.36,1), height 0.3s ease' }} /></div>
                           </div>
-                          {r.showLabel && <span className="w-[56px] shrink-0 text-right text-[9px] font-mono font-black tabular-nums" style={{ color: greek ? 'var(--greek)' : (r.netUp ? 'var(--success)' : 'var(--danger)') }}>{fmtBig(r.net)}</span>}
+                          {r.showLabel && <span className="w-[56px] shrink-0 text-right text-[9px] font-mono font-black tabular-nums" style={{ color: r.netUp ? 'var(--success)' : 'var(--danger)' }}>{fmtBig(r.net)}</span>}
                         </div>
                       );
                     })}
