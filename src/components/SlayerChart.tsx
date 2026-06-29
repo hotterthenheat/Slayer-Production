@@ -5,7 +5,7 @@ import * as TI from '../lib/indicators';
 import { SyncChannel, CHANNEL_CYCLE, CHANNEL_COLORS, subscribeChannel, publishChannel, broadcastCrosshair } from '../lib/chartSync';
 import { fetchHistory } from '../lib/historyCache';
 import { OVERLAY_DEFS, PANE_DEFS, type OHLCV, type Series, type PaneData } from './chart/indicators';
-import { newId, idxOfTime, timeOfIdx, distToSeg, CHART_TFS, readTheme, EMPTY, hexA, contrastInk, sameDay, type RangeKey } from './chart/format';
+import { newId, idxOfTime, timeOfIdx, distToSeg, CHART_TFS, readTheme, EMPTY, hexA, contrastInk, sameDay } from './chart/format';
 import { CHART_TYPES, DRAW_COLOR, DRAW_TOOLS, type ChartType, type DrawTool, type Anchor, type Drawing } from './chart/drawing';
 import { ChartContextMenu } from './chart/overlays';
 import { IndicatorMenu } from './chart/IndicatorMenu';
@@ -84,7 +84,6 @@ export const SlayerChart = memo(function SlayerChartImpl({ profile, decimals, ca
   const [showVolume, setShowVolume] = useState<boolean>(initialPrefs.showVolume ?? true);
   const [showWatermark, setShowWatermark] = useState<boolean>(initialPrefs.showWatermark ?? true);
   const [candleBorders, setCandleBorders] = useState<boolean>(initialPrefs.candleBorders ?? true);
-  const [range, setRange] = useState<RangeKey | null>(null);
   const setSelectedTimeframe = useContractStore(s => s.setSelectedTimeframe);
   const [typeOpen, setTypeOpen] = useState(false);
   const [tfOpen, setTfOpen] = useState(false);
@@ -146,7 +145,6 @@ export const SlayerChart = memo(function SlayerChartImpl({ profile, decimals, ca
   useEffect(() => {
     const pending = pendingBarsRef.current;
     setView({ bars: pending ?? 110, off: 0 });
-    if (pending == null) setRange(null); // an external timeframe/ticker change isn't a preset range
     pendingBarsRef.current = null; autoFitPrice();
   }, [tfKey, tickKey]);
   // Load this ticker's saved drawings (and reset transient drawing state) on symbol change.
@@ -410,7 +408,6 @@ export const SlayerChart = memo(function SlayerChartImpl({ profile, decimals, ca
       const base = zoomTgtRef.current ? zoomTgtRef.current.target : viewRef.current.bars;
       const target = Math.max(20, Math.min(n, Math.round(base * factor)));
       if (target === base) return;
-      setRange(null); // manual zoom breaks the active range preset
       const inPlot = !!(g && mx >= g.plotL && mx <= g.plotR);
       if (!zoomTgtRef.current) {   // capture the pin once per burst (the candle under the cursor, else the live edge)
         const ax = inPlot && g ? mx : (g ? g.plotR : 0);
@@ -608,7 +605,7 @@ export const SlayerChart = memo(function SlayerChartImpl({ profile, decimals, ca
           const bars = Math.max(20, Math.min(n, Math.round(pz.bars0 * (pz.d0 / d))));   // fingers apart → fewer bars → zoom in
           const newBarW = (g.plotR - g.plotL) / bars, newStart = pz.gi - (pz.ax - g.plotL) / newBarW;
           const off = Math.max(-Math.round(bars * 0.5), Math.min(Math.max(0, n - 10), Math.round(n - bars - newStart)));
-          setRange(null); setView({ bars, off });
+          setView({ bars, off });
         }
         return;
       }

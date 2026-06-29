@@ -491,10 +491,12 @@ export function LiveTerminalFlow({ profile: liveProfile, ticker, decimals }: Liv
         ['--gex-regime-tint' as string]: regimeTint,
       } as CSSProperties}
     >
-      {/* ── Top bar ── */}
-      <div className="flex items-center justify-between px-3 sm:px-4 h-12 border-b border-[var(--border)] shrink-0 bg-[var(--surface)] relative">
+      {/* ── Top bar ── On lg+ this is a single 48px row (identity left · centred ticker/price · controls
+          right). Below lg the controls wrap to a second line instead of overflowing into the price, so
+          the identity row stays legible on a phone rather than colliding badges. */}
+      <div className="flex flex-wrap lg:flex-nowrap items-center justify-between gap-x-2 gap-y-1.5 px-3 sm:px-4 py-2 lg:py-0 min-h-12 lg:h-12 border-b border-[var(--border)] shrink-0 bg-[var(--surface)] relative">
         <div className="flex items-center gap-2.5 min-w-0">
-          <div className="w-8 h-8 rounded-md flex items-center justify-center shrink-0 bg-[var(--surface-2)] border border-[var(--border)]">
+          <div className="w-8 h-8 rounded-md hidden sm:flex items-center justify-center shrink-0 bg-[var(--surface-2)] border border-[var(--border)]">
             <Crosshair className="w-4 h-4" style={{ color: 'var(--accent-color)' }} />
           </div>
           <div className="leading-none hidden sm:block">
@@ -559,7 +561,7 @@ export function LiveTerminalFlow({ profile: liveProfile, ticker, decimals }: Liv
             <span className="text-[11px] font-bold tabular-nums" style={{ color: dayChg >= 0 ? 'var(--success)' : 'var(--danger)' }}>{dayChg >= 0 ? '+' : ''}{dayChg.toFixed(2)}%</span>
           </div>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 shrink-0">
           {/* Honest feed status — provider name when the chain is live, MODEL on synthetic data,
               STALE if the SSE heartbeat stalls. Replaces the old hardcoded "LIVE". */}
           <span className="flex items-center gap-1.5 px-2 py-1 rounded-md border text-[10px] font-mono font-black uppercase tracking-widest shrink-0" title={!marketOpen ? `Market closed — last-close snapshot${feedProvider ? ' from ' + feedProvider : ''} (updated ${staleSecs}s ago); data is frozen, not live` : liveFeed ? `Live options feed (${feedProvider}) · updated ${staleSecs}s ago` : isStale ? `Feed stalled — last update ${staleSecs}s ago` : 'Synthetic model data — connect a provider API key for a live feed'} style={{ borderColor: `color-mix(in srgb, ${feedColor} 42%, transparent)`, background: `color-mix(in srgb, ${feedColor} 10%, transparent)`, color: feedColor }}>
@@ -568,9 +570,10 @@ export function LiveTerminalFlow({ profile: liveProfile, ticker, decimals }: Liv
               : <span className="w-1.5 h-1.5 rounded-full" style={{ background: feedColor }} />}
             {feedLabel}
           </span>
-          {/* Timeframe + scope + regime — one control cluster so no toggle sits alone on the bar. The
-              wide desktop TF toggle (md+) and the compact mobile select (below md) swap inside it; the
-              scope toggle is always shown; the regime badge rides along on mobile only. */}
+          {/* Timeframe + scope — one control cluster so no toggle sits alone on the bar. The wide
+              desktop TF toggle (md+) and the compact mobile select (below md) swap inside it; the
+              scope toggle is always shown. Regime is carried by DealerPulse directly below (all
+              sizes), so it is not duplicated here — that frees the cramped mobile bar. */}
           <div className="flex items-center gap-1.5">
             <div className="hidden md:block">{segToggle(TF.map(t => t.val), selectedTimeframe, setSelectedTimeframe)}</div>
             <select
@@ -582,10 +585,6 @@ export function LiveTerminalFlow({ profile: liveProfile, ticker, decimals }: Liv
               {TF.map(t => <option key={t.val} value={t.val}>{t.val}</option>)}
             </select>
             {segToggle(['0DTE', 'ALL'], scope, v => setScope(v as '0DTE' | 'ALL'), true)}
-            {/* Compact regime badge — kept INSIDE the mobile control cluster so it never sits alone on the bar (mobile-only; the desktop hero ribbon carries the regime on lg+). */}
-            <span className="flex items-center gap-1.5 px-2.5 py-1 rounded-md border text-[10px] font-mono font-black uppercase tracking-widest md:hidden" style={{ borderColor: longGamma ? 'color-mix(in srgb, var(--info) 40%, transparent)' : 'color-mix(in srgb, var(--warning) 40%, transparent)', background: longGamma ? 'color-mix(in srgb, var(--info) 10%, transparent)' : 'color-mix(in srgb, var(--warning) 10%, transparent)', color: trend, boxShadow: `0 0 16px ${longGamma ? 'color-mix(in srgb, var(--info) 18%, transparent)' : 'color-mix(in srgb, var(--warning) 18%, transparent)'}` }}>
-              {longGamma ? <Activity className="w-3 h-3" /> : <Zap className="w-3 h-3 fill-current" />}{longGamma ? 'Long γ' : 'Short γ'} · {read.regime === 'PIN' ? `Pin ${read.pinStrength}` : 'Trend'}
-            </span>
           </div>
           {/* Customize — TradingView-style drag/resize/save layout (opt-in; default layout untouched) */}
           <button onClick={() => setCustomize(c => !c)} title="Customize layout — drag, resize & save your own panel arrangement"

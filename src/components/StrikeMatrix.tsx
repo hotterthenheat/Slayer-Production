@@ -117,7 +117,7 @@ export function StrikeMatrix({ profile, decimals = 0, size = 'compact' }: { prof
                   <div className={`${stickCol} z-20 h-full flex items-center justify-end text-right font-bold pl-1.5 pr-1`} style={{ color: isSpot ? 'var(--accent-color)' : 'var(--text-secondary)', background: isSpot ? 'color-mix(in srgb, var(--accent-color) 14%, var(--surface))' : 'var(--surface)', boxShadow: isSpot ? 'inset 3px 0 0 var(--accent-color)' : undefined }}>{Number.isInteger(k) ? k.toLocaleString('en-US') : nf(k)}</div>
                   {cols.map((c, ci) => {
                     const v = cell[ci].get(k) || 0;
-                    const isWall = wall[ci] === k && Math.abs(v) > 0;
+                    const isWall = wall[ci] === k && Math.abs(v) / maxAbs > 0.25;   // ring only a genuine wall, not a weak column's trivial max
                     return (
                       <div key={c.expiration} className="relative h-full flex items-center justify-center rounded-[2px]" style={{ background: v ? cellBg(v) : undefined, boxShadow: isWall ? `inset 0 0 0 1px ${v >= 0 ? 'var(--success)' : 'var(--danger)'}` : undefined }}>
                         <span style={{ color: v ? cellInk(v) : 'var(--text-tertiary)', fontWeight: Math.abs(v) / maxAbs > 0.5 ? 800 : 600 }}>{v ? fmtG(v) : '·'}</span>
@@ -125,20 +125,26 @@ export function StrikeMatrix({ profile, decimals = 0, size = 'compact' }: { prof
                       </div>
                     );
                   })}
-                  {/* NET-by-strike — diverging bar from centre (green right / red left) + value */}
-                  <div className="relative h-full flex items-center justify-center overflow-hidden">
-                    <div className="absolute inset-y-[3px] left-1/2 w-px" style={{ background: 'var(--border)' }} />
-                    {rn !== 0 && <div className="absolute top-1/2 -translate-y-1/2 h-[58%] rounded-[1px]" style={rn >= 0 ? { left: '50%', width: `${Math.min(49, (Math.abs(rn) / maxRowNet) * 49)}%`, background: 'color-mix(in srgb, var(--success) 50%, transparent)' } : { right: '50%', width: `${Math.min(49, (Math.abs(rn) / maxRowNet) * 49)}%`, background: 'color-mix(in srgb, var(--danger) 50%, transparent)' }} />}
-                    <span className="relative z-10 font-bold" style={{ color: rn >= 0 ? 'var(--success)' : 'var(--danger)' }}>{rn ? fmtG(rn) : '·'}</span>
+                  {/* NET-by-strike — value reads clean; a diverging sparkline (green right / red left from a
+                      centre axis) pins to the bottom edge so it never collides with the number. */}
+                  <div className="relative h-full flex items-center justify-center">
+                    <span className="font-bold leading-none" style={{ color: rn >= 0 ? 'var(--success)' : 'var(--danger)' }}>{rn ? fmtG(rn) : '·'}</span>
+                    {rn !== 0 && (
+                      <div className="absolute bottom-[2px] left-1.5 right-1.5 h-[3px] flex items-stretch">
+                        <div className="flex-1 flex justify-end"><div style={{ width: `${Math.min(100, (Math.abs(rn) / maxRowNet) * 100)}%`, background: rn < 0 ? 'var(--danger)' : 'transparent', borderRadius: 1 }} /></div>
+                        <div className="w-px shrink-0" style={{ background: 'var(--border)' }} />
+                        <div className="flex-1 flex justify-start"><div style={{ width: `${Math.min(100, (Math.abs(rn) / maxRowNet) * 100)}%`, background: rn >= 0 ? 'var(--success)' : 'transparent', borderRadius: 1 }} /></div>
+                      </div>
+                    )}
                   </div>
                 </div>
               );
             })}
             {/* Gamma-flip line — the aggregate +γ → −γ crossing (the dealer flip level) */}
             {flipIdx > 0 && (
-              <div className="absolute left-0 right-0 z-[21] pointer-events-none flex items-center" style={{ top: flipIdx * rowH }}>
-                <div className="flex-1 h-px" style={{ background: 'var(--warning)', boxShadow: '0 0 6px color-mix(in srgb, var(--warning) 70%, transparent)' }} />
-                <span className="shrink-0 mr-1.5 px-1 py-px rounded-sm text-[7px] font-black uppercase tracking-wider" style={{ background: 'var(--warning)', color: '#06090d' }}>γ Flip</span>
+              <div className="absolute right-0 z-[21] pointer-events-none flex items-center" style={{ top: flipIdx * rowH, left: strikeW }}>
+                <span className="shrink-0 px-1 py-px rounded-sm text-[7px] font-black uppercase tracking-wider" style={{ background: 'var(--warning)', color: '#06090d' }}>γ Flip</span>
+                <div className="flex-1 h-px ml-1" style={{ background: 'var(--warning)', boxShadow: '0 0 6px color-mix(in srgb, var(--warning) 70%, transparent)' }} />
               </div>
             )}
           </div>
