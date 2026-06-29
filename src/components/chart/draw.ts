@@ -610,14 +610,13 @@ export function drawChart(deps: DrawDeps) {
       // job, and labeling all ~20 strikes here just duplicates it. The 4 named levels (walls/flip/magnet)
       // are drawn separately; here we add only the strongest gamma strike(s) on EACH side of price, so the
       // two surfaces don't compete. "Strikes shown" (gexCount) scales how many per side for power users.
-      const perSide = Math.max(1, Math.round(gexCount / 2));
+      const perSide = Math.max(1, Math.min(3, Math.round(gexCount / 2)));   // cap on-chart strikes — the full per-strike table lives in the Exposure Ladder; the chart shows only the strongest few so structure stays readable
       const byMag = (a: typeof profile.strikes[number], b: typeof profile.strikes[number]) => Math.abs(b.netGex || 0) - Math.abs(a.netGex || 0);
       const eligible = profile.strikes.filter(s => Math.abs(s.netGex || 0) > 0 && !named.some(nm => Math.abs(nm - s.strike) < 1e-6));
       const above = eligible.filter(s => s.strike > last && s.strike <= hi).sort(byMag).slice(0, perSide);
       const below = eligible.filter(s => s.strike < last && s.strike >= lo).sort(byMag).slice(0, perSide);
       [...above, ...below].forEach(s => { const g = s.netGex || 0; pushLvl(s.strike, g >= 0 ? COL.up : COL.down, 'GEX', Math.abs(g), `${nf(s.strike)}  ${fmtGex(g)}`); });
     }
-    const maxLvlGex = Math.max(...lvls.map(L => L.gex || 0), 1e-9);
     const maxLoadedGex = Math.max(...lvls.filter(L => L.value).map(L => L.gex || 0), 1e-9);
     // ΔGEX vs a rolling ~45s checkpoint — lets each loaded strike show how its net γ is building (↑) or bleeding (↓).
     const gd = gexDeltaRef.current, nowMs = Date.now();
@@ -627,8 +626,25 @@ export function drawChart(deps: DrawDeps) {
     const gexDeltaAt = (price: number): number => { const ss = profile.strikes; if (!ss) return 0; let best = ss[0], bd = Infinity; for (const s of ss) { const d = Math.abs(s.strike - price); if (d < bd) { bd = d; best = s; } } if (bd > price * 0.0015) return 0; const b = gd.base.get(best.strike); return b == null ? 0 : (best.netGex || 0) - b; };
     // The loaded strike nearest the current price gets a static "active" emphasis (no pulse → no jitter).
     let activeStrike = NaN; { let bd = Infinity; for (const L of lvls) if (L.value && Math.abs(L.price - last) < bd) { bd = Math.abs(L.price - last); activeStrike = L.price; } }
-    const placed = lvls.map(L => { const rawY = yP(L.price); const off2 = L.price < lo || L.price > hi; return { ...L, rawY, off: off2, dir: off2 ? (L.price > hi ? -1 : 1) : 0, y: Math.max(priceTop + tagH / 2, Math.min(priceBottom - tagH / 2, rawY)) }; }).sort((a, b) => a.y - b.y);
-    for (let i = 1; i < placed.length; i++) if (placed[i].y - placed[i - 1].y < tagH + 2) placed[i].y = placed[i - 1].y + tagH + 2;
+    const placed = lvls.map(L => { const rawY = yP(L.price); const off2 = L.price < lo || L.price > hi; return { ...L, rawY, off: off2, dir: off2 ? (L.price > hi ? -1 : 1) : 0, y: Math.max(priceTop + tagH / 2, Math.min(priceBottom - tagH / 2, rawY)) }; });
+    // Declutter the right-edge label column: relax the on-chart tags apart AND away from the live-price
+    // badge (a pinned, immovable obstacle), so a label never piles onto the spot price or another tag.
+    // Force-relaxation pushes BOTH directions (tags above spot float up, tags below float down) instead
+    // of the old single downward cascade that stacked everything under spot.
+    {
+      const slot = tagH + 3, lo2 = priceTop + tagH / 2, hi2 = priceBottom - tagH / 2;
+      const nodes: { y: number; h: number; pin: boolean; L?: (typeof placed)[number] }[] = placed.filter(L => !L.off).map(L => ({ y: L.y, h: slot, pin: false, L }));
+      if (lastY >= priceTop && lastY <= priceBottom) nodes.push({ y: lastY, h: tagH + 7, pin: true });   // the spot price badge is a fixed obstacle
+      nodes.sort((a, b) => a.y - b.y);
+      for (let pass = 0; pass < 7; pass++) {
+        for (let i = 0; i < nodes.length - 1; i++) {
+          const a = nodes[i], b = nodes[i + 1], need = (a.h + b.h) / 2 - (b.y - a.y);
+          if (need > 0.3) { if (a.pin) b.y += need; else if (b.pin) a.y -= need; else { a.y -= need / 2; b.y += need / 2; } }
+        }
+        for (const nd of nodes) if (!nd.pin) nd.y = Math.max(lo2, Math.min(hi2, nd.y));
+      }
+      for (const nd of nodes) if (nd.L) nd.L.y = nd.y;
+    }
     const rr = (x: number, y: number, w: number, h: number, r: number) => { ctx.beginPath(); if ((ctx as any).roundRect) (ctx as any).roundRect(x, y, w, h, r); else ctx.rect(x, y, w, h); };
     // Skylit-style "orb" strength: a wall's share of total dealer gamma — how strong this level is.
     const totalAbsGex = (profile.strikes || []).reduce((a, s) => a + Math.abs(s.netGex || 0), 0);
@@ -644,65 +660,71 @@ export function drawChart(deps: DrawDeps) {
       ctx.fillStyle = hexA(T.text, 0.018); ctx.fillRect(nowX, priceTop, plotR - nowX, priceBottom - priceTop);
       ctx.strokeStyle = hexA(T.text, 0.16); ctx.setLineDash([2, 4]); ctx.beginPath(); ctx.moveTo(px(nowX), priceTop); ctx.lineTo(px(nowX), priceBottom); ctx.stroke(); ctx.setLineDash([]);
     }
-    // Importance colour tiers (#14): weak→strong reads as a hue shift (gray→cyan→emerald→bright / gray→amber→red→hot), not just brightness.
-    const tierCol = (isCall: boolean, t: number) => isCall
-      ? (t < 0.4 ? mixHex('#5f8a73', '#37c19a', t / 0.4) : t < 0.72 ? mixHex('#37c19a', '#2fe6a0', (t - 0.4) / 0.32) : mixHex('#2fe6a0', '#74ffbb', (t - 0.72) / 0.28))
-      : (t < 0.4 ? mixHex('#7a6f68', '#e89042', t / 0.4) : t < 0.72 ? mixHex('#e89042', '#ff5a72', (t - 0.4) / 0.32) : mixHex('#ff5a72', '#ff3556', (t - 0.72) / 0.28));
     // Loaded-strike tag hitboxes — captured during layout, consumed by the overlay's renderHover so the
     // tooltip tracks the LIVE cursor without repainting the candle layer (the crosshair lives on the overlay).
     const tagHits: { L: (typeof placed)[number]; tagL: number; tagR: number; ty: number }[] = [];
     for (const L of placed) {
       const name = NAMES[L.label] || L.label, isWall = L.label === 'CW' || L.label === 'PW';
-      const estd = !L.value && L.conf === false;  // estimated (low-confidence) named level → render tentative + tag it
-      const lrel = L.value ? Math.min(1, (L.gex || 0) / maxLoadedGex) : 0;
-      const isTop = !!(L.value && (L.gex || 0) === maxLoadedGex), major = !!(L.value && lrel > 0.5), minor = !!(L.value && lrel <= 0.22);
-      // Color: named levels keep their hue; loaded strikes scale gray-green→bright emerald (calls) /
-      // muted→bright red (puts); the single largest GEX strike is purple so THE level is unmistakable.
-      const col = !L.value ? L.color : isTop ? '#b98cff' : tierCol(L.color === COL.up, lrel);
-      // level line — named dashed; loaded strikes solid & size-weighted (minor ones thin, faint, dashed)
-      if (!L.off && !(heatOn && isWall)) {
-        const act = !!(L.value && L.price === activeStrike);
-        if (act) { ctx.fillStyle = hexA(col, 0.07); ctx.fillRect(plotL, px(L.rawY) - 4, plotW, 8); }
-        const p1 = !L.value && (L.label === 'CW' || L.label === 'PW' || L.label === 'γF'); // Priority-1 levels: walls + gamma flip read crisp; EM / magnet stay softer (P2).
-        ctx.strokeStyle = col; ctx.globalAlpha = (L.value ? (act ? 0.95 : 0.1 + Math.pow(lrel, 1.3) * 0.75) : (p1 ? 0.72 : 0.32)) * (estd ? 0.62 : 1); ctx.lineWidth = L.value ? (act ? 2.6 : 0.6 + lrel * 3) : (p1 ? 1.5 : 1); ctx.setLineDash(estd ? [3, 5] : (!L.value ? (p1 && L.label !== 'γF' ? [] : [5, 4]) : minor ? [2, 4] : []));
-        ctx.beginPath(); ctx.moveTo(plotL, px(L.rawY) - 0.5); ctx.lineTo(plotR, px(L.rawY) - 0.5);
-        // Dealer walls + flip read as solid "walls" — a soft glow makes the structural levels pop (SpotGamma feel).
-        // Estimated levels skip the glow (and go dashed/dimmer above) so they never masquerade as confirmed structure.
-        if (p1 && !estd) { ctx.save(); ctx.shadowColor = hexA(col, 0.6); ctx.shadowBlur = 8; ctx.stroke(); ctx.restore(); } else ctx.stroke();
-        ctx.setLineDash([]); ctx.globalAlpha = 1; ctx.lineWidth = 1;
+      const isStrike = !!L.value;                       // a loaded per-strike GEX level → right-edge marker, NOT a full-width line
+      const estd = !L.value && L.conf === false;        // estimated (low-confidence) named level → render tentative + tag it
+      const lrel = isStrike ? Math.min(1, (L.gex || 0) / maxLoadedGex) : 0;
+      const isTop = !!(isStrike && (L.gex || 0) === maxLoadedGex);
+      const act = !!(isStrike && L.price === activeStrike);
+      // Calm 2-colour scheme: named levels keep their semantic hue (green call-side, red put-side, amber
+      // flip, accent magnet); strikes are simply green (call) / red (put) with STRENGTH shown by opacity +
+      // a magnitude bar, not a rainbow of hues. Structural hierarchy: P1 walls+flip crisp & glow; P2
+      // magnet/max-pain thin & dashed; EM± faint dotted (the shaded band already carries the zone).
+      const col = L.color;
+      const p1 = !isStrike && (L.label === 'CW' || L.label === 'PW' || L.label === 'γF');
+      const p2 = !isStrike && (L.label === 'MAG' || L.label === 'MP');
+      const isEM = L.label === 'EM+' || L.label === 'EM-';
+      if (!L.off) {
+        if (isStrike) {
+          // Right-edge marker only — a short tick on the strike's true price (the Γ-MAP heatmap glow already
+          // shows it across the chart). Keeps the candle area clean: structure owns the full-width lines.
+          ctx.strokeStyle = hexA(col, act ? 0.95 : 0.3 + lrel * 0.5); ctx.lineWidth = act ? 2.2 : 1 + lrel * 1.6;
+          ctx.beginPath(); ctx.moveTo(plotR - (12 + lrel * 22), px(L.rawY) - 0.5); ctx.lineTo(plotR, px(L.rawY) - 0.5); ctx.stroke(); ctx.lineWidth = 1;
+        } else {
+          // Structural full-width line, tiered so the eye ranks them instantly.
+          ctx.strokeStyle = col; ctx.globalAlpha = (p1 ? 0.82 : p2 ? 0.4 : 0.24) * (estd ? 0.6 : 1); ctx.lineWidth = p1 ? 1.6 : 1;
+          ctx.setLineDash(estd ? [3, 5] : p1 ? (L.label === 'γF' ? [6, 4] : []) : isEM ? [1, 4] : [5, 5]);
+          ctx.beginPath(); ctx.moveTo(plotL, px(L.rawY) - 0.5); ctx.lineTo(plotR, px(L.rawY) - 0.5);
+          if (p1 && !estd) { ctx.save(); ctx.shadowColor = hexA(col, 0.5); ctx.shadowBlur = 7; ctx.stroke(); ctx.restore(); } else ctx.stroke();
+          ctx.setLineDash([]); ctx.globalAlpha = 1; ctx.lineWidth = 1;
+        }
       }
-      // Forward projection: brighten this wall's segment in the future zone + a soft glow toward the
-      // axis, so the dealer walls visibly extend to where price is heading. (EM± stay plain.)
-      if (!L.off && projBars && L.label !== 'EM+' && L.label !== 'EM-') {
+      // Forward projection: extend ONLY the structural walls/flip into the future zone (strikes + EM stay plain).
+      if (!L.off && !isStrike && p1 && projBars) {
         const gy = px(L.rawY) - 0.5, grad = ctx.createLinearGradient(nowX, 0, plotR, 0);
-        grad.addColorStop(0, hexA(col, 0)); grad.addColorStop(1, hexA(col, 0.18));
+        grad.addColorStop(0, hexA(col, 0)); grad.addColorStop(1, hexA(col, 0.16));
         ctx.fillStyle = grad; ctx.fillRect(nowX, px(L.rawY) - 4, plotR - nowX, 8);
-        ctx.strokeStyle = hexA(col, 0.92); ctx.lineWidth = 1.6; ctx.beginPath(); ctx.moveTo(nowX, gy); ctx.lineTo(plotR, gy); ctx.stroke(); ctx.lineWidth = 1;
+        ctx.strokeStyle = hexA(col, 0.88); ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(nowX, gy); ctx.lineTo(plotR, gy); ctx.stroke(); ctx.lineWidth = 1;
       }
       // Name + (for walls/magnet) the gamma-concentration %, so you read strength at a glance.
       const pct = (isWall || L.label === 'MAG') ? gexPctAt(L.price) : null;
       const nameLbl = (L.off ? (L.dir < 0 ? '↑ ' : '↓ ') : '') + (L.value || name) + (estd ? ' ~est' : ''), pctLbl = pct != null ? `  ${pct}%` : '';
       // ΔGEX beside the value (#1): how this strike's net γ has moved since the ~45s checkpoint (↑ building / ↓ bleeding).
       let deltaLbl = '', deltaUp = true;
-      if (L.value) { const dv = gexDeltaAt(L.price); if (Math.abs(dv) >= 1e6) { deltaUp = dv >= 0; deltaLbl = `  ${deltaUp ? '↑' : '↓'}${fmtGex(Math.abs(dv)).replace(/^\+/, '')}`; } }
+      if (isStrike) { const dv = gexDeltaAt(L.price); if (Math.abs(dv) >= 1e6) { deltaUp = dv >= 0; deltaLbl = `  ${deltaUp ? '↑' : '↓'}${fmtGex(Math.abs(dv)).replace(/^\+/, '')}`; } }
       ctx.font = '700 10px ui-monospace, monospace'; // uniform tag text — importance reads from line weight/colour, not font size
       const nameW = ctx.measureText(nameLbl).width, pctW = pctLbl ? ctx.measureText(pctLbl).width : 0, deltaW = deltaLbl ? ctx.measureText(deltaLbl).width : 0;
       const tagW = nameW + pctW + deltaW + 17, tagR = plotR - 4, tagL = tagR - tagW, ty = L.off ? (L.dir < 0 ? priceTop + tagH / 2 + 2 : priceBottom - tagH / 2 - 2) : L.y;
       tagHits.push({ L, tagL, tagR, ty });
-      // connector from the line's right end back to the tag whenever the tag was nudged off its price
-      if (!L.off && Math.abs(L.y - L.rawY) > 1) { ctx.strokeStyle = hexA(col, 0.55); ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(plotR - 3, px(L.rawY) - 0.5); ctx.lineTo(tagR - 2, px(ty) - 0.5); ctx.stroke(); }
+      // connector from the line/marker right end back to the tag whenever the tag was nudged off its price
+      if (!L.off && Math.abs(L.y - L.rawY) > 1) { ctx.strokeStyle = hexA(col, 0.4); ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(plotR - 3, px(L.rawY) - 0.5); ctx.lineTo(tagR - 2, px(ty) - 0.5); ctx.stroke(); }
       rr(tagL, ty - tagH / 2, tagW, tagH, 3);
-      ctx.save(); ctx.shadowColor = 'rgba(0,0,0,0.5)'; ctx.shadowBlur = 5; ctx.shadowOffsetY = 1; ctx.fillStyle = isTop ? 'rgba(26,18,38,0.92)' : 'rgba(9,12,17,0.9)'; ctx.fill(); ctx.restore();
-      ctx.strokeStyle = hexA(col, isTop ? 1 : 0.85); ctx.lineWidth = isTop ? 1.3 : 1; ctx.stroke(); ctx.lineWidth = 1;
+      ctx.save(); ctx.shadowColor = 'rgba(0,0,0,0.5)'; ctx.shadowBlur = 5; ctx.shadowOffsetY = 1; ctx.fillStyle = 'rgba(9,12,17,0.92)'; ctx.fill(); ctx.restore();
+      ctx.strokeStyle = hexA(col, isStrike ? (isTop ? 0.9 : 0.4 + lrel * 0.45) : (p1 ? 0.9 : 0.5)); ctx.lineWidth = (isTop || p1) ? 1.2 : 1; ctx.stroke(); ctx.lineWidth = 1;
       // Magnitude bar (#3): faint colour fill from the left, width ∝ this strike's share of peak GEX — bars read faster than numbers.
-      if (L.value && lrel > 0) { rr(tagL + 1, ty - tagH / 2 + 1, (tagW - 2) * Math.max(0.05, lrel), tagH - 2, 2.5); ctx.fillStyle = hexA(col, 0.17); ctx.fill(); }
+      if (isStrike && lrel > 0) { rr(tagL + 1, ty - tagH / 2 + 1, (tagW - 2) * Math.max(0.05, lrel), tagH - 2, 2.5); ctx.fillStyle = hexA(col, 0.16); ctx.fill(); }
       ctx.fillStyle = col; ctx.beginPath(); ctx.arc(tagL + 7, ty, 2.4, 0, Math.PI * 2); ctx.fill();
-      // §9 hybrid: loaded-strike GEX values read in greek-purple (magnitude); the dot / line / bar stay green/red (the call-put sign).
-      ctx.textAlign = 'left'; ctx.fillStyle = L.value ? (isTop ? '#c79cff' : mixHex('#6f6880', '#b98cff', Math.max(0.22, Math.min(1, lrel)))) : col; ctx.fillText(nameLbl, tagL + 12, ty);
-      if (pctLbl) { ctx.fillStyle = hexA(T.text, 0.72); ctx.fillText(pctLbl, tagL + 12 + nameW, ty); }
+      // Text: named levels in their hue (≤6 of them → semantic & legible); strikes in calm light ink so they
+      // recede behind the structure (colour is carried by the dot + magnitude bar).
+      ctx.textAlign = 'left'; ctx.fillStyle = isStrike ? hexA(T.text, 0.9) : hexA(col, 0.95); ctx.fillText(nameLbl, tagL + 12, ty);
+      if (pctLbl) { ctx.fillStyle = hexA(T.text, 0.66); ctx.fillText(pctLbl, tagL + 12 + nameW, ty); }
       if (deltaLbl) { ctx.fillStyle = deltaUp ? COL.up : COL.down; ctx.fillText(deltaLbl, tagL + 12 + nameW + pctW, ty); }
       // named levels print their exact price on the axis at the SAME size as the gridline scale (uniform)
-      if (!L.value) { ctx.textAlign = 'right'; ctx.font = '11px ui-monospace, monospace'; ctx.fillStyle = hexA(col, 0.95); ctx.fillText(nf(L.price), W - 3, ty); }
+      if (!isStrike) { ctx.textAlign = 'right'; ctx.font = '11px ui-monospace, monospace'; ctx.fillStyle = hexA(col, 0.95); ctx.fillText(nf(L.price), W - 3, ty); }
     }
     ctx.font = '11px ui-monospace, monospace';
 
