@@ -808,16 +808,12 @@ export function DealerFlowView() {
           <div className={`w-9 h-9 rounded-md flex items-center justify-center ${theme.headerIconBg}`}>
             <Waves className={`w-4.5 h-4.5 ${theme.iconColor}`} />
           </div>
-          <div>
-            <div className="flex items-center gap-2">
-              <h1 className="text-sm font-black tracking-widest text-[var(--text-primary)] uppercase font-sans">
-                Pinpoint GEX · {selectedAsset.ticker}
-              </h1>
-              <FeedChip feed={filteredProfile?.feed || profile?.feed} />
-            </div>
-            <p className="text-[9px] text-[var(--text-tertiary)] uppercase tracking-widest mt-0.5">
-              Gamma exposure · hedging pressure · price zones · {selectedTimeframe}
-            </p>
+          <div className="flex items-center gap-2 min-w-0">
+            <h1 className="text-sm font-black tracking-widest text-[var(--text-primary)] uppercase font-sans whitespace-nowrap">
+              Pinpoint GEX · {selectedAsset.ticker}
+            </h1>
+            <FeedChip feed={filteredProfile?.feed || profile?.feed} />
+            <span className="hidden sm:inline text-[9px] font-mono font-black text-[var(--text-tertiary)] uppercase tracking-widest shrink-0">{selectedTimeframe}</span>
           </div>
         </div>
 
@@ -830,11 +826,13 @@ export function DealerFlowView() {
             { label: 'Pin Magnet', value: filteredProfile?.magnet?.toLocaleString(undefined, { maximumFractionDigits: 0 }) ?? '—', tone: 'var(--info)' },
             { label: 'Dist to Flip', value: filteredProfile?.gammaFlip ? `${Math.abs(filteredProfile.spot - filteredProfile.gammaFlip).toLocaleString(undefined, { minimumFractionDigits: 1, maximumFractionDigits: 1 })}` : '—', tone: 'var(--text-primary)' },
           ].map(card => (
-            <div key={card.label} className="bg-[var(--surface-2)] border border-[var(--border)] rounded-md px-3 py-2 min-w-0 lg:min-w-[84px] shrink-0" id={`card-${card.label.toLowerCase().replace(/\s+/g, '-')}`}>
+            <div key={card.label} className="relative overflow-hidden bg-[var(--surface-2)] border border-[var(--border)] rounded-md pl-3 pr-3 py-1.5 min-w-0 lg:min-w-[88px] shrink-0" id={`card-${card.label.toLowerCase().replace(/\s+/g, '-')}`}>
+              {/* tone spine — each level carries its semantic colour as a left rail (instrument-panel read) */}
+              <span className="absolute left-0 top-0 bottom-0 w-[2px]" style={{ background: card.tone, opacity: 0.75 }} />
               <div className="text-[8px] font-black tracking-widest text-[var(--text-tertiary)] uppercase truncate">
                 {card.label}
               </div>
-              <div className="text-[13px] sm:text-[14px] font-mono font-bold tabular-nums truncate" style={{ color: card.tone }}>{card.value}</div>
+              <div className="text-[13px] sm:text-[14px] font-mono font-bold tabular-nums truncate leading-tight" style={{ color: card.tone }}>{card.value}</div>
             </div>
           ))}
         </div>
@@ -847,7 +845,7 @@ export function DealerFlowView() {
             onClick={() => setActiveEngineView('profile')}
             aria-label="Hedging profile view"
             aria-pressed={activeEngineView === 'profile'}
-            className={`flex shrink-0 items-center gap-2 px-4 py-2.5 font-mono text-[9px] font-black uppercase tracking-wider border rounded-lg transition-colors cursor-pointer ${
+            className={`flex shrink-0 items-center gap-2 px-3.5 py-2 font-mono text-[9px] font-black uppercase tracking-wider border rounded-md transition-colors cursor-pointer ${
               activeEngineView === 'profile'
                 ? 'bg-[var(--surface-3)] border-[var(--accent-color)]/50 text-[var(--text-primary)]'
                 : 'bg-[var(--surface-2)] border-[var(--border)] text-[var(--text-tertiary)] hover:text-[var(--text-primary)]'
@@ -860,7 +858,7 @@ export function DealerFlowView() {
             onClick={() => setActiveEngineView('targets')}
             aria-label="Ranked targets view"
             aria-pressed={activeEngineView === 'targets'}
-            className={`flex shrink-0 items-center gap-2 px-4 py-2.5 font-mono text-[9px] font-black uppercase tracking-wider border rounded-lg transition-colors cursor-pointer ${
+            className={`flex shrink-0 items-center gap-2 px-3.5 py-2 font-mono text-[9px] font-black uppercase tracking-wider border rounded-md transition-colors cursor-pointer ${
               activeEngineView === 'targets'
                 ? 'bg-[var(--surface-3)] border-[var(--danger)]/50 text-[var(--text-primary)]'
                 : 'bg-[var(--surface-2)] border-[var(--border)] text-[var(--text-tertiary)] hover:text-[var(--text-primary)]'
@@ -873,7 +871,7 @@ export function DealerFlowView() {
             onClick={() => setActiveEngineView('physics')}
             aria-label="Dealer mechanics view"
             aria-pressed={activeEngineView === 'physics'}
-            className={`flex shrink-0 items-center gap-2 px-4 py-2.5 font-mono text-[9px] font-black uppercase tracking-wider border rounded-lg transition-colors cursor-pointer ${
+            className={`flex shrink-0 items-center gap-2 px-3.5 py-2 font-mono text-[9px] font-black uppercase tracking-wider border rounded-md transition-colors cursor-pointer ${
               activeEngineView === 'physics'
                 ? 'bg-[var(--surface-3)] border-[var(--warning)]/50 text-[var(--text-primary)]'
                 : 'bg-[var(--surface-2)] border-[var(--border)] text-[var(--text-tertiary)] hover:text-[var(--text-primary)]'
@@ -886,7 +884,7 @@ export function DealerFlowView() {
             onClick={() => setActiveEngineView('terminal')}
             aria-label="Live terminal flow view"
             aria-pressed={activeEngineView === 'terminal'}
-            className={`flex shrink-0 items-center gap-2 px-4 py-2.5 font-mono text-[9px] font-black uppercase tracking-wider border rounded-lg transition-colors cursor-pointer ${
+            className={`flex shrink-0 items-center gap-2 px-3.5 py-2 font-mono text-[9px] font-black uppercase tracking-wider border rounded-md transition-colors cursor-pointer ${
               activeEngineView === 'terminal'
                 ? 'bg-[var(--surface-3)] border-[var(--accent-color)]/50 text-[var(--text-primary)]'
                 : 'bg-[var(--surface-2)] border-[var(--border)] text-[var(--text-tertiary)] hover:text-[var(--text-primary)]'
