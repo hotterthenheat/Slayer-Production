@@ -1,6 +1,7 @@
 import { useMemo, useState, useRef, useEffect, CSSProperties } from 'react';
 import { GexProfileData, OrderFlowData } from '../types';
 import { useContractStore } from '../lib/store';
+import type { StrikeGravityResult } from '../lib/strikeGravity';
 import { computeTerminalRead, computeGexOutlook } from '../lib/terminalRead';
 import { computeDealerClock } from '../lib/dealerClock';
 import { fmtNum } from '../lib/format';
@@ -96,6 +97,11 @@ export function LiveTerminalFlow({ profile: liveProfile, ticker, decimals }: Liv
   // never a hardcoded "LIVE".
   const serverState = useContractStore(s => s.serverState);
   const dyn = serverState?.dealer_dynamics ?? null;
+  // Strike Gravity (premium tier-3): per-strike dealer-pressure score (0..1) + support/resistance ZONES,
+  // computed server-side. Undefined at tier-2 — the ladder degrades to canonical wall/flip/pin labels and
+  // suppresses the 0–100 strength entirely (never recomputed or fabricated client-side).
+  const grav = serverState?.strike_gravity as StrikeGravityResult | undefined;
+  const isReplay = replayT != null;   // scrubbed to a PAST snapshot — live gravity no longer describes the shown profile
   const [tickerOpen, setTickerOpen] = useState(false);
   const [leftTab, setLeftTab] = useState<'levels' | 'matrix' | 'flow' | 'alerts' | 'dynamics'>('levels');
   const [scope, setScope] = useState<'0DTE' | 'ALL'>('0DTE');
@@ -382,6 +388,41 @@ export function LiveTerminalFlow({ profile: liveProfile, ticker, decimals }: Liv
       pin: profile.magnet || null,
     };
   }, [profile]);
+
+  // STRUCTURE ZONES — a per-strike label + 0–100 strength so the ladder reads like an institutional strike
+  // map (Resistance / Support / Pin / OI-spike, with a strength meter). CW/PW/FLIP come from the row's own
+  // canonical flags in the render; this map carries the EXTRAS: PIN (magnet, tier-2) plus RES/SUP/OI and the
+  // strength score sourced ONLY from the real Strike Gravity engine (tier-3). When grav is absent (tier-2) no
+  // score and no RES/SUP/OI are produced — we never recompute gravity or invent a zone client-side.
+  const strikeZones = useMemo(() => {
+    const m = new Map<number, { label?: string; color?: string; strength?: number }>();
+    const ensure = (k: number) => { let e = m.get(k); if (!e) { e = {}; m.set(k, e); } return e; };
+    // Gravity describes the LIVE chain. During replay the profile is a PAST snapshot that grav doesn't match,
+    // so its score / RES / SUP / OI would mislabel historical strikes — only the canonical CW/PW/FLIP/PIN
+    // (which travel with the shown profile) are honest then.
+    const live = !!grav && !isReplay;
+    const scoreOf = new Map<number, number>();
+    if (live && grav) {
+      for (const g of grav.ranked || []) scoreOf.set(g.strike, Math.round(100 * Math.max(0, Math.min(1, g.gravityScore || 0))));
+      // Each support/resistance WALL is ONE structure — anchor the label to its strongest strike, not every
+      // strike in the band (which stacked a run of identical RES/SUP labels).
+      const anchorWall = (zone: { lo: number; hi: number } | null | undefined, label: string, color: string) => {
+        if (!zone) return; let best = NaN, bestScore = -1;
+        for (const s of (profile.strikes || [])) { const k = s.strike; if (k < zone.lo || k > zone.hi || k === profile.callWall || k === profile.putWall) continue; const sc = scoreOf.get(k) ?? 0; if (sc > bestScore) { bestScore = sc; best = k; } }
+        if (!Number.isNaN(best)) { const e = ensure(best); if (!e.label) { e.label = label; e.color = color; } }
+      };
+      anchorWall(grav.resistanceWall, 'RES', 'var(--danger)');
+      anchorWall(grav.supportWall, 'SUP', 'var(--success)');
+      for (const g of grav.ranked || []) { if ((g.oiWeight || 0) >= 0.85) { const e = ensure(g.strike); if (!e.label) { e.label = 'OI'; e.color = 'var(--info)'; } } }
+    }
+    // PIN (gamma magnet) is canonical — travels with the profile (live OR historical), so it's always safe.
+    if (typeof profile.magnet === 'number' && profile.magnet !== profile.callWall && profile.magnet !== profile.putWall) {
+      const e = ensure(profile.magnet); if (!e.label) { e.label = 'PIN'; e.color = 'var(--greek)'; }
+    }
+    // 0–100 strength shows on labeled rows (+ the canonical walls/flip), ONLY when live gravity is present.
+    if (live) { const attach = (k?: number) => { if (typeof k === 'number' && scoreOf.has(k)) ensure(k).strength = scoreOf.get(k); }; for (const k of Array.from(m.keys())) attach(k); attach(profile.callWall); attach(profile.putWall); attach(profile.gammaFlip); }
+    return m;
+  }, [profile, grav, isReplay]);
 
   const mSym = ladderMetric === 'GAMMA' ? 'γ' : ladderMetric === 'DELTA' ? 'Δ' : ladderMetric === 'VANNA' ? 'V' : ladderMetric === 'OI' ? 'OI' : 'Vol';
   const gammaPin = profile.magnet || spot; // where dealer gamma pins price — descriptive, not a call
@@ -902,7 +943,7 @@ export function LiveTerminalFlow({ profile: liveProfile, ticker, decimals }: Liv
                   <span className="flex items-center gap-1.5 min-w-0" title="Gamma pin / magnet — the highest-|γ| strike near spot; price tends to be drawn toward it">
                     <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ background: 'var(--accent-color)' }} />
                     <span className="text-[8px] font-black uppercase tracking-wider text-[var(--text-tertiary)]">Pin</span>
-                    <span className="font-black ml-auto" style={{ color: 'var(--accent-color)' }}>{fmtNum(keyLevels.pin, decimals)}</span>
+                    <span className="font-black ml-auto" style={{ color: 'var(--greek)' }}>{fmtNum(keyLevels.pin, decimals)}</span>
                   </span>
                 )}
               </div>
@@ -921,6 +962,11 @@ export function LiveTerminalFlow({ profile: liveProfile, ticker, decimals }: Liv
               {gammaProfile ? (() => {
                 const { lo, hi, span, rowHpct, rows } = gammaProfile;
                 const dense = rowHpct < 4.6;              // many strikes packed short → solid profile + sparse labels (per-row showLabel)
+                // The 2-line strike+zone stack is ~16px tall; gate it on the real PIXEL pitch (rowHpct% × panel
+                // height) rather than the percentage, so labels show on the tall desktop rail but are suppressed
+                // when the short mobile rail would pack rows tighter than the stack (which would overlap).
+                const panelH = ladderScrollRef.current?.clientHeight || 600;
+                const showZone = (rowHpct / 100) * panelH >= 17;
                 // Bars stay THIN: in the sparse (tall-row) regime cap the thickness so they never balloon into
                 // giant blocks (the mobile / few-strikes case); the dense regime fills for a continuous profile.
                 const barH = dense ? 'calc(100% - 1px)' : 'min(56%, 13px)';
@@ -935,9 +981,20 @@ export function LiveTerminalFlow({ profile: liveProfile, ticker, decimals }: Liv
                       // Key-level rows get a faint tint + a coloured left rail. (Air-pocket bands are named in the
                       // AIR POCKETS callout above — washing whole row-bands here read as muddy, so it's dropped.)
                       const keyBg = r.isCW ? 'color-mix(in srgb, var(--success) 11%, transparent)' : r.isPW ? 'color-mix(in srgb, var(--danger) 11%, transparent)' : r.isFlip ? 'color-mix(in srgb, var(--warning) 10%, transparent)' : undefined;
+                      // Structure label: canonical CW/PW/FLIP from the row flags (so it can't disagree with the
+                      // dot/rail beside it); PIN/RES/SUP/OI + the 0–100 strength come from the Strike Gravity map.
+                      const z = strikeZones.get(r.strike);
+                      const zoneLabel = r.isCW ? 'CW' : r.isPW ? 'PW' : r.isFlip ? 'FLIP' : z?.label;
+                      const zoneColor = r.isCW ? 'var(--success)' : r.isPW ? 'var(--danger)' : r.isFlip ? 'var(--warning)' : (z?.color || 'var(--text-tertiary)');
+                      const strength = z?.strength;
                       return (
                         <div key={r.strike} data-strike={r.strike} className="absolute left-0 right-0 flex items-center px-2" style={{ top: `${r.yPct}%`, height: `${rowHpct}%`, transform: 'translateY(-50%)', transition: 'top 0.3s cubic-bezier(0.22,1,0.36,1), height 0.3s cubic-bezier(0.22,1,0.36,1)', background: keyBg, boxShadow: mk ? `inset 2px 0 0 ${mk}` : undefined }}>
-                          {r.showLabel && <span className="w-[58px] shrink-0 text-right text-[9px] font-mono tabular-nums flex items-center justify-end gap-1 whitespace-nowrap" style={{ color: r.isSpot ? 'var(--accent-color)' : mk || 'var(--text-tertiary)', fontWeight: (mk || r.isSpot) ? 800 : 400 }}>{mk && <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ background: mk, boxShadow: `0 0 5px ${mk}` }} />}{fmtNum(r.strike, decimals)}</span>}
+                          {r.showLabel && (
+                            <span className="w-[58px] shrink-0 flex flex-col items-end justify-center leading-none gap-px">
+                              <span className="text-[9px] font-mono tabular-nums flex items-center gap-1 whitespace-nowrap" style={{ color: r.isSpot ? 'var(--accent-color)' : mk || 'var(--text-tertiary)', fontWeight: (mk || r.isSpot) ? 800 : 400 }}>{mk && <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ background: mk, boxShadow: `0 0 5px ${mk}` }} />}{fmtNum(r.strike, decimals)}</span>
+                              {showZone && zoneLabel && <span className="text-[6.5px] font-black uppercase tracking-wider flex items-center gap-0.5 leading-none whitespace-nowrap" style={{ color: zoneColor }}>{zoneLabel}{strength != null && <span className="font-bold tabular-nums" style={{ color: 'var(--text-tertiary)' }}>{strength}</span>}</span>}
+                            </span>
+                          )}
                           <div className="relative flex-1 h-full flex items-center mx-1.5">
                             {/* faint full-width rail so the thin, spaced bars read as a structured profile, not floating */}
                             {!dense && <div className="absolute left-0 right-0 top-1/2 -translate-y-1/2 h-px pointer-events-none" style={{ background: 'color-mix(in srgb, var(--border) 60%, transparent)' }} />}
