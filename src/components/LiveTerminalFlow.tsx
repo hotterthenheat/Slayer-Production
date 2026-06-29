@@ -369,6 +369,20 @@ export function LiveTerminalFlow({ profile: liveProfile, ticker, decimals }: Liv
     };
   }, [profile, ladderMetric, spot]);
 
+  // KEY LEVELS — the dominant dealer structure (call wall, put wall, γ-flip, pin magnet) with each strike,
+  // so the ladder can both HEADLINE them in a callout and spotlight their rows. Strike → net γ via the live
+  // chain; a level is null when the profile doesn't carry it.
+  const keyLevels = useMemo(() => {
+    const ss = profile.strikes || [];
+    const valAt = (strike?: number) => { if (!strike) return null; const s = ss.find(x => Math.abs(x.strike - strike) < 1e-6); return s ? (s.netGex ?? ((s.callGex || 0) + (s.putGex || 0))) : null; };
+    return {
+      callWall: profile.callWall ? { strike: profile.callWall, val: valAt(profile.callWall) } : null,
+      putWall: profile.putWall ? { strike: profile.putWall, val: valAt(profile.putWall) } : null,
+      flip: profile.gammaFlip || null,
+      pin: profile.magnet || null,
+    };
+  }, [profile]);
+
   const mSym = ladderMetric === 'GAMMA' ? 'γ' : ladderMetric === 'DELTA' ? 'Δ' : ladderMetric === 'VANNA' ? 'V' : ladderMetric === 'OI' ? 'OI' : 'Vol';
   const gammaPin = profile.magnet || spot; // where dealer gamma pins price — descriptive, not a call
 
@@ -859,6 +873,40 @@ export function LiveTerminalFlow({ profile: liveProfile, ticker, decimals }: Liv
                 </div>
               </div>
             )}
+            {/* KEY LEVELS — the dominant dealer structure headlined (strike + net γ), so the walls / flip /
+                pin read before you scan the list, and the abbreviations used in the rows below have a legend. */}
+            {(keyLevels.callWall || keyLevels.putWall || keyLevels.flip || keyLevels.pin) && (
+              <div className="px-3 py-1.5 border-b border-[var(--border)] shrink-0 grid grid-cols-2 gap-x-3 gap-y-1 text-[10px] font-mono tabular-nums">
+                {keyLevels.callWall && (
+                  <span className="flex items-center gap-1.5 min-w-0" title="Call wall — the strongest +γ strike; dealer hedging caps rallies here (resistance)">
+                    <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ background: 'var(--success)', boxShadow: '0 0 5px var(--success)' }} />
+                    <span className="text-[8px] font-black uppercase tracking-wider text-[var(--text-tertiary)]">Call Wall</span>
+                    <span className="font-black ml-auto" style={{ color: 'var(--success)' }}>{fmtNum(keyLevels.callWall.strike, decimals)}</span>
+                  </span>
+                )}
+                {keyLevels.putWall && (
+                  <span className="flex items-center gap-1.5 min-w-0" title="Put wall — the strongest −γ strike; dealer hedging supports dips here (support)">
+                    <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ background: 'var(--danger)', boxShadow: '0 0 5px var(--danger)' }} />
+                    <span className="text-[8px] font-black uppercase tracking-wider text-[var(--text-tertiary)]">Put Wall</span>
+                    <span className="font-black ml-auto" style={{ color: 'var(--danger)' }}>{fmtNum(keyLevels.putWall.strike, decimals)}</span>
+                  </span>
+                )}
+                {keyLevels.flip && (
+                  <span className="flex items-center gap-1.5 min-w-0" title="Gamma flip — the +γ→−γ crossing; above it dealers dampen moves, below it they amplify">
+                    <span className="w-1.5 h-1.5 rounded-sm shrink-0" style={{ background: 'var(--warning)' }} />
+                    <span className="text-[8px] font-black uppercase tracking-wider text-[var(--text-tertiary)]">γ Flip</span>
+                    <span className="font-black ml-auto" style={{ color: 'var(--warning)' }}>{fmtNum(keyLevels.flip, decimals)}</span>
+                  </span>
+                )}
+                {keyLevels.pin && (
+                  <span className="flex items-center gap-1.5 min-w-0" title="Gamma pin / magnet — the highest-|γ| strike near spot; price tends to be drawn toward it">
+                    <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ background: 'var(--accent-color)' }} />
+                    <span className="text-[8px] font-black uppercase tracking-wider text-[var(--text-tertiary)]">Pin</span>
+                    <span className="font-black ml-auto" style={{ color: 'var(--accent-color)' }}>{fmtNum(keyLevels.pin, decimals)}</span>
+                  </span>
+                )}
+              </div>
+            )}
             <div className="grid grid-cols-[52px_1fr_64px] gap-2 px-3 py-1.5 border-b border-[var(--border)] shrink-0 text-[9px] font-mono font-black uppercase tracking-widest text-[var(--text-tertiary)]">
               <div className="text-right">Strike</div>
               <div className="flex justify-between"><span style={{ color: 'var(--danger)' }}>◄ Put {mSym}</span><span style={{ color: 'var(--success)' }}>{mSym} Call ►</span></div>
@@ -880,9 +928,12 @@ export function LiveTerminalFlow({ profile: liveProfile, ticker, decimals }: Liv
                     {rows.map(r => {
                       const inVac = !!((vacAbove && r.strike >= vacAbove.lo && r.strike <= vacAbove.hi) || (vacBelow && r.strike >= vacBelow.lo && r.strike <= vacBelow.hi));
                       const mk = r.isCW ? 'var(--success)' : r.isPW ? 'var(--danger)' : r.isFlip ? 'var(--warning)' : null;
+                      // Key-level rows get a faint tint + a coloured left rail so the call/put wall, flip and
+                      // spot stand out of the profile (the "find the wall at a glance" the references lead with).
+                      const keyBg = r.isCW ? 'color-mix(in srgb, var(--success) 10%, transparent)' : r.isPW ? 'color-mix(in srgb, var(--danger) 10%, transparent)' : r.isFlip ? 'color-mix(in srgb, var(--warning) 9%, transparent)' : inVac ? 'color-mix(in srgb, var(--warning) 5%, transparent)' : undefined;
                       return (
-                        <div key={r.strike} data-strike={r.strike} className="absolute left-0 right-0 flex items-center px-2" style={{ top: `${r.yPct}%`, height: `${rowHpct}%`, transform: 'translateY(-50%)', transition: 'top 0.3s cubic-bezier(0.22,1,0.36,1), height 0.3s cubic-bezier(0.22,1,0.36,1)', background: inVac ? 'color-mix(in srgb, var(--warning) 5%, transparent)' : undefined }}>
-                          {r.showLabel && <span className="w-[58px] shrink-0 text-right text-[9px] font-mono tabular-nums flex items-center justify-end gap-1 whitespace-nowrap" style={{ color: r.isSpot ? 'var(--accent-color)' : 'var(--text-tertiary)' }}>{mk && <span className="w-1 h-1 rounded-full shrink-0" style={{ background: mk }} />}{fmtNum(r.strike, decimals)}</span>}
+                        <div key={r.strike} data-strike={r.strike} className="absolute left-0 right-0 flex items-center px-2" style={{ top: `${r.yPct}%`, height: `${rowHpct}%`, transform: 'translateY(-50%)', transition: 'top 0.3s cubic-bezier(0.22,1,0.36,1), height 0.3s cubic-bezier(0.22,1,0.36,1)', background: keyBg, boxShadow: mk ? `inset 2px 0 0 ${mk}` : undefined }}>
+                          {r.showLabel && <span className="w-[58px] shrink-0 text-right text-[9px] font-mono tabular-nums flex items-center justify-end gap-1 whitespace-nowrap" style={{ color: r.isSpot ? 'var(--accent-color)' : mk || 'var(--text-tertiary)', fontWeight: (mk || r.isSpot) ? 800 : 400 }}>{mk && <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ background: mk, boxShadow: `0 0 5px ${mk}` }} />}{fmtNum(r.strike, decimals)}</span>}
                           <div className="flex-1 h-full flex items-center mx-1.5">
                             <div className="w-1/2 h-full flex items-center justify-end pr-px border-r border-[var(--border)]"><div className="rounded-l-[2px]" style={{ width: `${r.putPct}%`, height: barH, background: 'color-mix(in srgb, var(--danger) 62%, transparent)', transition: 'width 0.42s cubic-bezier(0.22,1,0.36,1), height 0.3s ease' }} /></div>
                             <div className="w-1/2 h-full flex items-center justify-start pl-px"><div className="rounded-r-[2px]" style={{ width: `${r.callPct}%`, height: barH, background: 'color-mix(in srgb, var(--success) 62%, transparent)', transition: 'width 0.42s cubic-bezier(0.22,1,0.36,1), height 0.3s ease' }} /></div>
