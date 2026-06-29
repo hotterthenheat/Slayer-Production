@@ -790,7 +790,7 @@ export const SlayerChart = memo(function SlayerChartImpl({ profile, decimals, ca
         {OVERLAY_DEFS.filter(d => ovOn[d.key]).map(d => removeChip(d.label, overlaySeries[d.key]?.[0]?.color || '#888', () => setOvOn(p => ({ ...p, [d.key]: false }))))}
         {PANE_DEFS.filter(d => paneOn[d.key]).map(d => removeChip(d.label, '#7d8694', () => setPaneOn(p => ({ ...p, [d.key]: false }))))}
 
-        <div className="ml-auto flex items-center gap-1">
+        <div className="flex flex-wrap items-center gap-1 md:ml-auto">
           {/* Appearance settings — pick your own bar / line colors (persisted) */}
           <ChartSettings
             colors={colors} setColors={setColors} gexCount={gexCount} setGexCount={setGexCount}
