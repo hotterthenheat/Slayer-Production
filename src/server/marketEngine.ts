@@ -1554,6 +1554,10 @@ const buildPayload = (params: PayloadParams) => {
     putOi: number;
     callVolume: number;
     putVolume: number;
+    charmEx: number;
+    callPrem: number;
+    putPrem: number;
+    netPrem: number;
   }> = {};
 
   chain.forEach((c: any) => {
@@ -1574,6 +1578,10 @@ const buildPayload = (params: PayloadParams) => {
         putOi: 0,
         callVolume: 0,
         putVolume: 0,
+        charmEx: 0,
+        callPrem: 0,
+        putPrem: 0,
+        netPrem: 0,
       };
     }
     const isCallType = (c.type || '').toString().toUpperCase() === 'C' || (c.type || '').toString().toUpperCase() === 'CALL';
@@ -1581,12 +1589,29 @@ const buildPayload = (params: PayloadParams) => {
     const gammaVal = typeof c.gamma === 'number' ? c.gamma : (c.greeks?.gamma || 0.01);
     const deltaVal = typeof c.delta === 'number' ? c.delta : (c.greeks?.delta || (isCallType ? 0.5 : -0.5));
     const vegaVal = typeof c.vega === 'number' ? c.vega : (c.greeks?.vega || 0.15);
+    // Charm: prefer a provided value (the mock chain nests it under greeks); otherwise derive it
+    // analytically from the same BSM inputs the feed already gives us — so a live provider chain (which
+    // returns delta/gamma/theta/vega but NOT charm) still yields an honest charm surface, not a dead lane.
+    let charmVal = typeof c.charm === 'number' ? c.charm : (typeof c.greeks?.charm === 'number' ? c.greeks.charm : null);
+    if (charmVal == null) {
+      const ivVal = typeof c.impliedVolatility === 'number' ? c.impliedVolatility : (typeof c.iv === 'number' ? c.iv : asset.volatility);
+      charmVal = calculateAnalyticGreeks(lastPrice, c.strike, optDteDays, ivVal, isCallType).charm;
+    }
     const oiVal = typeof c.oi === 'number' ? c.oi : (c.openInterest || 0);
     const volVal = typeof c.volume === 'number' ? c.volume : 0;
-    
+    const bidVal = typeof c.bid === 'number' ? c.bid : 0;
+    const askVal = typeof c.ask === 'number' ? c.ask : 0;
+    // Mid premium that traded today: prefer the bid/ask midpoint, fall back to whichever quote exists.
+    const mid = (bidVal > 0 && askVal > 0) ? (bidVal + askVal) / 2 : Math.max(bidVal, askVal);
+
     const gexAmt = gammaVal * oiVal * 100 * (lastPrice * lastPrice) * 0.01 * sign;
     const dexAmt = deltaVal * oiVal * 100 * lastPrice * sign;
     const vexAmt = vegaVal * oiVal * 100 * sign;
+    // Charm exposure: charm × OI × 100 × sign — canonical v11Math convention (no spot factor) so the
+    // per-strike sum reconciles with the platform's net-charm read. Dealer Δ-decay $/day per strike.
+    const charmAmt = charmVal * oiVal * 100 * sign;
+    // Premium FLOW (not exposure): mid × volume × 100 — the $ that actually traded at this contract today.
+    const premAmt = mid * volVal * 100;
 
     if (isCallType) {
       strikesMap[stk].callGex += gexAmt;
@@ -1594,16 +1619,20 @@ const buildPayload = (params: PayloadParams) => {
       strikesMap[stk].callVex += vexAmt;
       strikesMap[stk].callOi += oiVal;
       strikesMap[stk].callVolume += volVal;
+      strikesMap[stk].callPrem += premAmt;
     } else {
       strikesMap[stk].putGex += gexAmt;
       strikesMap[stk].putDex += dexAmt;
       strikesMap[stk].putVex += vexAmt;
       strikesMap[stk].putOi += oiVal;
       strikesMap[stk].putVolume += volVal;
+      strikesMap[stk].putPrem += premAmt;
     }
     strikesMap[stk].netGex += gexAmt;
     strikesMap[stk].netDex += dexAmt;
     strikesMap[stk].netVex += vexAmt;
+    strikesMap[stk].charmEx += charmAmt;
+    strikesMap[stk].netPrem = strikesMap[stk].callPrem - strikesMap[stk].putPrem;
   });
 
   const strikesArr = Object.values(strikesMap);

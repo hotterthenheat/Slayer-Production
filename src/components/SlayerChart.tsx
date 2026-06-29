@@ -56,32 +56,35 @@ export const SlayerChart = memo(function SlayerChartImpl({ profile, decimals, ca
   const initialPrefs = useMemo(() => { try { return JSON.parse(localStorage.getItem('slayerchart.prefs.v1' + keySuffix) || '{}'); } catch { return {}; } }, [keySuffix]);
   const [ovOn, setOvOn] = useState<Record<string, boolean>>(initialPrefs.ovOn || {});
   const [paneOn, setPaneOn] = useState<Record<string, boolean>>(initialPrefs.paneOn || {});
-  // GEX defaults match the dealer-map reference: the Γ-MAP liquidity heatmap (gold/violet level
-  // rows + strike diamonds) is the primary view; the green/red γ-profile lane is an opt-in extra.
-  // gexMapV2 is a one-time migration — it flips existing users to this look ONCE, then their own
-  // toggles win on every load after (so we change the default without overwriting a real choice).
-  // v2 dealer-chart look is now the STANDARD: the gamma heatmap + net-γ lane render by default so the
-  // chart reads like a real dealer-gamma terminal out of the box. A user's own saved toggles still win.
-  const gexMapV2 = initialPrefs.gexMapV2 !== false;
-  const [showGex, setShowGex] = useState<boolean>(gexMapV2 ? (initialPrefs.showGex ?? false) : false); // γ-lane off by default — the heatmap is the chart's gamma read; the Exposure Ladder is the per-strike detail
-  const [showDisp, setShowDisp] = useState<boolean>(initialPrefs.showDisp ?? false);
-  const [showHeat, setShowHeat] = useState<boolean>(gexMapV2 ? (initialPrefs.showHeat ?? true) : false); // gamma heatmap on by default — the signature dealer-gamma read
-  // ORBS — focal gamma-concentration orbs in the right gutter (a clean alternative to the Γ-MAP diamonds). Opt-in.
-  const [showOrbs, setShowOrbs] = useState<boolean>(gexMapV2 ? (initialPrefs.showOrbs ?? false) : false);
-  const [showVolProfile, setShowVolProfile] = useState<boolean>(initialPrefs.showVolProfile ?? false); // VPVR volume-by-price + POC — opt-in
-  const [showPrevClose, setShowPrevClose] = useState<boolean>(initialPrefs.showPrevClose ?? true);      // prior-day close reference line
-  const [showVwap, setShowVwap] = useState<boolean>(initialPrefs.showVwap ?? true);                     // session VWAP + σ bands (institutional fair value)
-  const [showMigration, setShowMigration] = useState<boolean>(initialPrefs.showMigration ?? true);     // gamma center-of-mass drift comet
-  const [showExposure, setShowExposure] = useState<boolean>(initialPrefs.showExposure ?? true);        // aggregate dealer Δ (DEX) + Vanna tilt HUD
-  const [showMaxPain, setShowMaxPain] = useState<boolean>(initialPrefs.showMaxPain ?? true);           // max-pain expiry pin level
+  // CLEAN DEFAULT (v2): the first-load chart is now JUST the candles — no volume, no dealer overlays,
+  // no indicators — so a new user (or anyone not yet migrated) starts from a clean price chart and opts
+  // into exactly what they want, TradingView-style. `cleanDefaultV2` is a ONE-TIME migration flag: until
+  // it is stamped we force every data overlay OFF (ignoring any pre-v2 saved "on"); once stamped, the
+  // user's own toggles win on every load after — so we change the default without ever overwriting a
+  // real, post-v2 choice. `def()` encodes exactly that: OFF until migrated, then the saved value.
+  const cleanV2 = initialPrefs.cleanDefaultV2 === true;
+  const def = (saved: boolean | undefined) => (cleanV2 ? (saved ?? false) : false);
+  const [showGex, setShowGex] = useState<boolean>(def(initialPrefs.showGex));               // net-γ exposure lane (right gutter)
+  const [showDisp, setShowDisp] = useState<boolean>(def(initialPrefs.showDisp));            // displacement / expected-move band
+  const [showHeat, setShowHeat] = useState<boolean>(def(initialPrefs.showHeat));            // Γ-MAP gamma-concentration heatmap
+  const [showOrbs, setShowOrbs] = useState<boolean>(def(initialPrefs.showOrbs));            // focal gamma-concentration orbs
+  const [showVolProfile, setShowVolProfile] = useState<boolean>(def(initialPrefs.showVolProfile)); // VPVR volume-by-price + POC
+  const [showPrevClose, setShowPrevClose] = useState<boolean>(def(initialPrefs.showPrevClose));    // prior-day close reference line
+  const [showVwap, setShowVwap] = useState<boolean>(def(initialPrefs.showVwap));            // session VWAP + σ bands
+  const [showMigration, setShowMigration] = useState<boolean>(def(initialPrefs.showMigration));    // gamma center-of-mass drift comet
+  const [showExposure, setShowExposure] = useState<boolean>(def(initialPrefs.showExposure));       // aggregate dealer Δ (DEX) + Vanna HUD
+  const [showMaxPain, setShowMaxPain] = useState<boolean>(def(initialPrefs.showMaxPain));   // max-pain expiry pin level
+  // NEW dealer overlays (opt-in, default off like everything else):
+  const [showCharm, setShowCharm] = useState<boolean>(def(initialPrefs.showCharm));         // Charm Surface — Δ-decay pressure by price (right-gutter heat column)
+  const [showNetPrem, setShowNetPrem] = useState<boolean>(def(initialPrefs.showNetPrem));   // Net Premium Flow — call−put $ premium traded, diverging bars by strike
   // Dealer-map density — how many strikes the heatmap / orbs / exposure-lane render. Lower = cleaner.
   const [gexCount, setGexCount] = useState<number>(typeof initialPrefs.gexCount === 'number' ? initialPrefs.gexCount : 4);
-  const [showLadder, setShowLadder] = useState<boolean>(initialPrefs.showLadder ?? true); // Loaded GEX Strikes (flagship)
+  const [showLadder, setShowLadder] = useState<boolean>(def(initialPrefs.showLadder)); // Loaded GEX Strikes (flagship) — opt-in like the rest
   const [ctxMenu, setCtxMenu] = useState<{ x: number; y: number } | null>(null); // right-click "View" menu (reset to live, etc.)
   const [chartType, setChartType] = useState<ChartType>(initialPrefs.chartType || 'candles');
   const [colors, setColors] = useState<{ up?: string; down?: string; line?: string; wick?: string; bg?: string; grid?: string }>(initialPrefs.colors || {});
   const [showGrid, setShowGrid] = useState<boolean>(initialPrefs.showGrid ?? true);
-  const [showVolume, setShowVolume] = useState<boolean>(initialPrefs.showVolume ?? true);
+  const [showVolume, setShowVolume] = useState<boolean>(def(initialPrefs.showVolume)); // OFF by default — "just the graph"
   const [showWatermark, setShowWatermark] = useState<boolean>(initialPrefs.showWatermark ?? true);
   const [candleBorders, setCandleBorders] = useState<boolean>(initialPrefs.candleBorders ?? true);
   const setSelectedTimeframe = useContractStore(s => s.setSelectedTimeframe);
@@ -237,8 +240,8 @@ export const SlayerChart = memo(function SlayerChartImpl({ profile, decimals, ca
   // Persist chart prefs (type, colors, indicator selection, GEX/disp toggles) so a user's
   // setup survives a reload. Saving the initial (already-stored) values once is harmless.
   useEffect(() => {
-    try { localStorage.setItem('slayerchart.prefs.v1' + keySuffix, JSON.stringify({ chartType, colors, ovOn, paneOn, showGex, showDisp, showHeat, showOrbs, showVolProfile, showPrevClose, showVwap, showMigration, showExposure, showMaxPain, gexCount, showLadder, showGrid, showVolume, showWatermark, candleBorders, gexMapV2: true, ...(panelId ? { ticker: panelTicker, timeframe: localTf, channel, expiry } : {}) })); } catch { /* storage unavailable */ }
-  }, [chartType, colors, ovOn, paneOn, showGex, showDisp, showHeat, showOrbs, showVolProfile, showPrevClose, showVwap, showMigration, showExposure, showMaxPain, gexCount, showLadder, showGrid, showVolume, showWatermark, candleBorders, panelId, panelTicker, localTf, channel, expiry]);
+    try { localStorage.setItem('slayerchart.prefs.v1' + keySuffix, JSON.stringify({ chartType, colors, ovOn, paneOn, showGex, showDisp, showHeat, showOrbs, showVolProfile, showPrevClose, showVwap, showMigration, showExposure, showMaxPain, showCharm, showNetPrem, gexCount, showLadder, showGrid, showVolume, showWatermark, candleBorders, gexMapV2: true, cleanDefaultV2: true, ...(panelId ? { ticker: panelTicker, timeframe: localTf, channel, expiry } : {}) })); } catch { /* storage unavailable */ }
+  }, [chartType, colors, ovOn, paneOn, showGex, showDisp, showHeat, showOrbs, showVolProfile, showPrevClose, showVwap, showMigration, showExposure, showMaxPain, showCharm, showNetPrem, gexCount, showLadder, showGrid, showVolume, showWatermark, candleBorders, panelId, panelTicker, localTf, channel, expiry]);
 
   // Only enabled indicators are computed, and only when the selection or candles change
   // (NOT on pan/hover) — keeps interaction cheap.
@@ -309,7 +312,7 @@ export const SlayerChart = memo(function SlayerChartImpl({ profile, decimals, ca
     hoverRef, gexDeltaRef, draftRef, measureRef, drawingsRef, toolRef, selectedRef,
     candles, ha, atr, profile, colors, decimals, chartType, ovOn, overlaySeries, paneSeries,
     displacements, gexCount, showVolume, showGrid, showWatermark, candleBorders,
-    showGex, showHeat, showOrbs, showVolProfile, showPrevClose, showVwap, vwap: vwapData, showMigration, gammaCoM, comHist: comHistRef.current, showExposure, showMaxPain, showDisp, showLadder, tickKey, tfKey, live, livePhaseRef, liveOverlayRef, panPx: panPxRef.current,
+    showGex, showHeat, showOrbs, showVolProfile, showPrevClose, showVwap, vwap: vwapData, showMigration, gammaCoM, comHist: comHistRef.current, showExposure, showMaxPain, showDisp, showLadder, showCharm, showNetPrem, tickKey, tfKey, live, livePhaseRef, liveOverlayRef, panPx: panPxRef.current,
   });
 
   // Overlay repaint — clears the transparent top canvas and paints the last-price dot, plus an
@@ -670,7 +673,7 @@ export const SlayerChart = memo(function SlayerChartImpl({ profile, decimals, ca
   useEffect(() => {
     if (redrawRafRef.current) return;
     redrawRafRef.current = requestAnimationFrame(() => { redrawRafRef.current = 0; drawRef.current(); });
-  }, [candles, overlaySeries, paneSeries, displacements, showGex, showDisp, showHeat, showOrbs, showVolProfile, showPrevClose, showVwap, vwapData, showMigration, gammaCoM, showExposure, showMaxPain, gexCount, showLadder, chartType, colors, ha, view, priceView, drawings, tool, selectedId, showGrid, showVolume, showWatermark, candleBorders, profile, decimals, tfKey, tickKey]);
+  }, [candles, overlaySeries, paneSeries, displacements, showGex, showDisp, showHeat, showOrbs, showVolProfile, showPrevClose, showVwap, vwapData, showMigration, gammaCoM, showExposure, showMaxPain, showCharm, showNetPrem, gexCount, showLadder, chartType, colors, ha, view, priceView, drawings, tool, selectedId, showGrid, showVolume, showWatermark, candleBorders, profile, decimals, tfKey, tickKey]);
   // Cancel any frame still queued when the panel unmounts (closing a grid panel mid-redraw):
   // an unmount-only cleanup, so it never disturbs the per-change coalescing above. Without it a
   // pending rAF fires on a torn-down panel and calls drawRef on detached refs → crash on churn.
@@ -792,10 +795,12 @@ export const SlayerChart = memo(function SlayerChartImpl({ profile, decimals, ca
           <ChartSettings
             colors={colors} setColors={setColors} gexCount={gexCount} setGexCount={setGexCount}
             display={[['Grid', showGrid, setShowGrid], ['Volume', showVolume, setShowVolume], ['Watermark', showWatermark, setShowWatermark], ['Candle borders', candleBorders, setCandleBorders]]}
-            dealer={[['Loaded strikes', showLadder, setShowLadder], ['Γ Heatmap', showHeat, setShowHeat], ['Orbs', showOrbs, setShowOrbs], ['γ Exposure lane', showGex, setShowGex], ['Volume profile', showVolProfile, setShowVolProfile], ['Prior-day close', showPrevClose, setShowPrevClose], ['Session VWAP', showVwap, setShowVwap], ['γ Migration', showMigration, setShowMigration], ['Δ/Vanna HUD', showExposure, setShowExposure], ['Max Pain', showMaxPain, setShowMaxPain], ['Displacement', showDisp, setShowDisp]]}
+            dealer={[['Loaded strikes', showLadder, setShowLadder], ['Γ Heatmap', showHeat, setShowHeat], ['Charm surface', showCharm, setShowCharm], ['Net premium flow', showNetPrem, setShowNetPrem], ['Orbs', showOrbs, setShowOrbs], ['γ Exposure lane', showGex, setShowGex], ['Volume profile', showVolProfile, setShowVolProfile], ['Prior-day close', showPrevClose, setShowPrevClose], ['Session VWAP', showVwap, setShowVwap], ['γ Migration', showMigration, setShowMigration], ['Δ/Vanna HUD', showExposure, setShowExposure], ['Max Pain', showMaxPain, setShowMaxPain], ['Displacement', showDisp, setShowDisp]]}
           />
           {specChip(showLadder, '≣ STRIKES', () => setShowLadder(v => !v), 'default', 'STRIKES — labels the strongest dealer-gamma strike on each side of price. Each tag reads: strike, then net γ ($/1% move), then ↑/↓ its change since the ~45s checkpoint. e.g. "6,790  +574M ↓85M" = +574M net gamma, down 85M since checkpoint.')}
           {specChip(showHeat, 'Γ-MAP', () => setShowHeat(v => !v), 'default', 'Γ-MAP — gamma-concentration heatmap shading behind price (where dealer gamma is densest)')}
+          {specChip(showCharm, '⧗ CHARM', () => setShowCharm(v => !v), 'default', 'CHARM SURFACE — a smooth right-gutter heat column of dealer charm (Δ-decay) by price. Charm is how much delta the dealer book sheds with the passage of time; cyan = decay adds passive BUY support at that level, amber = decay adds SELL pressure. Strongest near the money and into expiry.')}
+          {specChip(showNetPrem, '$ FLOW', () => setShowNetPrem(v => !v), 'default', 'NET PREMIUM FLOW — the $ option premium that actually traded at each strike today (mid × volume), as diverging bars: green right = net CALL premium bought (bullish $), red left = net PUT premium (bearish $). Shows where real money is paying up, distinct from open-interest positioning.')}
           {specChip(showOrbs, '◉ ORBS', () => setShowOrbs(v => !v), 'default', 'ORBS — focal markers on the strikes holding the most gamma (call-wall / put-wall magnets)')}
           {specChip(showGex, 'γ-LANE', () => setShowGex(v => !v), 'default', 'γ-LANE — net-gamma profile in the right gutter (green = long-γ strikes, red = short-γ)')}
           {specChip(showDisp, '⚡ DISP', () => setShowDisp(v => !v), 'warn', 'DISP — displacement / expected-move band around spot (the implied daily range)')}
