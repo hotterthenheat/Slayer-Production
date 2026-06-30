@@ -627,63 +627,49 @@ export function DealerFlowView() {
     if (!isMultiExpiry && expiryTab === 'aggregated') return profile;
 
     const spot = profile.spot;
+    const sigma = Math.max(0.01, selectedAsset.volatility || 0.15); // annualized IV
+
+    // Resolve the active expiry tabs to their real DTEs. If the selection doesn't
+    // map to any known tile, fall back to the real aggregate rather than invent.
+    const activeIds = isMultiExpiry ? activeExpiries : [expiryTab];
+    const allTiles = tickerExpirations;
+    const activeTiles = allTiles.filter((t) => activeIds.includes(t.id));
+    if (!activeTiles.length || !allTiles.length) return profile;
+
+    // Per-expiry gamma TERM STRUCTURE — a defensible MODEL, not a feed (the server
+    // ships one aggregated chain). We attribute each strike's aggregate exposure
+    // across expiries by how dealer gamma actually concentrates with tenor:
+    //   • amplitude  a(d) ∝ 1/√d                 — near-dated options carry more γ
+    //   • shape      g(s,d) = exp(-½·z² / EM(d)²) — z = (strike-spot)/spot,
+    //                EM(d) = σ·√(d/365): near expiries peak tightly at spot, far
+    //                expiries spread out (the real gamma-by-tenor profile)
+    // Weights are normalized across ALL tiles per strike, so selecting every expiry
+    // reconstructs the aggregate exactly. Replaces the prior sin(strike·hash) split.
+    const emOf = (d: number) => Math.max(0.002, sigma * Math.sqrt(Math.max(d, 0.5) / 365));
+    const rawWeight = (strike: number, d: number) => {
+      const z = (strike - spot) / (spot || 1);
+      const em = emOf(d);
+      return (1 / Math.sqrt(Math.max(d, 0.5))) * Math.exp(-(z * z) / (2 * em * em));
+    };
+
     const strikes = profile.strikes.map((s: any) => {
-      const dist = Math.abs(s.strike - spot);
-      
-      let accumCallGex = 0;
-      let accumPutGex = 0;
-      let accumCallDex = 0;
-      let accumPutDex = 0;
-      let accumCallVex = 0;
-      let accumPutVex = 0;
-
-      // Filter based on active selection (multi vs single)
-      const activeIds = isMultiExpiry ? activeExpiries : [expiryTab];
-
-      activeIds.forEach((id) => {
-        let multiplier = 1.0;
-        let callGex = s.callGex;
-        let putGex = s.putGex;
-        let callDex = s.callDex || 0;
-        let putDex = s.putDex || 0;
-        let callVex = s.callVex || 0;
-        let putVex = s.putVex || 0;
-
-        // Emulate completely independent logic where each expiration looks completely standalone
-        // by hashing the id string to generate distinct patterns that sum to the whole
-        let hash = 0;
-        for (let i = 0; i < id.length; i++) {
-          hash = id.charCodeAt(i) + ((hash << 5) - hash);
-        }
-        
-        // Ensure distinct values per expiration independent from each other
-        multiplier = Math.max(0.05, Math.abs(Math.sin((s.strike * hash) / 10000)));
-        if (id === 'exp-0') multiplier *= 1.5;
-
-        // Optionally scale based on days to expiration
-        if (id === 'aggregated') {
-          multiplier = 1.0;
-        }
-
-        accumCallGex += callGex * multiplier;
-        accumPutGex += putGex * multiplier;
-        accumCallDex += callDex * multiplier;
-        accumPutDex += putDex * multiplier;
-        accumCallVex += callVex * multiplier;
-        accumPutVex += putVex * multiplier;
-      });
+      let denom = 0;
+      for (const t of allTiles) denom += rawWeight(s.strike, t.dteDays);
+      let numer = 0;
+      for (const t of activeTiles) numer += rawWeight(s.strike, t.dteDays);
+      const w = denom > 0 ? numer / denom : 0;
 
       return {
         ...s,
-        callGex: accumCallGex,
-        putGex: accumPutGex,
-        netGex: accumCallGex + accumPutGex,
-        callDex: accumCallDex,
-        putDex: accumPutDex,
-        netDex: accumCallDex + accumPutDex,
-        callVex: accumCallVex,
-        putVex: accumPutVex,
-        netVex: accumCallVex + accumPutVex,
+        callGex: (s.callGex || 0) * w,
+        putGex: (s.putGex || 0) * w,
+        netGex: (s.netGex || 0) * w,
+        callDex: (s.callDex || 0) * w,
+        putDex: (s.putDex || 0) * w,
+        netDex: (s.netDex || 0) * w,
+        callVex: (s.callVex || 0) * w,
+        putVex: (s.putVex || 0) * w,
+        netVex: (s.netVex || 0) * w,
       };
     });
 
@@ -714,7 +700,7 @@ export function DealerFlowView() {
       gammaFlip: gammaFlipStrike,
       magnet: magnetStrike,
     };
-  }, [profile, expiryTab, isMultiExpiry, activeExpiries]);
+  }, [profile, expiryTab, isMultiExpiry, activeExpiries, selectedAsset, tickerExpirations]);
   const gauge = serverState?.dealer_flow;
   const disp = serverState?.displacement;
 
