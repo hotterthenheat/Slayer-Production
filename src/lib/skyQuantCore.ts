@@ -273,6 +273,17 @@ export function nbrsRatio(values: number[], idx: number, n = 3): number {
 export function expectedMove(S: number, sigma: number, tau: number): number {
   return S * sigma * Math.sqrt(tau);
 }
+/**
+ * Expected one-sigma move as a FRACTION of spot: σ·√τ, with τ in years.
+ * The single authoritative expected-move convention for the platform — the GEX
+ * engine, the v11 dealer surface and the skyScore reach all delegate here so they
+ * can never drift to different day-counts or floors. Floors mirror the originals:
+ * τ is clamped to 1e-4 yr and the result to 5e-4 so 0DTE/expiry can't collapse the
+ * move onto spot (keeps target spacing and downstream divisions finite).
+ */
+export function expectedMovePct(sigma: number, tauYears: number): number {
+  return Math.max(0.0005, sigma * Math.sqrt(Math.max(tauYears, 0.0001)));
+}
 export function oiVelocity(oiT: number, oiPrev: number, dtMinutes: number): number {
   return dtMinutes ? (oiT - oiPrev) / dtMinutes : 0;
 }

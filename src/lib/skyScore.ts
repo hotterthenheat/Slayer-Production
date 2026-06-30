@@ -18,6 +18,7 @@
  */
 
 import { computeBlackScholesPrice } from './v11Math';
+import { expectedMovePct as emPct } from './skyQuantCore';
 import { SnapshotStore } from './snapshotStore';
 import {
   clamp, normLogSaturate, normSignedTanh, normCrossSection, unit,
@@ -210,7 +211,7 @@ export function rankContracts(input: RankInput): RankedCandidate[] {
     const atm = targetContracts.reduce((b, c) => (Math.abs(c.strike - spot) < Math.abs(b.strike - spot) ? c : b), targetContracts[0]);
     atmIv = atm.iv || 0.15;
   }
-  const expectedMovePct = input.expectedMovePct ?? atmIv * Math.sqrt(Math.max(dteDays, 0.0001) / 365);
+  const expectedMovePct = input.expectedMovePct ?? emPct(atmIv, dteDays / 365);
 
   // §1.1 Positioning Density (cluster mass × embeddedness) over a strike window.
   const densityRaw = (c: RankerContract): number => {

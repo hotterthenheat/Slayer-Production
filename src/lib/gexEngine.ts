@@ -1,5 +1,5 @@
 import { LiveOptionContract } from './marketDataProvider';
-import { gammaFlipSpot } from './skyQuantCore';
+import { gammaFlipSpot, expectedMovePct } from './skyQuantCore';
 
 export interface GexStrikeRow {
   strike: number; callGex: number; putGex: number; netGex: number;
@@ -57,7 +57,7 @@ export function buildGexProfile(
   const gammaFlip = found ? flip! : (netGex >= 0 ? putWall : callWall);
 
   const atm = chain.reduce((b, c) => Math.abs(c.strike - spot) < Math.abs(b.strike - spot) ? c : b, chain[0]);
-  const expectedMovePct = Math.max(0.0005, atm.impliedVolatility * Math.sqrt(Math.max(tauYears, 0.0001)));
+  const expectedMovePctVal = expectedMovePct(atm.impliedVolatility, tauYears);
   const windowRows = allRows.filter(r => Math.abs(r.strike - spot) / spot <= windowPct);
 
   return {
@@ -66,7 +66,7 @@ export function buildGexProfile(
     callWall, putWall, gammaFlip: Number(gammaFlip.toFixed(2)), magnet,
     totalCallOi, totalPutOi,
     callPutOiRatio: totalPutOi > 0 ? Number((totalCallOi / totalPutOi).toFixed(2)) : 0,
-    expectedMovePct, dealerBias: netGex >= 0 ? 'LONG GAMMA' : 'SHORT GAMMA',
+    expectedMovePct: expectedMovePctVal, dealerBias: netGex >= 0 ? 'LONG GAMMA' : 'SHORT GAMMA',
     aboveFlip: spot >= gammaFlip,
   };
 }
