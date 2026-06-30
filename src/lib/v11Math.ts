@@ -1344,8 +1344,20 @@ export function calculateV11Metrics(
   };
 
   // 2. Base attributes and KNN Search (n >= 30, pre-filter gamma & vol regime)
-  const baseWinRate = isCall ? 0.72 : 0.65;
-  const sampleSize = isCall ? 487 : 404;
+  // Ground the base win-rate and sample size in REAL labeled outcomes from the
+  // self-learning store once enough have accrued, so the statistical confidence we
+  // display (the Wilson interval on every target, provenance.sample_size) reflects
+  // the platform's true track record instead of a fixed 487/404-sample base that
+  // never existed. Below the n>=30 floor it falls back to the documented model
+  // prior — identical behavior on a cold-start / empty-DB feed.
+  const REAL_SAMPLE_MIN = 30;
+  const realSamples = calibrationHistory.length;
+  const haveRealBase = realSamples >= REAL_SAMPLE_MIN;
+  const realWinRate = haveRealBase
+    ? calibrationHistory.reduce((acc, p) => acc + (p.win ? 1 : 0), 0) / realSamples
+    : 0;
+  const baseWinRate = haveRealBase ? realWinRate : (isCall ? 0.72 : 0.65);
+  const sampleSize = haveRealBase ? realSamples : (isCall ? 487 : 404);
 
   const resolvedSimilarTrades = computeKNNMatches(asset, dir, systemScore, sampleSize);
   const matchedReturns = resolvedSimilarTrades.map(s => s.pnlMultiplier);
