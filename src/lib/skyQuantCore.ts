@@ -23,6 +23,8 @@
  * by side). It does not fabricate trade-side labels — classification is upstream.
  */
 
+import { stdNormalCDF, stdNormalPDF } from "./normalDist";
+
 export const CONTRACT_MULTIPLIER = 100; // shares per equity/index option contract
 
 export type OptionType = 'call' | 'put';
@@ -30,46 +32,11 @@ export type OptionType = 'call' | 'put';
 // =============================================================================
 // 0. NORMAL DISTRIBUTION (self-contained; N(x)+N(-x)=1 exactly → exact parity)
 // =============================================================================
-export function normPdf(x: number): number {
-  return 0.3989422804014327 * Math.exp(-0.5 * x * x);
-}
-
-/**
- * Standard normal CDF — Graeme West's double-precision algorithm (~1e-15), which
- * also satisfies N(x)+N(-x)=1 exactly (the same tail value is used for ±x), so
- * put-call parity is exact and the closed-form greeks match finite differences.
- */
-export function normCdf(x: number): number {
-  const absx = Math.abs(x);
-  if (absx > 37) return x > 0 ? 1 : 0;
-  const exponential = Math.exp(-0.5 * absx * absx);
-  let result: number;
-  if (absx < 7.07106781186547) {
-    let build = 3.52624965998911e-2 * absx + 0.700383064443688;
-    build = build * absx + 6.37396220353165;
-    build = build * absx + 33.912866078383;
-    build = build * absx + 112.079291497871;
-    build = build * absx + 221.213596169931;
-    build = build * absx + 220.206867912376;
-    result = exponential * build;
-    build = 8.83883476483184e-2 * absx + 1.75566716318264;
-    build = build * absx + 16.064177579207;
-    build = build * absx + 86.7807322029461;
-    build = build * absx + 296.564248779674;
-    build = build * absx + 637.333633378831;
-    build = build * absx + 793.826512519948;
-    build = build * absx + 440.413735824752;
-    result = result / build;
-  } else {
-    let build = absx + 0.65;
-    build = absx + 4 / build;
-    build = absx + 3 / build;
-    build = absx + 2 / build;
-    build = absx + 1 / build;
-    result = exponential / build / 2.506628274631;
-  }
-  return x > 0 ? 1 - result : result;
-}
+// The normal CDF/PDF live once in ./normalDist (Hart/West, ~1e-15). Re-exported
+// here under the historical names so every in-file pricing/greeks call site uses
+// that single validated implementation — no second copy to drift out of sync.
+export const normPdf = stdNormalPDF;
+export const normCdf = stdNormalCDF;
 
 // =============================================================================
 // 1. BLACK-SCHOLES-MERTON  (q consistent; correct charm)
@@ -92,12 +59,18 @@ export interface Greeks {
   gamma: number;
   vega: number; // per 1.00 vol (÷100 for per vol-point)
   theta: number; // per YEAR (÷365 for per-day)
-  vanna: number;
-  charm: number; // per YEAR (÷365 for per-day); call==put when q=0
-  speed: number;
+  vanna: number; // ∂²V/∂S∂σ
+  charm: number; // ∂Δ/∂τ, per YEAR (÷365 for per-day); call==put when q=0
+  speed: number; // ∂³V/∂S³ = ∂Γ/∂S
+  // Higher-order (second/third order), call==put for all of these (φ-symmetric):
+  vomma: number; // ∂Vega/∂σ = ∂²V/∂σ² (volga) — per 1.00 vol²
+  veta: number;  // ∂Vega/∂t (time decay, same sign convention as charm) — per YEAR
+  color: number; // ∂Γ/∂t (time decay) — per YEAR
+  zomma: number; // ∂Γ/∂σ — per 1.00 vol
+  ultima: number; // ∂Vomma/∂σ = ∂³V/∂σ³ — per 1.00 vol³
 }
 
-const ZERO_GREEKS: Greeks = { delta: 0, gamma: 0, vega: 0, theta: 0, vanna: 0, charm: 0, speed: 0 };
+const ZERO_GREEKS: Greeks = { delta: 0, gamma: 0, vega: 0, theta: 0, vanna: 0, charm: 0, speed: 0, vomma: 0, veta: 0, color: 0, zomma: 0, ultima: 0 };
 
 export function bsmGreeks(S: number, K: number, tau: number, r: number, sigma: number, q = 0, otype: OptionType = 'call'): Greeks {
   if (tau <= 0 || sigma <= 0 || S <= 0 || K <= 0) return { ...ZERO_GREEKS };
@@ -113,6 +86,15 @@ export function bsmGreeks(S: number, K: number, tau: number, r: number, sigma: n
   const vega = S * dq * pdf * Math.sqrt(tau);
   const vanna = (-dq * pdf * d2) / sigma;
   const speed = -(gamma / S) * (d1 / srt + 1);
+
+  // Higher-order greeks (closed form; φ-symmetric ⇒ call==put). Each is validated
+  // against a central finite difference of the lower greek in skyQuantCore.test.ts.
+  const vomma = (vega * d1 * d2) / sigma;                                   // ∂Vega/∂σ
+  const zomma = (gamma * (d1 * d2 - 1)) / sigma;                            // ∂Γ/∂σ
+  const ultima = (-vega / (sigma * sigma)) * (d1 * d2 * (1 - d1 * d2) + d1 * d1 + d2 * d2); // ∂Vomma/∂σ
+  // veta/color use the same time-DECAY convention as charm (∂/∂t = −∂/∂τ).
+  const veta = vega * (q + ((r - q) * d1) / srt - (1 + d1 * d2) / (2 * tau)); // ∂Vega/∂t = −∂Vega/∂τ
+  const color = ((dq * pdf) / (2 * S * tau * srt)) * (2 * q * tau + 1 + ((2 * (r - q) * tau - d2 * srt) / srt) * d1); // ∂Γ/∂t = −∂Γ/∂τ
 
   // charm φ-term is identical for call & put; only the q·N(±d1) term differs.
   const charmCommon = (dq * pdf * (2 * (r - q) * tau - d2 * srt)) / (2 * tau * srt);
@@ -130,7 +112,7 @@ export function bsmGreeks(S: number, K: number, tau: number, r: number, sigma: n
     charm = -q * dq * normCdf(-d1) - charmCommon;
   }
 
-  return { delta, gamma, vega, theta, vanna, charm, speed };
+  return { delta, gamma, vega, theta, vanna, charm, speed, vomma, veta, color, zomma, ultima };
 }
 
 // =============================================================================
