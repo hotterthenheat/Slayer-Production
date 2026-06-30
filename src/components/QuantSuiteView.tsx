@@ -27,6 +27,7 @@ import { RiskNeutralDistribution } from './RiskNeutralDistribution';
 import { IvSmile } from './IvSmile';
 import { MonteCarloPanel } from './MonteCarloPanel';
 import { RegimeDetectionPanel } from './RegimeDetectionPanel';
+import { DealerHedgingPanel } from './DealerHedgingPanel';
 import {
   solveImpliedRND,
   calculateRealizedVolSuite,
@@ -1345,6 +1346,20 @@ export default function QuantSuiteView() {
       {spotPrice > 0 && defaultIv > 0 && dteD > 0 && (
         <div className="border-t border-[var(--border)] pt-4" id="quant-suite-monte-carlo">
           <MonteCarloPanel spot={spotPrice} r={0.05} sigma={defaultIv} tYears={Math.max(1, dteD) / 365} ticker={activeTicker} decimals={activeAsset.decimals} />
+        </div>
+      )}
+
+      {/* Dealer hedging simulator — net-gamma landscape as spot moves, from real per-strike GEX */}
+      {(gexProfile?.strikes?.length ?? 0) >= 2 && spotPrice > 0 && expectedMovePct > 0 && (
+        <div className="border-t border-[var(--border)] pt-4" id="quant-suite-hedging">
+          <DealerHedgingPanel
+            strikes={(gexProfile!.strikes as any[]).map((s) => ({ strike: s.strike, netGex: s.netGex }))}
+            spot={spotPrice}
+            emPct={expectedMovePct / 100}
+            decimals={activeAsset.decimals}
+            ticker={activeTicker}
+            live={isLiveData}
+          />
         </div>
       )}
 
