@@ -23,6 +23,7 @@ import {
 } from 'lucide-react';
 import { useContractStore } from '../lib/store';
 import { ASSET_LIST } from '../data';
+import { ForwardProbabilityCone } from './ForwardProbabilityCone';
 import {
   solveImpliedRND,
   calculateRealizedVolSuite,
@@ -1292,6 +1293,21 @@ export default function QuantSuiteView() {
           </motion.div>
         </AnimatePresence>
       </div>
+
+      {/* Forward probability cone — where price is likely to sit by expiry vs the dealer's own structure */}
+      {gexProfile && spotPrice > 0 && expectedMovePct > 0 && (
+        <div className="border-t border-[var(--border)] pt-4" id="quant-suite-forward-cone">
+          <ForwardProbabilityCone
+            spot={spotPrice}
+            emFraction={expectedMovePct / 100}
+            callWall={gexProfile.callWall}
+            putWall={gexProfile.putWall}
+            gammaFlip={gexProfile.gammaFlip}
+            decimals={activeAsset.decimals}
+            ticker={activeTicker}
+          />
+        </div>
+      )}
 
       {/* Footer: REAL dealer GEX (when streamed) + per-expiry GEX breakdown */}
       <div className="grid grid-cols-1 lg:grid-cols-3 border-t border-[var(--border)] pt-4 gap-4" id="quant-suite-gex-footer">
