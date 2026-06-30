@@ -65,6 +65,7 @@ import { ChainContract } from '../lib/v11Math';
 // Lazy-loaded: pulls in three.js. Only fetched when a multi-expiry GEX surface
 // is actually rendered, keeping the heavy 3D vendor chunk off the page's load.
 const GexSurface3D = lazy(() => import('./GexSurface3D').then(m => ({ default: m.GexSurface3D })));
+const IvSurface3D = lazy(() => import('./IvSurface3D').then(m => ({ default: m.IvSurface3D })));
 
 type StrategyPreset = 'iron_condor' | 'straddle' | 'butterfly' | 'vertical';
 
@@ -1337,6 +1338,15 @@ export default function QuantSuiteView() {
           </div>
         );
       })()}
+
+      {/* Implied volatility surface (3D) — real front smile + Heston forward-variance term MODEL over DTE */}
+      {optionChain.length >= 4 && spotPrice > 0 && dteD > 0 && (
+        <div className="border-t border-[var(--border)] pt-4" id="quant-suite-iv-surface">
+          <Suspense fallback={<div className="h-[300px] rounded-lg border border-[var(--border)] bg-[var(--surface-2)] animate-pulse" />}>
+            <IvSurface3D chain={optionChain} spot={spotPrice} frontDteDays={dteD} decimals={activeAsset.decimals} ticker={activeTicker} />
+          </Suspense>
+        </div>
+      )}
 
       {/* Monte Carlo simulation — real seeded paths under GBM / jump-diffusion / Heston */}
       {spotPrice > 0 && defaultIv > 0 && dteD > 0 && (
