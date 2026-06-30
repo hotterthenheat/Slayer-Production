@@ -24,6 +24,7 @@ import {
 import { useContractStore } from '../lib/store';
 import { ASSET_LIST } from '../data';
 import { RiskNeutralDistribution } from './RiskNeutralDistribution';
+import { IvSmile } from './IvSmile';
 import {
   solveImpliedRND,
   calculateRealizedVolSuite,
@@ -1315,6 +1316,13 @@ export default function QuantSuiteView() {
             ticker={activeTicker}
             live={isLiveData}
           />
+        </div>
+      )}
+
+      {/* Implied volatility smile/skew — real front-expiry per-strike IV */}
+      {optionChain.length >= 4 && spotPrice > 0 && (
+        <div className="border-t border-[var(--border)] pt-4" id="quant-suite-iv-smile">
+          <IvSmile chain={optionChain} spot={spotPrice} decimals={activeAsset.decimals} ticker={activeTicker} live={isLiveData} />
         </div>
       )}
 
