@@ -17,6 +17,7 @@ import { useMemo, useRef } from 'react';
 import { computeSkew, ivAtDelta } from '../lib/skewAnalytics';
 import type { ChainContract } from '../lib/v11Math';
 import { useCrosshair, ChartTools } from './quant/chartInteraction';
+import { useStrikeSync, StrikePublisher } from './quant/crosshairSync';
 
 interface IvSmileProps {
   chain: ChainContract[];
@@ -68,6 +69,7 @@ export function IvSmile({ chain, spot, decimals = 0, ticker, live, windowPct = 0
 
   const wrapRef = useRef<HTMLDivElement>(null);
   const { svgRef, vx, onPointerMove, onPointerLeave } = useCrosshair(1000);
+  const { syncedStrike } = useStrikeSync('iv-smile');
   const fmt = (v: number) => v.toLocaleString(undefined, { minimumFractionDigits: decimals, maximumFractionDigits: decimals });
 
   if (!m) {
@@ -143,6 +145,10 @@ export function IvSmile({ chain, spot, decimals = 0, ticker, live, windowPct = 0
           <path d={area} fill="color-mix(in srgb, var(--accent-color) 10%, transparent)" stroke="none" />
           <path d={curve} fill="none" stroke="var(--accent-color)" strokeWidth={2.25} />
           {m.pts.map((p, i) => <circle key={i} cx={sx(p.strike)} cy={sy(p.iv)} r={1.6} fill="var(--accent-color)" opacity={0.7} />)}
+          {/* synced strike from a sibling panel */}
+          {syncedStrike != null && syncedStrike >= m.minS && syncedStrike <= m.maxS && (
+            <line x1={sx(syncedStrike)} y1={y0} x2={sx(syncedStrike)} y2={y1} stroke="var(--text-tertiary)" strokeWidth={1} strokeDasharray="2 4" opacity={0.65} />
+          )}
           {/* crosshair */}
           {hoverStrike != null && hoverIv != null && (
             <>
@@ -151,6 +157,7 @@ export function IvSmile({ chain, spot, decimals = 0, ticker, live, windowPct = 0
             </>
           )}
         </svg>
+        <StrikePublisher id="iv-smile" strike={hoverStrike} />
         {hoverStrike != null && hoverIv != null && (
           <div className="pointer-events-none absolute top-1 px-2 py-1 rounded-md bg-[var(--surface-2)] border border-[var(--border)] text-[10px] tabular-nums shadow-lg" style={{ left: `${Math.min(80, (sx(hoverStrike) / W) * 100)}%` }}>
             <div className="text-[var(--text-primary)] font-bold">K {fmt(hoverStrike)}</div>

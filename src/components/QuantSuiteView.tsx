@@ -26,6 +26,7 @@ import { ASSET_LIST } from '../data';
 import { RiskNeutralDistribution } from './RiskNeutralDistribution';
 import { IvSmile } from './IvSmile';
 import { GreekExposurePanel } from './GreekExposurePanel';
+import { StrikeSyncProvider } from './quant/crosshairSync';
 import { MonteCarloPanel } from './MonteCarloPanel';
 import { RegimeDetectionPanel } from './RegimeDetectionPanel';
 import { DealerHedgingPanel } from './DealerHedgingPanel';
@@ -526,6 +527,7 @@ export default function QuantSuiteView() {
   ];
 
   return (
+    <StrikeSyncProvider>
     <div className="flex flex-col gap-5 w-full text-[var(--text-primary)] bg-[var(--surface)] border border-[var(--border)] rounded-lg p-4 font-mono select-none" id="quant-suite-terminal-view">
       {/* Header + live summary stats */}
       <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center border-b border-[var(--border)] pb-4 gap-4">
@@ -1447,5 +1449,6 @@ export default function QuantSuiteView() {
         </div>
       </div>
     </div>
+    </StrikeSyncProvider>
   );
 }

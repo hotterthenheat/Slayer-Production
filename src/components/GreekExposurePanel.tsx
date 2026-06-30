@@ -21,6 +21,7 @@ import { useMemo, useRef, useState } from 'react';
 import type { ChainContract } from '../lib/v11Math';
 import { computeGreekExposureProfile, GREEK_META, GREEK_ORDER, type GreekKey } from '../lib/greekExposure';
 import { useCrosshair, ChartTools } from './quant/chartInteraction';
+import { useStrikeSync, StrikePublisher } from './quant/crosshairSync';
 
 interface GreekExposurePanelProps {
   chain: ChainContract[];
@@ -38,6 +39,7 @@ export function GreekExposurePanel({ chain, spot, decimals = 0, ticker, live, ca
   const prof = useMemo(() => computeGreekExposureProfile(chain, spot, greek), [chain, spot, greek]);
   const wrapRef = useRef<HTMLDivElement>(null);
   const { svgRef, vx, onPointerMove, onPointerLeave } = useCrosshair(1000);
+  const { syncedStrike } = useStrikeSync('greek-exposure');
 
   const fmt = (v: number) => v.toLocaleString(undefined, { minimumFractionDigits: decimals, maximumFractionDigits: decimals });
   const meta = GREEK_META[greek];
@@ -127,10 +129,15 @@ export function GreekExposurePanel({ chain, spot, decimals = 0, ticker, live, ca
             return <rect key={n.strike} x={sx(n.strike) - barW / 2} y={top} width={barW} height={Math.max(0.5, h)}
               fill={pos ? 'color-mix(in srgb, var(--success) 70%, transparent)' : 'color-mix(in srgb, var(--danger) 70%, transparent)'} />;
           })}
+          {/* synced strike from a sibling panel */}
+          {syncedStrike != null && syncedStrike >= minS && syncedStrike <= maxS && (
+            <line x1={sx(syncedStrike)} y1={y0} x2={sx(syncedStrike)} y2={y1} stroke="var(--text-tertiary)" strokeWidth={1} strokeDasharray="2 4" opacity={0.65} />
+          )}
           {/* crosshair */}
           {hoverNode && <line x1={sx(hoverNode.strike)} y1={y0} x2={sx(hoverNode.strike)} y2={y1} stroke="var(--accent-color)" strokeWidth={1} opacity={0.7} />}
           {hoverNode && <circle cx={sx(hoverNode.strike)} cy={sy(hoverNode.exposure)} r={3} fill="var(--accent-color)" />}
         </svg>
+        <StrikePublisher id="greek-exposure" strike={hoverNode ? hoverNode.strike : null} />
         {hoverNode && (
           <div className="pointer-events-none absolute top-1 px-2 py-1 rounded-md bg-[var(--surface-2)] border border-[var(--border)] text-[10px] tabular-nums shadow-lg" style={{ left: `${Math.min(80, (sx(hoverNode.strike) / W) * 100)}%` }}>
             <div className="text-[var(--text-primary)] font-bold">K {fmt(hoverNode.strike)}</div>
