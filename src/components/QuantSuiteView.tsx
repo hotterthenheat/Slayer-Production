@@ -26,6 +26,7 @@ import { ASSET_LIST } from '../data';
 import { RiskNeutralDistribution } from './RiskNeutralDistribution';
 import { IvSmile } from './IvSmile';
 import { MonteCarloPanel } from './MonteCarloPanel';
+import { RegimeDetectionPanel } from './RegimeDetectionPanel';
 import {
   solveImpliedRND,
   calculateRealizedVolSuite,
@@ -1344,6 +1345,13 @@ export default function QuantSuiteView() {
       {spotPrice > 0 && defaultIv > 0 && dteD > 0 && (
         <div className="border-t border-[var(--border)] pt-4" id="quant-suite-monte-carlo">
           <MonteCarloPanel spot={spotPrice} r={0.05} sigma={defaultIv} tYears={Math.max(1, dteD) / 365} ticker={activeTicker} decimals={activeAsset.decimals} />
+        </div>
+      )}
+
+      {/* Market regime — measurable-feature classifier over the candle series */}
+      {candles.length >= 30 && (
+        <div className="border-t border-[var(--border)] pt-4" id="quant-suite-regime">
+          <RegimeDetectionPanel candles={candles} ticker={activeTicker} />
         </div>
       )}
 
