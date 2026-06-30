@@ -10,7 +10,7 @@ import {
   DEFAULT_DEALER_COUPLING,
 } from './dealerSignals';
 import { stdNormalCDF, stdNormalPDF } from './normalDist';
-import { gammaFlipSpot } from './skyQuantCore';
+import { gammaFlipSpot, expectedMovePct } from './skyQuantCore';
 
 // ==========================================
 // TIER 0: SEEDED PRNG FOR DETERMINISTIC REPLICABILITY
@@ -658,7 +658,7 @@ export function computeDealerInventory(
     : 0.15;
   // Floor guard (matches gexEngine.buildGexProfile): when dte≤0 (0DTE/expiry) or atmIV≈0, keep a
   // tiny positive EM so target prices don't collapse onto spot and divisions stay finite.
-  const expectedMovePct = Math.max(0.0005, atmIV * Math.sqrt(Math.max(dte / 365, 0.0001)));
+  const expectedMovePctVal = expectedMovePct(atmIV, dte / 365);
 
   return {
     netGex,
@@ -675,7 +675,7 @@ export function computeDealerInventory(
     gexStrikes: GEX_strike_list,
     dexStrikes: DEX_strike_list,
     vexStrikes: VEX_strike_list,
-    expectedMovePct
+    expectedMovePct: expectedMovePctVal
   };
 }
 
