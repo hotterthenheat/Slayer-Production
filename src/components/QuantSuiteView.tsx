@@ -25,6 +25,7 @@ import { useContractStore } from '../lib/store';
 import { ASSET_LIST } from '../data';
 import { RiskNeutralDistribution } from './RiskNeutralDistribution';
 import { IvSmile } from './IvSmile';
+import { GreekExposurePanel } from './GreekExposurePanel';
 import { MonteCarloPanel } from './MonteCarloPanel';
 import { RegimeDetectionPanel } from './RegimeDetectionPanel';
 import { DealerHedgingPanel } from './DealerHedgingPanel';
@@ -1326,6 +1327,22 @@ export default function QuantSuiteView() {
       {optionChain.length >= 4 && spotPrice > 0 && (
         <div className="border-t border-[var(--border)] pt-4" id="quant-suite-iv-smile">
           <IvSmile chain={optionChain} spot={spotPrice} decimals={activeAsset.decimals} ticker={activeTicker} live={isLiveData} />
+        </div>
+      )}
+
+      {/* Dealer Greek exposure profiles — per-strike Γ/Δ/vanna/charm/vega from the real chain */}
+      {optionChain.length >= 4 && spotPrice > 0 && (
+        <div className="border-t border-[var(--border)] pt-4" id="quant-suite-greek-exposure">
+          <GreekExposurePanel
+            chain={optionChain}
+            spot={spotPrice}
+            decimals={activeAsset.decimals}
+            ticker={activeTicker}
+            live={isLiveData}
+            callWall={gexProfile?.callWall}
+            putWall={gexProfile?.putWall}
+            gammaFlip={gexProfile?.gammaFlip}
+          />
         </div>
       )}
 
