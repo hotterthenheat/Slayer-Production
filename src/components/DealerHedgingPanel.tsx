@@ -10,8 +10,9 @@
  * gamma-flip crossing, the spot, and the squeeze zone marked. All driven by the
  * REAL per-strike net GEX; the per-level projection is a labelled model.
  */
-import { useMemo } from 'react';
+import { useMemo, useRef } from 'react';
 import { simulateDealerHedging, type HedgeStrike } from '../lib/dealerHedging';
+import { useCrosshair, ChartTools } from './quant/chartInteraction';
 
 interface DealerHedgingPanelProps {
   strikes: HedgeStrike[];
@@ -24,6 +25,8 @@ interface DealerHedgingPanelProps {
 
 export function DealerHedgingPanel({ strikes, spot, emPct, decimals = 0, ticker, live }: DealerHedgingPanelProps) {
   const r = useMemo(() => simulateDealerHedging(strikes, spot, emPct), [strikes, spot, emPct]);
+  const wrapRef = useRef<HTMLDivElement>(null);
+  const { svgRef, vx, onPointerMove, onPointerLeave } = useCrosshair(1000);
   const fmt = (v: number) => v.toLocaleString(undefined, { minimumFractionDigits: decimals, maximumFractionDigits: decimals });
   const bn = (v: number) => `${v >= 0 ? '+' : ''}${(v / 1e9).toFixed(2)}B`;
 
@@ -47,6 +50,11 @@ export function DealerHedgingPanel({ strikes, spot, emPct, decimals = 0, ticker,
   const areaPos = `M${sx(minP)},${zeroY} ${r.nodes.map((n) => `L${sx(n.price).toFixed(1)},${sy(Math.max(0, n.gammaDollar)).toFixed(1)}`).join(' ')} L${sx(maxP)},${zeroY} Z`;
   const areaNeg = `M${sx(minP)},${zeroY} ${r.nodes.map((n) => `L${sx(n.price).toFixed(1)},${sy(Math.min(0, n.gammaDollar)).toFixed(1)}`).join(' ')} L${sx(maxP)},${zeroY} Z`;
 
+  // Crosshair: resolve the pointer's viewBox-x to the nearest simulated node.
+  const hoverPrice = vx != null ? minP + ((vx - x0) / ((x1 - x0) || 1)) * (maxP - minP) : null;
+  const hoverNode = hoverPrice != null && hoverPrice >= minP && hoverPrice <= maxP
+    ? r.nodes.reduce((b, n) => (Math.abs(n.price - hoverPrice) < Math.abs(b.price - hoverPrice) ? n : b), r.nodes[0]) : null;
+
   const Cell = ({ label, value, sub, tone }: { label: string; value: string; sub?: string; tone?: string }) => (
     <div className="flex flex-col gap-0.5 px-2.5 py-1.5 rounded-md bg-[var(--surface-2)] border border-[var(--border)]">
       <span className="text-[9px] uppercase tracking-wider text-[var(--text-tertiary)] leading-none">{label}</span>
@@ -58,7 +66,7 @@ export function DealerHedgingPanel({ strikes, spot, emPct, decimals = 0, ticker,
   const regimeColor = r.regimeNow === 'stabilizing' ? 'var(--success)' : 'var(--danger)';
 
   return (
-    <div className="rounded-lg border border-[var(--border)] bg-[var(--surface)] overflow-hidden">
+    <div ref={wrapRef} className="rounded-lg border border-[var(--border)] bg-[var(--surface)] overflow-hidden">
       <div className="flex items-center justify-between px-3.5 py-2 border-b border-[var(--border)]">
         <div className="flex items-center gap-2">
           <span className="w-[3px] h-3.5 rounded-full" style={{ background: 'color-mix(in srgb, var(--accent-color) 55%, transparent)' }} />
@@ -66,24 +74,39 @@ export function DealerHedgingPanel({ strikes, spot, emPct, decimals = 0, ticker,
             Dealer Hedging Simulator{ticker ? ` · ${ticker}` : ''}
           </span>
         </div>
-        <span className="text-[9px] font-black tracking-widest px-1.5 py-0.5 rounded uppercase" style={live
-          ? { color: 'var(--success)', background: 'color-mix(in srgb, var(--success) 12%, transparent)', border: '1px solid color-mix(in srgb, var(--success) 30%, transparent)' }
-          : { color: 'var(--warning)', background: 'color-mix(in srgb, var(--warning) 12%, transparent)', border: '1px solid color-mix(in srgb, var(--warning) 30%, transparent)' }}>{live ? 'LIVE γ' : 'MODEL'}</span>
+        <div className="flex items-center gap-2">
+          <ChartTools name={`dealer-hedging-${ticker || 'spx'}`} svgRef={svgRef} fullscreenRef={wrapRef}
+            csv={() => ({ headers: ['price', 'net_gamma_$', 'cum_hedge_$_per_pct', 'regime'], rows: r.nodes.map((n) => [n.price.toFixed(2), n.gammaDollar.toFixed(0), n.cumHedge.toFixed(0), n.regime]) })} />
+          <span className="text-[9px] font-black tracking-widest px-1.5 py-0.5 rounded uppercase" style={live
+            ? { color: 'var(--success)', background: 'color-mix(in srgb, var(--success) 12%, transparent)', border: '1px solid color-mix(in srgb, var(--success) 30%, transparent)' }
+            : { color: 'var(--warning)', background: 'color-mix(in srgb, var(--warning) 12%, transparent)', border: '1px solid color-mix(in srgb, var(--warning) 30%, transparent)' }}>{live ? 'LIVE γ' : 'MODEL'}</span>
+        </div>
       </div>
 
-      <svg viewBox={`0 0 ${W} ${H}`} className="w-full h-auto block" preserveAspectRatio="none" style={{ maxHeight: 230 }}>
-        <path d={areaPos} fill="color-mix(in srgb, var(--success) 16%, transparent)" />
-        <path d={areaNeg} fill="color-mix(in srgb, var(--danger) 16%, transparent)" />
-        <line x1={x0} y1={zeroY} x2={x1} y2={zeroY} stroke="var(--border)" strokeWidth={1} />
-        {/* squeeze zone */}
-        {r.squeezePrice != null && <line x1={sx(r.squeezePrice)} y1={y0} x2={sx(r.squeezePrice)} y2={y1} stroke="var(--danger)" strokeWidth={1} strokeDasharray="2 3" opacity={0.6} />}
-        {/* gamma flip */}
-        {r.gammaFlip != null && <line x1={sx(r.gammaFlip)} y1={y0} x2={sx(r.gammaFlip)} y2={y1} stroke="var(--warning)" strokeWidth={1.25} strokeDasharray="4 3" />}
-        {/* spot */}
-        <line x1={sx(spot)} y1={y0} x2={sx(spot)} y2={y1} stroke="var(--text-secondary)" strokeWidth={1.25} />
-        <path d={line} fill="none" stroke="var(--text-primary)" strokeWidth={1.75} opacity={0.85} />
-        <circle cx={sx(spot)} cy={sy(r.netGammaNow)} r={3} fill={regimeColor} />
-      </svg>
+      <div className="relative">
+        <svg ref={svgRef} onPointerMove={onPointerMove} onPointerLeave={onPointerLeave} viewBox={`0 0 ${W} ${H}`} className="w-full h-auto block cursor-crosshair" preserveAspectRatio="none" style={{ maxHeight: 230 }}>
+          <path d={areaPos} fill="color-mix(in srgb, var(--success) 16%, transparent)" />
+          <path d={areaNeg} fill="color-mix(in srgb, var(--danger) 16%, transparent)" />
+          <line x1={x0} y1={zeroY} x2={x1} y2={zeroY} stroke="var(--border)" strokeWidth={1} />
+          {/* squeeze zone */}
+          {r.squeezePrice != null && <line x1={sx(r.squeezePrice)} y1={y0} x2={sx(r.squeezePrice)} y2={y1} stroke="var(--danger)" strokeWidth={1} strokeDasharray="2 3" opacity={0.6} />}
+          {/* gamma flip */}
+          {r.gammaFlip != null && <line x1={sx(r.gammaFlip)} y1={y0} x2={sx(r.gammaFlip)} y2={y1} stroke="var(--warning)" strokeWidth={1.25} strokeDasharray="4 3" />}
+          {/* spot */}
+          <line x1={sx(spot)} y1={y0} x2={sx(spot)} y2={y1} stroke="var(--text-secondary)" strokeWidth={1.25} />
+          <path d={line} fill="none" stroke="var(--text-primary)" strokeWidth={1.75} opacity={0.85} />
+          <circle cx={sx(spot)} cy={sy(r.netGammaNow)} r={3} fill={regimeColor} />
+          {hoverNode && <line x1={sx(hoverNode.price)} y1={y0} x2={sx(hoverNode.price)} y2={y1} stroke="var(--accent-color)" strokeWidth={1} opacity={0.75} />}
+          {hoverNode && <circle cx={sx(hoverNode.price)} cy={sy(hoverNode.gammaDollar)} r={3.2} fill="var(--accent-color)" />}
+        </svg>
+        {hoverNode && (
+          <div className="pointer-events-none absolute top-1 px-2 py-1 rounded-md bg-[var(--surface-2)] border border-[var(--border)] text-[10px] tabular-nums shadow-lg" style={{ left: `${Math.min(82, (sx(hoverNode.price) / W) * 100)}%` }}>
+            <div className="text-[var(--text-primary)] font-bold">{fmt(hoverNode.price)}</div>
+            <div style={{ color: hoverNode.gammaDollar >= 0 ? 'var(--success)' : 'var(--danger)' }}>{hoverNode.gammaDollar >= 0 ? '+' : ''}{(hoverNode.gammaDollar / 1e9).toFixed(2)}B net γ</div>
+            <div className="text-[var(--text-tertiary)] uppercase tracking-wider text-[8.5px]">{hoverNode.regime}</div>
+          </div>
+        )}
+      </div>
       <div className="flex items-center justify-between px-3 pb-1 text-[9px] text-[var(--text-tertiary)] tabular-nums">
         <span>{fmt(minP)}</span>
         <span className="uppercase tracking-widest">dealer net γ ($) vs spot · ⬆green dampens · ⬇red amplifies</span>

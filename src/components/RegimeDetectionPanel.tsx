@@ -16,11 +16,12 @@
  *
  * Each feature is shown with its raw value so the regime read is fully auditable.
  */
-import { useMemo } from 'react';
+import { useMemo, useRef } from 'react';
 import {
   classifyRegime, ornsteinUhlenbeck, volCompression, volExpansion, forwardVolMatrix,
   type RegimeState,
 } from '../lib/regimeEngine';
+import { ChartTools } from './quant/chartInteraction';
 
 /** Minimal OHLC shape — decoupled from the two platform Candle types; the engine only reads these fields. */
 interface CandleLike { open: number; high: number; low: number; close: number; volume: number; timestamp?: number }
@@ -50,6 +51,8 @@ export function RegimeDetectionPanel({ candles, intervalMinutes = 5, ticker }: R
     return { regime, ou, comp, exp, rvTerm };
   }, [candles, intervalMinutes]);
 
+  const wrapRef = useRef<HTMLDivElement>(null);
+
   if (!m) {
     return (
       <div className="h-[200px] rounded-lg border border-[var(--border)] bg-[var(--surface-2)] flex items-center justify-center">
@@ -75,7 +78,7 @@ export function RegimeDetectionPanel({ candles, intervalMinutes = 5, ticker }: R
   );
 
   return (
-    <div className="rounded-lg border border-[var(--border)] bg-[var(--surface)] overflow-hidden">
+    <div ref={wrapRef} className="rounded-lg border border-[var(--border)] bg-[var(--surface)] overflow-hidden">
       <div className="flex items-center justify-between px-3.5 py-2 border-b border-[var(--border)]">
         <div className="flex items-center gap-2">
           <span className="w-[3px] h-3.5 rounded-full" style={{ background: 'color-mix(in srgb, var(--accent-color) 55%, transparent)' }} />
@@ -83,7 +86,26 @@ export function RegimeDetectionPanel({ candles, intervalMinutes = 5, ticker }: R
             Market Regime{ticker ? ` · ${ticker}` : ''}
           </span>
         </div>
-        <span className="text-[9px] font-black tracking-widest px-1.5 py-0.5 rounded uppercase" style={{ color: 'var(--info)', background: 'color-mix(in srgb, var(--info) 12%, transparent)', border: '1px solid color-mix(in srgb, var(--info) 30%, transparent)' }} title="Gaussian-feature classifier over Hurst / realized-vol / kurtosis — measurable, not labeled by hand.">Model</span>
+        <div className="flex items-center gap-2">
+          <ChartTools name={`regime-${ticker || 'spx'}`} fullscreenRef={wrapRef}
+            csv={() => ({
+              headers: ['feature', 'value'],
+              rows: [
+                ['regime', regime.state],
+                ['confidence_pct', regime.transitionProb],
+                ['hurst', hurst.toFixed(4)],
+                ['ou_half_life_min', isFinite(ou.halfLifeMinutes) ? ou.halfLifeMinutes.toFixed(1) : 'inf'],
+                ['ou_mean_reverting', ou.meanReverting ? 1 : 0],
+                ['vol_compression_score', comp.score.toFixed(4)],
+                ['vol_expansion_score', exp.score.toFixed(4)],
+                ['rv_term_ratio_score', rvTerm.score.toFixed(4)],
+                ['posterior_trend', regime.posteriors.TREND_EXPANSION.toFixed(4)],
+                ['posterior_mean_reversion', regime.posteriors.MEAN_REVERSION.toFixed(4)],
+                ['posterior_tail_risk', regime.posteriors.TAIL_RISK.toFixed(4)],
+              ],
+            })} />
+          <span className="text-[9px] font-black tracking-widest px-1.5 py-0.5 rounded uppercase" style={{ color: 'var(--info)', background: 'color-mix(in srgb, var(--info) 12%, transparent)', border: '1px solid color-mix(in srgb, var(--info) 30%, transparent)' }} title="Gaussian-feature classifier over Hurst / realized-vol / kurtosis — measurable, not labeled by hand.">Model</span>
+        </div>
       </div>
 
       {/* Classified regime + confidence */}
