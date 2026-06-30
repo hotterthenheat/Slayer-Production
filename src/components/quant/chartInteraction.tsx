@@ -74,6 +74,12 @@ export function exportPng(svg: SVGSVGElement | null, name: string, scale = 2) {
   img.src = `data:image/svg+xml;base64,${btoa(unescape(encodeURIComponent(data)))}`;
 }
 
+/** Snapshot a (WebGL or 2D) canvas to PNG. The renderer must preserve its drawing buffer. */
+export function exportCanvasPng(canvas: HTMLCanvasElement | null, name: string) {
+  if (!canvas) return;
+  canvas.toBlob((b) => { if (b) triggerDownload(b, `${name}.png`); }, 'image/png');
+}
+
 export function exportCsv(headers: string[], rows: (string | number)[][], name: string) {
   const esc = (v: string | number) => { const s = String(v); return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s; };
   const csv = [headers.map(esc).join(','), ...rows.map((r) => r.map(esc).join(','))].join('\n');
