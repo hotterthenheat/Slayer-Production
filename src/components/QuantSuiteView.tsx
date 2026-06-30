@@ -26,6 +26,7 @@ import { ASSET_LIST } from '../data';
 import { RiskNeutralDistribution } from './RiskNeutralDistribution';
 import { IvSmile } from './IvSmile';
 import { GreekExposurePanel } from './GreekExposurePanel';
+import { VolConePanel } from './VolConePanel';
 import { StrikeSyncProvider } from './quant/crosshairSync';
 import { MonteCarloPanel } from './MonteCarloPanel';
 import { RegimeDetectionPanel } from './RegimeDetectionPanel';
@@ -759,32 +760,8 @@ export default function QuantSuiteView() {
                   </div>
                 </div>
 
-                <div className="bg-[var(--surface)] border border-[var(--border)] p-4 rounded-lg flex flex-col">
-                  <SectionHeader icon={<History className="w-3.5 h-3.5 text-[var(--text-tertiary)]" />} label="Vol Cone" />
-                  <div className="overflow-x-auto -mx-1 px-1">
-                  <table className="w-full text-left text-[11px]">
-                    <thead>
-                      <tr className="border-b border-[var(--border)] text-[var(--text-tertiary)] uppercase h-7 text-[10px]">
-                        <th className="font-semibold">DTE</th>
-                        <th className="font-semibold">MIN</th>
-                        <th className="font-semibold">P50</th>
-                        <th className="font-semibold">MAX</th>
-                        <th className="text-right font-semibold text-[var(--warning)]">CUR</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {volCone.map((c, idx) => (
-                        <tr key={idx} className="border-b border-[var(--border)] h-8 text-[var(--text-secondary)]">
-                          <td className="font-semibold">{c.window}d</td>
-                          <td className="text-[var(--text-tertiary)]">{(c.min * 100).toFixed(0)}%</td>
-                          <td>{(c.p50 * 100).toFixed(0)}%</td>
-                          <td className="text-[var(--text-tertiary)]">{(c.max * 100).toFixed(0)}%</td>
-                          <td className="text-right text-[var(--success)] font-bold tabular-nums">{(c.current * 100).toFixed(0)}%</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                  </div>
+                <div id="quant-suite-vol-cone">
+                  <VolConePanel cone={volCone} atmIv={defaultIv} realizedVol={volSuite.yangZhang} ticker={activeTicker} live={isLiveData} />
                 </div>
               </div>
             )}
