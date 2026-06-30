@@ -18,9 +18,10 @@
  * synthesized: the panel only presents the risk-neutral density that was solved
  * from the live option chain (or, off-hours, the clearly-labelled model chain).
  */
-import { useMemo } from 'react';
+import { useMemo, useRef } from 'react';
 import { touchProbability } from '../lib/probability';
 import type { BreedenLitzenbergerResult } from '../lib/quantSuite';
+import { useCrosshair, ChartTools } from './quant/chartInteraction';
 
 interface RiskNeutralDistributionProps {
   rnd: BreedenLitzenbergerResult;
@@ -88,6 +89,8 @@ export function RiskNeutralDistribution({
     return { sorted, minS, maxS, cdfAt, pBelowSpot, pAboveSpot, levels, pBetweenWalls, ci90, sigmaAnn, T, vrp };
   }, [rnd, spot, dteDays, ivAtm, realizedVol, callWall, putWall, gammaFlip]);
 
+  const wrapRef = useRef<HTMLDivElement>(null);
+  const { svgRef, vx, onPointerMove, onPointerLeave } = useCrosshair(1000);
   const fmt = (v: number) => v.toLocaleString(undefined, { minimumFractionDigits: decimals, maximumFractionDigits: decimals });
   const pct = (v: number) => `${(v * 100).toFixed(1)}%`;
 
@@ -107,6 +110,10 @@ export function RiskNeutralDistribution({
   const curve = m.sorted.map((d, i) => `${i === 0 ? 'M' : 'L'}${sx(d.strike).toFixed(1)},${sy(Math.max(0, Math.min(1, d.cumulativeProb))).toFixed(1)}`).join(' ');
   const spotX = sx(spot);
 
+  // Crosshair: resolve the pointer's viewBox-x to a strike, then read P(below)/P(above) off the CDF.
+  const hoverStrike = vx != null ? m.minS + ((vx - x0) / ((x1 - x0) || 1)) * (m.maxS - m.minS) : null;
+  const hoverCdf = hoverStrike != null && hoverStrike >= m.minS && hoverStrike <= m.maxS ? m.cdfAt(hoverStrike) : null;
+
   const Cell = ({ label, value, tone }: { label: string; value: string; tone?: string }) => (
     <div className="flex flex-col gap-0.5 px-2.5 py-1.5 rounded-md bg-[var(--surface-2)] border border-[var(--border)]">
       <span className="text-[9px] uppercase tracking-wider text-[var(--text-tertiary)] leading-none">{label}</span>
@@ -115,7 +122,7 @@ export function RiskNeutralDistribution({
   );
 
   return (
-    <div className="rounded-lg border border-[var(--border)] bg-[var(--surface)] overflow-hidden">
+    <div ref={wrapRef} className="rounded-lg border border-[var(--border)] bg-[var(--surface)] overflow-hidden">
       <div className="flex items-center justify-between px-3.5 py-2 border-b border-[var(--border)]">
         <div className="flex items-center gap-2">
           <span className="w-[3px] h-3.5 rounded-full" style={{ background: 'color-mix(in srgb, var(--accent-color) 55%, transparent)' }} />
@@ -123,34 +130,54 @@ export function RiskNeutralDistribution({
             Risk-Neutral Distribution{ticker ? ` · ${ticker}` : ''}
           </span>
         </div>
-        <span
-          className="text-[9px] font-black tracking-widest px-1.5 py-0.5 rounded uppercase"
-          style={live
-            ? { color: 'var(--success)', background: 'color-mix(in srgb, var(--success) 12%, transparent)', border: '1px solid color-mix(in srgb, var(--success) 30%, transparent)' }
-            : { color: 'var(--warning)', background: 'color-mix(in srgb, var(--warning) 12%, transparent)', border: '1px solid color-mix(in srgb, var(--warning) 30%, transparent)' }}
-        >
-          {live ? 'LIVE' : 'MODEL'}
-        </span>
+        <div className="flex items-center gap-2">
+          <ChartTools name={`rnd-cdf-${ticker || 'spx'}`} svgRef={svgRef} fullscreenRef={wrapRef}
+            csv={() => ({ headers: ['strike', 'pdf', 'cdf'], rows: m.sorted.map((d) => [d.strike.toFixed(2), d.probability.toExponential(6), d.cumulativeProb.toFixed(6)]) })} />
+          <span
+            className="text-[9px] font-black tracking-widest px-1.5 py-0.5 rounded uppercase"
+            style={live
+              ? { color: 'var(--success)', background: 'color-mix(in srgb, var(--success) 12%, transparent)', border: '1px solid color-mix(in srgb, var(--success) 30%, transparent)' }
+              : { color: 'var(--warning)', background: 'color-mix(in srgb, var(--warning) 12%, transparent)', border: '1px solid color-mix(in srgb, var(--warning) 30%, transparent)' }}
+          >
+            {live ? 'LIVE' : 'MODEL'}
+          </span>
+        </div>
       </div>
 
       {/* CDF — cumulative probability P(S_T ≤ K) */}
       <div className="px-1 pt-2">
-        <svg viewBox={`0 0 ${W} ${H}`} className="w-full h-auto block" preserveAspectRatio="none" style={{ maxHeight: 200 }}>
-          {/* 50% guide */}
-          <line x1={x0} y1={sy(0.5)} x2={x1} y2={sy(0.5)} stroke="var(--border)" strokeWidth={1} strokeDasharray="3 4" />
-          {/* below-spot shading */}
-          <rect x={x0} y={y0} width={Math.max(0, spotX - x0)} height={y1 - y0} fill="color-mix(in srgb, var(--danger) 6%, transparent)" />
-          {/* level markers */}
-          {m.levels.map((l) => (
-            <line key={l.key} x1={sx(l.price)} y1={y0} x2={sx(l.price)} y2={y1} stroke={l.color} strokeWidth={1} opacity={0.5} strokeDasharray="2 3" />
-          ))}
-          {/* spot marker */}
-          <line x1={spotX} y1={y0} x2={spotX} y2={y1} stroke="var(--text-secondary)" strokeWidth={1.25} />
-          {/* CDF curve */}
-          <path d={curve} fill="none" stroke="var(--accent-color)" strokeWidth={2.25} />
-          {/* spot CDF dot */}
-          <circle cx={spotX} cy={sy(m.cdfAt(spot))} r={3} fill="var(--accent-color)" />
-        </svg>
+        <div className="relative">
+          <svg ref={svgRef} onPointerMove={onPointerMove} onPointerLeave={onPointerLeave} viewBox={`0 0 ${W} ${H}`} className="w-full h-auto block cursor-crosshair" preserveAspectRatio="none" style={{ maxHeight: 200 }}>
+            {/* 50% guide */}
+            <line x1={x0} y1={sy(0.5)} x2={x1} y2={sy(0.5)} stroke="var(--border)" strokeWidth={1} strokeDasharray="3 4" />
+            {/* below-spot shading */}
+            <rect x={x0} y={y0} width={Math.max(0, spotX - x0)} height={y1 - y0} fill="color-mix(in srgb, var(--danger) 6%, transparent)" />
+            {/* level markers */}
+            {m.levels.map((l) => (
+              <line key={l.key} x1={sx(l.price)} y1={y0} x2={sx(l.price)} y2={y1} stroke={l.color} strokeWidth={1} opacity={0.5} strokeDasharray="2 3" />
+            ))}
+            {/* spot marker */}
+            <line x1={spotX} y1={y0} x2={spotX} y2={y1} stroke="var(--text-secondary)" strokeWidth={1.25} />
+            {/* CDF curve */}
+            <path d={curve} fill="none" stroke="var(--accent-color)" strokeWidth={2.25} />
+            {/* spot CDF dot */}
+            <circle cx={spotX} cy={sy(m.cdfAt(spot))} r={3} fill="var(--accent-color)" />
+            {/* crosshair */}
+            {hoverStrike != null && hoverCdf != null && (
+              <>
+                <line x1={sx(hoverStrike)} y1={y0} x2={sx(hoverStrike)} y2={y1} stroke="var(--accent-color)" strokeWidth={1} opacity={0.75} />
+                <circle cx={sx(hoverStrike)} cy={sy(hoverCdf)} r={3.2} fill="var(--accent-color)" />
+              </>
+            )}
+          </svg>
+          {hoverStrike != null && hoverCdf != null && (
+            <div className="pointer-events-none absolute top-1 px-2 py-1 rounded-md bg-[var(--surface-2)] border border-[var(--border)] text-[10px] tabular-nums shadow-lg" style={{ left: `${Math.min(80, (sx(hoverStrike) / W) * 100)}%` }}>
+              <div className="text-[var(--text-primary)] font-bold">{fmt(hoverStrike)}</div>
+              <div style={{ color: 'var(--danger)' }}>P(below) {pct(hoverCdf)}</div>
+              <div style={{ color: 'var(--success)' }}>P(above) {pct(1 - hoverCdf)}</div>
+            </div>
+          )}
+        </div>
         <div className="flex items-center justify-between px-2 pb-1 text-[9px] text-[var(--text-tertiary)] tabular-nums">
           <span>{fmt(m.minS)}</span>
           <span className="uppercase tracking-widest">CDF · P(Sₜ ≤ K)</span>
