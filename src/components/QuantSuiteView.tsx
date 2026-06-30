@@ -23,7 +23,7 @@ import {
 } from 'lucide-react';
 import { useContractStore } from '../lib/store';
 import { ASSET_LIST } from '../data';
-import { ForwardProbabilityCone } from './ForwardProbabilityCone';
+import { RiskNeutralDistribution } from './RiskNeutralDistribution';
 import {
   solveImpliedRND,
   calculateRealizedVolSuite,
@@ -1294,17 +1294,22 @@ export default function QuantSuiteView() {
         </AnimatePresence>
       </div>
 
-      {/* Forward probability cone — where price is likely to sit by expiry vs the dealer's own structure */}
-      {gexProfile && spotPrice > 0 && expectedMovePct > 0 && (
-        <div className="border-t border-[var(--border)] pt-4" id="quant-suite-forward-cone">
-          <ForwardProbabilityCone
+      {/* Risk-neutral probability distribution — the market's own forward distribution (Breeden-Litzenberger),
+          with the CDF + every probability (above/below/between/touch/ITM), expected move, CIs, and IV-vs-RV. */}
+      {rndResult.density.length > 2 && spotPrice > 0 && (
+        <div className="border-t border-[var(--border)] pt-4" id="quant-suite-rnd-distribution">
+          <RiskNeutralDistribution
+            rnd={rndResult}
             spot={spotPrice}
-            emFraction={expectedMovePct / 100}
-            callWall={gexProfile.callWall}
-            putWall={gexProfile.putWall}
-            gammaFlip={gexProfile.gammaFlip}
+            dteDays={dteD}
+            ivAtm={defaultIv}
+            realizedVol={volSuite.yangZhang}
+            callWall={gexProfile?.callWall}
+            putWall={gexProfile?.putWall}
+            gammaFlip={gexProfile?.gammaFlip}
             decimals={activeAsset.decimals}
             ticker={activeTicker}
+            live={isLiveData}
           />
         </div>
       )}
