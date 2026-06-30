@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState, useEffect, useMemo, useRef } from 'react';
+import React, { useState, useEffect, useMemo, useRef, lazy, Suspense } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import {
   Activity,
@@ -54,6 +54,10 @@ import {
   type CalibrationResult,
 } from '../lib/quantSuite';
 import { ChainContract } from '../lib/v11Math';
+
+// Lazy-loaded: pulls in three.js. Only fetched when a multi-expiry GEX surface
+// is actually rendered, keeping the heavy 3D vendor chunk off the page's load.
+const GexSurface3D = lazy(() => import('./GexSurface3D').then(m => ({ default: m.GexSurface3D })));
 
 type StrategyPreset = 'iron_condor' | 'straddle' | 'butterfly' | 'vertical';
 
@@ -1313,6 +1317,19 @@ export default function QuantSuiteView() {
           />
         </div>
       )}
+
+      {/* Dealer gamma exposure surface (3D) — real per-(strike,expiry) netGEX over the chain */}
+      {(() => {
+        const exps = ((gexProfile as any)?.expiries || []) as any[];
+        if (!(exps.length >= 1 && spotPrice > 0)) return null;
+        return (
+          <div className="border-t border-[var(--border)] pt-4" id="quant-suite-gex-surface">
+            <Suspense fallback={<div className="h-[300px] rounded-lg border border-[var(--border)] bg-[var(--surface-2)] animate-pulse" />}>
+              <GexSurface3D expiries={exps} spot={spotPrice} decimals={activeAsset.decimals} ticker={activeTicker} live={isLiveData} />
+            </Suspense>
+          </div>
+        );
+      })()}
 
       {/* Footer: REAL dealer GEX (when streamed) + per-expiry GEX breakdown */}
       <div className="grid grid-cols-1 lg:grid-cols-3 border-t border-[var(--border)] pt-4 gap-4" id="quant-suite-gex-footer">
