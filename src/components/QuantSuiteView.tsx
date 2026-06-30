@@ -25,6 +25,7 @@ import { useContractStore } from '../lib/store';
 import { ASSET_LIST } from '../data';
 import { RiskNeutralDistribution } from './RiskNeutralDistribution';
 import { IvSmile } from './IvSmile';
+import { MonteCarloPanel } from './MonteCarloPanel';
 import {
   solveImpliedRND,
   calculateRealizedVolSuite,
@@ -1338,6 +1339,13 @@ export default function QuantSuiteView() {
           </div>
         );
       })()}
+
+      {/* Monte Carlo simulation — real seeded paths under GBM / jump-diffusion / Heston */}
+      {spotPrice > 0 && defaultIv > 0 && dteD > 0 && (
+        <div className="border-t border-[var(--border)] pt-4" id="quant-suite-monte-carlo">
+          <MonteCarloPanel spot={spotPrice} r={0.05} sigma={defaultIv} tYears={Math.max(1, dteD) / 365} ticker={activeTicker} decimals={activeAsset.decimals} />
+        </div>
+      )}
 
       {/* Footer: REAL dealer GEX (when streamed) + per-expiry GEX breakdown */}
       <div className="grid grid-cols-1 lg:grid-cols-3 border-t border-[var(--border)] pt-4 gap-4" id="quant-suite-gex-footer">

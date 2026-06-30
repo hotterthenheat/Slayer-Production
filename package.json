@@ -9,7 +9,7 @@
     "start": "node dist/server.cjs",
     "clean": "rm -rf dist",
     "lint": "tsc --noEmit",
-    "test": "tsx tests/skyScore.test.ts && tsx tests/math.test.ts && tsx tests/quantEdge.test.ts && tsx tests/quantSuite.test.ts && tsx tests/skyVision.test.ts && tsx tests/skyQuantCore.test.ts && tsx tests/gexSummary.test.ts && tsx tests/criticalPaths.test.ts && tsx tests/indicators.test.ts && tsx tests/terminalRead.test.ts && tsx tests/dealerDynamics.test.ts && tsx tests/expirySlices.test.ts && tsx tests/readPipeline.test.ts && tsx tests/chartPanels.test.ts && tsx tests/historyCache.test.ts && tsx tests/watchlist.test.ts && tsx tests/edgeTracker.test.ts && tsx tests/dataIntegrity.test.ts"
+    "test": "tsx tests/skyScore.test.ts && tsx tests/math.test.ts && tsx tests/quantEdge.test.ts && tsx tests/quantSuite.test.ts && tsx tests/skyVision.test.ts && tsx tests/skyQuantCore.test.ts && tsx tests/gexSummary.test.ts && tsx tests/criticalPaths.test.ts && tsx tests/indicators.test.ts && tsx tests/terminalRead.test.ts && tsx tests/dealerDynamics.test.ts && tsx tests/expirySlices.test.ts && tsx tests/readPipeline.test.ts && tsx tests/chartPanels.test.ts && tsx tests/historyCache.test.ts && tsx tests/watchlist.test.ts && tsx tests/edgeTracker.test.ts && tsx tests/dataIntegrity.test.ts && tsx tests/monteCarlo.test.ts"
   },
   "dependencies": {
     "@tailwindcss/vite": "^4.1.14",
