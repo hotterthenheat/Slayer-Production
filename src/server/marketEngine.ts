@@ -1049,110 +1049,6 @@ const buildPayload = (params: PayloadParams) => {
     else finalDecision = 'EXIT';
   }
 
-  // Pinpoint translation directives: hides all raw GEX/Greeks values, provides narrative
-  const pinpointLevels = [-4, -3, -2, -1, 0, 1, 2, 3, 4].map(fact => {
-    const strike = optionStrike + (fact * step);
-    const isSpotLevel = Math.abs(strike - lastPrice) <= step / 2;
-    
-    let label = 'neutral';
-    let narrative = 'LIQUIDITY VOID GAP';
-    let strength = 30;
-    let intensity = 20;
-    let expectedInfluence = 'Mild reaction likely';
-    let exposureInfo = '+$0.4B Dealer Gaps';
-
-    if (fact === 2) {
-      label = 'resistance';
-      narrative = 'EXTREME RESISTANCE — OVERHEAD CAPITAL CEILING';
-      strength = 94;
-      intensity = 95;
-      expectedInfluence = 'Strong overhead resistance barrier';
-      exposureInfo = '+$4.2B Positioning Gex';
-    } else if (fact === -2) {
-      label = 'support';
-      narrative = 'MAJOR SUPPORT — CALL CONCENTRATION BID';
-      strength = 94;
-      intensity = 95;
-      expectedInfluence = 'Strong institutional floor level';
-      exposureInfo = '-$3.8B Positioning Gex';
-    } else if (fact === 1) {
-      label = 'resistance';
-      narrative = 'HEAVY SELLER PRESSURE CEILING';
-      strength = 65;
-      intensity = 70;
-      expectedInfluence = 'Moderate barrier';
-      exposureInfo = '+$2.1B Positioning Gex';
-    } else if (fact === -1) {
-      label = 'support';
-      narrative = 'MAJOR SUPPORT BID FLOOR';
-      strength = 65;
-      intensity = 70;
-      expectedInfluence = 'Moderate floor';
-      exposureInfo = '-$1.9B Positioning Gex';
-    } else if (fact === 0) {
-      label = 'zone';
-      narrative = 'STABLE GRAVITY PIN ZONE';
-      strength = 45;
-      intensity = 55;
-      expectedInfluence = 'High attraction zone';
-      exposureInfo = '+$0.1B Equilibrium';
-    } else if (fact > 2) {
-      label = 'neutral';
-      narrative = 'EXTREME RESISTANCE BUFFER';
-      strength = 22;
-      intensity = 30;
-      expectedInfluence = 'Low interest margin';
-      exposureInfo = '+$0.8B Volatility Pocket';
-    } else if (fact < -2) {
-      label = 'neutral';
-      narrative = 'LIQUIDITY BUFFER EXPANSION';
-      strength = 22;
-      intensity = 30;
-      expectedInfluence = 'Low interest margin';
-      exposureInfo = '-$0.3B Liquidity Buffer';
-    } else if (fact > 0) {
-      label = 'neutral';
-      narrative = 'BULLISH PIN ZONE — SELLER ABSORPTION AREA';
-      strength = 30;
-      intensity = 40;
-      expectedInfluence = 'Mild resistance';
-      exposureInfo = '+$0.6B Delta Stream';
-    } else {
-      label = 'neutral';
-      narrative = 'BEARISH PIN ZONE — SELLER PRESSURE DEPTH';
-      strength = 30;
-      intensity = 40;
-      expectedInfluence = 'Mild support';
-      exposureInfo = '-$0.5B Delta Stream';
-    }
-
-    let gexDollars = 0.4e9;
-    if (fact === 2) gexDollars = 4.2e9;
-    else if (fact === -2) gexDollars = -3.8e9;
-    else if (fact === 1) gexDollars = 2.1e9;
-    else if (fact === -1) gexDollars = -1.9e9;
-    else if (fact === 0) gexDollars = 0.1e9;
-    else if (fact > 2) gexDollars = 0.8e9;
-    else if (fact < -2) gexDollars = -0.3e9;
-    else if (fact > 0) gexDollars = 0.6e9;
-    else gexDollars = -0.5e9;
-
-    return {
-      strike,
-      isSpotLevel,
-      label,
-      narrative,
-      strength,
-      intensity,
-      expectedInfluence,
-      exposureInfo,
-      gexDollars,
-      isCallWall: fact === 2,
-      isPutWall: fact === -2,
-      isGammaFlip: fact === -1
-    };
-  });
-
   // Detailed provenance trail values
   const provenance = {
     inputs: {
@@ -1879,7 +1775,6 @@ const buildPayload = (params: PayloadParams) => {
     pinpoint_map: {
       spot_price: lastPrice,
       step,
-      levels: pinpointLevels,
       feed: feedLabel
     },
     discovery: {

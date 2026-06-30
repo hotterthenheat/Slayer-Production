@@ -342,17 +342,7 @@ export interface ExpectedMoveData {
   [key: string]: any;
 }
 
-export interface PinpointLevel {
-  strike: number;
-  gexDollars?: number;
-  strength: number;
-  label?: string;
-  isPutWall?: boolean;
-  isCallWall?: boolean;
-}
-
 export interface PinpointMapData {
-  levels?: PinpointLevel[];
   spot_price?: number;
   step?: number;
 }

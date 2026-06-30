@@ -20,19 +20,6 @@ if (typeof globalThis !== 'undefined' && typeof (globalThis as any).localStorage
   };
 }
 
-export type PinLevel = {
-  strike: number;
-  dollars: number;
-  strength: number;
-  type: 'support' | 'resistance' | 'magnet';
-};
-
-export type PinpointData = {
-  spotPrice: number;
-  step: number;
-  levels: PinLevel[];
-};
-
 export type ContractState = {
   contract: string;
   health: number;
@@ -40,7 +27,6 @@ export type ContractState = {
   expectedMove: number;
   targets: any[];
   chartData: Candle[];
-  pinpoint: PinpointData;
 };
 
 interface MarketState {
@@ -504,11 +490,6 @@ export const useContractStore = create<ContractStore>((set, get) => ({
         expectedMove: Number((asset.volatility * spot * 0.05).toFixed(1)),
         targets: [],
         chartData: [], // Start with empty chart data safely so we don't see previous ticker's candles
-        pinpoint: {
-          spotPrice: spot,
-          step,
-          levels: []
-        }
       };
 
       set({
@@ -564,28 +545,6 @@ export const useContractStore = create<ContractStore>((set, get) => ({
 
     const contractKey = payload.contract.replace(/\s+/g, '-'); // e.g. "SPX-7620C"
     
-    // Pinpoint levels: dollars come straight from the server's per-strike
-    // net GEX computation (real chain when live, deterministic mock offline).
-    const rawLevels = payload.pinpoint_map?.levels || [];
-    const mappedLevels: PinLevel[] = rawLevels.map((lvl: any) => {
-      const dollarsStr = lvl.exposureInfo?.match(/([+-]?\$[0-9.]+[BM])/i)?.[1] || '';
-      let dollarsNum = 0;
-      if (dollarsStr) {
-        const value = parseFloat(dollarsStr.replace(/[^0-9.]/g, ''));
-        dollarsNum = dollarsStr.endsWith('B') ? value * 1e9 : value * 1e6;
-      }
-      return {
-        strike: lvl.strike,
-        dollars: Math.abs(lvl.gexDollars !== undefined ? lvl.gexDollars : dollarsNum),
-        strength: lvl.strength,
-        type: lvl.label === 'support' || lvl.isPutWall
-          ? 'support'
-          : lvl.label === 'resistance' || lvl.isCallWall
-          ? 'resistance'
-          : 'magnet'
-      };
-    });
-
     const newContractState: ContractState = {
       contract: payload.contract,
       health: payload.trade_health,
@@ -593,11 +552,6 @@ export const useContractStore = create<ContractStore>((set, get) => ({
       expectedMove: Number(String(payload.expected_move?.pct ?? '').replace(/[^0-9.]/g, '') || '0'),
       targets: payload.targets,
       chartData: payload.candles || [],
-      pinpoint: {
-        spotPrice: payload.pinpoint_map?.spot_price || payload.provenance?.inputs?.underlying_price || 0,
-        step: payload.pinpoint_map?.step || 10,
-        levels: mappedLevels
-      }
     };
 
     set((state) => {
