@@ -771,27 +771,6 @@ body {
   animation: blink-put-fast 0.6s ease-out;
 }
 
-/* Custom continuous scrolling Nasdaq-style ticker tape keyframes */
-@keyframes ticker-marquee {
-  0% {
-    transform: translate3d(0, 0, 0);
-  }
-  100% {
-    transform: translate3d(-50%, 0, 0);
-  }
-}
-
-.animate-ticker-marquee {
-  display: flex;
-  width: max-content;
-  animation: ticker-marquee 38s linear infinite;
-}
-
-.animate-ticker-marquee:hover,
-.animate-ticker-marquee *:hover {
-  animation-play-state: running !important;
-}
-
 /* ============================================================
    LIGHT THEME OVERRIDES
    ============================================================ */
@@ -1042,8 +1021,6 @@ body.light-theme ::-webkit-scrollbar-thumb:hover {
   .dummy-class .text-white,
   .dummy-class .text-white,
   .dummy-class .text-white,
-  .animate-ticker-marquee .text-white,
-  .animate-ticker-marquee span:not(.text-fallback):not(.text-fallback),
   button .text-white,
   button span,
   button,
@@ -1055,14 +1032,6 @@ body.light-theme ::-webkit-scrollbar-thumb:hover {
   .dummy-class span,
   .dummy-class p {
     color: inherit !important;
-  }
-
-  .animate-ticker-marquee span.text-white {
-    color: #111827 !important;
-  }
-
-  .animate-ticker-marquee span.text-zinc-500 {
-    color: #6b7280 !important;
   }
 
   /* Specific borders overrides - make them cohesive and light gray */
