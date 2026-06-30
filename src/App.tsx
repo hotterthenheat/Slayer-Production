@@ -1,4 +1,4 @@
-import React, { useState, useEffect, memo, useRef, useMemo, Suspense, lazy } from 'react';
+import React, { useState, useEffect, useRef, useMemo, Suspense, lazy } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useContractStore, isLocalDevEnv, accessTierToNumber } from './lib/store';
 import { applyAllPreferences } from './lib/displayPrefs';
@@ -55,52 +55,6 @@ import {
   ChevronRight,
   Calculator
 } from 'lucide-react';
-
-const TickerTape = memo(() => {
-  const liveSpot = useContractStore((s) => s.serverState?.liveSpotPrices) as Record<string, number> | undefined;
-  const prevRef = React.useRef<Record<string, number>>({});
-  const meta = [
-    { ticker: 'SPX', name: 'S&P 500 Index', fallback: 7623 },
-    { ticker: 'NDX', name: 'NASDAQ 100 Index', fallback: 18250 },
-    { ticker: 'QQQ', name: 'NASDAQ 100 ETF', fallback: 445.5 },
-    { ticker: 'SPY', name: 'S&P 500 ETF', fallback: 512.3 },
-    { ticker: 'RUT', name: 'Russell 2000 Index', fallback: 2025 },
-  ];
-  const items = meta.map((m) => {
-    const v = liveSpot ? liveSpot[m.ticker] : undefined;
-    const live = typeof v === 'number' && v > 0;
-    const price = live ? (v as number) : m.fallback;
-    const prev = prevRef.current[m.ticker];
-    const isUp = prev === undefined ? true : price >= prev;
-    return { ...m, price, isUp, live };
-  });
-  React.useEffect(() => { items.forEach((it) => { prevRef.current[it.ticker] = it.price; }); }, [liveSpot]);
-  const staticTickers = [...items, ...items, ...items];
-
-  return (
-    <div className="w-full bg-[var(--surface)]/80 border-b border-[var(--border)] backdrop-blur-xl overflow-hidden py-1.5 relative z-40 select-none">
-      <div className="animate-ticker-marquee flex whitespace-nowrap">
-        {[...Array(2)].map((_, loopIdx) => (
-          <div key={loopIdx} className="flex gap-14 items-center pr-14 animate-none">
-            {staticTickers.map((t, idx) => (
-              <div 
-                key={`${loopIdx}-${idx}`} 
-                className="flex items-center gap-2.5 font-mono text-[9.5px] px-2 py-1 rounded transition-all"
-              >
-                <span className="font-black text-[var(--text-primary)] tracking-widest">{t.ticker}</span>
-                <span className="text-[var(--text-tertiary)] text-[8.5px] uppercase">{t.name}</span>
-                <span className={`font-extrabold tabular-nums ${t.isUp ? 'text-[var(--success)]' : 'text-[var(--danger)]'}`}>${t.price.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
-                <span className={`text-[8px] font-black ${t.isUp ? 'text-[var(--success)]' : 'text-[var(--danger)]'}`}>
-                  {t.isUp ? '▲' : '▼'}
-                </span>
-              </div>
-            ))}
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-});
 
 // Live footer clock that respects the user's global timezone/format preferences.
 const FooterClock: React.FC = () => {
