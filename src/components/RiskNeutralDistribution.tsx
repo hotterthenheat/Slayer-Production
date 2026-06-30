@@ -22,6 +22,7 @@ import { useMemo, useRef } from 'react';
 import { touchProbability } from '../lib/probability';
 import type { BreedenLitzenbergerResult } from '../lib/quantSuite';
 import { useCrosshair, ChartTools } from './quant/chartInteraction';
+import { useStrikeSync, StrikePublisher } from './quant/crosshairSync';
 
 interface RiskNeutralDistributionProps {
   rnd: BreedenLitzenbergerResult;
@@ -91,6 +92,7 @@ export function RiskNeutralDistribution({
 
   const wrapRef = useRef<HTMLDivElement>(null);
   const { svgRef, vx, onPointerMove, onPointerLeave } = useCrosshair(1000);
+  const { syncedStrike } = useStrikeSync('rnd');
   const fmt = (v: number) => v.toLocaleString(undefined, { minimumFractionDigits: decimals, maximumFractionDigits: decimals });
   const pct = (v: number) => `${(v * 100).toFixed(1)}%`;
 
@@ -162,6 +164,10 @@ export function RiskNeutralDistribution({
             <path d={curve} fill="none" stroke="var(--accent-color)" strokeWidth={2.25} />
             {/* spot CDF dot */}
             <circle cx={spotX} cy={sy(m.cdfAt(spot))} r={3} fill="var(--accent-color)" />
+            {/* synced strike from a sibling panel */}
+            {syncedStrike != null && syncedStrike >= m.minS && syncedStrike <= m.maxS && (
+              <line x1={sx(syncedStrike)} y1={y0} x2={sx(syncedStrike)} y2={y1} stroke="var(--text-tertiary)" strokeWidth={1} strokeDasharray="2 4" opacity={0.65} />
+            )}
             {/* crosshair */}
             {hoverStrike != null && hoverCdf != null && (
               <>
@@ -170,6 +176,7 @@ export function RiskNeutralDistribution({
               </>
             )}
           </svg>
+          <StrikePublisher id="rnd" strike={hoverStrike} />
           {hoverStrike != null && hoverCdf != null && (
             <div className="pointer-events-none absolute top-1 px-2 py-1 rounded-md bg-[var(--surface-2)] border border-[var(--border)] text-[10px] tabular-nums shadow-lg" style={{ left: `${Math.min(80, (sx(hoverStrike) / W) * 100)}%` }}>
               <div className="text-[var(--text-primary)] font-bold">{fmt(hoverStrike)}</div>

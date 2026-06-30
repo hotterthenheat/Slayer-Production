@@ -13,6 +13,7 @@
 import { useMemo, useRef } from 'react';
 import { simulateDealerHedging, type HedgeStrike } from '../lib/dealerHedging';
 import { useCrosshair, ChartTools } from './quant/chartInteraction';
+import { useStrikeSync, StrikePublisher } from './quant/crosshairSync';
 
 interface DealerHedgingPanelProps {
   strikes: HedgeStrike[];
@@ -27,6 +28,7 @@ export function DealerHedgingPanel({ strikes, spot, emPct, decimals = 0, ticker,
   const r = useMemo(() => simulateDealerHedging(strikes, spot, emPct), [strikes, spot, emPct]);
   const wrapRef = useRef<HTMLDivElement>(null);
   const { svgRef, vx, onPointerMove, onPointerLeave } = useCrosshair(1000);
+  const { syncedStrike } = useStrikeSync('hedging');
   const fmt = (v: number) => v.toLocaleString(undefined, { minimumFractionDigits: decimals, maximumFractionDigits: decimals });
   const bn = (v: number) => `${v >= 0 ? '+' : ''}${(v / 1e9).toFixed(2)}B`;
 
@@ -96,9 +98,13 @@ export function DealerHedgingPanel({ strikes, spot, emPct, decimals = 0, ticker,
           <line x1={sx(spot)} y1={y0} x2={sx(spot)} y2={y1} stroke="var(--text-secondary)" strokeWidth={1.25} />
           <path d={line} fill="none" stroke="var(--text-primary)" strokeWidth={1.75} opacity={0.85} />
           <circle cx={sx(spot)} cy={sy(r.netGammaNow)} r={3} fill={regimeColor} />
+          {syncedStrike != null && syncedStrike >= minP && syncedStrike <= maxP && (
+            <line x1={sx(syncedStrike)} y1={y0} x2={sx(syncedStrike)} y2={y1} stroke="var(--text-tertiary)" strokeWidth={1} strokeDasharray="2 4" opacity={0.65} />
+          )}
           {hoverNode && <line x1={sx(hoverNode.price)} y1={y0} x2={sx(hoverNode.price)} y2={y1} stroke="var(--accent-color)" strokeWidth={1} opacity={0.75} />}
           {hoverNode && <circle cx={sx(hoverNode.price)} cy={sy(hoverNode.gammaDollar)} r={3.2} fill="var(--accent-color)" />}
         </svg>
+        <StrikePublisher id="hedging" strike={hoverNode ? hoverNode.price : null} />
         {hoverNode && (
           <div className="pointer-events-none absolute top-1 px-2 py-1 rounded-md bg-[var(--surface-2)] border border-[var(--border)] text-[10px] tabular-nums shadow-lg" style={{ left: `${Math.min(82, (sx(hoverNode.price) / W) * 100)}%` }}>
             <div className="text-[var(--text-primary)] font-bold">{fmt(hoverNode.price)}</div>
