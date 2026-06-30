@@ -8,12 +8,16 @@
  * clearly-labeled deterministic model when offline).
  */
 
-import { useMemo, useState, useEffect } from 'react';
+import { useMemo, useState, useEffect, lazy, Suspense } from 'react';
 import { motion } from 'motion/react';
 import { useContractStore } from '../lib/store';
 import { SlayerScoreWidget, VolatilityStateWidget } from './WorkspaceWidgets';
 import { InteractiveChart } from './InteractiveChart';
-import { InstitutionalPhysicsDashboard } from './InstitutionalPhysicsDashboard';
+// Lazy-loaded: this is the ONLY consumer of three.js (~470kb) + recharts (~248kb).
+// Deferring it keeps those vendor chunks out of the GEX page's initial load — they
+// fetch on demand the first time the 3D physics panel is actually opened.
+const InstitutionalPhysicsDashboard = lazy(() =>
+  import('./InstitutionalPhysicsDashboard').then(m => ({ default: m.InstitutionalPhysicsDashboard })));
 import { IntradayTargetsView } from './IntradayTargetsView';
 import { QuantEdgePanel } from './QuantEdgePanel';
 import { RegimeMatrixPanel } from './RegimeMatrixPanel';
@@ -1459,11 +1463,13 @@ export function DealerFlowView() {
         <LiveTerminalFlow profile={filteredProfile || profile} ticker={selectedAsset.ticker} decimals={selectedAsset.decimals} />
       ) : (
         <div className="space-y-5" id="institutional-physics-dash-wrapper">
-          <InstitutionalPhysicsDashboard
-            profile={filteredProfile || profile}
-            ticker={selectedAsset.ticker}
-            decimals={selectedAsset.decimals}
-          />
+          <Suspense fallback={<div className="h-[460px] rounded-lg border border-[var(--border)] bg-[var(--surface-2)] animate-pulse" />}>
+            <InstitutionalPhysicsDashboard
+              profile={filteredProfile || profile}
+              ticker={selectedAsset.ticker}
+              decimals={selectedAsset.decimals}
+            />
+          </Suspense>
           {/* ============== ADVANCED QUANT MECHANICS PANELS ============== */}
           {/* QUANT EDGE — RND / VRP / skew / scenario / Kelly / dealer clock */}
           <QuantEdgePanel />
