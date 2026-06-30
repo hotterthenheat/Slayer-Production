@@ -70,6 +70,23 @@ console.log('Testing greeks vs finite-difference (call)...');
   const gDn = bsmGreeks(S - h, K, tau, r, sigma, q, 'call').gamma;
   assert.ok(Math.abs(gc.speed - (gUp - gDn) / (2 * h)) < 1e-4, `speed~FD`);
   console.log('✔ delta/gamma/vega/theta/charm/speed all match finite-difference');
+  // Higher-order greeks vs central finite-difference of the lower greek.
+  const relTol = (x: number) => 1e-2 * Math.max(1, Math.abs(x));
+  const vegaSU = bsmGreeks(S, K, tau, r, sigma + h, q, 'call').vega, vegaSD = bsmGreeks(S, K, tau, r, sigma - h, q, 'call').vega;
+  assert.ok(Math.abs(gc.vomma - (vegaSU - vegaSD) / (2 * h)) < relTol(gc.vomma), `vomma~FD (${gc.vomma})`);
+  const gamSU = bsmGreeks(S, K, tau, r, sigma + h, q, 'call').gamma, gamSD = bsmGreeks(S, K, tau, r, sigma - h, q, 'call').gamma;
+  assert.ok(Math.abs(gc.zomma - (gamSU - gamSD) / (2 * h)) < relTol(gc.zomma), `zomma~FD (${gc.zomma})`);
+  const vegaTU = bsmGreeks(S, K, tau + h, r, sigma, q, 'call').vega, vegaTD = bsmGreeks(S, K, tau - h, r, sigma, q, 'call').vega;
+  assert.ok(Math.abs(gc.veta - -(vegaTU - vegaTD) / (2 * h)) < relTol(gc.veta), `veta~FD (${gc.veta})`);
+  const gamTU = bsmGreeks(S, K, tau + h, r, sigma, q, 'call').gamma, gamTD = bsmGreeks(S, K, tau - h, r, sigma, q, 'call').gamma;
+  assert.ok(Math.abs(gc.color - -(gamTU - gamTD) / (2 * h)) < relTol(gc.color), `color~FD (${gc.color})`);
+  const vomSU = bsmGreeks(S, K, tau, r, sigma + h, q, 'call').vomma, vomSD = bsmGreeks(S, K, tau, r, sigma - h, q, 'call').vomma;
+  assert.ok(Math.abs(gc.ultima - (vomSU - vomSD) / (2 * h)) < relTol(gc.ultima), `ultima~FD (${gc.ultima})`);
+  const gpHO = bsmGreeks(S, K, tau, r, sigma, q, 'put');
+  for (const key of ['vomma', 'veta', 'color', 'zomma', 'ultima'] as const) {
+    assert.ok(Math.abs((gc as any)[key] - (gpHO as any)[key]) < 1e-9, `${key} call==put`);
+  }
+  console.log('✔ vomma/veta/color/zomma/ultima all match finite-difference (call==put)');
 }
 
 console.log('Testing GEX ×100 multiplier present...');
